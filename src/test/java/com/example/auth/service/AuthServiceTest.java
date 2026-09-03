@@ -2,6 +2,7 @@ package com.example.auth.service;
 
 import com.example.auth.dto.AuthResponse;
 import com.example.auth.dto.LoginRequest;
+import com.example.auth.dto.RefreshTokenRequest;
 import com.example.auth.dto.RegisterRequest;
 import com.example.auth.dto.UserResponse;
 import com.example.auth.entity.Role;
@@ -91,7 +92,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Login: Should successfully authenticate and return JWT access token")
+    @DisplayName("Login: Should successfully authenticate and return Access and Refresh tokens")
     void shouldLoginSuccessfully() {
         LoginRequest request = new LoginRequest("john@example.com", "Password123!");
 
@@ -99,13 +100,15 @@ class AuthServiceTest {
         user.setId(UUID.randomUUID());
 
         when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(user));
-        when(jwtService.generateToken(user)).thenReturn("mock.jwt.token");
-        when(jwtService.getExpirationInSeconds()).thenReturn(900L);
+        when(jwtService.generateAccessToken(user)).thenReturn("mock.access.token");
+        when(jwtService.generateRefreshToken(user)).thenReturn("mock.refresh.token");
+        when(jwtService.getAccessTokenExpirationInSeconds()).thenReturn(900L);
 
         AuthResponse response = authService.login(request);
 
         assertNotNull(response);
-        assertEquals("mock.jwt.token", response.accessToken());
+        assertEquals("mock.access.token", response.accessToken());
+        assertEquals("mock.refresh.token", response.refreshToken());
         assertEquals("Bearer", response.tokenType());
         assertEquals(900L, response.expiresIn());
 
@@ -121,6 +124,39 @@ class AuthServiceTest {
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
-        verify(jwtService, never()).generateToken(any(User.class));
+        verify(jwtService, never()).generateAccessToken(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Refresh: Should successfully issue new access and rotated refresh tokens")
+    void shouldRefreshTokenSuccessfully() {
+        RefreshTokenRequest request = new RefreshTokenRequest("valid.refresh.token");
+        User user = new User("john@example.com", "hashedBCryptPassword", "John", "Doe", Role.USER);
+        user.setId(UUID.randomUUID());
+
+        when(jwtService.isRefreshToken("valid.refresh.token")).thenReturn(true);
+        when(jwtService.extractUsername("valid.refresh.token")).thenReturn("john@example.com");
+        when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(user));
+        when(jwtService.generateAccessToken(user)).thenReturn("new.access.token");
+        when(jwtService.generateRefreshToken(user)).thenReturn("new.rotated.refresh.token");
+        when(jwtService.getAccessTokenExpirationInSeconds()).thenReturn(900L);
+
+        AuthResponse response = authService.refreshToken(request);
+
+        assertNotNull(response);
+        assertEquals("new.access.token", response.accessToken());
+        assertEquals("new.rotated.refresh.token", response.refreshToken());
+        assertEquals("Bearer", response.tokenType());
+        assertEquals(900L, response.expiresIn());
+    }
+
+    @Test
+    @DisplayName("Refresh: Should throw BadCredentialsException when refresh token is invalid or expired")
+    void shouldThrowBadCredentialsWhenRefreshTokenIsInvalid() {
+        RefreshTokenRequest request = new RefreshTokenRequest("invalid.token");
+        when(jwtService.isRefreshToken("invalid.token")).thenReturn(false);
+
+        assertThrows(BadCredentialsException.class, () -> authService.refreshToken(request));
+        verify(userRepository, never()).findByEmail(any());
     }
 }

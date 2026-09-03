@@ -1,7 +1,0 @@
-com/example/auth/controller/AdminControllerTest.class
-com/example/auth/controller/UserControllerTest.class
-com/example/auth/service/UserServiceTest.class
-com/example/auth/service/AdminServiceTest.class
-com/example/auth/service/AuthServiceTest.class
-com/example/auth/security/JwtServiceTest.class
-com/example/auth/controller/AuthControllerTest.class

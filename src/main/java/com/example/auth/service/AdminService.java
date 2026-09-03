@@ -6,6 +6,8 @@ import com.example.auth.entity.Role;
 import com.example.auth.entity.User;
 import com.example.auth.exception.ResourceNotFoundException;
 import com.example.auth.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,8 @@ import java.util.UUID;
  */
 @Service
 public class AdminService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
 
     private final UserRepository userRepository;
 
@@ -31,6 +35,7 @@ public class AdminService {
      */
     @Transactional(readOnly = true)
     public AdminDashboardStats getDashboardStats() {
+        log.info("Calculating admin dashboard metrics");
         long totalUsers = userRepository.count();
         long adminCount = userRepository.countByRole(Role.ADMIN);
         long userCount = userRepository.countByRole(Role.USER);
@@ -40,6 +45,7 @@ public class AdminService {
                 .map(UserResponse::fromEntity)
                 .toList();
 
+        log.debug("Dashboard stats: total={}, admins={}, users={}", totalUsers, adminCount, userCount);
         return new AdminDashboardStats(totalUsers, adminCount, userCount, recentUsers);
     }
 
@@ -53,11 +59,16 @@ public class AdminService {
      */
     @Transactional
     public UserResponse updateUserRole(UUID id, Role newRole) {
+        log.info("Admin action: Changing role for user ID {} to {}", id, newRole);
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> {
+                    log.warn("Role update failed: User ID {} not found", id);
+                    return new ResourceNotFoundException("User not found with id: " + id);
+                });
 
         user.setRole(newRole);
         User updatedUser = userRepository.save(user);
+        log.info("Role successfully updated for user {} ({}) to {}", updatedUser.getEmail(), id, newRole);
 
         return UserResponse.fromEntity(updatedUser);
     }
@@ -69,6 +80,7 @@ public class AdminService {
      */
     @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
+        log.debug("Admin action: Retrieving all users list");
         return userRepository.findAll()
                 .stream()
                 .map(UserResponse::fromEntity)
@@ -83,9 +95,12 @@ public class AdminService {
      */
     @Transactional
     public void deleteUser(UUID id) {
+        log.info("Admin action: Deleting user ID {}", id);
         if (!userRepository.existsById(id)) {
+            log.warn("Admin delete failed: User ID {} not found", id);
             throw new ResourceNotFoundException("Cannot delete: User not found with id: " + id);
         }
         userRepository.deleteById(id);
+        log.info("User ID {} permanently deleted by admin", id);
     }
 }

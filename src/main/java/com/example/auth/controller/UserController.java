@@ -1,12 +1,12 @@
 package com.example.auth.controller;
 
 import com.example.auth.config.OpenApiConfig;
+import com.example.auth.dto.SuccessResponse;
 import com.example.auth.dto.UpdateProfileRequest;
 import com.example.auth.dto.UserResponse;
 import com.example.auth.exception.ErrorResponse;
 import com.example.auth.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -58,7 +58,7 @@ public class UserController {
             @ApiResponse(
                     responseCode = "200",
                     description = "Current user profile retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))
+                    content = @Content(schema = @Schema(implementation = SuccessResponse.class))
             ),
             @ApiResponse(
                     responseCode = "401",
@@ -71,10 +71,10 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public ResponseEntity<UserResponse> getCurrentUser(Authentication authentication) {
+    public ResponseEntity<SuccessResponse<UserResponse>> getCurrentUser(Authentication authentication) {
         String email = authentication.getName();
         UserResponse response = userService.getUserByEmail(email);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(SuccessResponse.ok("Current user profile retrieved successfully", response));
     }
 
     /**
@@ -90,7 +90,7 @@ public class UserController {
             @ApiResponse(
                     responseCode = "200",
                     description = "Profile updated successfully",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))
+                    content = @Content(schema = @Schema(implementation = SuccessResponse.class))
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -103,13 +103,13 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public ResponseEntity<UserResponse> updateCurrentUser(
+    public ResponseEntity<SuccessResponse<UserResponse>> updateCurrentUser(
             Authentication authentication,
             @Valid @RequestBody UpdateProfileRequest request
     ) {
         String email = authentication.getName();
         UserResponse response = userService.updateProfile(email, request);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(SuccessResponse.ok("Profile updated successfully", response));
     }
 
     /**
@@ -125,7 +125,7 @@ public class UserController {
             @ApiResponse(
                     responseCode = "200",
                     description = "List of all users retrieved successfully",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = UserResponse.class)))
+                    content = @Content(schema = @Schema(implementation = SuccessResponse.class))
             ),
             @ApiResponse(
                     responseCode = "401",
@@ -138,9 +138,9 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public ResponseEntity<List<UserResponse>> getAllUsers() {
+    public ResponseEntity<SuccessResponse<List<UserResponse>>> getAllUsers() {
         List<UserResponse> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(SuccessResponse.ok("Users retrieved successfully", users));
     }
 
     /**
@@ -156,7 +156,7 @@ public class UserController {
             @ApiResponse(
                     responseCode = "200",
                     description = "User retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))
+                    content = @Content(schema = @Schema(implementation = SuccessResponse.class))
             ),
             @ApiResponse(
                     responseCode = "401",
@@ -174,9 +174,9 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public ResponseEntity<UserResponse> getUserById(@PathVariable UUID id) {
+    public ResponseEntity<SuccessResponse<UserResponse>> getUserById(@PathVariable UUID id) {
         UserResponse response = userService.getUserById(id);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(SuccessResponse.ok("User retrieved successfully", response));
     }
 
     /**
@@ -190,8 +190,9 @@ public class UserController {
     )
     @ApiResponses(value = {
             @ApiResponse(
-                    responseCode = "204",
-                    description = "User deleted successfully"
+                    responseCode = "200",
+                    description = "User deleted successfully",
+                    content = @Content(schema = @Schema(implementation = SuccessResponse.class))
             ),
             @ApiResponse(
                     responseCode = "401",
@@ -209,8 +210,8 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
+    public ResponseEntity<SuccessResponse<Void>> deleteUser(@PathVariable UUID id) {
         userService.deleteUser(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(SuccessResponse.ok("User deleted successfully"));
     }
 }

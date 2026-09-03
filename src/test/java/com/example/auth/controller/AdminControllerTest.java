@@ -78,9 +78,11 @@ class AdminControllerTest {
 
         mockMvc.perform(get("/api/v1/admin/dashboard"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalUsers").value(5))
-                .andExpect(jsonPath("$.adminCount").value(1))
-                .andExpect(jsonPath("$.standardUserCount").value(4));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Admin dashboard metrics retrieved successfully"))
+                .andExpect(jsonPath("$.data.totalUsers").value(5))
+                .andExpect(jsonPath("$.data.adminCount").value(1))
+                .andExpect(jsonPath("$.data.standardUserCount").value(4));
     }
 
     @Test
@@ -97,17 +99,21 @@ class AdminControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.role").value("ADMIN"));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("User role updated successfully"))
+                .andExpect(jsonPath("$.data.role").value("ADMIN"));
     }
 
     @Test
     @WithMockUser(username = "admin@example.com", roles = {"ADMIN"})
-    @DisplayName("DELETE /api/v1/admin/users/{id} - 204 No Content when deleted by Admin")
+    @DisplayName("DELETE /api/v1/admin/users/{id} - 200 OK when deleted by Admin")
     void shouldAllowAdminToDeleteUser() throws Exception {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(delete("/api/v1/admin/users/" + id))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("User permanently deleted successfully"));
 
         verify(adminService).deleteUser(id);
     }

@@ -70,9 +70,11 @@ class UserControllerTest {
 
         mockMvc.perform(get("/api/v1/users/me"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("user@example.com"))
-                .andExpect(jsonPath("$.firstName").value("Regular"))
-                .andExpect(jsonPath("$.role").value("USER"));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Current user profile retrieved successfully"))
+                .andExpect(jsonPath("$.data.email").value("user@example.com"))
+                .andExpect(jsonPath("$.data.firstName").value("Regular"))
+                .andExpect(jsonPath("$.data.role").value("USER"));
     }
 
     @Test
@@ -96,9 +98,11 @@ class UserControllerTest {
 
         mockMvc.perform(get("/api/v1/users"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].email").value("a@example.com"))
-                .andExpect(jsonPath("$[1].email").value("b@example.com"));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Users retrieved successfully"))
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].email").value("a@example.com"))
+                .andExpect(jsonPath("$.data[1].email").value("b@example.com"));
     }
 
     @Test
@@ -115,12 +119,14 @@ class UserControllerTest {
 
     @Test
     @WithMockUser(username = "admin@example.com", roles = {"ADMIN"})
-    @DisplayName("DELETE /api/v1/users/{id} - 204 No Content when executed by ROLE_ADMIN")
+    @DisplayName("DELETE /api/v1/users/{id} - 200 OK when executed by ROLE_ADMIN")
     void shouldAllowDeleteUserForAdmin() throws Exception {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(delete("/api/v1/users/" + id))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("User deleted successfully"));
 
         verify(userService).deleteUser(id);
     }
