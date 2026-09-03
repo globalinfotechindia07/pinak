@@ -2,6 +2,7 @@ package com.example.auth.controller;
 
 import com.example.auth.dto.AuthResponse;
 import com.example.auth.dto.LoginRequest;
+import com.example.auth.dto.RefreshTokenRequest;
 import com.example.auth.dto.RegisterRequest;
 import com.example.auth.dto.UserResponse;
 import com.example.auth.entity.Role;
@@ -62,9 +63,11 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.email").value("john.doe@example.com"))
-                .andExpect(jsonPath("$.firstName").value("John"))
-                .andExpect(jsonPath("$.role").value("USER"));
+                .andExpect(jsonPath("$.status").value(201))
+                .andExpect(jsonPath("$.message").value("User registered successfully"))
+                .andExpect(jsonPath("$.data.email").value("john.doe@example.com"))
+                .andExpect(jsonPath("$.data.firstName").value("John"))
+                .andExpect(jsonPath("$.data.role").value("USER"));
     }
 
     @Test
@@ -115,7 +118,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/v1/auth/login - 200 OK on valid credentials")
     void shouldLoginSuccessfully() throws Exception {
         LoginRequest request = new LoginRequest("john.doe@example.com", "Password123!");
-        AuthResponse response = AuthResponse.bearer("mocked.jwt.token", 900L);
+        AuthResponse response = AuthResponse.of("mocked.access.token", "mocked.refresh.token", 900L);
 
         when(authService.login(any(LoginRequest.class))).thenReturn(response);
 
@@ -123,9 +126,12 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").value("mocked.jwt.token"))
-                .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.expiresIn").value(900));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Authentication successful"))
+                .andExpect(jsonPath("$.data.accessToken").value("mocked.access.token"))
+                .andExpect(jsonPath("$.data.refreshToken").value("mocked.refresh.token"))
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.data.expiresIn").value(900));
     }
 
     @Test
@@ -142,5 +148,38 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.error").value("Unauthorized"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/refresh - 200 OK on valid refresh token")
+    void shouldRefreshTokensSuccessfully() throws Exception {
+        RefreshTokenRequest request = new RefreshTokenRequest("valid.refresh.token");
+        AuthResponse response = AuthResponse.of("new.access.token", "new.refresh.token", 900L);
+
+        when(authService.refreshToken(any(RefreshTokenRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("Token refreshed successfully"))
+                .andExpect(jsonPath("$.data.accessToken").value("new.access.token"))
+                .andExpect(jsonPath("$.data.refreshToken").value("new.refresh.token"))
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.data.expiresIn").value(900));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/refresh - 400 Bad Request on blank refresh token")
+    void shouldReturn400OnBlankRefreshToken() throws Exception {
+        RefreshTokenRequest request = new RefreshTokenRequest("");
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors.refreshToken").exists());
     }
 }

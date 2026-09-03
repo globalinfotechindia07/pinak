@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.example.auth.controller.UserControllerTest
--------------------------------------------------------------------------------
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.948 s -- in com.example.auth.controller.UserControllerTest

@@ -36,6 +36,7 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
+        log.warn("Validation failed on request to '{}': {}", request.getRequestURI(), errors);
 
         ErrorResponse response = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
@@ -56,6 +57,7 @@ public class GlobalExceptionHandler {
             ResourceNotFoundException ex,
             HttpServletRequest request
     ) {
+        log.warn("Resource not found on '{}': {}", request.getRequestURI(), ex.getMessage());
         ErrorResponse response = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
                 "Not Found",
@@ -73,6 +75,7 @@ public class GlobalExceptionHandler {
             DuplicateResourceException ex,
             HttpServletRequest request
     ) {
+        log.warn("Duplicate resource conflict on '{}': {}", request.getRequestURI(), ex.getMessage());
         ErrorResponse response = new ErrorResponse(
                 HttpStatus.CONFLICT.value(),
                 "Conflict",
@@ -83,17 +86,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles authentication failures (invalid email/password).
+     * Handles authentication failures (invalid email/password or invalid refresh token).
      */
     @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
     public ResponseEntity<ErrorResponse> handleAuthenticationException(
             Exception ex,
             HttpServletRequest request
     ) {
+        log.warn("Authentication failed on '{}': {}", request.getRequestURI(), ex.getMessage());
         ErrorResponse response = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
                 "Unauthorized",
-                "Invalid email or password",
+                ex.getMessage() != null && !ex.getMessage().isBlank() ? ex.getMessage() : "Invalid credentials",
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
@@ -107,6 +111,7 @@ public class GlobalExceptionHandler {
             AccessDeniedException ex,
             HttpServletRequest request
     ) {
+        log.warn("Access denied on '{}': User lacks required role or permission", request.getRequestURI());
         ErrorResponse response = new ErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
                 "Forbidden",
@@ -124,6 +129,7 @@ public class GlobalExceptionHandler {
             IllegalArgumentException ex,
             HttpServletRequest request
     ) {
+        log.warn("Illegal argument on '{}': {}", request.getRequestURI(), ex.getMessage());
         ErrorResponse response = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request",
@@ -141,7 +147,7 @@ public class GlobalExceptionHandler {
             Exception ex,
             HttpServletRequest request
     ) {
-        log.error("Unhandled exception processing request to {}", request.getRequestURI(), ex);
+        log.error("Unhandled exception processing request to '{}'", request.getRequestURI(), ex);
         ErrorResponse response = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",

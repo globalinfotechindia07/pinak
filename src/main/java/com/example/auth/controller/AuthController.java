@@ -2,7 +2,9 @@ package com.example.auth.controller;
 
 import com.example.auth.dto.AuthResponse;
 import com.example.auth.dto.LoginRequest;
+import com.example.auth.dto.RefreshTokenRequest;
 import com.example.auth.dto.RegisterRequest;
+import com.example.auth.dto.SuccessResponse;
 import com.example.auth.dto.UserResponse;
 import com.example.auth.exception.ErrorResponse;
 import com.example.auth.service.AuthService;
@@ -38,7 +40,7 @@ public class AuthController {
      * Registers a new user.
      *
      * @param request validated registration payload
-     * @return 201 Created with safe UserResponse DTO
+     * @return 201 Created with SuccessResponse envelope containing UserResponse
      */
     @PostMapping("/register")
     @Operation(
@@ -49,7 +51,7 @@ public class AuthController {
             @ApiResponse(
                     responseCode = "201",
                     description = "User registered successfully",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))
+                    content = @Content(schema = @Schema(implementation = SuccessResponse.class))
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -62,27 +64,28 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<SuccessResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
         UserResponse response = authService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(SuccessResponse.created("User registered successfully", response));
     }
 
     /**
-     * Authenticates user credentials and issues a signed JWT access token.
+     * Authenticates user credentials and issues signed JWT access and refresh tokens.
      *
      * @param request validated login credentials
-     * @return 200 OK with AuthResponse
+     * @return 200 OK with SuccessResponse containing AuthResponse
      */
     @PostMapping("/login")
     @Operation(
             summary = "Authenticate user credentials",
-            description = "Authenticates user email and password against stored BCrypt hashes, issuing a signed 15-minute JWT access token."
+            description = "Authenticates user email and password against stored BCrypt hashes, issuing a signed short-lived JWT access token and a long-lived refresh token."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Login successful, access token returned",
-                    content = @Content(schema = @Schema(implementation = AuthResponse.class))
+                    description = "Login successful, tokens returned",
+                    content = @Content(schema = @Schema(implementation = SuccessResponse.class))
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -95,8 +98,41 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<SuccessResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(SuccessResponse.ok("Authentication successful", response));
+    }
+
+    /**
+     * Refreshes an expired access token using a valid, long-lived refresh token.
+     *
+     * @param request containing the refresh token
+     * @return 200 OK with SuccessResponse containing new access token and rotated refresh token
+     */
+    @PostMapping("/refresh")
+    @Operation(
+            summary = "Refresh expired access token",
+            description = "Validates the long-lived refresh token and returns a new 15-minute access token along with a rotated refresh token."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Tokens successfully refreshed",
+                    content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Validation failed or invalid token format",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Refresh token expired or invalid",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<SuccessResponse<AuthResponse>> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        AuthResponse response = authService.refreshToken(request);
+        return ResponseEntity.ok(SuccessResponse.ok("Token refreshed successfully", response));
     }
 }
