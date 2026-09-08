@@ -1,60 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="WARN">
+<Configuration status="WARN" monitorInterval="30">
+
     <Properties>
+        <!-- Log pattern includes X-Request-ID from MDC -->
+        <Property name="CONSOLE_PATTERN">%style{%d{yyyy-MM-dd HH:mm:ss.SSS}}{cyan} %highlight{%-5p}{FATAL=red blink, ERROR=red, WARN=yellow, INFO=green, DEBUG=cyan} %style{[%t]}{magenta} %style{[%X{requestId}]}{blue} %style{%-40.40c{1.}}{cyan} : %m%n%ex</Property>
+        <Property name="FILE_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [%t] [%X{requestId}] %-40.40c{1.} : %m%n%ex</Property>
         <Property name="LOG_DIR">logs</Property>
-        <Property name="LOG_FILE_NAME">auth-service</Property>
-        <Property name="CONSOLE_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight{[%-5level]}{FATAL=red blink, ERROR=red bold, WARN=yellow bold, INFO=green, DEBUG=cyan, TRACE=white} [%style{%t}{magenta}] %style{%c{1.}}{blue}: %msg%n</Property>
-        <Property name="FILE_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%t] %c{1.} - %msg%n</Property>
     </Properties>
 
     <Appenders>
-        <!-- Console Appender with ANSI Color Output -->
-        <Console name="ConsoleAppender" target="SYSTEM_OUT">
-            <PatternLayout pattern="${CONSOLE_PATTERN}" disableAnsi="false" />
+        <!-- Console (ANSI colour) -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${CONSOLE_PATTERN}" disableAnsi="false"/>
         </Console>
 
-        <!-- Rolling File Appender with daily & size-based rollover -->
-        <RollingFile name="RollingFileAppender"
-                     fileName="${LOG_DIR}/${LOG_FILE_NAME}.log"
-                     filePattern="${LOG_DIR}/${LOG_FILE_NAME}-%d{yyyy-MM-dd}-%i.log.gz">
-            <PatternLayout pattern="${FILE_PATTERN}" />
+        <!-- Rolling file: daily rollover + max 10 MB -->
+        <RollingFile name="RollingFile"
+                     fileName="${LOG_DIR}/superapp.log"
+                     filePattern="${LOG_DIR}/superapp-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${FILE_PATTERN}"/>
             <Policies>
-                <TimeBasedTriggeringPolicy interval="1" modulate="true" />
-                <SizeBasedTriggeringPolicy size="10MB" />
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
             </Policies>
-            <DefaultRolloverStrategy max="30" />
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="${LOG_DIR}" maxDepth="1">
+                    <IfFileName glob="superapp-*.log.gz"/>
+                    <IfLastModified age="30d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
         </RollingFile>
     </Appenders>
 
     <Loggers>
-        <!-- Application-specific logging level -->
-        <Logger name="com.example.auth" level="DEBUG" additivity="false">
-            <AppenderRef ref="ConsoleAppender" />
-            <AppenderRef ref="RollingFileAppender" />
+        <!-- Application root -->
+        <Logger name="com.superapp" level="DEBUG" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
         </Logger>
 
-        <!-- Spring Security internal flow logs -->
+        <!-- Spring Framework (INFO unless debugging) -->
+        <Logger name="org.springframework" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
         <Logger name="org.springframework.security" level="INFO" additivity="false">
-            <AppenderRef ref="ConsoleAppender" />
-            <AppenderRef ref="RollingFileAppender" />
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
         </Logger>
 
-        <!-- Spring Framework Web logs -->
-        <Logger name="org.springframework.web" level="INFO" additivity="false">
-            <AppenderRef ref="ConsoleAppender" />
-            <AppenderRef ref="RollingFileAppender" />
+        <!-- Hibernate SQL (WARN in production; set DEBUG to see queries) -->
+        <Logger name="org.hibernate.SQL" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="org.hibernate.type.descriptor.sql" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
         </Logger>
 
-        <!-- Hibernate SQL Query logging -->
-        <Logger name="org.hibernate.SQL" level="INFO" additivity="false">
-            <AppenderRef ref="ConsoleAppender" />
-            <AppenderRef ref="RollingFileAppender" />
+        <!-- Flyway -->
+        <Logger name="org.flywaydb" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
         </Logger>
 
-        <!-- Root Logger -->
-        <Root level="INFO">
-            <AppenderRef ref="ConsoleAppender" />
-            <AppenderRef ref="RollingFileAppender" />
+        <Root level="WARN">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
         </Root>
     </Loggers>
+
 </Configuration>
