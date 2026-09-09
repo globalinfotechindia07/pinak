@@ -222,4 +222,12 @@ public class PaymentServiceImpl implements PaymentService {
         return paymentRepository.findByMerchantId(merchantId, pageable)
                 .map(paymentMapper::toResponse);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.superapp.payment.dto.PaymentStatusResponse getPaymentStatus(UUID id) {
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found with id: " + id));
+        return com.superapp.payment.dto.PaymentStatusResponse.fromEntity(payment);
+    }
 }

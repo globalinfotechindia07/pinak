@@ -9,6 +9,10 @@ public class DuplicateResourceException extends AppException {
         super(message, errorCode, 409);
     }
 
+    public DuplicateResourceException(String resource, String field, Object value) {
+        super(resource + " with " + field + " '" + value + "' already exists.", ApiError.DUPLICATE_RESOURCE, 409);
+    }
+
     public static DuplicateResourceException email(String email) {
         return new DuplicateResourceException(
                 "An account with email '" + email + "' already exists.",

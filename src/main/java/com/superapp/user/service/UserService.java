@@ -70,6 +70,16 @@ public class UserService {
         if (request.firstName() != null || request.lastName() != null) {
             user.setName((user.getFirstName() + " " + user.getLastName()).trim());
         }
+        if (request.email() != null && !request.email().isBlank()) {
+            String email = request.email().trim().toLowerCase();
+            if (!email.equalsIgnoreCase(user.getEmail())) {
+                if (userRepository.existsByEmail(email)) {
+                    throw DuplicateResourceException.email(email);
+                }
+                user.setEmail(email);
+                user.setEmailVerified(false);
+            }
+        }
         if (request.mobile() != null && !request.mobile().isBlank()) {
             String mobile = request.mobile().trim();
             // Check uniqueness (only if changing)

@@ -67,6 +67,14 @@ public class SessionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<SessionResponse> getActiveSessions(UUID userId) {
+        return sessionRepository.findActiveSessionsByUserId(userId, Instant.now())
+                .stream()
+                .map(SessionResponse::from)
+                .toList();
+    }
+
     /**
      * Revokes a specific session belonging to the user.
      * Also revokes all associated refresh tokens.
@@ -86,6 +94,27 @@ public class SessionService {
 
         tokenService.revokeBySession(sessionId);
         log.info("Revoked session={} for user={}", sessionId, user.getId());
+    }
+
+    @Transactional
+    public void revokeSessionForUser(UUID userId, UUID sessionId) {
+        UserSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> ResourceNotFoundException.session(sessionId.toString()));
+
+        if (!session.getUser().getId().equals(userId)) {
+            throw new com.superapp.common.exception.ForbiddenException("You do not have permission to revoke this session");
+        }
+
+        if (session.getRevokedAt() != null) {
+            log.debug("Session {} already revoked", sessionId);
+            return;
+        }
+
+        session.setRevokedAt(Instant.now());
+        sessionRepository.save(session);
+
+        tokenService.revokeBySession(sessionId);
+        log.info("Revoked session={} for user={}", sessionId, userId);
     }
 
     /**

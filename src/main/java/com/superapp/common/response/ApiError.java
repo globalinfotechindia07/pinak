@@ -7,6 +7,8 @@ package com.superapp.common.response;
 public enum ApiError {
     // Auth
     INVALID_CREDENTIALS,
+    INVALID_OTP,
+    INVALID_TOKEN,
     ACCOUNT_BLOCKED,
     ACCOUNT_INACTIVE,
     TOKEN_EXPIRED,

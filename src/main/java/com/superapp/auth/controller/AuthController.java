@@ -83,6 +83,22 @@ public class AuthController {
 
     // ---- Phone OTP Authentication ----
 
+    @PostMapping("/otp/request")
+    @Operation(summary = "Request OTP for phone without leaking account existence")
+    public ResponseEntity<ApiResponse<OtpRequestResponse>> requestOtp(
+            @Valid @RequestBody OtpRequestDto request,
+            HttpServletRequest httpRequest) {
+
+        rateLimitService.checkLimit(RateLimitService.RESEND, getClientIp(httpRequest));
+
+        OtpRequestResponse response = authService.requestOtp(request,
+                getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
+                getRequestId(httpRequest));
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.success("If the account is eligible, an OTP has been sent", response));
+    }
+
     @PostMapping("/otp/send")
     @Operation(summary = "Send OTP to mobile phone number for passwordless login/registration")
     public ResponseEntity<ApiResponse<SendOtpResponse>> sendOtp(
@@ -106,16 +122,24 @@ public class AuthController {
 
         rateLimitService.checkLimit(RateLimitService.OTP_VERIFY, getClientIp(httpRequest));
 
-        AuthResponse authResponse = authService.verifyPhoneOtp(request,
-                getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
-                getRequestId(httpRequest));
+        AuthResponse authResponse;
+        if (request.otpRequestId() != null && !request.otpRequestId().isBlank()) {
+            authResponse = authService.verifyOtpWithRequestId(
+                    new OtpVerifyRequestDto(request.phone(), request.otpRequestId(), request.otp(), request.deviceId()),
+                    getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
+                    getRequestId(httpRequest));
+        } else {
+            authResponse = authService.verifyPhoneOtp(request,
+                    getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
+                    getRequestId(httpRequest));
+        }
 
         return ResponseEntity.ok(ApiResponse.success("Authentication successful", authResponse));
     }
 
     // ---- Token Refresh ----
 
-    @PostMapping("/refresh")
+    @PostMapping({"/refresh", "/token/refresh"})
     @Operation(summary = "Rotate refresh token and issue new access token")
     public ResponseEntity<ApiResponse<AuthResponse>> refresh(
             @Valid @RequestBody RefreshTokenRequest request,
@@ -145,17 +169,22 @@ public class AuthController {
 
     @PostMapping("/logout")
     @Operation(summary = "Logout current session", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<ApiResponse<Void>> logout(
+    public ResponseEntity<Void> logout(
             @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody(required = false) LogoutRequest logoutRequest,
             @RequestParam(required = false) String sessionId,
             HttpServletRequest httpRequest) {
 
         var user = userDetailsService.loadUserEntityById(UUID.fromString(userDetails.getUsername()));
-        authService.logout(user, sessionId,
+        String effectiveSessionId = (logoutRequest != null && logoutRequest.sessionId() != null)
+                ? logoutRequest.sessionId()
+                : sessionId;
+
+        authService.logout(user, effectiveSessionId,
                 getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
                 getRequestId(httpRequest));
 
-        return ResponseEntity.ok(ApiResponse.success("Logged out successfully"));
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/logout-all")

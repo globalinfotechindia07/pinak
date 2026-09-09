@@ -53,6 +53,13 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success("Payment retrieved", paymentService.getPaymentById(id)));
     }
 
+    @GetMapping("/{id}/status")
+    @Operation(summary = "Get payment status by ID", security = @SecurityRequirement(name = "bearerAuth"))
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<com.superapp.payment.dto.PaymentStatusResponse>> getPaymentStatus(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Payment status retrieved", paymentService.getPaymentStatus(id)));
+    }
+
     @GetMapping("/reference/{reference}")
     @Operation(summary = "Get payment details by reference code", security = @SecurityRequirement(name = "bearerAuth"))
     @PreAuthorize("isAuthenticated()")

@@ -1,8 +1,10 @@
 package com.superapp.transactionhistory.entity;
 
 public enum TransactionStatus {
-    SUCCESS,
     PENDING,
+    SUCCESS,
     FAILED,
+    CANCELLED,
+    REFUNDED,
     REVERSED
 }

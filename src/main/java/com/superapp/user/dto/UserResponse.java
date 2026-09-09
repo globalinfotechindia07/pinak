@@ -1,5 +1,6 @@
 package com.superapp.user.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.superapp.user.entity.User;
 
 import java.time.Instant;
@@ -23,6 +24,11 @@ public record UserResponse(
         Instant createdAt,
         Instant updatedAt
 ) {
+    @JsonProperty("phone")
+    public String phone() {
+        return mobile;
+    }
+
     public static UserResponse from(User user) {
         return new UserResponse(
                 user.getId().toString(),

@@ -1,5 +1,7 @@
 package com.superapp.user.controller;
 
+import com.superapp.auth.dto.SessionResponse;
+import com.superapp.auth.service.SessionService;
 import com.superapp.common.response.ApiResponse;
 import com.superapp.common.security.CustomUserDetailsService;
 import com.superapp.user.dto.UpdateProfileRequest;
@@ -15,23 +17,26 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
- * User self-service profile management.
+ * User self-service profile management and session management.
  * IDOR protection: all operations use the authenticated user ID from SecurityContext.
  */
 @RestController
 @RequestMapping("/api/v1/users")
-@Tag(name = "User Profile", description = "Self-service user profile management")
+@Tag(name = "User Profile", description = "Self-service user profile and session management")
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
     private final UserService userService;
+    private final SessionService sessionService;
     private final CustomUserDetailsService userDetailsService;
 
-    public UserController(UserService userService, CustomUserDetailsService userDetailsService) {
+    public UserController(UserService userService, SessionService sessionService, CustomUserDetailsService userDetailsService) {
         this.userService = userService;
+        this.sessionService = sessionService;
         this.userDetailsService = userDetailsService;
     }
 
@@ -57,6 +62,29 @@ public class UserController {
         UUID userId = UUID.fromString(userDetails.getUsername());
         UserResponse response = userService.updateMyProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", response));
+    }
+
+    @GetMapping("/me/sessions")
+    @Operation(summary = "List active sessions for current user")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<SessionResponse>>> getMySessions(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        UUID userId = UUID.fromString(userDetails.getUsername());
+        List<SessionResponse> sessions = sessionService.getActiveSessions(userId);
+        return ResponseEntity.ok(ApiResponse.success("Sessions retrieved", sessions));
+    }
+
+    @DeleteMapping("/me/sessions/{sessionId}")
+    @Operation(summary = "Revoke specific session for current user")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> revokeMySession(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID sessionId) {
+
+        UUID userId = UUID.fromString(userDetails.getUsername());
+        sessionService.revokeSessionForUser(userId, sessionId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/customer-area")

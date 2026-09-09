@@ -64,13 +64,18 @@ public class SecurityConfig {
                         "/api/v1/auth/login",
                         "/api/v1/auth/otp/**",
                         "/api/v1/auth/refresh",
+                        "/api/v1/auth/token/refresh",
                         "/api/v1/auth/forgot-password",
                         "/api/v1/auth/verify-reset-otp",
-                        "/api/v1/auth/reset-password"
+                        "/api/v1/auth/reset-password",
+                        "/api/v1/admin/auth/**"
                 ).permitAll()
 
                 // Public payment webhook
                 .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook").permitAll()
+
+                // Public categories lookup for discovery
+                .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
 
                 // Health check
                 .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()

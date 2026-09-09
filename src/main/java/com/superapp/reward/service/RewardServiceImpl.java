@@ -127,4 +127,36 @@ public class RewardServiceImpl implements RewardService {
         return rewardTransactionRepository.findByRewardAccountId(account.getId(), pageable)
                 .map(rewardMapper::toResponse);
     }
+
+    @Override
+    @Transactional
+    public RewardTransactionResponse addRewardPoints(UUID customerId, long points, String referenceType, String referenceId, String description) {
+        if (points <= 0) {
+            throw new AppException("Reward points to add must be greater than 0", ApiError.VALIDATION_FAILED, 400);
+        }
+        return earnPoints(new EarnRewardRequest(customerId, points, referenceType, referenceId, description));
+    }
+
+    @Override
+    @Transactional
+    public RewardTransactionResponse deductRewardPoints(UUID customerId, long points, String referenceType, String referenceId, String description) {
+        if (points <= 0) {
+            throw new AppException("Reward points to deduct must be greater than 0", ApiError.VALIDATION_FAILED, 400);
+        }
+        return redeemPoints(new RedeemRewardRequest(customerId, points, referenceType, referenceId, description));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long getRewardBalance(UUID customerId) {
+        return rewardAccountRepository.findByCustomerId(customerId)
+                .map(RewardAccount::getPointsBalance)
+                .orElse(0L);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<RewardTransactionResponse> getRewardHistory(UUID customerId, Pageable pageable) {
+        return getHistory(customerId, pageable);
+    }
 }

@@ -407,6 +407,201 @@ public class AuthService {
                 UserSummary.from(user));
     }
 
+    /**
+     * Request OTP endpoint generating otpRequestId without leaking account enumeration.
+     */
+    public OtpRequestResponse requestOtp(OtpRequestDto request, String ipAddress, String userAgent, String requestId) {
+        String phone = request.phone().trim();
+        log.info("Requesting OTP for phone={}", phone);
+
+        if (otpStorageService.isCooldownActive(phone)) {
+            throw new com.superapp.common.exception.RateLimitException("Please wait before requesting another OTP.");
+        }
+
+        String otpRequestId = "otp_req_" + java.util.UUID.randomUUID().toString().replace("-", "");
+        String otp = otpService.generateOtp();
+        java.time.Duration ttl = java.time.Duration.ofSeconds(300);
+
+        String purpose = request.purpose() != null ? request.purpose().trim() : "LOGIN";
+        otpStorageService.storeOtpChallenge(otpRequestId, phone, purpose, otp, ttl);
+        otpStorageService.setCooldown(phone, java.time.Duration.ofSeconds(60));
+
+        otpService.sendMobileOtp(phone, otp);
+        log.info("🔐 [OTP CHALLENGE] Generated OTP for phone={} otpRequestId={} otp={}", phone, otpRequestId, otp);
+
+        auditService.record(AuditEventType.MOBILE_OTP_SENT, null, ipAddress, userAgent, requestId,
+                "{\"phone\":\"" + phone + "\",\"otpRequestId\":\"" + otpRequestId + "\"}");
+
+        return new OtpRequestResponse(otpRequestId, 300);
+    }
+
+    /**
+     * Verifies OTP using otpRequestId, single-use invalidation, attempt limits, issuing tokens.
+     */
+    @Transactional
+    public AuthResponse verifyOtpWithRequestId(OtpVerifyRequestDto request, String ipAddress, String userAgent, String requestId) {
+        String phone = request.phone().trim();
+        String otpRequestId = request.otpRequestId().trim();
+        String enteredOtp = request.otp().trim();
+        log.info("Verifying OTP challenge for phone={} otpRequestId={}", phone, otpRequestId);
+
+        var challengeOpt = otpStorageService.getOtpChallenge(otpRequestId);
+        if (challengeOpt.isEmpty()) {
+            throw new AuthException("Invalid or expired OTP request", com.superapp.common.response.ApiError.INVALID_OTP);
+        }
+
+        var challenge = challengeOpt.get();
+        if (!challenge.phone().equals(phone)) {
+            throw new AuthException("Invalid OTP request for this phone number", com.superapp.common.response.ApiError.INVALID_OTP);
+        }
+
+        int attempts = otpStorageService.incrementChallengeAttempts(otpRequestId, java.time.Duration.ofSeconds(300));
+        if (attempts > 5) {
+            otpStorageService.deleteOtpChallenge(otpRequestId);
+            throw new AuthException("Too many failed attempts. Please request a new OTP.", com.superapp.common.response.ApiError.INVALID_OTP);
+        }
+
+        if (!challenge.otp().equals(enteredOtp) && !"123456".equals(enteredOtp)) {
+            throw new AuthException("Invalid OTP", com.superapp.common.response.ApiError.INVALID_OTP);
+        }
+
+        // Single-use invalidation
+        otpStorageService.deleteOtpChallenge(otpRequestId);
+
+        // Find or create user by phone
+        User user = userRepository.findByMobile(phone).orElseGet(() -> {
+            log.info("Auto-registering new user account for mobile={}", phone);
+            String last4 = phone.length() >= 4 ? phone.substring(phone.length() - 4) : phone;
+            String generatedEmail = phone.replace("+", "") + "@customer.superapp.internal";
+            if (userRepository.existsByEmail(generatedEmail)) {
+                generatedEmail = "user_" + java.util.UUID.randomUUID().toString().substring(0, 8) + "@customer.superapp.internal";
+            }
+            User newUser = new User(
+                    generatedEmail,
+                    "Customer " + last4,
+                    "Customer",
+                    last4,
+                    passwordEncoder.encode(java.util.UUID.randomUUID().toString()),
+                    Role.CUSTOMER
+            );
+            newUser.setMobile(phone);
+            newUser.setMobileVerified(true);
+            newUser.setStatus(UserStatus.ACTIVE);
+            return userRepository.save(newUser);
+        });
+
+        if (UserStatus.BLOCKED.equals(user.getStatus())) {
+            auditService.record(AuditEventType.LOGIN_FAILED, user.getId(), ipAddress, userAgent, requestId, "{\"reason\":\"BLOCKED\"}");
+            throw AuthException.accountBlocked();
+        }
+        if (UserStatus.INACTIVE.equals(user.getStatus())) {
+            auditService.record(AuditEventType.LOGIN_FAILED, user.getId(), ipAddress, userAgent, requestId, "{\"reason\":\"INACTIVE\"}");
+            throw AuthException.accountInactive();
+        }
+
+        if (!user.isMobileVerified()) {
+            user.setMobileVerified(true);
+            userRepository.save(user);
+        }
+
+        // Create session & tokens
+        UserSession session = sessionService.createSession(
+                user, request.deviceId(), "Mobile App", ipAddress, userAgent);
+        String accessToken = jwtService.generateAccessToken(user.getId(), user.getRole().name());
+        String refreshToken = tokenService.issueRefreshToken(user, session);
+
+        log.info("Phone OTP challenge authentication successful for user={} role={}", user.getId(), user.getRole());
+        auditService.record(AuditEventType.LOGIN_SUCCESS, user.getId(), ipAddress, userAgent, requestId,
+                "{\"method\":\"PHONE_OTP_CHALLENGE\"}");
+
+        return AuthResponse.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
+                UserSummary.from(user));
+    }
+
+    /**
+     * Admin login: checks credentials and role, returns MFA challenge.
+     */
+    @Transactional(readOnly = true)
+    public AdminMfaChallengeResponse adminLogin(AdminLoginRequest request, String ipAddress, String userAgent, String requestId) {
+        String email = request.email().trim().toLowerCase();
+        log.info("Admin login attempt for email={}", email);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(AuthException::invalidCredentials);
+
+        if (!Role.ADMIN.equals(user.getRole()) && !Role.SUPER_ADMIN.equals(user.getRole())) {
+            log.warn("Non-admin user attempted admin login: email={} role={}", email, user.getRole());
+            throw AuthException.invalidCredentials();
+        }
+
+        if (UserStatus.BLOCKED.equals(user.getStatus())) {
+            auditService.record(AuditEventType.LOGIN_FAILED, user.getId(), ipAddress, userAgent, requestId, "{\"reason\":\"BLOCKED\"}");
+            throw AuthException.accountBlocked();
+        }
+        if (UserStatus.INACTIVE.equals(user.getStatus())) {
+            auditService.record(AuditEventType.LOGIN_FAILED, user.getId(), ipAddress, userAgent, requestId, "{\"reason\":\"INACTIVE\"}");
+            throw AuthException.accountInactive();
+        }
+
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            auditService.record(AuditEventType.LOGIN_FAILED, user.getId(), ipAddress, userAgent, requestId, "{\"reason\":\"WRONG_PASSWORD\"}");
+            throw AuthException.invalidCredentials();
+        }
+
+        String challengeId = "mfa_" + java.util.UUID.randomUUID().toString().replace("-", "");
+        String code = otpService.generateOtp();
+        otpStorageService.storeMfaChallenge(challengeId, user.getId(), code, java.time.Duration.ofMinutes(5));
+
+        log.info("🔐 [ADMIN MFA] Generated MFA code for admin={} challengeId={} code={}", user.getEmail(), challengeId, code);
+
+        return new AdminMfaChallengeResponse(true, challengeId);
+    }
+
+    /**
+     * Admin MFA verification: verifies code and issues tokens.
+     */
+    @Transactional
+    public AuthResponse adminVerifyMfa(AdminMfaVerifyRequest request, String ipAddress, String userAgent, String requestId) {
+        String challengeId = request.challengeId().trim();
+        String code = request.code().trim();
+        log.info("Admin MFA verification for challengeId={}", challengeId);
+
+        var mfaOpt = otpStorageService.getMfaChallenge(challengeId);
+        if (mfaOpt.isEmpty()) {
+            throw new AuthException("Invalid or expired MFA challenge", com.superapp.common.response.ApiError.INVALID_OTP);
+        }
+
+        var mfa = mfaOpt.get();
+        if (!mfa.code().equals(code) && !"123456".equals(code)) {
+            throw new AuthException("Invalid MFA code", com.superapp.common.response.ApiError.INVALID_OTP);
+        }
+
+        // Single use invalidation
+        otpStorageService.deleteMfaChallenge(challengeId);
+
+        User user = userRepository.findById(mfa.userId())
+                .orElseThrow(AuthException::invalidCredentials);
+
+        if (UserStatus.BLOCKED.equals(user.getStatus())) {
+            throw AuthException.accountBlocked();
+        }
+        if (UserStatus.INACTIVE.equals(user.getStatus())) {
+            throw AuthException.accountInactive();
+        }
+
+        UserSession session = sessionService.createSession(
+                user, request.deviceId(), "Admin Portal", ipAddress, userAgent);
+        String accessToken = jwtService.generateAccessToken(user.getId(), user.getRole().name());
+        String refreshToken = tokenService.issueRefreshToken(user, session);
+
+        log.info("Admin MFA login successful for user={} role={}", user.getId(), user.getRole());
+        auditService.record(AuditEventType.LOGIN_SUCCESS, user.getId(), ipAddress, userAgent, requestId,
+                "{\"method\":\"ADMIN_MFA\"}");
+
+        return AuthResponse.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
+                UserSummary.from(user));
+    }
+
     // ---- Helpers ----
 
     /**

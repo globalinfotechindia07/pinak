@@ -9,6 +9,10 @@ public class ResourceNotFoundException extends AppException {
         super(message, ApiError.RESOURCE_NOT_FOUND, 404);
     }
 
+    public ResourceNotFoundException(String resource, String field, Object value) {
+        super(resource + " not found with " + field + ": " + value, ApiError.RESOURCE_NOT_FOUND, 404);
+    }
+
     public static ResourceNotFoundException user(String identifier) {
         return new ResourceNotFoundException("User not found: " + identifier);
     }

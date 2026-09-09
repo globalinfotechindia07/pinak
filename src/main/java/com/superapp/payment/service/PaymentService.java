@@ -2,6 +2,7 @@ package com.superapp.payment.service;
 
 import com.superapp.payment.dto.InitiatePaymentRequest;
 import com.superapp.payment.dto.PaymentResponse;
+import com.superapp.payment.dto.PaymentStatusResponse;
 import com.superapp.payment.dto.PaymentWebhookRequest;
 import com.superapp.payment.dto.RefundPaymentRequest;
 import org.springframework.data.domain.Page;
@@ -24,4 +25,6 @@ public interface PaymentService {
     Page<PaymentResponse> getCustomerPayments(UUID customerId, Pageable pageable);
 
     Page<PaymentResponse> getMerchantPayments(UUID merchantId, Pageable pageable);
+
+    PaymentStatusResponse getPaymentStatus(UUID id);
 }

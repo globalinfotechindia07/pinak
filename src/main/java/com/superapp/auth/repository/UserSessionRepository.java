@@ -20,6 +20,9 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
     @Query("SELECT s FROM UserSession s WHERE s.user = :user AND s.revokedAt IS NULL AND s.expiresAt > :now")
     List<UserSession> findActiveSessions(@Param("user") User user, @Param("now") Instant now);
 
+    @Query("SELECT s FROM UserSession s WHERE s.user.id = :userId AND s.revokedAt IS NULL AND s.expiresAt > :now")
+    List<UserSession> findActiveSessionsByUserId(@Param("userId") UUID userId, @Param("now") Instant now);
+
     Optional<UserSession> findByIdAndUser(UUID id, User user);
 
     /** Revoke all active sessions for a user (logout-all). */

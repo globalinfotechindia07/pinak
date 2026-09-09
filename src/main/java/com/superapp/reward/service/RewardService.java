@@ -21,4 +21,13 @@ public interface RewardService {
     RewardTransactionResponse redeemPoints(RedeemRewardRequest request);
 
     Page<RewardTransactionResponse> getHistory(UUID customerId, Pageable pageable);
+
+    // Foundation skeleton methods
+    RewardTransactionResponse addRewardPoints(UUID customerId, long points, String referenceType, String referenceId, String description);
+
+    RewardTransactionResponse deductRewardPoints(UUID customerId, long points, String referenceType, String referenceId, String description);
+
+    long getRewardBalance(UUID customerId);
+
+    Page<RewardTransactionResponse> getRewardHistory(UUID customerId, Pageable pageable);
 }
