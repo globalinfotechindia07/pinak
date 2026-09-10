@@ -19,7 +19,7 @@ public enum ApiError {
     FORBIDDEN,
     REFRESH_TOKEN_INVALID,
 
-    // Registration / User / Merchant
+    // Registration / User / Merchant / Store
     EMAIL_ALREADY_EXISTS,
     MOBILE_ALREADY_EXISTS,
     USER_NOT_FOUND,
@@ -28,6 +28,12 @@ public enum ApiError {
     MERCHANT_NOT_FOUND,
     MERCHANT_ACCESS_DENIED,
     INVALID_MERCHANT_STATE,
+    STORE_NOT_FOUND,
+    STORE_ACCESS_DENIED,
+    INVALID_LOCATION,
+    INVALID_STORE_STATE,
+    CITY_NOT_FOUND,
+    CITY_INACTIVE,
 
     // Password
     CURRENT_PASSWORD_INCORRECT,
