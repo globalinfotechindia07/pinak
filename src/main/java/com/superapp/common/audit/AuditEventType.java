@@ -38,6 +38,15 @@ public enum AuditEventType {
     EMAIL_CHANGED,
     PHONE_CHANGED,
 
+    // Merchant lifecycle
+    MERCHANT_CREATED,
+    MERCHANT_UPDATED,
+    MERCHANT_KYC_SUBMITTED,
+    MERCHANT_APPROVED,
+    MERCHANT_REJECTED,
+    MERCHANT_SUSPENDED,
+    MERCHANT_REACTIVATED,
+
     // Role & permissions
     ROLE_CHANGED,
 

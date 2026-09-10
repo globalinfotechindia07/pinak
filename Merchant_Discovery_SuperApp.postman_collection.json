@@ -1365,6 +1365,267 @@
               ]
             }
           }
+        },
+        {
+          "name": "Merchant: Get Authenticated Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "merchant",
+                "profile"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Merchant: Update Authenticated Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessName\": \"ABC Fitness & Wellness Global\",\n  \"legalName\": \"ABC Fitness Pvt Ltd\",\n  \"description\": \"Premium fitness centers across Maharashtra\",\n  \"phone\": \"+919876543210\",\n  \"email\": \"contact@abcfitness.com\",\n  \"website\": \"https://abcfitness.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "merchant",
+                "profile"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Merchant: Submit KYC Documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"GST_CERTIFICATE\",\n  \"documentNumber\": \"27AAAAA0000A1Z5\",\n  \"businessRegistrationNumber\": \"U12345MH2022PTC123456\",\n  \"taxId\": \"TAX987654321\",\n  \"documentUrl\": \"https://storage.superapp.com/kyc/gst-cert.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "merchant",
+                "kyc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: List All Merchants with Filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/merchants?page=0&size=20&status=ACTIVE&approvalStatus=PENDING_APPROVAL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "merchants"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE"
+                },
+                {
+                  "key": "approvalStatus",
+                  "value": "PENDING_APPROVAL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Get Merchant by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "merchants",
+                "{{merchantId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Approve Merchant Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "merchants",
+                "{{merchantId}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Reject Merchant Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Submitted GST certificate is illegible or expired.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "merchants",
+                "{{merchantId}}",
+                "reject"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Suspend Merchant Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Multiple consumer fraud reports under investigation.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}/suspend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "merchants",
+                "{{merchantId}}",
+                "suspend"
+              ]
+            }
+          }
         }
       ]
     },

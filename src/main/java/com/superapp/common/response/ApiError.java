@@ -19,12 +19,15 @@ public enum ApiError {
     FORBIDDEN,
     REFRESH_TOKEN_INVALID,
 
-    // Registration / User
+    // Registration / User / Merchant
     EMAIL_ALREADY_EXISTS,
     MOBILE_ALREADY_EXISTS,
     USER_NOT_FOUND,
     USER_SUSPENDED,
     SESSION_NOT_FOUND,
+    MERCHANT_NOT_FOUND,
+    MERCHANT_ACCESS_DENIED,
+    INVALID_MERCHANT_STATE,
 
     // Password
     CURRENT_PASSWORD_INCORRECT,

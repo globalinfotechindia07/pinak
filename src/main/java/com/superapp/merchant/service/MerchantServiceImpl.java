@@ -1,25 +1,32 @@
 package com.superapp.merchant.service;
 
 import com.superapp.category.entity.Category;
+import com.superapp.category.entity.CategoryStatus;
 import com.superapp.category.repository.CategoryRepository;
+import com.superapp.common.audit.AuditEventType;
+import com.superapp.common.audit.AuditService;
 import com.superapp.common.exception.AppException;
 import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.common.response.ApiError;
-import com.superapp.merchant.dto.CreateMerchantRequest;
-import com.superapp.merchant.dto.MerchantResponse;
-import com.superapp.merchant.dto.UpdateApprovalStatusRequest;
-import com.superapp.merchant.dto.UpdateMerchantRequest;
+import com.superapp.merchant.dto.*;
 import com.superapp.merchant.entity.ApprovalStatus;
+import com.superapp.merchant.entity.KycStatus;
 import com.superapp.merchant.entity.Merchant;
+import com.superapp.merchant.entity.MerchantKyc;
+import com.superapp.merchant.enums.MerchantStatus;
+import com.superapp.merchant.mapper.MerchantMapper;
+import com.superapp.merchant.repository.MerchantKycRepository;
 import com.superapp.merchant.repository.MerchantRepository;
 import com.superapp.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -30,24 +37,39 @@ public class MerchantServiceImpl implements MerchantService {
     private final MerchantRepository merchantRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final MerchantKycRepository merchantKycRepository;
+    private final AuditService auditService;
+    private final MerchantMapper merchantMapper;
 
+    public MerchantServiceImpl(
+            MerchantRepository merchantRepository,
+            CategoryRepository categoryRepository,
+            UserRepository userRepository,
+            MerchantKycRepository merchantKycRepository,
+            AuditService auditService,
+            MerchantMapper merchantMapper
+    ) {
+        this.merchantRepository = merchantRepository;
+        this.categoryRepository = categoryRepository;
+        this.userRepository = userRepository;
+        this.merchantKycRepository = merchantKycRepository;
+        this.auditService = auditService;
+        this.merchantMapper = merchantMapper != null ? merchantMapper : new MerchantMapper();
+    }
+
+    // Overloaded constructor for backward compatibility with existing unit tests
     public MerchantServiceImpl(
             MerchantRepository merchantRepository,
             CategoryRepository categoryRepository,
             UserRepository userRepository
     ) {
-        this.merchantRepository = merchantRepository;
-        this.categoryRepository = categoryRepository;
-        this.userRepository = userRepository;
+        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper());
     }
 
     @Override
     @Transactional
     public MerchantResponse createMerchant(CreateMerchantRequest request, UUID currentUserId, boolean isAdmin) {
         UUID ownerId = currentUserId;
-        if (isAdmin && request.ownerUserId() != null) {
-            ownerId = request.ownerUserId();
-        }
 
         // Validate owner exists
         if (!userRepository.existsById(ownerId)) {
@@ -59,21 +81,225 @@ public class MerchantServiceImpl implements MerchantService {
         if (request.categoryId() != null) {
             Category category = categoryRepository.findById(request.categoryId())
                     .orElseThrow(() -> new ResourceNotFoundException("Category", "id", request.categoryId()));
+            if (category.getStatus() != CategoryStatus.ACTIVE) {
+                throw new AppException("Category is not active", ApiError.RESOURCE_NOT_FOUND, 400);
+            }
             categoryName = category.getName();
         }
 
-        Merchant merchant = new Merchant(ownerId, request.businessName().trim(), request.categoryId());
+        String phone = request.phone() != null ? request.phone().trim() : null;
+        String email = request.email() != null ? request.email().trim().toLowerCase() : null;
+        String legalName = request.legalName() != null ? request.legalName().trim() : null;
+        String description = request.description() != null ? request.description().trim() : null;
+        String website = request.website() != null ? request.website().trim() : null;
+
+        Merchant merchant = new Merchant(
+                ownerId,
+                request.businessName().trim(),
+                legalName,
+                description,
+                request.categoryId(),
+                phone,
+                email,
+                website
+        );
+
         Merchant saved = merchantRepository.save(merchant);
         log.info("Created merchant id={} name='{}' ownerId={}", saved.getId(), saved.getBusinessName(), ownerId);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.MERCHANT_CREATED, ownerId, null, null, MDC.get("requestId"),
+                    "{\"merchantId\":\"" + saved.getId() + "\",\"businessName\":\"" + saved.getBusinessName() + "\"}");
+        }
 
         return MerchantResponse.fromEntity(saved, categoryName);
     }
 
     @Override
+    @Transactional
+    public MerchantResponse createMerchant(CreateMerchantRequest request, UUID currentUserId) {
+        return createMerchant(request, currentUserId, false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MerchantResponse getMerchantProfile(UUID currentUserId) {
+        Merchant merchant = merchantRepository.findByOwnerUserId(currentUserId)
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
+
+        String categoryName = getCategoryName(merchant.getCategoryId());
+        return MerchantResponse.fromEntity(merchant, categoryName);
+    }
+
+    @Override
+    @Transactional
+    public MerchantResponse updateMerchantProfile(UpdateMerchantProfileRequest request, UUID currentUserId) {
+        Merchant merchant = merchantRepository.findByOwnerUserId(currentUserId)
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
+
+        if (!merchant.getOwnerUserId().equals(currentUserId)) {
+            throw new AppException("You do not have permission to access this merchant", ApiError.MERCHANT_ACCESS_DENIED, 403);
+        }
+
+        String categoryName = null;
+        if (request.categoryId() != null) {
+            Category category = categoryRepository.findById(request.categoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Category", "id", request.categoryId()));
+            if (category.getStatus() != CategoryStatus.ACTIVE) {
+                throw new AppException("Category is not active", ApiError.RESOURCE_NOT_FOUND, 400);
+            }
+            categoryName = category.getName();
+            merchant.setCategoryId(request.categoryId());
+        } else {
+            categoryName = getCategoryName(merchant.getCategoryId());
+        }
+
+        merchant.setBusinessName(request.businessName().trim());
+        if (request.legalName() != null) merchant.setLegalName(request.legalName().trim());
+        if (request.description() != null) merchant.setDescription(request.description().trim());
+        if (request.phone() != null) merchant.setPhone(request.phone().trim());
+        if (request.email() != null) merchant.setEmail(request.email().trim().toLowerCase());
+        if (request.website() != null) merchant.setWebsite(request.website().trim());
+
+        Merchant updated = merchantRepository.save(merchant);
+        log.info("Merchant profile updated id={} by owner={}", updated.getId(), currentUserId);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.MERCHANT_UPDATED, currentUserId, null, null, MDC.get("requestId"),
+                    "{\"merchantId\":\"" + updated.getId() + "\"}");
+        }
+
+        return MerchantResponse.fromEntity(updated, categoryName);
+    }
+
+    @Override
+    @Transactional
+    public MerchantKycResponse submitKyc(MerchantKycRequest request, UUID currentUserId) {
+        Merchant merchant = merchantRepository.findByOwnerUserId(currentUserId)
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
+
+        MerchantKyc kyc = new MerchantKyc(
+                merchant.getId(),
+                request.documentType().trim(),
+                request.documentNumber().trim(),
+                request.businessRegistrationNumber() != null ? request.businessRegistrationNumber().trim() : null,
+                request.taxId() != null ? request.taxId().trim() : null,
+                request.documentUrl() != null ? request.documentUrl().trim() : null
+        );
+
+        MerchantKyc savedKyc = merchantKycRepository != null ? merchantKycRepository.save(kyc) : kyc;
+
+        merchant.setKycStatus(KycStatus.PENDING);
+        if (merchant.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            merchant.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        }
+        merchantRepository.save(merchant);
+
+        log.info("KYC submitted for merchant id={} docType={}", merchant.getId(), request.documentType());
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.MERCHANT_KYC_SUBMITTED, currentUserId, null, null, MDC.get("requestId"),
+                    "{\"merchantId\":\"" + merchant.getId() + "\",\"documentType\":\"" + request.documentType() + "\"}");
+        }
+
+        return new MerchantKycResponse(
+                savedKyc.getId(),
+                merchant.getId(),
+                savedKyc.getDocumentType(),
+                savedKyc.getStatus(),
+                savedKyc.getCreatedAt()
+        );
+    }
+
+    @Override
+    @Transactional
+    public MerchantApprovalActionResponse approveMerchant(UUID merchantId, UUID adminUserId) {
+        Merchant merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
+
+        // State transition check: cannot approve if already APPROVED or not in pending/draft/rejected state
+        if (merchant.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            throw new AppException("Merchant cannot be approved in its current state", ApiError.INVALID_MERCHANT_STATE, 409);
+        }
+
+        merchant.setApprovalStatus(ApprovalStatus.APPROVED);
+        merchant.setApprovedAt(Instant.now());
+        merchant.setKycStatus(KycStatus.VERIFIED);
+        merchant.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
+        merchantRepository.save(merchant);
+
+        log.info("Admin {} approved merchant id={}", adminUserId, merchantId);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.MERCHANT_APPROVED, adminUserId, null, null, MDC.get("requestId"),
+                    "{\"merchantId\":\"" + merchantId + "\",\"action\":\"APPROVE\"}");
+        }
+
+        return MerchantApprovalActionResponse.approved(merchantId.toString());
+    }
+
+    @Override
+    @Transactional
+    public MerchantApprovalActionResponse rejectMerchant(UUID merchantId, String reason, UUID adminUserId) {
+        if (reason == null || reason.isBlank()) {
+            throw new AppException("Rejection reason is required", ApiError.VALIDATION_ERROR, 400);
+        }
+
+        Merchant merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
+
+        if (merchant.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            throw new AppException("Merchant cannot be approved in its current state", ApiError.INVALID_MERCHANT_STATE, 409);
+        }
+
+        merchant.setApprovalStatus(ApprovalStatus.REJECTED);
+        merchant.setRejectionReason(reason.trim());
+        merchant.setKycStatus(KycStatus.REJECTED);
+        merchant.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
+        merchantRepository.save(merchant);
+
+        log.info("Admin {} rejected merchant id={} reason: {}", adminUserId, merchantId, reason);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.MERCHANT_REJECTED, adminUserId, null, null, MDC.get("requestId"),
+                    "{\"merchantId\":\"" + merchantId + "\",\"action\":\"REJECT\",\"reason\":\"" + reason + "\"}");
+        }
+
+        return MerchantApprovalActionResponse.rejected(merchantId.toString(), reason.trim());
+    }
+
+    @Override
+    @Transactional
+    public MerchantApprovalActionResponse suspendMerchant(UUID merchantId, String reason, UUID adminUserId) {
+        if (reason == null || reason.isBlank()) {
+            throw new AppException("Suspension reason is required", ApiError.VALIDATION_ERROR, 400);
+        }
+
+        Merchant merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
+
+        merchant.setStatus(MerchantStatus.SUSPENDED);
+        merchant.setSuspensionReason(reason.trim());
+        merchant.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
+        merchantRepository.save(merchant);
+
+        log.info("Admin {} suspended merchant id={} reason: {}", adminUserId, merchantId, reason);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.MERCHANT_SUSPENDED, adminUserId, null, null, MDC.get("requestId"),
+                    "{\"merchantId\":\"" + merchantId + "\",\"action\":\"SUSPEND\",\"reason\":\"" + reason + "\"}");
+        }
+
+        return MerchantApprovalActionResponse.suspended(merchantId.toString(), reason.trim());
+    }
+
+    // ---- General / Backwards-compatible Queries ----
+
+    @Override
     @Transactional(readOnly = true)
     public MerchantResponse getMerchantById(UUID id) {
         Merchant merchant = merchantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Merchant", "id", id));
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
         String categoryName = getCategoryName(merchant.getCategoryId());
         return MerchantResponse.fromEntity(merchant, categoryName);
     }
@@ -87,6 +313,22 @@ public class MerchantServiceImpl implements MerchantService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<MerchantResponse> getAllMerchants(Pageable pageable, MerchantStatus status, ApprovalStatus approvalStatus) {
+        if (status != null && approvalStatus != null) {
+            return merchantRepository.findByStatusAndApprovalStatus(status, approvalStatus, pageable)
+                    .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
+        } else if (status != null) {
+            return merchantRepository.findByStatus(status, pageable)
+                    .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
+        } else if (approvalStatus != null) {
+            return merchantRepository.findByApprovalStatus(approvalStatus, pageable)
+                    .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
+        }
+        return getAllMerchants(pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<MerchantResponse> getMerchantsByOwner(UUID ownerUserId, Pageable pageable) {
         return merchantRepository.findByOwnerUserId(ownerUserId, pageable)
                 .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
@@ -96,33 +338,43 @@ public class MerchantServiceImpl implements MerchantService {
     @Transactional
     public MerchantResponse updateMerchant(UUID id, UpdateMerchantRequest request, UUID currentUserId, boolean isAdmin) {
         Merchant merchant = merchantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Merchant", "id", id));
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
 
         if (!isAdmin && !merchant.getOwnerUserId().equals(currentUserId)) {
-            throw new AppException("You do not have permission to modify this merchant", ApiError.FORBIDDEN, 403);
+            throw new AppException("You do not have permission to modify this merchant", ApiError.MERCHANT_ACCESS_DENIED, 403);
         }
 
+        String categoryName = null;
         if (request.categoryId() != null) {
-            categoryRepository.findById(request.categoryId())
+            Category category = categoryRepository.findById(request.categoryId())
                     .orElseThrow(() -> new ResourceNotFoundException("Category", "id", request.categoryId()));
+            categoryName = category.getName();
             merchant.setCategoryId(request.categoryId());
+        } else {
+            categoryName = getCategoryName(merchant.getCategoryId());
         }
 
         merchant.setBusinessName(request.businessName().trim());
+        if (request.legalName() != null) merchant.setLegalName(request.legalName().trim());
+        if (request.description() != null) merchant.setDescription(request.description().trim());
+        if (request.phone() != null) merchant.setPhone(request.phone().trim());
+        if (request.email() != null) merchant.setEmail(request.email().trim().toLowerCase());
+        if (request.website() != null) merchant.setWebsite(request.website().trim());
+
         Merchant updated = merchantRepository.save(merchant);
         log.info("Updated merchant id={} name='{}'", updated.getId(), updated.getBusinessName());
 
-        return MerchantResponse.fromEntity(updated, getCategoryName(updated.getCategoryId()));
+        return MerchantResponse.fromEntity(updated, categoryName);
     }
 
     @Override
     @Transactional
     public void deleteMerchant(UUID id, UUID currentUserId, boolean isAdmin) {
         Merchant merchant = merchantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Merchant", "id", id));
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
 
         if (!isAdmin && !merchant.getOwnerUserId().equals(currentUserId)) {
-            throw new AppException("You do not have permission to delete this merchant", ApiError.FORBIDDEN, 403);
+            throw new AppException("You do not have permission to delete this merchant", ApiError.MERCHANT_ACCESS_DENIED, 403);
         }
 
         merchantRepository.delete(merchant);
@@ -133,10 +385,13 @@ public class MerchantServiceImpl implements MerchantService {
     @Transactional
     public MerchantResponse updateApprovalStatus(UUID id, UpdateApprovalStatusRequest request) {
         Merchant merchant = merchantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Merchant", "id", id));
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
 
-        ApprovalStatus oldStatus = merchant.getStatus();
-        merchant.setStatus(request.status());
+        ApprovalStatus oldStatus = merchant.getApprovalStatus();
+        merchant.setApprovalStatus(request.status());
+        if (request.status() == ApprovalStatus.APPROVED) {
+            merchant.setApprovedAt(Instant.now());
+        }
         Merchant updated = merchantRepository.save(merchant);
         log.info("Admin updated merchant id={} status from {} to {}. Notes: {}",
                 id, oldStatus, request.status(), request.notes());

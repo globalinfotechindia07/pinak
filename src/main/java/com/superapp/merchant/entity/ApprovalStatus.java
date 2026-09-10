@@ -1,11 +1,14 @@
 package com.superapp.merchant.entity;
 
 /**
- * Onboarding and operational approval lifecycle for Merchants and Stores.
+ * Onboarding and approval lifecycle for Merchants and Stores.
  */
 public enum ApprovalStatus {
-    PENDING,
+    DRAFT,
+    PENDING_APPROVAL,
     APPROVED,
     REJECTED,
-    SUSPENDED
+
+    // Backward compatibility alias for existing records/tests
+    PENDING
 }
