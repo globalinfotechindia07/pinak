@@ -41,24 +41,24 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Get own profile")
+    @Operation(summary = "Get current authenticated user profile")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserResponse>> getMyProfile(
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
         UserResponse response = userService.getMyProfile(userId);
-        return ResponseEntity.ok(ApiResponse.success("Profile retrieved successfully", response));
+        return ResponseEntity.ok(ApiResponse.success("User fetched successfully", response));
     }
 
     @PutMapping("/me")
-    @Operation(summary = "Update own profile")
+    @Operation(summary = "Update current authenticated user profile")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UserResponse>> updateMyProfile(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request) {
 
-        // IDOR protection: always use authenticated user ID — never a path variable
+        // IDOR protection: always use authenticated user ID — never a client-supplied ID
         UUID userId = UUID.fromString(userDetails.getUsername());
         UserResponse response = userService.updateMyProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", response));
@@ -72,7 +72,7 @@ public class UserController {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
         List<SessionResponse> sessions = sessionService.getActiveSessions(userId);
-        return ResponseEntity.ok(ApiResponse.success("Sessions retrieved", sessions));
+        return ResponseEntity.ok(ApiResponse.success("Sessions fetched successfully", sessions));
     }
 
     @DeleteMapping("/me/sessions/{sessionId}")

@@ -31,6 +31,12 @@ public enum AuditEventType {
     ACCOUNT_UNBLOCKED,
     ACCOUNT_DEACTIVATED,
     ACCOUNT_ACTIVATED,
+    ACCOUNT_SUSPENDED,
+
+    // Profile & identity updates
+    PROFILE_UPDATED,
+    EMAIL_CHANGED,
+    PHONE_CHANGED,
 
     // Role & permissions
     ROLE_CHANGED,

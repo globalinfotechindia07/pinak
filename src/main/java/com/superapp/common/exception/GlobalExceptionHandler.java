@@ -85,6 +85,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(
             MethodArgumentNotValidException ex, HttpServletRequest req) {
 
+        java.util.List<Map<String, String>> details = ex.getBindingResult().getFieldErrors()
+                .stream()
+                .map(fe -> Map.of(
+                        "field", fe.getField(),
+                        "message", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Invalid value"
+                ))
+                .toList();
+
         Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors()
                 .stream()
                 .collect(Collectors.toMap(
@@ -95,9 +103,11 @@ public class GlobalExceptionHandler {
 
         log.debug("Validation failed on {}: {}", req.getRequestURI(), fieldErrors);
 
-        // Return as error with field-level errors in data
         ApiResponse<Map<String, String>> response = new ApiResponse<>(
-                false, "Validation failed", ApiError.VALIDATION_FAILED.name(), fieldErrors);
+                false, "Validation failed", ApiError.VALIDATION_FAILED.name(), fieldErrors,
+                com.superapp.common.response.ApiErrorDetails.of("VALIDATION_ERROR", details),
+                org.slf4j.MDC.get("requestId")
+        );
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }

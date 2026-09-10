@@ -29,6 +29,9 @@ public class User {
     @Column(name = "mobile", unique = true, length = 20)
     private String mobile;
 
+    @Column(name = "phone", unique = true, length = 20)
+    private String phone;
+
     @Column(name = "password", nullable = false)
     private String password;
 
@@ -52,8 +55,17 @@ public class User {
     @Column(name = "mobile_verified", nullable = false)
     private boolean mobileVerified = false;
 
+    @Column(name = "profile_completed", nullable = false)
+    private boolean profileCompleted = false;
+
     @Column(name = "profile_picture_url", length = 1024)
     private String profilePictureUrl;
+
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
+
+    @Column(name = "updated_by", length = 100)
+    private String updatedBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -100,8 +112,21 @@ public class User {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public String getMobile() { return mobile; }
-    public void setMobile(String mobile) { this.mobile = mobile; }
+    public String getMobile() { return mobile != null ? mobile : phone; }
+    public void setMobile(String mobile) {
+        this.mobile = mobile;
+        if (this.phone == null) {
+            this.phone = mobile;
+        }
+    }
+
+    public String getPhone() { return phone != null ? phone : mobile; }
+    public void setPhone(String phone) {
+        this.phone = phone;
+        if (this.mobile == null) {
+            this.mobile = phone;
+        }
+    }
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
@@ -124,8 +149,17 @@ public class User {
     public boolean isMobileVerified() { return mobileVerified; }
     public void setMobileVerified(boolean mobileVerified) { this.mobileVerified = mobileVerified; }
 
+    public boolean isProfileCompleted() { return profileCompleted; }
+    public void setProfileCompleted(boolean profileCompleted) { this.profileCompleted = profileCompleted; }
+
     public String getProfilePictureUrl() { return profilePictureUrl; }
     public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
+
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public String getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
@@ -135,6 +169,10 @@ public class User {
 
     public boolean isActive() {
         return UserStatus.ACTIVE.equals(this.status);
+    }
+
+    public boolean isSuspended() {
+        return UserStatus.SUSPENDED.equals(this.status) || UserStatus.BLOCKED.equals(this.status);
     }
 
     @Override

@@ -15,7 +15,7 @@ public class DuplicateResourceException extends AppException {
 
     public static DuplicateResourceException email(String email) {
         return new DuplicateResourceException(
-                "An account with email '" + email + "' already exists.",
+                "Email is already in use",
                 ApiError.EMAIL_ALREADY_EXISTS);
     }
 

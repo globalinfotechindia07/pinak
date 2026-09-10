@@ -12,5 +12,6 @@ package com.superapp.user.entity;
 public enum UserStatus {
     ACTIVE,
     INACTIVE,
+    SUSPENDED,
     BLOCKED
 }

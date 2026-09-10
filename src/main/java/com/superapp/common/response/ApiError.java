@@ -23,6 +23,7 @@ public enum ApiError {
     EMAIL_ALREADY_EXISTS,
     MOBILE_ALREADY_EXISTS,
     USER_NOT_FOUND,
+    USER_SUSPENDED,
     SESSION_NOT_FOUND,
 
     // Password
@@ -38,6 +39,7 @@ public enum ApiError {
 
     // Validation
     VALIDATION_FAILED,
+    VALIDATION_ERROR,
 
     // General
     RESOURCE_NOT_FOUND,
