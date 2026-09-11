@@ -74,8 +74,8 @@ public class SecurityConfig {
                 // Public payment webhook
                 .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook").permitAll()
 
-                // Public categories lookup and public discovery endpoints
-                .requestMatchers(HttpMethod.GET, "/api/v1/categories/**", "/api/v1/discovery/**").permitAll()
+                // Public categories lookup, public discovery endpoints, and public offer details
+                .requestMatchers(HttpMethod.GET, "/api/v1/categories/**", "/api/v1/discovery/**", "/api/v1/offers/**").permitAll()
 
                 // Health check
                 .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()

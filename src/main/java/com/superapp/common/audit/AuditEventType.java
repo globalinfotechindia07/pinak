@@ -57,6 +57,15 @@ public enum AuditEventType {
     STORE_REACTIVATED,
     STORE_LOCATION_CHANGED,
 
+    // Offer lifecycle
+    OFFER_CREATED,
+    OFFER_UPDATED,
+    OFFER_SUBMITTED,
+    OFFER_APPROVED,
+    OFFER_REJECTED,
+    OFFER_EXPIRED,
+    OFFER_DEACTIVATED,
+
     // Master Data (Category & Location)
     CATEGORY_CREATED,
     CATEGORY_UPDATED,

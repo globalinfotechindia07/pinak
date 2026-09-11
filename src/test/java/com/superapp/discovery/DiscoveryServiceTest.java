@@ -8,13 +8,13 @@ import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.common.response.ApiError;
 import com.superapp.discovery.cache.DiscoveryCacheKeyGenerator;
 import com.superapp.discovery.dto.*;
-import com.superapp.discovery.entity.Offer;
-import com.superapp.discovery.entity.OfferStatus;
-import com.superapp.discovery.entity.OfferType;
 import com.superapp.discovery.mapper.DiscoveryMapper;
 import com.superapp.discovery.repository.DiscoveryRepository;
 import com.superapp.discovery.repository.NearbyStoreRow;
-import com.superapp.discovery.repository.OfferRepository;
+import com.superapp.offer.entity.Offer;
+import com.superapp.offer.enums.OfferStatus;
+import com.superapp.offer.enums.OfferType;
+import com.superapp.offer.repository.OfferRepository;
 import com.superapp.discovery.service.DiscoveryServiceImpl;
 import com.superapp.discovery.validation.DiscoveryValidator;
 import com.superapp.merchant.entity.ApprovalStatus;
@@ -294,7 +294,7 @@ class DiscoveryServiceTest {
         offer.setStoreId(storeId);
         offer.setTitle("20% OFF");
         offer.setDescription("Flat 20% off on all items");
-        offer.setType(OfferType.PERCENTAGE);
+        offer.setType(OfferType.PERCENTAGE_DISCOUNT);
         offer.setValue(BigDecimal.valueOf(20.0));
         offer.setStatus(OfferStatus.ACTIVE);
         offer.setValidFrom(Instant.now().minus(1, ChronoUnit.DAYS));
@@ -311,7 +311,7 @@ class DiscoveryServiceTest {
         assertNotNull(result);
         assertEquals(1, result.content().size());
         assertEquals("20% OFF", result.content().get(0).title());
-        assertEquals("PERCENTAGE", result.content().get(0).type());
+        assertEquals("PERCENTAGE_DISCOUNT", result.content().get(0).type());
         assertEquals(BigDecimal.valueOf(20.0), result.content().get(0).value());
     }
 }

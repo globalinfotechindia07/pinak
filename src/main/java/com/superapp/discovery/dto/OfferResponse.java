@@ -1,7 +1,7 @@
 package com.superapp.discovery.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.superapp.discovery.entity.Offer;
+import com.superapp.offer.entity.Offer;
 import java.math.BigDecimal;
 import java.time.Instant;
 

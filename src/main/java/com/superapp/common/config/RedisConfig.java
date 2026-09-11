@@ -46,7 +46,7 @@ public class RedisConfig implements CachingConfigurer {
             log.warn("Redis unavailable ({}), falling back to in-memory ConcurrentMapCacheManager", e.getMessage());
             ConcurrentMapCacheManager fallback = new ConcurrentMapCacheManager(
                     "categories", "stores", "nearby", "master_categories_active", "master_cities_active",
-                    "discovery_nearby", "discovery_stores", "discovery_offers"
+                    "discovery_nearby", "discovery_stores", "discovery_offers", "offers"
             );
             fallback.setAllowNullValues(false);
             return fallback;

@@ -2320,6 +2320,172 @@
       ]
     },
     {
+      "name": "5.2 Core Platform - Offers & Approvals",
+      "item": [
+        {
+          "name": "Merchant: Create Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"title\": \"10% Cashback on All Items\",\n  \"description\": \"Get 10% cashback on eligible purchases\",\n  \"offerType\": \"CASHBACK\",\n  \"value\": 10,\n  \"minTransactionAmount\": 500,\n  \"maxDiscountAmount\": 500,\n  \"usageLimit\": 1000,\n  \"perCustomerLimit\": 1,\n  \"validFrom\": \"2026-09-10T00:00:00Z\",\n  \"validTo\": \"2026-09-30T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/offers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "merchant", "offers"]
+            }
+          }
+        },
+        {
+          "name": "Merchant: Get My Offers",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/offers?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "merchant", "offers"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Merchant: Get Single Offer",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/offers/{{offerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "merchant", "offers", "{{offerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Merchant: Update Offer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"title\": \"15% Cashback on All Items\",\n  \"description\": \"Get 15% cashback on eligible purchases\",\n  \"offerType\": \"CASHBACK\",\n  \"value\": 15,\n  \"minTransactionAmount\": 500,\n  \"maxDiscountAmount\": 750,\n  \"usageLimit\": 1000,\n  \"perCustomerLimit\": 1,\n  \"validFrom\": \"2026-09-10T00:00:00Z\",\n  \"validTo\": \"2026-09-30T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/offers/{{offerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "merchant", "offers", "{{offerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Merchant: Submit Offer for Approval",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/offers/{{offerId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "merchant", "offers", "{{offerId}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "Customer: Get Verified Offer Details (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/offers/{{offerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "offers", "{{offerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin: List All Offers",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/offers?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "offers"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Get Offer by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/offers/{{offerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "offers", "{{offerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Approve Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/offers/{{offerId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "offers", "{{offerId}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Reject Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Offer terms and conditions are incomplete or ambiguous\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/offers/{{offerId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "offers", "{{offerId}}", "reject"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "6. Transaction Platform - Payment Module",
       "item": [
         {
