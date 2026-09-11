@@ -16,4 +16,14 @@ public interface CityRepository extends JpaRepository<City, String> {
     boolean existsByIdAndStatus(String id, CityStatus status);
 
     List<City> findByStatus(CityStatus status);
+
+    List<City> findByStatusOrderByNameAsc(CityStatus status);
+
+    List<City> findAllByOrderByNameAsc();
+
+    Optional<City> findBySlug(String slug);
+
+    boolean existsBySlug(String slug);
+
+    boolean existsByNameIgnoreCaseAndStateIgnoreCase(String name, String state);
 }

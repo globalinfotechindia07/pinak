@@ -57,6 +57,14 @@ public enum AuditEventType {
     STORE_REACTIVATED,
     STORE_LOCATION_CHANGED,
 
+    // Master Data (Category & Location)
+    CATEGORY_CREATED,
+    CATEGORY_UPDATED,
+    CATEGORY_DEACTIVATED,
+    CITY_CREATED,
+    CITY_UPDATED,
+    CITY_DEACTIVATED,
+
     // Role & permissions
     ROLE_CHANGED,
 

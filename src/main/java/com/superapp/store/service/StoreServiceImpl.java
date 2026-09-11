@@ -490,7 +490,7 @@ public class StoreServiceImpl implements StoreService {
             City city = cityRepository.findById(cityId)
                     .orElseThrow(() -> new AppException("City not found", ApiError.CITY_NOT_FOUND, 404));
             if (!city.isActive()) {
-                throw new AppException("City is not active", ApiError.CITY_INACTIVE, 400);
+                throw new AppException("City is not active", ApiError.CITY_INACTIVE, 409);
             }
         }
     }

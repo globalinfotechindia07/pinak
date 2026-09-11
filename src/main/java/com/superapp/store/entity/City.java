@@ -16,6 +16,9 @@ public class City {
     @Column(name = "name", length = 100, nullable = false)
     private String name;
 
+    @Column(name = "slug", length = 100, nullable = false, unique = true)
+    private String slug;
+
     @Column(name = "state", length = 100, nullable = false)
     private String state;
 
@@ -25,6 +28,12 @@ public class City {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 32, nullable = false)
     private CityStatus status = CityStatus.ACTIVE;
+
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
+
+    @Column(name = "updated_by", length = 100)
+    private String updatedBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -38,9 +47,26 @@ public class City {
     public City(String id, String name, String state, String country, CityStatus status) {
         this.id = id;
         this.name = name;
+        this.slug = generateSlug(name);
         this.state = state;
         this.country = country != null ? country : "India";
         this.status = status != null ? status : CityStatus.ACTIVE;
+    }
+
+    public City(String id, String name, String slug, String state, String country, CityStatus status) {
+        this.id = id;
+        this.name = name;
+        this.slug = slug != null && !slug.isBlank() ? slug : generateSlug(name);
+        this.state = state;
+        this.country = country != null ? country : "India";
+        this.status = status != null ? status : CityStatus.ACTIVE;
+    }
+
+    private static String generateSlug(String input) {
+        if (input == null) return null;
+        return input.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-|-$", "");
     }
 
     @PrePersist
@@ -50,6 +76,9 @@ public class City {
         this.updatedAt = now;
         if (this.country == null) this.country = "India";
         if (this.status == null) this.status = CityStatus.ACTIVE;
+        if (this.slug == null || this.slug.isBlank()) {
+            this.slug = generateSlug(this.name);
+        }
     }
 
     @PreUpdate
@@ -71,6 +100,14 @@ public class City {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
     }
 
     public String getState() {
@@ -95,6 +132,22 @@ public class City {
 
     public void setStatus(CityStatus status) {
         this.status = status;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public String getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(String updatedBy) {
+        this.updatedBy = updatedBy;
     }
 
     public Instant getCreatedAt() {

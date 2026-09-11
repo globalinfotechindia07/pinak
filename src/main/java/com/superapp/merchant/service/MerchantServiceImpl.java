@@ -80,9 +80,9 @@ public class MerchantServiceImpl implements MerchantService {
         String categoryName = null;
         if (request.categoryId() != null) {
             Category category = categoryRepository.findById(request.categoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category", "id", request.categoryId()));
-            if (category.getStatus() != CategoryStatus.ACTIVE) {
-                throw new AppException("Category is not active", ApiError.RESOURCE_NOT_FOUND, 400);
+                    .orElseThrow(() -> new AppException("Category not found", ApiError.CATEGORY_NOT_FOUND, 404));
+            if (!category.isActive()) {
+                throw new AppException("Category is not active", ApiError.CATEGORY_INACTIVE, 409);
             }
             categoryName = category.getName();
         }
@@ -144,9 +144,9 @@ public class MerchantServiceImpl implements MerchantService {
         String categoryName = null;
         if (request.categoryId() != null) {
             Category category = categoryRepository.findById(request.categoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category", "id", request.categoryId()));
-            if (category.getStatus() != CategoryStatus.ACTIVE) {
-                throw new AppException("Category is not active", ApiError.RESOURCE_NOT_FOUND, 400);
+                    .orElseThrow(() -> new AppException("Category not found", ApiError.CATEGORY_NOT_FOUND, 404));
+            if (!category.isActive()) {
+                throw new AppException("Category is not active", ApiError.CATEGORY_INACTIVE, 409);
             }
             categoryName = category.getName();
             merchant.setCategoryId(request.categoryId());

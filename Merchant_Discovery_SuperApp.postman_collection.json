@@ -1069,75 +1069,76 @@
       ]
     },
     {
-      "name": "3. Core Platform - Categories",
+      "name": "3. Core Platform - Categories & Master Data",
       "item": [
+        {
+          "name": "Customer Discovery: Get All Active Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Customer Discovery: Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "categories", "{{categoryId}}"]
+            }
+          }
+        },
         {
           "name": "Admin: Create Category",
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}",
-                "type": "text"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Fashion & Lifestyle\",\n  \"status\": \"ACTIVE\"\n}"
+              "raw": "{\n  \"name\": \"Restaurants & Food\",\n  \"slug\": \"restaurants-food\",\n  \"description\": \"Restaurants, eateries and food outlets\",\n  \"icon\": \"restaurant\",\n  \"displayOrder\": 1\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/categories",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "categories"
-              ]
+              "raw": "{{baseUrl}}/api/v1/admin/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "categories"]
             }
           }
         },
         {
-          "name": "Get All Categories (Public / Cached)",
+          "name": "Admin: Get All Categories",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/categories",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "categories"
-              ]
+              "raw": "{{baseUrl}}/api/v1/admin/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "categories"]
             }
           }
         },
         {
-          "name": "Get Category by ID",
+          "name": "Admin: Get Category by ID",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "categories",
-                "{{categoryId}}"
-              ]
+              "raw": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "categories", "{{categoryId}}"]
             }
           }
         },
@@ -1146,57 +1147,121 @@
           "request": {
             "method": "PUT",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}",
-                "type": "text"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Luxury Fashion & Lifestyle\",\n  \"status\": \"ACTIVE\"\n}"
+              "raw": "{\n  \"name\": \"Fine Dining & Cafes\",\n  \"slug\": \"fine-dining-cafes\",\n  \"description\": \"Fine dining, cafes and gourmet experiences\",\n  \"icon\": \"restaurant\",\n  \"displayOrder\": 1\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "categories",
-                "{{categoryId}}"
-              ]
+              "raw": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "categories", "{{categoryId}}"]
             }
           }
         },
         {
-          "name": "Admin: Delete Category",
+          "name": "Admin: Deactivate Category (Soft Delete)",
           "request": {
             "method": "DELETE",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}",
-                "type": "text"
-              }
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "categories",
-                "{{categoryId}}"
-              ]
+              "raw": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "categories", "{{categoryId}}"]
+            }
+          }
+        },
+        {
+          "name": "Customer Discovery: Get Active Cities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/cities",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "cities"]
+            }
+          }
+        },
+        {
+          "name": "Customer Discovery: Get City by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/cities/{{cityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "cities", "{{cityId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Create City",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nagpur\",\n  \"slug\": \"nagpur\",\n  \"state\": \"Maharashtra\",\n  \"country\": \"India\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/cities",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "cities"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Get All Cities",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/cities",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "cities"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Update City",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nagpur Smart City\",\n  \"slug\": \"nagpur-smart\",\n  \"state\": \"Maharashtra\",\n  \"country\": \"India\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/cities/{{cityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "cities", "{{cityId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Deactivate City (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/cities/{{cityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "cities", "{{cityId}}"]
             }
           }
         }
