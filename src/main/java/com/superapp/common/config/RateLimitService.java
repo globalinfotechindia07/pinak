@@ -33,6 +33,7 @@ public class RateLimitService {
     public static final String OTP_VERIFY    = "otp-verify";
     public static final String REFRESH       = "refresh";
     public static final String RESEND        = "resend";
+    public static final String DISCOVERY     = "discovery";
 
     // Per-endpoint bucket configs loaded from application.properties
     private final long loginCapacity;
@@ -113,6 +114,7 @@ public class RateLimitService {
             case FORGOT_PWD -> buildBandwidth(forgotPwdCapacity, forgotPwdRefillTokens, forgotPwdRefillMinutes);
             case OTP_VERIFY, RESEND -> buildBandwidth(otpCapacity, otpRefillTokens, otpRefillMinutes);
             case REFRESH   -> buildBandwidth(refreshCapacity, refreshRefillTokens, refreshRefillMinutes);
+            case DISCOVERY -> buildBandwidth(120, 120, 1); // 120 per minute
             default        -> buildBandwidth(10, 10, 60);
         };
         return Bucket.builder().addLimit(limit).build();

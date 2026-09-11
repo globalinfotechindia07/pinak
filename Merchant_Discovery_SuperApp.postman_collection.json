@@ -2221,6 +2221,105 @@
       ]
     },
     {
+      "name": "5.1 Core Platform - Discovery & PostGIS Location Search",
+      "item": [
+        {
+          "name": "Find Nearby Stores (PostGIS Distance)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/nearby?lat=18.5204&lng=73.8567&radius=5000&sort=distance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "nearby"],
+              "query": [
+                { "key": "lat", "value": "18.5204" },
+                { "key": "lng", "value": "73.8567" },
+                { "key": "radius", "value": "5000" },
+                { "key": "sort", "value": "distance" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Find Nearby Stores (Filtered by Category & Offers)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/nearby?lat=18.5204&lng=73.8567&radius=10000&categoryId={{categoryId}}&hasOffer=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "nearby"],
+              "query": [
+                { "key": "lat", "value": "18.5204" },
+                { "key": "lng", "value": "73.8567" },
+                { "key": "radius", "value": "10000" },
+                { "key": "categoryId", "value": "{{categoryId}}" },
+                { "key": "hasOffer", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Stores & Merchants (Keyword)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/search?q=coffee",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "search"],
+              "query": [
+                { "key": "q", "value": "coffee" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Stores with Location Proximity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/search?q=coffee&lat=18.5204&lng=73.8567&radius=5000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "search"],
+              "query": [
+                { "key": "q", "value": "coffee" },
+                { "key": "lat", "value": "18.5204" },
+                { "key": "lng", "value": "73.8567" },
+                { "key": "radius", "value": "5000" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Store Discovery Details (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/stores/{{storeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "stores", "{{storeId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Store Active Offers (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discovery/stores/{{storeId}}/offers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "discovery", "stores", "{{storeId}}", "offers"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "6. Transaction Platform - Payment Module",
       "item": [
         {

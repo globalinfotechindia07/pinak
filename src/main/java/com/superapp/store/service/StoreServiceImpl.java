@@ -19,6 +19,8 @@ import com.superapp.store.repository.StoreRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -127,6 +129,10 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "discovery_stores", allEntries = true),
+            @CacheEvict(value = "discovery_nearby", allEntries = true)
+    })
     public StoreResponse updateMerchantStore(UUID storeId, MerchantUpdateStoreRequest request, UUID currentUserId) {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
         Store store = getOwnedStore(storeId, merchant.getId());
@@ -367,6 +373,10 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "discovery_stores", allEntries = true),
+            @CacheEvict(value = "discovery_nearby", allEntries = true)
+    })
     public StoreResponse updateStore(UUID id, UpdateStoreRequest request, UUID currentUserId, boolean isAdmin) {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
@@ -395,6 +405,10 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "discovery_stores", allEntries = true),
+            @CacheEvict(value = "discovery_nearby", allEntries = true)
+    })
     public void deleteStore(UUID id, UUID currentUserId, boolean isAdmin) {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
@@ -412,6 +426,10 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "discovery_stores", allEntries = true),
+            @CacheEvict(value = "discovery_nearby", allEntries = true)
+    })
     public StoreResponse updateApprovalStatus(UUID id, UpdateApprovalStatusRequest request) {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));

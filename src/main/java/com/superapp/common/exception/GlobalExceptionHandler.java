@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
         log.warn("AppException [{}] on {}: {}", ex.getErrorCode(), request.getRequestURI(), ex.getMessage());
         return ResponseEntity
                 .status(ex.getHttpStatus())
-                .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode().name()));
+                .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode().name(), ex.getDetails()));
     }
 
     // ---- Spring Security exceptions ----
