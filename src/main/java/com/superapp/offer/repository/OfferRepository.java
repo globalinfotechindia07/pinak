@@ -51,4 +51,12 @@ public interface OfferRepository extends JpaRepository<Offer, UUID>, JpaSpecific
     );
 
     long countByStoreId(UUID storeId);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Offer o WHERE o.id = :id")
+    Optional<Offer> findByIdForUpdate(@Param("id") UUID id);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Offer o SET o.currentUsageCount = o.currentUsageCount + 1 WHERE o.id = :id AND (o.usageLimit IS NULL OR o.currentUsageCount < o.usageLimit)")
+    int incrementUsageCountIfAvailable(@Param("id") UUID id);
 }

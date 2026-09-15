@@ -2868,7 +2868,7 @@
       "name": "9. Transaction Platform - Redemptions",
       "item": [
         {
-          "name": "Customer: Create Offer Redemption",
+          "name": "Customer: Redeem Offer",
           "request": {
             "method": "POST",
             "header": [
@@ -2881,11 +2881,21 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "redemp-key-{{$timestamp}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "req-redemp-{{$timestamp}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"offerId\": \"22222222-2222-2222-2222-222222222222\",\n  \"storeId\": \"{{storeId}}\",\n  \"billAmount\": 1500.0,\n  \"discountPercentage\": 20.0\n}"
+              "raw": "{\n  \"paymentId\": \"{{paymentId}}\",\n  \"offerId\": \"{{offerId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/redemptions",
@@ -2901,57 +2911,7 @@
           }
         },
         {
-          "name": "Customer: Get My Redemptions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/redemptions/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "redemptions",
-                "me"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Redemption by ID",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/redemptions/{{redemptionId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "redemptions",
-                "{{redemptionId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Admin / Merchant: Get All Redemptions",
+          "name": "Customer: Get Redemption History",
           "request": {
             "method": "GET",
             "header": [
@@ -2980,6 +2940,127 @@
                   "key": "size",
                   "value": "20"
                 }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Customer: Get Redemption by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/redemptions/{{redemptionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "redemptions",
+                "{{redemptionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Merchant: Get Store Redemptions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/redemptions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "merchant",
+                "redemptions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Get All Redemptions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/redemptions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "redemptions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Get Redemption by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/redemptions/{{redemptionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "redemptions",
+                "{{redemptionId}}"
               ]
             }
           }

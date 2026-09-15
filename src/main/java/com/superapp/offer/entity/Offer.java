@@ -52,6 +52,9 @@ public class Offer {
     @Column(name = "per_customer_limit")
     private Integer perCustomerLimit;
 
+    @Column(name = "current_usage_count", nullable = false)
+    private Integer currentUsageCount = 0;
+
     @Column(name = "valid_from", nullable = false)
     private Instant validFrom;
 
@@ -98,6 +101,7 @@ public class Offer {
         if (this.status == null) this.status = OfferStatus.CREATED;
         if (this.approvalStatus == null) this.approvalStatus = OfferApprovalStatus.DRAFT;
         if (this.type == null) this.type = OfferType.CASHBACK;
+        if (this.currentUsageCount == null) this.currentUsageCount = 0;
     }
 
     @PreUpdate
@@ -221,6 +225,14 @@ public class Offer {
 
     public void setPerCustomerLimit(Integer perCustomerLimit) {
         this.perCustomerLimit = perCustomerLimit;
+    }
+
+    public Integer getCurrentUsageCount() {
+        return currentUsageCount != null ? currentUsageCount : 0;
+    }
+
+    public void setCurrentUsageCount(Integer currentUsageCount) {
+        this.currentUsageCount = currentUsageCount != null ? currentUsageCount : 0;
     }
 
     public Instant getValidFrom() {
