@@ -87,5 +87,18 @@ public enum AuditEventType {
     MOBILE_VERIFIED,
 
     // Rate limiting
-    RATE_LIMIT_EXCEEDED
+    RATE_LIMIT_EXCEEDED,
+
+    // Payment & Transaction lifecycle
+    PAYMENT_INITIATED,
+    PAYMENT_PENDING,
+    PAYMENT_SUCCESS,
+    PAYMENT_FAILED,
+    PAYMENT_REFUNDED,
+    PAYMENT_CANCELLED,
+
+    // Webhook lifecycle
+    WEBHOOK_RECEIVED,
+    WEBHOOK_VERIFIED,
+    WEBHOOK_REJECTED
 }

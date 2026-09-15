@@ -2489,7 +2489,7 @@
       "name": "6. Transaction Platform - Payment Module",
       "item": [
         {
-          "name": "Initiate Payment Intent (UPI)",
+          "name": "Initiate Payment Intent",
           "event": [
             {
               "listen": "test",
@@ -2497,9 +2497,10 @@
                 "exec": [
                   "var jsonData = pm.response.json();",
                   "if (jsonData.success && jsonData.data) {",
-                  "    pm.collectionVariables.set('paymentId', jsonData.data.id);",
-                  "    pm.collectionVariables.set('paymentRef', jsonData.data.paymentReference);",
-                  "    console.log('Payment Reference saved:', jsonData.data.paymentReference);",
+                  "    pm.collectionVariables.set('paymentId', jsonData.data.paymentId);",
+                  "    pm.collectionVariables.set('transactionId', jsonData.data.transactionId);",
+                  "    console.log('Payment ID saved:', jsonData.data.paymentId);",
+                  "    console.log('Transaction ID saved:', jsonData.data.transactionId);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -2516,25 +2517,32 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "7b8f2f90-1234-4567-89ab-{{$randomUUID}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "req_{{$randomUUID}}"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"amount\": 499.00,\n  \"currency\": \"INR\",\n  \"merchantId\": \"{{merchantId}}\",\n  \"storeId\": \"c3d4e5f6-a7b8-9012-cdef-123456789012\",\n  \"paymentMethod\": \"UPI\",\n  \"notes\": \"Bill payment with 20% discount offer\"\n}"
+              "raw": "{\n  \"offerId\": \"{{offerId}}\",\n  \"storeId\": \"{{storeId}}\",\n  \"grossAmount\": 5000.00,\n  \"currency\": \"INR\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/payments/initiate",
+              "raw": "{{baseUrl}}/api/v1/payments",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "payments",
-                "initiate"
+                "payments"
               ]
             },
-            "description": "Initiates payment intent, sets status PENDING, and returns UPI deep-link URL."
+            "description": "Initiates payment for an eligible offer/store with mandatory Idempotency-Key. Backend calculates discount, payable amount, and returns provider intent."
           }
         },
         {
@@ -2558,13 +2566,14 @@
                 "payments",
                 "{{paymentId}}"
               ]
-            }
+            },
+            "description": "Fetch status and details of an existing payment by ID."
           }
         },
         {
-          "name": "Get Payment by Reference",
+          "name": "Cancel Payment",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [
               {
                 "key": "Authorization",
@@ -2572,7 +2581,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/payments/reference/{{paymentRef}}",
+              "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}/cancel",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2580,43 +2589,15 @@
                 "api",
                 "v1",
                 "payments",
-                "reference",
-                "{{paymentRef}}"
+                "{{paymentId}}",
+                "cancel"
               ]
-            }
+            },
+            "description": "Cancel an INITIATED or PENDING payment."
           }
         },
         {
-          "name": "Payment Gateway Webhook (Simulate SUCCESS)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"paymentReference\": \"{{paymentRef}}\",\n  \"gatewayTransactionId\": \"UPI_TXN_888999\",\n  \"status\": \"SUCCESS\",\n  \"amount\": 499.00,\n  \"signature\": \"mock_valid_signature\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/payments/webhook",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "payments",
-                "webhook"
-              ]
-            },
-            "description": "Simulates payment gateway webhook callback. On SUCCESS, updates payment, writes to Transaction History, and awards Cashback Reward Points."
-          }
-        },
-        {
-          "name": "Process Payment Refund",
+          "name": "Payment Provider Webhook (MOCK_UPI)",
           "request": {
             "method": "POST",
             "header": [
@@ -2625,16 +2606,20 @@
                 "value": "application/json"
               },
               {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "key": "X-Webhook-Signature",
+                "value": "valid_test_signature"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "wh_{{$randomUUID}}"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"amount\": 499.00,\n  \"reason\": \"Merchant cancelled order due to item stockout\"\n}"
+              "raw": "{\n  \"eventId\": \"evt_{{$randomUUID}}\",\n  \"eventType\": \"payment.success\",\n  \"paymentId\": \"{{paymentId}}\",\n  \"providerPaymentId\": \"pay_gw_{{$randomUUID}}\",\n  \"amount\": 4500.00,\n  \"currency\": \"INR\",\n  \"status\": \"SUCCESS\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}/refund",
+              "raw": "{{baseUrl}}/api/v1/payments/webhooks/MOCK_UPI",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2642,71 +2627,11 @@
                 "api",
                 "v1",
                 "payments",
-                "{{paymentId}}",
-                "refund"
+                "webhooks",
+                "MOCK_UPI"
               ]
-            }
-          }
-        },
-        {
-          "name": "Customer Payment History",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/payments/customer/{{customerId}}?page=0&size=10",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "payments",
-                "customer",
-                "{{customerId}}"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "10"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Payment Status",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "payments",
-                "{{paymentId}}",
-                "status"
-              ]
-            }
+            },
+            "description": "Public provider webhook ingestion with signature verification, replay protection, and status transition."
           }
         }
       ]
@@ -2715,102 +2640,7 @@
       "name": "7. Transaction Platform - Transaction History",
       "item": [
         {
-          "name": "Get Transaction by Reference",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/transactions/reference/{{paymentRef}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "transactions",
-                "reference",
-                "{{paymentRef}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Customer Transactions Ledger",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/transactions/customer/{{customerId}}?page=0&size=20",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "transactions",
-                "customer",
-                "{{customerId}}"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "20"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Merchant Transactions Ledger",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/transactions/merchant/{{merchantId}}?page=0&size=20",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "transactions",
-                "merchant",
-                "{{merchantId}}"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "20"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Admin: All Platform Transactions",
+          "name": "Customer Transaction History",
           "request": {
             "method": "GET",
             "header": [
@@ -2839,7 +2669,68 @@
                   "value": "20"
                 }
               ]
-            }
+            },
+            "description": "Retrieve customer transaction ledger history with merchant, store, and offer details."
+          }
+        },
+        {
+          "name": "Get Transaction Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Fetch detailed transaction breakdown by internal transaction ID."
+          }
+        },
+        {
+          "name": "Merchant Store Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/transactions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "merchant",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Retrieve transactions across all stores belonging to authenticated merchant."
           }
         }
       ]
