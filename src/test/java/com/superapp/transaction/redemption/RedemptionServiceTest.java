@@ -8,7 +8,7 @@ import com.superapp.merchant.repository.MerchantRepository;
 import com.superapp.offer.entity.Offer;
 import com.superapp.offer.enums.OfferType;
 import com.superapp.offer.repository.OfferRepository;
-import com.superapp.reward.service.RewardService;
+import com.superapp.transaction.reward.service.RewardService;
 import com.superapp.store.entity.Store;
 import com.superapp.store.repository.StoreRepository;
 import com.superapp.transaction.payment.entity.Payment;
@@ -164,7 +164,7 @@ class RedemptionServiceTest {
         // payment had discountAmount=100, which is preserved as rewardAmount
         assertEquals(BigDecimal.valueOf(100), response.rewardAmount());
         assertEquals(BigDecimal.ZERO.setScale(2), response.discountAmount());
-        verify(rewardService).addRewardPoints(eq(customerId), eq(100L), eq("REDEMPTION"), any(), any());
+        verify(rewardService).creditRedemptionReward(eq(customerId), any(), any(), eq(BigDecimal.valueOf(100)), any());
     }
 
     @Test

@@ -2739,7 +2739,7 @@
       "name": "8. Transaction Platform - Rewards Module",
       "item": [
         {
-          "name": "Get Customer Reward Balance",
+          "name": "Customer: Get Reward Balance",
           "request": {
             "method": "GET",
             "header": [
@@ -2749,22 +2749,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/rewards/account/{{customerId}}",
+              "raw": "{{baseUrl}}/api/v1/rewards",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "rewards",
-                "account",
-                "{{customerId}}"
+                "rewards"
               ]
             }
           }
         },
         {
-          "name": "Get Customer Reward Points Statement",
+          "name": "Customer: Get Reward Ledger",
           "request": {
             "method": "GET",
             "header": [
@@ -2774,7 +2772,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/rewards/transactions/{{customerId}}?page=0&size=20",
+              "raw": "{{baseUrl}}/api/v1/rewards/ledger?page=0&size=20",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2782,8 +2780,7 @@
                 "api",
                 "v1",
                 "rewards",
-                "transactions",
-                "{{customerId}}"
+                "ledger"
               ],
               "query": [
                 {
@@ -2799,25 +2796,17 @@
           }
         },
         {
-          "name": "Credit / Earn Reward Points",
+          "name": "Customer / Admin: Get Reward Ledger Entry by ID",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"points\": 100,\n  \"referenceType\": \"OFFER_BONUS\",\n  \"referenceId\": \"OFFER_FIRST_ORDER\",\n  \"description\": \"Welcome bonus 100 reward points\"\n}"
-            },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/rewards/earn",
+              "raw": "{{baseUrl}}/api/v1/rewards/ledger/{{entryId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2825,13 +2814,51 @@
                 "api",
                 "v1",
                 "rewards",
-                "earn"
+                "ledger",
+                "{{entryId}}"
               ]
             }
           }
         },
         {
-          "name": "Redeem Reward Points",
+          "name": "Admin: Reward Adjustment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "adj-key-{{$timestamp}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"amount\": 100.00,\n  \"type\": \"CREDIT\",\n  \"reason\": \"Customer service compensation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/rewards/adjustments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "rewards",
+                "adjustments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Reward Reversal",
           "request": {
             "method": "POST",
             "header": [
@@ -2846,18 +2873,54 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"points\": 25,\n  \"referenceType\": \"BILL_DISCOUNT\",\n  \"referenceId\": \"{{paymentRef}}\",\n  \"description\": \"Redeemed 25 points for bill discount\"\n}"
+              "raw": "{\n  \"ledgerEntryId\": \"{{entryId}}\",\n  \"reason\": \"Transaction refund reversal\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/rewards/redeem",
+              "raw": "{{baseUrl}}/api/v1/admin/rewards/reversals",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "admin",
                 "rewards",
-                "redeem"
+                "reversals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Get Reward Ledger",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/rewards/ledger?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "rewards",
+                "ledger"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
               ]
             }
           }

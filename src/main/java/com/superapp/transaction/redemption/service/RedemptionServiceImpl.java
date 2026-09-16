@@ -9,7 +9,7 @@ import com.superapp.merchant.repository.MerchantRepository;
 import com.superapp.offer.entity.Offer;
 import com.superapp.offer.enums.OfferType;
 import com.superapp.offer.repository.OfferRepository;
-import com.superapp.reward.service.RewardService;
+import com.superapp.transaction.reward.service.RewardService;
 import com.superapp.store.entity.Store;
 import com.superapp.store.repository.StoreRepository;
 import com.superapp.transaction.payment.entity.Payment;
@@ -172,10 +172,14 @@ public class RedemptionServiceImpl implements RedemptionService {
         // 6. Rewards Integration Point (Idempotent reward credit)
         if (rewardAmount.compareTo(BigDecimal.ZERO) > 0) {
             try {
-                long points = rewardAmount.longValue();
-                if (points > 0 && rewardService != null) {
-                    rewardService.addRewardPoints(customerId, points, "REDEMPTION", saved.getId().toString(),
-                            "Reward for redemption " + saved.getId());
+                if (rewardService != null) {
+                    rewardService.creditRedemptionReward(
+                            customerId,
+                            saved.getId(),
+                            transaction != null ? transaction.getId() : null,
+                            rewardAmount,
+                            "Reward for redemption " + saved.getId()
+                    );
                 }
             } catch (Exception ex) {
                 log.warn("Reward credit failed for redemptionId={}: {}", saved.getId(), ex.getMessage());
