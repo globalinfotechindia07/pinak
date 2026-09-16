@@ -21,6 +21,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.superapp.transaction.notification.service.NotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +39,23 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
     private final PaymentRepository paymentRepository;
     private final TransactionRepository transactionRepository;
     private final AuditService auditService;
+    private final NotificationService notificationService;
+
+    @Autowired
+    public PaymentWebhookServiceImpl(
+            List<PaymentProvider> paymentProviders,
+            WebhookEventRepository webhookEventRepository,
+            PaymentRepository paymentRepository,
+            TransactionRepository transactionRepository,
+            AuditService auditService,
+            @Autowired(required = false) NotificationService notificationService) {
+        this.paymentProviders = paymentProviders;
+        this.webhookEventRepository = webhookEventRepository;
+        this.paymentRepository = paymentRepository;
+        this.transactionRepository = transactionRepository;
+        this.auditService = auditService;
+        this.notificationService = notificationService;
+    }
 
     public PaymentWebhookServiceImpl(
             List<PaymentProvider> paymentProviders,
@@ -43,11 +63,7 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
             PaymentRepository paymentRepository,
             TransactionRepository transactionRepository,
             AuditService auditService) {
-        this.paymentProviders = paymentProviders;
-        this.webhookEventRepository = webhookEventRepository;
-        this.paymentRepository = paymentRepository;
-        this.transactionRepository = transactionRepository;
-        this.auditService = auditService;
+        this(paymentProviders, webhookEventRepository, paymentRepository, transactionRepository, auditService, null);
     }
 
     @Override
@@ -165,6 +181,14 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
             auditService.record(AuditEventType.PAYMENT_SUCCESS, payment.getCustomerId(), null, null, requestId,
                     "Payment confirmed: " + payment.getId());
 
+            if (notificationService != null) {
+                try {
+                    notificationService.createPaymentNotification(payment);
+                } catch (Exception ex) {
+                    log.warn("Failed to create payment success notification: {}", ex.getMessage());
+                }
+            }
+
         } else if (event.status() == PaymentStatus.FAILED) {
             if (payment.getStatus() == PaymentStatus.FAILED) {
                 return Map.of("status", "FAILED", "paymentId", payment.getId());
@@ -183,6 +207,14 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
 
             auditService.record(AuditEventType.PAYMENT_FAILED, payment.getCustomerId(), null, null, requestId,
                     "Payment failed: " + payment.getId() + " code=" + event.failureCode());
+
+            if (notificationService != null) {
+                try {
+                    notificationService.createPaymentNotification(payment);
+                } catch (Exception ex) {
+                    log.warn("Failed to create payment failure notification: {}", ex.getMessage());
+                }
+            }
 
         } else if (event.status() == PaymentStatus.REFUNDED) {
             PaymentStateMachine.validateTransition(payment.getStatus(), PaymentStatus.REFUNDED);

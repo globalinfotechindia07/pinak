@@ -18,12 +18,14 @@ import com.superapp.transaction.reward.repository.RewardLedgerRepository;
 import com.superapp.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.superapp.transaction.notification.service.NotificationService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -41,6 +43,25 @@ public class RewardServiceImpl implements RewardService {
     private final RewardMapper rewardMapper;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final NotificationService notificationService;
+
+    @Autowired
+    public RewardServiceImpl(
+            RewardAccountRepository rewardAccountRepository,
+            RewardLedgerRepository rewardLedgerRepository,
+            RewardCacheService rewardCacheService,
+            RewardMapper rewardMapper,
+            UserRepository userRepository,
+            AuditService auditService,
+            @Autowired(required = false) NotificationService notificationService) {
+        this.rewardAccountRepository = rewardAccountRepository;
+        this.rewardLedgerRepository = rewardLedgerRepository;
+        this.rewardCacheService = rewardCacheService;
+        this.rewardMapper = rewardMapper;
+        this.userRepository = userRepository;
+        this.auditService = auditService;
+        this.notificationService = notificationService;
+    }
 
     public RewardServiceImpl(
             RewardAccountRepository rewardAccountRepository,
@@ -49,12 +70,8 @@ public class RewardServiceImpl implements RewardService {
             RewardMapper rewardMapper,
             UserRepository userRepository,
             AuditService auditService) {
-        this.rewardAccountRepository = rewardAccountRepository;
-        this.rewardLedgerRepository = rewardLedgerRepository;
-        this.rewardCacheService = rewardCacheService;
-        this.rewardMapper = rewardMapper;
-        this.userRepository = userRepository;
-        this.auditService = auditService;
+        this(rewardAccountRepository, rewardLedgerRepository, rewardCacheService, rewardMapper,
+                userRepository, auditService, null);
     }
 
     @Override
@@ -196,10 +213,12 @@ public class RewardServiceImpl implements RewardService {
         rewardCacheService.evictAccount(customerId);
 
         // 6. Asynchronous Notification Integration Point
-        try {
-            log.info("Notification event: ₹{} reward credited to customerId={}", creditAmount, customerId);
-        } catch (Exception ex) {
-            log.warn("Failed to dispatch reward notification: {}", ex.getMessage());
+        if (notificationService != null) {
+            try {
+                notificationService.createRewardNotification(savedEntry);
+            } catch (Exception ex) {
+                log.warn("Failed to dispatch reward notification: {}", ex.getMessage());
+            }
         }
 
         // 7. Audit Logging
@@ -264,6 +283,14 @@ public class RewardServiceImpl implements RewardService {
 
         // Invalidate cache
         rewardCacheService.evictAccount(original.getCustomerId());
+
+        if (notificationService != null) {
+            try {
+                notificationService.createRewardNotification(savedReversal);
+            } catch (Exception ex) {
+                log.warn("Failed to dispatch reward reversal notification: {}", ex.getMessage());
+            }
+        }
 
         // Audit log
         Map<String, Object> audit = new HashMap<>();

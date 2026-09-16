@@ -25,6 +25,7 @@ import com.superapp.transaction.redemption.validation.RedemptionValidator.Valida
 import com.superapp.transaction.transaction.entity.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -32,6 +33,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.superapp.transaction.notification.service.NotificationService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -52,6 +54,29 @@ public class RedemptionServiceImpl implements RedemptionService {
     private final MerchantRepository merchantRepository;
     private final AuditService auditService;
     private final RewardService rewardService;
+    private final NotificationService notificationService;
+
+    @Autowired
+    public RedemptionServiceImpl(
+            RedemptionRepository redemptionRepository,
+            RedemptionValidator redemptionValidator,
+            RedemptionMapper redemptionMapper,
+            OfferRepository offerRepository,
+            StoreRepository storeRepository,
+            MerchantRepository merchantRepository,
+            AuditService auditService,
+            RewardService rewardService,
+            @Autowired(required = false) NotificationService notificationService) {
+        this.redemptionRepository = redemptionRepository;
+        this.redemptionValidator = redemptionValidator;
+        this.redemptionMapper = redemptionMapper;
+        this.offerRepository = offerRepository;
+        this.storeRepository = storeRepository;
+        this.merchantRepository = merchantRepository;
+        this.auditService = auditService;
+        this.rewardService = rewardService;
+        this.notificationService = notificationService;
+    }
 
     public RedemptionServiceImpl(
             RedemptionRepository redemptionRepository,
@@ -62,14 +87,8 @@ public class RedemptionServiceImpl implements RedemptionService {
             MerchantRepository merchantRepository,
             AuditService auditService,
             RewardService rewardService) {
-        this.redemptionRepository = redemptionRepository;
-        this.redemptionValidator = redemptionValidator;
-        this.redemptionMapper = redemptionMapper;
-        this.offerRepository = offerRepository;
-        this.storeRepository = storeRepository;
-        this.merchantRepository = merchantRepository;
-        this.auditService = auditService;
-        this.rewardService = rewardService;
+        this(redemptionRepository, redemptionValidator, redemptionMapper, offerRepository,
+                storeRepository, merchantRepository, auditService, rewardService, null);
     }
 
     @Override
@@ -187,10 +206,12 @@ public class RedemptionServiceImpl implements RedemptionService {
         }
 
         // 7. Notification Integration Point
-        try {
-            log.info("Notification event: Offer '{}' successfully redeemed by customerId={}", offer.getTitle(), customerId);
-        } catch (Exception ex) {
-            log.warn("Notification dispatch failed for redemptionId={}: {}", saved.getId(), ex.getMessage());
+        if (notificationService != null) {
+            try {
+                notificationService.createRedemptionNotification(saved);
+            } catch (Exception ex) {
+                log.warn("Notification dispatch failed for redemptionId={}: {}", saved.getId(), ex.getMessage());
+            }
         }
 
         return redemptionMapper.toResponse(saved);
