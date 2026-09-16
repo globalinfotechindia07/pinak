@@ -4,6 +4,7 @@ import com.superapp.common.response.ApiResponse;
 import com.superapp.common.response.PaginationMeta;
 import com.superapp.transaction.reward.dto.AdminRewardAdjustmentRequest;
 import com.superapp.transaction.reward.dto.AdminRewardAdjustmentResponse;
+import com.superapp.transaction.reward.dto.RewardBalanceResponse;
 import com.superapp.transaction.reward.dto.RewardLedgerItemResponse;
 import com.superapp.transaction.reward.dto.RewardReversalRequest;
 import com.superapp.transaction.reward.service.RewardService;
@@ -89,5 +90,13 @@ public class AdminRewardController {
                 "Admin reward ledger fetched successfully",
                 page.getContent(),
                 PaginationMeta.of(page)));
+    }
+
+    @GetMapping("/{customerId}")
+    @Operation(summary = "Get customer reward account details (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<RewardBalanceResponse>> getCustomerRewardAccount(
+            @PathVariable UUID customerId) {
+        RewardBalanceResponse response = rewardService.getRewardBalance(customerId);
+        return ResponseEntity.ok(ApiResponse.success("Customer reward account fetched successfully", response));
     }
 }

@@ -3,6 +3,7 @@ package com.superapp.location.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.superapp.common.audit.AuditEventType;
 import com.superapp.common.audit.AuditService;
+import com.superapp.common.exception.AppException;
 import com.superapp.common.exception.DuplicateResourceException;
 import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.common.response.ApiError;
@@ -12,7 +13,9 @@ import com.superapp.location.mapper.CityMapper;
 import com.superapp.store.dto.CityResponse;
 import com.superapp.store.entity.City;
 import com.superapp.store.enums.CityStatus;
+import com.superapp.store.enums.StoreStatus;
 import com.superapp.store.repository.CityRepository;
+import com.superapp.store.repository.StoreRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -36,20 +39,31 @@ public class CityServiceImpl implements CityService {
     private final CityMapper cityMapper;
     private final AuditService auditService;
     private final ObjectMapper objectMapper;
+    private final StoreRepository storeRepository;
 
     public CityServiceImpl(CityRepository cityRepository,
                            CityMapper cityMapper,
                            AuditService auditService,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           StoreRepository storeRepository) {
         this.cityRepository = cityRepository;
         this.cityMapper = cityMapper;
         this.auditService = auditService;
         this.objectMapper = objectMapper;
+        this.storeRepository = storeRepository;
+    }
+
+    // Convenience constructor for backward compatibility & tests
+    public CityServiceImpl(CityRepository cityRepository,
+                           CityMapper cityMapper,
+                           AuditService auditService,
+                           ObjectMapper objectMapper) {
+        this(cityRepository, cityMapper, auditService, objectMapper, null);
     }
 
     // Convenience constructor for tests
     public CityServiceImpl(CityRepository cityRepository) {
-        this(cityRepository, new CityMapper(), null, new ObjectMapper());
+        this(cityRepository, new CityMapper(), null, new ObjectMapper(), null);
     }
 
     // =========================================================================
@@ -177,6 +191,10 @@ public class CityServiceImpl implements CityService {
         City city = cityRepository.findById(cityId)
                 .orElseThrow(() -> new ResourceNotFoundException("City not found", ApiError.CITY_NOT_FOUND));
 
+        if (storeRepository != null && storeRepository.existsByCityIdAndStatus(cityId, StoreStatus.ACTIVE)) {
+            throw new AppException("Cannot deactivate city with active stores. Please deactivate or reassign stores first.", ApiError.VALIDATION_FAILED, 400);
+        }
+
         Map<String, Object> oldAuditState = toAuditMap(city);
 
         // Soft deactivation
@@ -187,6 +205,31 @@ public class CityServiceImpl implements CityService {
         log.info("Deactivated city id={} slug='{}' by admin='{}'", saved.getId(), saved.getSlug(), adminUserId);
 
         recordAudit(AuditEventType.CITY_DEACTIVATED, adminUserId, saved.getId(), oldAuditState, toAuditMap(saved));
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "master_cities_active", allEntries = true)
+    public CityResponse updateCityStatusAdmin(String cityId, CityStatus status, String adminUserId) {
+        City city = cityRepository.findById(cityId)
+                .orElseThrow(() -> new ResourceNotFoundException("City not found", ApiError.CITY_NOT_FOUND));
+
+        if (status == CityStatus.INACTIVE && storeRepository != null && storeRepository.existsByCityIdAndStatus(cityId, StoreStatus.ACTIVE)) {
+            throw new AppException("Cannot deactivate city with active stores. Please deactivate or reassign stores first.", ApiError.VALIDATION_FAILED, 400);
+        }
+
+        Map<String, Object> oldAuditState = toAuditMap(city);
+
+        city.setStatus(status);
+        city.setUpdatedBy(adminUserId);
+
+        City saved = cityRepository.save(city);
+        log.info("Updated city status id={} status={} by admin='{}'", saved.getId(), saved.getStatus(), adminUserId);
+
+        recordAudit(status == CityStatus.INACTIVE ? AuditEventType.CITY_DEACTIVATED : AuditEventType.CITY_UPDATED,
+                adminUserId, saved.getId(), oldAuditState, toAuditMap(saved));
+
+        return cityMapper.toResponse(saved);
     }
 
     // =========================================================================

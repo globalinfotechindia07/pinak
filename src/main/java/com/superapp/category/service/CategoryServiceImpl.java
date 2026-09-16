@@ -193,6 +193,27 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Transactional
+    @CacheEvict(value = {"master_categories_active", "categories"}, allEntries = true)
+    public CategoryResponse updateCategoryStatusAdmin(UUID id, CategoryStatus status, String adminUserId) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found", ApiError.CATEGORY_NOT_FOUND));
+
+        Map<String, Object> oldAuditState = toAuditMap(category);
+
+        category.setStatus(status);
+        category.setUpdatedBy(adminUserId);
+        Category saved = categoryRepository.save(category);
+
+        log.info("Updated category id={} status={} by admin='{}'", saved.getId(), saved.getStatus(), adminUserId);
+
+        recordAudit(status == CategoryStatus.INACTIVE ? AuditEventType.CATEGORY_DEACTIVATED : AuditEventType.CATEGORY_UPDATED,
+                adminUserId, saved.getId().toString(), oldAuditState, toAuditMap(saved));
+
+        return categoryMapper.toResponse(saved);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public CategoryResponse getCategoryByIdAdmin(UUID id) {
         Category category = categoryRepository.findById(id)

@@ -243,7 +243,16 @@ public class StoreServiceImpl implements StoreService {
             throw new AppException("Store cannot be approved in its current state", ApiError.INVALID_STORE_STATE, 409);
         }
 
+        Merchant merchant = merchantRepository.findById(store.getMerchantId())
+                .orElseThrow(() -> new AppException("Parent merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
+        if (merchant.getStatus() == com.superapp.merchant.enums.MerchantStatus.SUSPENDED ||
+            merchant.getApprovalStatus() != ApprovalStatus.APPROVED) {
+            throw new AppException("Cannot approve store because parent merchant is suspended or not approved",
+                    ApiError.VALIDATION_ERROR, 400);
+        }
+
         store.setApprovalStatus(ApprovalStatus.APPROVED);
+        store.setStatus(StoreStatus.ACTIVE);
         store.setApprovedAt(Instant.now());
         store.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
         storeRepository.save(store);
@@ -310,6 +319,36 @@ public class StoreServiceImpl implements StoreService {
         }
 
         return StoreApprovalActionResponse.suspended(storeId.toString(), reason.trim());
+    }
+
+    @Override
+    @Transactional
+    public StoreApprovalActionResponse activateStore(UUID storeId, String reason, UUID adminUserId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new AppException("Store not found", ApiError.STORE_NOT_FOUND, 404));
+
+        Merchant merchant = merchantRepository.findById(store.getMerchantId())
+                .orElseThrow(() -> new AppException("Parent merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
+        if (merchant.getStatus() == com.superapp.merchant.enums.MerchantStatus.SUSPENDED ||
+            merchant.getApprovalStatus() != ApprovalStatus.APPROVED) {
+            throw new AppException("Cannot activate store because parent merchant is suspended or not approved",
+                    ApiError.VALIDATION_ERROR, 400);
+        }
+
+        store.setStatus(StoreStatus.ACTIVE);
+        store.setApprovalStatus(ApprovalStatus.APPROVED);
+        store.setSuspensionReason(null);
+        store.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
+        storeRepository.save(store);
+
+        log.info("Admin {} activated store id={} reason: {}", adminUserId, storeId, reason);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.STORE_REACTIVATED, adminUserId, null, null, MDC.get("requestId"),
+                    "{\"storeId\":\"" + storeId + "\",\"action\":\"ACTIVATE\",\"reason\":\"" + (reason != null ? reason : "") + "\"}");
+        }
+
+        return StoreApprovalActionResponse.approved(storeId.toString());
     }
 
     // =========================================================================

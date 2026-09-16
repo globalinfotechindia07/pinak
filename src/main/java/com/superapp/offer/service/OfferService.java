@@ -40,4 +40,6 @@ public interface OfferService {
     OfferApprovalResponse approveOffer(UUID offerId, UUID adminUserId);
 
     OfferApprovalResponse rejectOffer(UUID offerId, RejectOfferRequest request, UUID adminUserId);
+
+    OfferApprovalResponse suspendOffer(UUID offerId, String reason, UUID adminUserId);
 }

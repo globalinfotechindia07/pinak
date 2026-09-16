@@ -66,4 +66,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
             @Param("toDate") Instant toDate,
             Pageable pageable
     );
+
+    long countByStatus(TransactionStatus status);
 }

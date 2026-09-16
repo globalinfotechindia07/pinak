@@ -52,7 +52,7 @@ public class AdminMerchantController {
         return ResponseEntity.ok(ApiResponse.success("Merchant retrieved", response));
     }
 
-    @PostMapping("/{merchantId}/approve")
+    @RequestMapping(value = "/{merchantId}/approve", method = {RequestMethod.PATCH, RequestMethod.POST})
     @Operation(summary = "Approve merchant application", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<MerchantApprovalActionResponse>> approveMerchant(
             @PathVariable UUID merchantId,
@@ -62,7 +62,7 @@ public class AdminMerchantController {
         return ResponseEntity.ok(ApiResponse.success("Merchant approved successfully", response));
     }
 
-    @PostMapping("/{merchantId}/reject")
+    @RequestMapping(value = "/{merchantId}/reject", method = {RequestMethod.PATCH, RequestMethod.POST})
     @Operation(summary = "Reject merchant application with reason", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<MerchantApprovalActionResponse>> rejectMerchant(
             @PathVariable UUID merchantId,
@@ -73,7 +73,7 @@ public class AdminMerchantController {
         return ResponseEntity.ok(ApiResponse.success("Merchant rejected successfully", response));
     }
 
-    @PostMapping("/{merchantId}/suspend")
+    @RequestMapping(value = "/{merchantId}/suspend", method = {RequestMethod.PATCH, RequestMethod.POST})
     @Operation(summary = "Suspend merchant account with reason", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<MerchantApprovalActionResponse>> suspendMerchant(
             @PathVariable UUID merchantId,
@@ -82,5 +82,16 @@ public class AdminMerchantController {
         UUID adminUserId = UUID.fromString(userDetails.getUsername());
         MerchantApprovalActionResponse response = merchantService.suspendMerchant(merchantId, request.getReason(), adminUserId);
         return ResponseEntity.ok(ApiResponse.success("Merchant suspended successfully", response));
+    }
+
+    @RequestMapping(value = "/{merchantId}/activate", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @Operation(summary = "Reactivate suspended merchant account", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<MerchantApprovalActionResponse>> activateMerchant(
+            @PathVariable UUID merchantId,
+            @RequestParam(required = false) String reason,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID adminUserId = UUID.fromString(userDetails.getUsername());
+        MerchantApprovalActionResponse response = merchantService.activateMerchant(merchantId, reason, adminUserId);
+        return ResponseEntity.ok(ApiResponse.success("Merchant activated successfully", response));
     }
 }

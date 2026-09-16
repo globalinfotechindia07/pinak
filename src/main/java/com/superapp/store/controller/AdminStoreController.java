@@ -53,7 +53,7 @@ public class AdminStoreController {
         return ResponseEntity.ok(ApiResponse.success("Store retrieved", response));
     }
 
-    @PostMapping("/{storeId}/approve")
+    @RequestMapping(value = "/{storeId}/approve", method = {RequestMethod.PATCH, RequestMethod.POST})
     @Operation(summary = "Approve store branch application", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<StoreApprovalActionResponse>> approveStore(
             @PathVariable UUID storeId,
@@ -63,7 +63,7 @@ public class AdminStoreController {
         return ResponseEntity.ok(ApiResponse.success("Store approved successfully", response));
     }
 
-    @PostMapping("/{storeId}/reject")
+    @RequestMapping(value = "/{storeId}/reject", method = {RequestMethod.PATCH, RequestMethod.POST})
     @Operation(summary = "Reject store branch application with reason", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<StoreApprovalActionResponse>> rejectStore(
             @PathVariable UUID storeId,
@@ -74,7 +74,7 @@ public class AdminStoreController {
         return ResponseEntity.ok(ApiResponse.success("Store rejected successfully", response));
     }
 
-    @PostMapping("/{storeId}/suspend")
+    @RequestMapping(value = "/{storeId}/suspend", method = {RequestMethod.PATCH, RequestMethod.POST})
     @Operation(summary = "Suspend store branch with reason", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<StoreApprovalActionResponse>> suspendStore(
             @PathVariable UUID storeId,
@@ -83,5 +83,16 @@ public class AdminStoreController {
         UUID adminUserId = UUID.fromString(userDetails.getUsername());
         StoreApprovalActionResponse response = storeService.suspendStore(storeId, request.getReason(), adminUserId);
         return ResponseEntity.ok(ApiResponse.success("Store suspended successfully", response));
+    }
+
+    @RequestMapping(value = "/{storeId}/activate", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @Operation(summary = "Reactivate suspended store branch", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<StoreApprovalActionResponse>> activateStore(
+            @PathVariable UUID storeId,
+            @RequestParam(required = false) String reason,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID adminUserId = UUID.fromString(userDetails.getUsername());
+        StoreApprovalActionResponse response = storeService.activateStore(storeId, reason, adminUserId);
+        return ResponseEntity.ok(ApiResponse.success("Store activated successfully", response));
     }
 }

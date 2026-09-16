@@ -905,6 +905,30 @@
           }
         },
         {
+          "name": "Admin: Get Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "dashboard"
+              ]
+            }
+          }
+        },
+        {
           "name": "Admin: List All Users",
           "request": {
             "method": "GET",
@@ -1181,6 +1205,25 @@
           }
         },
         {
+          "name": "Admin: Update Category Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "categories", "{{categoryId}}", "status"]
+            }
+          }
+        },
+        {
           "name": "Customer Discovery: Get Active Cities",
           "request": {
             "method": "GET",
@@ -1267,6 +1310,25 @@
               "raw": "{{baseUrl}}/api/v1/admin/cities/{{cityId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "admin", "cities", "{{cityId}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Update City Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INACTIVE\",\n  \"reason\": \"Operational restructuring\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/cities/{{cityId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "cities", "{{cityId}}", "status"]
             }
           }
         }
@@ -1693,6 +1755,42 @@
                 "merchants",
                 "{{merchantId}}",
                 "suspend"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Activate Merchant Account",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"KYC verified and compliance check completed successfully.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "merchants",
+                "{{merchantId}}",
+                "activate"
               ]
             }
           }
@@ -2222,6 +2320,42 @@
               ]
             }
           }
+        },
+        {
+          "name": "Admin: Activate Store Branch",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Physical store location re-verified and compliant.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/stores/{{storeId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "stores",
+                "{{storeId}}",
+                "activate"
+              ]
+            }
+          }
         }
       ]
     },
@@ -2485,6 +2619,25 @@
               "raw": "{{baseUrl}}/api/v1/admin/offers/{{offerId}}/reject",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "admin", "offers", "{{offerId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Suspend Offer",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Compliance audit flagged misleading discount claims.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/offers/{{offerId}}/suspend",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "offers", "{{offerId}}", "suspend"]
             }
           }
         }
@@ -3029,6 +3182,32 @@
                   "key": "size",
                   "value": "20"
                 }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Get Customer Reward Account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/rewards/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "rewards",
+                "{{customerId}}"
               ]
             }
           }

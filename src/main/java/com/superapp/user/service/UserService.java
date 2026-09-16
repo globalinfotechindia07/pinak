@@ -149,6 +149,63 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    public Page<UserResponse> getAdminUsers(
+            UserStatus status,
+            Role role,
+            String search,
+            java.time.Instant fromDate,
+            java.time.Instant toDate,
+            Pageable pageable) {
+
+        int pageNumber = Math.max(pageable.getPageNumber(), 0);
+        int pageSize = Math.min(Math.max(pageable.getPageSize(), 1), 100);
+
+        java.util.List<org.springframework.data.domain.Sort.Order> allowedOrders = new java.util.ArrayList<>();
+        if (pageable.getSort().isSorted()) {
+            for (org.springframework.data.domain.Sort.Order order : pageable.getSort()) {
+                String property = order.getProperty();
+                if ("createdAt".equalsIgnoreCase(property) ||
+                    "name".equalsIgnoreCase(property) ||
+                    "email".equalsIgnoreCase(property) ||
+                    "status".equalsIgnoreCase(property) ||
+                    "role".equalsIgnoreCase(property)) {
+                    allowedOrders.add(new org.springframework.data.domain.Sort.Order(order.getDirection(), property));
+                }
+            }
+        }
+        if (allowedOrders.isEmpty()) {
+            allowedOrders.add(new org.springframework.data.domain.Sort.Order(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+        }
+        Pageable effectivePageable = org.springframework.data.domain.PageRequest.of(pageNumber, pageSize, org.springframework.data.domain.Sort.by(allowedOrders));
+
+        org.springframework.data.jpa.domain.Specification<User> spec = (root, query, cb) -> {
+            java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (role != null) {
+                predicates.add(cb.equal(root.get("role"), role));
+            }
+            if (fromDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), fromDate));
+            }
+            if (toDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), toDate));
+            }
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.trim().toLowerCase() + "%";
+                jakarta.persistence.criteria.Predicate nameMatch = cb.like(cb.lower(root.get("name")), pattern);
+                jakarta.persistence.criteria.Predicate emailMatch = cb.like(cb.lower(root.get("email")), pattern);
+                jakarta.persistence.criteria.Predicate mobileMatch = cb.like(cb.lower(root.get("mobile")), pattern);
+                predicates.add(cb.or(nameMatch, emailMatch, mobileMatch));
+            }
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        return userRepository.findAll(spec, effectivePageable).map(userMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
     public UserResponse getUserById(UUID userId) {
         return userRepository.findById(userId)
                 .map(userMapper::toResponse)
@@ -157,22 +214,30 @@ public class UserService {
 
     @Transactional
     public UserResponse changeUserStatus(UUID userId, UserStatus newStatus) {
+        return changeUserStatus(userId, newStatus, null, null, MDC.get("requestId"));
+    }
+
+    @Transactional
+    public UserResponse changeUserStatus(UUID userId, UserStatus newStatus, String reason, UUID adminUserId, String requestId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(ResourceNotFoundException::user);
         user.setStatus(newStatus);
         User updated = userRepository.save(user);
 
         if (auditService != null) {
+            String metadata = reason != null ? "{\"reason\":\"" + reason + "\"}" : null;
             if (newStatus == UserStatus.SUSPENDED) {
-                auditService.record(AuditEventType.ACCOUNT_SUSPENDED, userId, null, null, MDC.get("requestId"));
+                auditService.record(AuditEventType.ACCOUNT_SUSPENDED, userId, null, null, requestId, metadata);
             } else if (newStatus == UserStatus.ACTIVE) {
-                auditService.record(AuditEventType.ACCOUNT_ACTIVATED, userId, null, null, MDC.get("requestId"));
+                auditService.record(AuditEventType.ACCOUNT_ACTIVATED, userId, null, null, requestId, metadata);
+            } else if (newStatus == UserStatus.INACTIVE) {
+                auditService.record(AuditEventType.ACCOUNT_DEACTIVATED, userId, null, null, requestId, metadata);
             } else if (newStatus == UserStatus.BLOCKED) {
-                auditService.record(AuditEventType.ACCOUNT_BLOCKED, userId, null, null, MDC.get("requestId"));
+                auditService.record(AuditEventType.ACCOUNT_BLOCKED, userId, null, null, requestId, metadata);
             }
         }
 
-        log.info("Admin changed status of user={} to {}", userId, newStatus);
+        log.info("Admin {} changed status of user={} to {} (reason={})", adminUserId, userId, newStatus, reason);
         return userMapper.toResponse(updated);
     }
 

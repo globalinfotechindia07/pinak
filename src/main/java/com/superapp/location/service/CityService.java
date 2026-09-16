@@ -22,5 +22,7 @@ public interface CityService {
 
     CityResponse updateCityAdmin(String cityId, UpdateCityRequest request, String adminUserId);
 
+    CityResponse updateCityStatusAdmin(String cityId, com.superapp.store.enums.CityStatus status, String adminUserId);
+
     void deactivateCityAdmin(String cityId, String adminUserId);
 }

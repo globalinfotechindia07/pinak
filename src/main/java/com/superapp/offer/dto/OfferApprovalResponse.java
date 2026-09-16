@@ -22,4 +22,8 @@ public record OfferApprovalResponse(
     public static OfferApprovalResponse submitted(String offerId) {
         return new OfferApprovalResponse(offerId, "PENDING_APPROVAL", null, null);
     }
+
+    public static OfferApprovalResponse suspended(String offerId, String reason) {
+        return new OfferApprovalResponse(offerId, null, "DEACTIVATED", reason);
+    }
 }

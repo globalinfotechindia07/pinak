@@ -293,6 +293,28 @@ public class MerchantServiceImpl implements MerchantService {
         return MerchantApprovalActionResponse.suspended(merchantId.toString(), reason.trim());
     }
 
+    @Override
+    @Transactional
+    public MerchantApprovalActionResponse activateMerchant(UUID merchantId, String reason, UUID adminUserId) {
+        Merchant merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
+
+        merchant.setStatus(MerchantStatus.ACTIVE);
+        merchant.setApprovalStatus(ApprovalStatus.APPROVED);
+        merchant.setSuspensionReason(null);
+        merchant.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
+        merchantRepository.save(merchant);
+
+        log.info("Admin {} activated merchant id={} reason: {}", adminUserId, merchantId, reason);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.MERCHANT_REACTIVATED, adminUserId, null, null, MDC.get("requestId"),
+                    "{\"merchantId\":\"" + merchantId + "\",\"action\":\"ACTIVATE\",\"reason\":\"" + (reason != null ? reason : "") + "\"}");
+        }
+
+        return MerchantApprovalActionResponse.approved(merchantId.toString());
+    }
+
     // ---- General / Backwards-compatible Queries ----
 
     @Override

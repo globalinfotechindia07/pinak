@@ -22,5 +22,10 @@ public interface RedemptionService {
             UUID merchantOwnerUserId, UUID storeId, UUID offerId, String status, Instant fromDate, Instant toDate, Pageable pageable);
 
     Page<RedemptionHistoryResponse> getAdminRedemptions(
-            UUID customerId, UUID merchantId, UUID storeId, UUID offerId, String status, Instant fromDate, Instant toDate, Pageable pageable);
+            UUID customerId, UUID merchantId, UUID storeId, UUID offerId, UUID transactionId, String status, Instant fromDate, Instant toDate, Pageable pageable);
+
+    default Page<RedemptionHistoryResponse> getAdminRedemptions(
+            UUID customerId, UUID merchantId, UUID storeId, UUID offerId, String status, Instant fromDate, Instant toDate, Pageable pageable) {
+        return getAdminRedemptions(customerId, merchantId, storeId, offerId, null, status, fromDate, toDate, pageable);
+    }
 }

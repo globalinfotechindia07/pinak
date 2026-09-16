@@ -93,4 +93,10 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
             @Param("radiusMeters") double radiusMeters,
             Pageable pageable
     );
+
+    long countByApprovalStatus(ApprovalStatus approvalStatus);
+
+    long countByStatus(StoreStatus status);
+
+    boolean existsByCityIdAndStatus(String cityId, StoreStatus status);
 }

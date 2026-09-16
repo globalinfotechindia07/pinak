@@ -5,8 +5,10 @@ import com.superapp.auth.repository.PasswordResetTokenRepository;
 import com.superapp.user.entity.PasswordResetToken;
 import com.superapp.common.audit.AuditEventType;
 import com.superapp.common.audit.AuditService;
+import com.superapp.common.exception.AppException;
 import com.superapp.common.exception.AuthException;
 import com.superapp.common.exception.DuplicateResourceException;
+import com.superapp.common.response.ApiError;
 import com.superapp.common.exception.PasswordException;
 import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.common.security.JwtService;
@@ -89,8 +91,12 @@ public class AuthService {
             }
         }
 
-        // Determine role (defaults to CUSTOMER)
+        // Determine role (defaults to CUSTOMER, reject direct ADMIN/SUPER_ADMIN registration)
         Role role = request.role() != null ? request.role() : Role.CUSTOMER;
+        if (role == Role.ADMIN || role == Role.SUPER_ADMIN) {
+            log.warn("Privilege escalation attempt during registration: email={} attemptedRole={}", email, role);
+            throw new AppException("Direct registration as an administrator is not permitted", ApiError.FORBIDDEN, 403);
+        }
 
         // Build user entity
         String name = (request.firstName().trim() + " " + request.lastName().trim()).trim();

@@ -320,7 +320,7 @@ public class RedemptionServiceImpl implements RedemptionService {
     @Override
     @Transactional(readOnly = true)
     public Page<RedemptionHistoryResponse> getAdminRedemptions(
-            UUID customerId, UUID merchantId, UUID storeId, UUID offerId, String status, Instant fromDate, Instant toDate, Pageable pageable) {
+            UUID customerId, UUID merchantId, UUID storeId, UUID offerId, UUID transactionId, String status, Instant fromDate, Instant toDate, Pageable pageable) {
 
         Specification<Redemption> spec = (root, query, cb) -> cb.conjunction();
 
@@ -335,6 +335,9 @@ public class RedemptionServiceImpl implements RedemptionService {
         }
         if (offerId != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("offerId"), offerId));
+        }
+        if (transactionId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("transactionId"), transactionId));
         }
         if (status != null && !status.isBlank()) {
             try {

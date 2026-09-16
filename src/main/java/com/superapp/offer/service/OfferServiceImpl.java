@@ -413,6 +413,34 @@ public class OfferServiceImpl implements OfferService {
         return OfferApprovalResponse.rejected(saved.getId().toString(), request.reason());
     }
 
+    @Override
+    @Transactional
+    public OfferApprovalResponse suspendOffer(UUID offerId, String reason, UUID adminUserId) {
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offer not found", ApiError.OFFER_NOT_FOUND));
+
+        offer.setStatus(OfferStatus.DEACTIVATED);
+        offer.setRejectionReason(reason != null ? reason.trim() : "Suspended by admin");
+        offer.setUpdatedBy(adminUserId.toString());
+
+        Offer saved = offerRepository.save(offer);
+        log.info("Admin {} suspended offer id={} reason: {}", adminUserId, saved.getId(), reason);
+
+        if (auditService != null) {
+            auditService.record(
+                    AuditEventType.OFFER_DEACTIVATED,
+                    adminUserId,
+                    null,
+                    null,
+                    MDC.get("requestId"),
+                    "Suspended offer id=" + saved.getId() + " reason: " + reason
+            );
+        }
+
+        evictOfferCaches(saved);
+        return OfferApprovalResponse.suspended(saved.getId().toString(), reason);
+    }
+
     // =========================================================================
     // Helpers
     // =========================================================================

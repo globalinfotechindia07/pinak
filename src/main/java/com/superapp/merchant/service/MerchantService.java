@@ -43,4 +43,6 @@ public interface MerchantService {
     MerchantApprovalActionResponse rejectMerchant(UUID merchantId, String reason, UUID adminUserId);
 
     MerchantApprovalActionResponse suspendMerchant(UUID merchantId, String reason, UUID adminUserId);
+
+    MerchantApprovalActionResponse activateMerchant(UUID merchantId, String reason, UUID adminUserId);
 }

@@ -3,6 +3,7 @@ package com.superapp.category.controller;
 import com.superapp.category.dto.CategoryResponse;
 import com.superapp.category.dto.CreateCategoryRequest;
 import com.superapp.category.dto.UpdateCategoryRequest;
+import com.superapp.category.dto.UpdateCategoryStatusRequest;
 import com.superapp.category.service.CategoryService;
 import com.superapp.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,6 +66,17 @@ public class AdminCategoryController {
         String adminUser = authentication != null ? authentication.getName() : "ADMIN";
         CategoryResponse response = categoryService.updateCategoryAdmin(categoryId, request, adminUser);
         return ResponseEntity.ok(ApiResponse.success("Category updated successfully", response));
+    }
+
+    @PatchMapping("/{categoryId}/status")
+    @Operation(summary = "Update category status (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<CategoryResponse>> updateCategoryStatus(
+            @PathVariable UUID categoryId,
+            @Valid @RequestBody UpdateCategoryStatusRequest request,
+            Authentication authentication) {
+        String adminUser = authentication != null ? authentication.getName() : "ADMIN";
+        CategoryResponse response = categoryService.updateCategoryStatusAdmin(categoryId, request.status(), adminUser);
+        return ResponseEntity.ok(ApiResponse.success("Category status updated successfully", response));
     }
 
     @DeleteMapping("/{categoryId}")

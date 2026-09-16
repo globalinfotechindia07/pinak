@@ -3,6 +3,7 @@ package com.superapp.location.controller;
 import com.superapp.common.response.ApiResponse;
 import com.superapp.location.dto.CreateCityRequest;
 import com.superapp.location.dto.UpdateCityRequest;
+import com.superapp.location.dto.UpdateCityStatusRequest;
 import com.superapp.location.service.CityService;
 import com.superapp.store.dto.CityResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -63,6 +64,17 @@ public class AdminCityController {
         String adminUser = authentication != null ? authentication.getName() : "ADMIN";
         CityResponse response = cityService.updateCityAdmin(cityId, request, adminUser);
         return ResponseEntity.ok(ApiResponse.success("City updated successfully", response));
+    }
+
+    @PatchMapping("/{cityId}/status")
+    @Operation(summary = "Update city status (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<CityResponse>> updateCityStatus(
+            @PathVariable String cityId,
+            @Valid @RequestBody UpdateCityStatusRequest request,
+            Authentication authentication) {
+        String adminUser = authentication != null ? authentication.getName() : "ADMIN";
+        CityResponse response = cityService.updateCityStatusAdmin(cityId, request.status(), adminUser);
+        return ResponseEntity.ok(ApiResponse.success("City status updated successfully", response));
     }
 
     @DeleteMapping("/{cityId}")

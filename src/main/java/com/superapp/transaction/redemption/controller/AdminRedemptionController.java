@@ -41,6 +41,7 @@ public class AdminRedemptionController {
             @RequestParam(required = false) UUID merchantId,
             @RequestParam(required = false) UUID storeId,
             @RequestParam(required = false) UUID offerId,
+            @RequestParam(required = false) UUID transactionId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate,
@@ -50,7 +51,7 @@ public class AdminRedemptionController {
         String effectiveRequestId = (requestId != null && !requestId.isBlank()) ? requestId : UUID.randomUUID().toString();
 
         Page<RedemptionHistoryResponse> page = redemptionService.getAdminRedemptions(
-                customerId, merchantId, storeId, offerId, status, fromDate, toDate, pageable);
+                customerId, merchantId, storeId, offerId, transactionId, status, fromDate, toDate, pageable);
 
         return ResponseEntity.ok(ApiResponse.success(
                 "Admin redemptions fetched successfully",

@@ -22,6 +22,8 @@ public interface CategoryService {
 
     void deactivateCategoryAdmin(UUID id, String adminUserId);
 
+    CategoryResponse updateCategoryStatusAdmin(UUID id, CategoryStatus status, String adminUserId);
+
     CategoryResponse getCategoryByIdAdmin(UUID id);
 
     List<CategoryResponse> getAllCategoriesAdmin();

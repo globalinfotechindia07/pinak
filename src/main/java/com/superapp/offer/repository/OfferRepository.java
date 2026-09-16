@@ -59,4 +59,8 @@ public interface OfferRepository extends JpaRepository<Offer, UUID>, JpaSpecific
     @org.springframework.data.jpa.repository.Modifying
     @Query("UPDATE Offer o SET o.currentUsageCount = o.currentUsageCount + 1 WHERE o.id = :id AND (o.usageLimit IS NULL OR o.currentUsageCount < o.usageLimit)")
     int incrementUsageCountIfAvailable(@Param("id") UUID id);
+
+    long countByApprovalStatus(com.superapp.offer.enums.OfferApprovalStatus approvalStatus);
+
+    long countByStatus(com.superapp.offer.enums.OfferStatus status);
 }

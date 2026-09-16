@@ -2,6 +2,7 @@ package com.superapp.offer.controller;
 
 import com.superapp.common.response.ApiResponse;
 import com.superapp.common.response.PaginationMeta;
+import com.superapp.offer.dto.AdminSuspendOfferRequest;
 import com.superapp.offer.dto.MerchantOfferResponse;
 import com.superapp.offer.dto.OfferApprovalResponse;
 import com.superapp.offer.dto.RejectOfferRequest;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -27,8 +29,9 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/offers")
-@Tag(name = "Admin Offers", description = "Endpoints for platform administrators to review, approve, and reject offers")
+@Tag(name = "Admin Offers", description = "Endpoints for platform administrators to review, approve, reject, and suspend offers")
 @SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class AdminOfferController {
 
     private final OfferService offerService;
@@ -65,7 +68,7 @@ public class AdminOfferController {
         return ResponseEntity.ok(ApiResponse.success("Offer fetched successfully", response));
     }
 
-    @PostMapping("/{offerId}/approve")
+    @RequestMapping(value = "/{offerId}/approve", method = {RequestMethod.PATCH, RequestMethod.POST})
     @Operation(summary = "Approve pending offer and activate it for discovery")
     public ResponseEntity<ApiResponse<OfferApprovalResponse>> approveOffer(
             @PathVariable UUID offerId,
@@ -75,7 +78,7 @@ public class AdminOfferController {
         return ResponseEntity.ok(ApiResponse.success("Offer approved successfully", response));
     }
 
-    @PostMapping("/{offerId}/reject")
+    @RequestMapping(value = "/{offerId}/reject", method = {RequestMethod.PATCH, RequestMethod.POST})
     @Operation(summary = "Reject pending offer with mandatory rejection reason")
     public ResponseEntity<ApiResponse<OfferApprovalResponse>> rejectOffer(
             @PathVariable UUID offerId,
@@ -84,5 +87,16 @@ public class AdminOfferController {
         UUID adminUserId = UUID.fromString(userDetails.getUsername());
         OfferApprovalResponse response = offerService.rejectOffer(offerId, request, adminUserId);
         return ResponseEntity.ok(ApiResponse.success("Offer rejected successfully", response));
+    }
+
+    @RequestMapping(value = "/{offerId}/suspend", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @Operation(summary = "Suspend/deactivate active offer (Admin only)")
+    public ResponseEntity<ApiResponse<OfferApprovalResponse>> suspendOffer(
+            @PathVariable UUID offerId,
+            @Valid @RequestBody AdminSuspendOfferRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID adminUserId = UUID.fromString(userDetails.getUsername());
+        OfferApprovalResponse response = offerService.suspendOffer(offerId, request.reason(), adminUserId);
+        return ResponseEntity.ok(ApiResponse.success("Offer suspended successfully", response));
     }
 }

@@ -36,4 +36,8 @@ public interface MerchantRepository extends JpaRepository<Merchant, UUID> {
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByPhone(String phone);
+
+    long countByApprovalStatus(ApprovalStatus approvalStatus);
+
+    long countByStatus(MerchantStatus status);
 }

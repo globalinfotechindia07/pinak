@@ -207,7 +207,7 @@ class RedemptionControllerUnitTest {
     void testGetAdminRedemptions_Success() throws Exception {
         Page<RedemptionHistoryResponse> emptyPage = new PageImpl<>(Collections.emptyList());
 
-        when(redemptionService.getAdminRedemptions(any(), any(), any(), any(), any(), any(), any(), any()))
+        when(redemptionService.getAdminRedemptions(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(emptyPage);
 
         adminMockMvc.perform(get("/api/v1/admin/redemptions"))

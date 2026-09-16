@@ -33,6 +33,8 @@ public interface StoreService {
 
     StoreApprovalActionResponse suspendStore(UUID storeId, String reason, UUID adminUserId);
 
+    StoreApprovalActionResponse activateStore(UUID storeId, String reason, UUID adminUserId);
+
     // Legacy & Public discovery operations
     StoreResponse createStore(CreateStoreRequest request, UUID currentUserId, boolean isAdmin);
 

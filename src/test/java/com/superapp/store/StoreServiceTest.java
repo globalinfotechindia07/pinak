@@ -6,6 +6,7 @@ import com.superapp.common.response.ApiError;
 import com.superapp.merchant.dto.UpdateApprovalStatusRequest;
 import com.superapp.merchant.entity.ApprovalStatus;
 import com.superapp.merchant.entity.Merchant;
+import com.superapp.merchant.enums.MerchantStatus;
 import com.superapp.merchant.repository.MerchantRepository;
 import com.superapp.store.dto.*;
 import com.superapp.store.entity.City;
@@ -217,6 +218,9 @@ class StoreServiceTest {
     @DisplayName("Admin approves store transitions approval status to APPROVED")
     void approveStore_success() {
         UUID adminUserId = UUID.randomUUID();
+        merchant.setApprovalStatus(ApprovalStatus.APPROVED);
+        merchant.setStatus(MerchantStatus.ACTIVE);
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
         when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
         when(storeRepository.save(any(Store.class))).thenAnswer(inv -> inv.getArgument(0));
 
