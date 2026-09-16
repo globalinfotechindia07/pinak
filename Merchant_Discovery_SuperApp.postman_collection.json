@@ -2710,7 +2710,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{merchantAccessToken}}"
               }
             ],
             "url": {
@@ -2736,6 +2736,109 @@
               ]
             },
             "description": "Retrieve transactions across all stores belonging to authenticated merchant."
+          }
+        },
+        {
+          "name": "Merchant Store Transaction Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchant/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "merchant",
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Retrieve detailed transaction information for a transaction belonging to merchant's store."
+          }
+        },
+        {
+          "name": "Admin Transaction History & Search",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "postman-admin-search"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/transactions?search=TX&status=SUCCESS&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "TX"
+                },
+                {
+                  "key": "status",
+                  "value": "SUCCESS"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Platform-wide transaction search and multi-parameter filtering for administrators."
+          }
+        },
+        {
+          "name": "Admin Transaction Detail by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "postman-admin-detail"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Platform administrator full transaction detail view with audit logging."
           }
         }
       ]

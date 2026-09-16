@@ -23,6 +23,7 @@ import com.superapp.transaction.redemption.repository.RedemptionRepository;
 import com.superapp.transaction.redemption.validation.RedemptionValidator;
 import com.superapp.transaction.redemption.validation.RedemptionValidator.ValidatedRedemption;
 import com.superapp.transaction.transaction.entity.Transaction;
+import com.superapp.transaction.transaction.repository.TransactionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +56,7 @@ public class RedemptionServiceImpl implements RedemptionService {
     private final AuditService auditService;
     private final RewardService rewardService;
     private final NotificationService notificationService;
+    private final TransactionRepository transactionRepository;
 
     @Autowired
     public RedemptionServiceImpl(
@@ -66,7 +68,8 @@ public class RedemptionServiceImpl implements RedemptionService {
             MerchantRepository merchantRepository,
             AuditService auditService,
             RewardService rewardService,
-            @Autowired(required = false) NotificationService notificationService) {
+            @Autowired(required = false) NotificationService notificationService,
+            @Autowired(required = false) TransactionRepository transactionRepository) {
         this.redemptionRepository = redemptionRepository;
         this.redemptionValidator = redemptionValidator;
         this.redemptionMapper = redemptionMapper;
@@ -76,6 +79,21 @@ public class RedemptionServiceImpl implements RedemptionService {
         this.auditService = auditService;
         this.rewardService = rewardService;
         this.notificationService = notificationService;
+        this.transactionRepository = transactionRepository;
+    }
+
+    public RedemptionServiceImpl(
+            RedemptionRepository redemptionRepository,
+            RedemptionValidator redemptionValidator,
+            RedemptionMapper redemptionMapper,
+            OfferRepository offerRepository,
+            StoreRepository storeRepository,
+            MerchantRepository merchantRepository,
+            AuditService auditService,
+            RewardService rewardService,
+            NotificationService notificationService) {
+        this(redemptionRepository, redemptionValidator, redemptionMapper, offerRepository,
+                storeRepository, merchantRepository, auditService, rewardService, notificationService, null);
     }
 
     public RedemptionServiceImpl(
@@ -88,7 +106,7 @@ public class RedemptionServiceImpl implements RedemptionService {
             AuditService auditService,
             RewardService rewardService) {
         this(redemptionRepository, redemptionValidator, redemptionMapper, offerRepository,
-                storeRepository, merchantRepository, auditService, rewardService, null);
+                storeRepository, merchantRepository, auditService, rewardService, null, null);
     }
 
     @Override
@@ -160,6 +178,12 @@ public class RedemptionServiceImpl implements RedemptionService {
         Redemption saved;
         try {
             saved = redemptionRepository.save(redemption);
+            if (transaction != null) {
+                transaction.setRedemptionId(saved.getId());
+                if (transactionRepository != null) {
+                    transactionRepository.save(transaction);
+                }
+            }
             // Atomically increment currentUsageCount on offer
             offer.setCurrentUsageCount(offer.getCurrentUsageCount() + 1);
             offerRepository.save(offer);

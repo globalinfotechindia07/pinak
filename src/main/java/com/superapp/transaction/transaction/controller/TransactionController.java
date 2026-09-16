@@ -1,8 +1,9 @@
 package com.superapp.transaction.transaction.controller;
 
 import com.superapp.common.response.ApiResponse;
-import com.superapp.common.response.PaginationMeta;
-import com.superapp.transaction.transaction.dto.TransactionResponse;
+import com.superapp.transaction.transaction.dto.TransactionDetailResponse;
+import com.superapp.transaction.transaction.dto.TransactionListItemResponse;
+import com.superapp.transaction.transaction.dto.TransactionPageResponse;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,12 +20,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/transactions")
-@Tag(name = "Transactions", description = "Transaction ledger and history APIs")
+@Tag(name = "Customer Transactions", description = "Transaction ledger and history APIs for customers")
 @SecurityRequirement(name = "bearerAuth")
 public class TransactionController {
 
@@ -36,8 +36,8 @@ public class TransactionController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Get transaction history (Customers get their own, Admins can view all)")
-    public ResponseEntity<ApiResponse<List<TransactionResponse>>> getTransactions(
+    @Operation(summary = "Get transaction history for authenticated customer")
+    public ResponseEntity<ApiResponse<TransactionPageResponse>> getTransactions(
             @RequestParam(required = false) TransactionStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate,
@@ -45,32 +45,22 @@ public class TransactionController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID authenticatedUserId = UUID.fromString(userDetails.getUsername());
-        boolean isAdmin = userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        Page<TransactionListItemResponse> page = transactionService.getCustomerTransactions(
+                authenticatedUserId, status, fromDate, toDate, pageable);
 
-        Page<TransactionResponse> page;
-        if (isAdmin) {
-            page = transactionService.getAllTransactions(status, fromDate, toDate, pageable);
-        } else {
-            page = transactionService.getCustomerTransactions(authenticatedUserId, status, fromDate, toDate, pageable);
-        }
-
-        PaginationMeta meta = PaginationMeta.of(page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
-        return ResponseEntity.ok(ApiResponse.success("Transactions fetched successfully", page.getContent(), meta));
+        return ResponseEntity.ok(ApiResponse.success("Transactions fetched successfully", TransactionPageResponse.of(page)));
     }
 
     @GetMapping("/{transactionId}")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Get transaction details by ID")
-    public ResponseEntity<ApiResponse<TransactionResponse>> getTransactionById(
+    @Operation(summary = "Get transaction details by ID for authenticated customer")
+    public ResponseEntity<ApiResponse<TransactionDetailResponse>> getTransactionById(
             @PathVariable UUID transactionId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID authenticatedUserId = UUID.fromString(userDetails.getUsername());
-        boolean isAdmin = userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
-
-        TransactionResponse response = transactionService.getTransactionById(transactionId, authenticatedUserId, isAdmin);
+        TransactionDetailResponse response = transactionService.getCustomerTransactionById(transactionId, authenticatedUserId);
         return ResponseEntity.ok(ApiResponse.success("Transaction fetched successfully", response));
     }
 }
+

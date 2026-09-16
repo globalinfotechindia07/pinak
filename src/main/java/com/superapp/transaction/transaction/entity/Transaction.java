@@ -15,6 +15,8 @@ import java.util.UUID;
         @Index(name = "idx_transactions_merchant", columnList = "merchant_id"),
         @Index(name = "idx_transactions_store", columnList = "store_id"),
         @Index(name = "idx_transactions_payment", columnList = "payment_id"),
+        @Index(name = "idx_transactions_redemption", columnList = "redemption_id"),
+        @Index(name = "idx_transactions_provider_tx", columnList = "provider_transaction_id"),
         @Index(name = "idx_transactions_status", columnList = "status"),
         @Index(name = "idx_transactions_created", columnList = "created_at")
 })
@@ -30,6 +32,12 @@ public class Transaction {
 
     @Column(name = "payment_id")
     private UUID paymentId;
+
+    @Column(name = "redemption_id")
+    private UUID redemptionId;
+
+    @Column(name = "provider_transaction_id", length = 128)
+    private String providerTransactionId;
 
     @Column(name = "customer_id", nullable = false)
     private UUID customerId;
@@ -57,6 +65,9 @@ public class Transaction {
 
     @Column(name = "currency", nullable = false, length = 10)
     private String currency = "INR";
+
+    @Column(name = "payment_method", length = 32)
+    private String paymentMethod = "UPI";
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 32)
@@ -121,6 +132,15 @@ public class Transaction {
 
     public UUID getPaymentId() { return paymentId; }
     public void setPaymentId(UUID paymentId) { this.paymentId = paymentId; }
+
+    public UUID getRedemptionId() { return redemptionId; }
+    public void setRedemptionId(UUID redemptionId) { this.redemptionId = redemptionId; }
+
+    public String getProviderTransactionId() { return providerTransactionId; }
+    public void setProviderTransactionId(String providerTransactionId) { this.providerTransactionId = providerTransactionId; }
+
+    public String getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
 
     public UUID getCustomerId() { return customerId; }
     public void setCustomerId(UUID customerId) { this.customerId = customerId; }

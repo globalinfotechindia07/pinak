@@ -1,8 +1,9 @@
 package com.superapp.transaction.transaction.controller;
 
 import com.superapp.common.response.ApiResponse;
-import com.superapp.common.response.PaginationMeta;
-import com.superapp.transaction.transaction.dto.TransactionResponse;
+import com.superapp.transaction.transaction.dto.TransactionDetailResponse;
+import com.superapp.transaction.transaction.dto.TransactionListItemResponse;
+import com.superapp.transaction.transaction.dto.TransactionPageResponse;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,13 +17,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -40,7 +37,9 @@ public class MerchantTransactionController {
     @GetMapping
     @PreAuthorize("hasAnyRole('MERCHANT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get transaction history for merchant's stores")
-    public ResponseEntity<ApiResponse<List<TransactionResponse>>> getMerchantTransactions(
+    public ResponseEntity<ApiResponse<TransactionPageResponse>> getMerchantTransactions(
+            @RequestParam(required = false) UUID storeId,
+            @RequestParam(required = false) UUID offerId,
             @RequestParam(required = false) TransactionStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant toDate,
@@ -48,10 +47,22 @@ public class MerchantTransactionController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID authenticatedUserId = UUID.fromString(userDetails.getUsername());
-        Page<TransactionResponse> page = transactionService.getMerchantTransactions(
-                authenticatedUserId, status, fromDate, toDate, pageable);
+        Page<TransactionListItemResponse> page = transactionService.getMerchantTransactions(
+                authenticatedUserId, storeId, offerId, status, fromDate, toDate, pageable);
 
-        PaginationMeta meta = PaginationMeta.of(page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
-        return ResponseEntity.ok(ApiResponse.success("Merchant transactions fetched successfully", page.getContent(), meta));
+        return ResponseEntity.ok(ApiResponse.success("Merchant transactions fetched successfully", TransactionPageResponse.of(page)));
+    }
+
+    @GetMapping("/{transactionId}")
+    @PreAuthorize("hasAnyRole('MERCHANT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN')")
+    @Operation(summary = "Get transaction details for merchant's store")
+    public ResponseEntity<ApiResponse<TransactionDetailResponse>> getMerchantTransactionById(
+            @PathVariable UUID transactionId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        UUID authenticatedUserId = UUID.fromString(userDetails.getUsername());
+        TransactionDetailResponse response = transactionService.getMerchantTransactionById(transactionId, authenticatedUserId);
+        return ResponseEntity.ok(ApiResponse.success("Merchant transaction fetched successfully", response));
     }
 }
+

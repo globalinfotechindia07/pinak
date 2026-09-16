@@ -5,6 +5,7 @@ import com.superapp.transaction.transaction.enums.TransactionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,11 +16,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
+public interface TransactionRepository extends JpaRepository<Transaction, UUID>, JpaSpecificationExecutor<Transaction> {
 
     Optional<Transaction> findByTransactionReference(String transactionReference);
 
     Optional<Transaction> findByPaymentId(UUID paymentId);
+
+    Optional<Transaction> findByProviderTransactionId(String providerTransactionId);
+
+    Optional<Transaction> findByRedemptionId(UUID redemptionId);
+
+    Optional<Transaction> findByIdAndCustomerId(UUID id, UUID customerId);
 
     Page<Transaction> findByCustomerId(UUID customerId, Pageable pageable);
 

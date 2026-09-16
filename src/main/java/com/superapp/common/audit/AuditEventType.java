@@ -96,6 +96,8 @@ public enum AuditEventType {
     PAYMENT_FAILED,
     PAYMENT_REFUNDED,
     PAYMENT_CANCELLED,
+    TRANSACTION_ACCESSED,
+    TRANSACTION_SEARCHED,
 
     // Webhook lifecycle
     WEBHOOK_RECEIVED,

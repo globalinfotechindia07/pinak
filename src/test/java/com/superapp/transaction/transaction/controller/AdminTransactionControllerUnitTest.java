@@ -1,7 +1,5 @@
 package com.superapp.transaction.transaction.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.superapp.transaction.transaction.dto.TransactionDetailResponse;
 import com.superapp.transaction.transaction.dto.TransactionListItemResponse;
 import com.superapp.transaction.transaction.dto.TransactionMerchantDto;
@@ -18,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,7 +28,6 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,15 +39,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
-class TransactionControllerUnitTest {
+class AdminTransactionControllerUnitTest {
 
     private MockMvc mockMvc;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Mock private TransactionService transactionService;
-    @InjectMocks private TransactionController transactionController;
+    @InjectMocks private AdminTransactionController adminTransactionController;
 
-    private static final String CUSTOMER_ID = "11111111-1111-1111-1111-111111111111";
+    private static final String ADMIN_ID = "22222222-2222-2222-2222-222222222222";
 
     @BeforeEach
     void setUp() {
@@ -62,67 +59,67 @@ class TransactionControllerUnitTest {
             @Override
             public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                           NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-                return new User(CUSTOMER_ID, "password", Collections.emptyList());
+                return new User(ADMIN_ID, "password", List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
             }
         };
 
-        mockMvc = MockMvcBuilders.standaloneSetup(transactionController)
+        mockMvc = MockMvcBuilders.standaloneSetup(adminTransactionController)
                 .setCustomArgumentResolvers(authPrincipalResolver, new org.springframework.data.web.PageableHandlerMethodArgumentResolver())
                 .build();
     }
 
     @Test
-    @DisplayName("GET /api/v1/transactions — returns paginated customer transactions")
-    void testGetTransactions() throws Exception {
+    @DisplayName("GET /api/v1/admin/transactions — search & filter transactions across platform")
+    void testGetAdminTransactions() throws Exception {
         UUID txId = UUID.randomUUID();
         UUID merchantId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
 
         var item = new TransactionListItemResponse(
-                txId, "TX-REF-12345",
-                merchantId, "ABC Retail",
-                storeId, "ABC Store",
+                txId, "TX-REF-ADMIN-99",
+                merchantId, "Global Merchant",
+                storeId, "Global Store",
                 null,
-                new BigDecimal("5000.00"), new BigDecimal("500.00"), new BigDecimal("4500.00"),
+                new BigDecimal("1000.00"), new BigDecimal("100.00"), new BigDecimal("900.00"),
                 "INR", "UPI", TransactionStatus.SUCCESS, Instant.now()
         );
 
         Page<TransactionListItemResponse> page = new PageImpl<>(List.of(item));
-        when(transactionService.getCustomerTransactions(eq(UUID.fromString(CUSTOMER_ID)), any(), any(), any(), any()))
+        when(transactionService.getAdminTransactions(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), eq("TX-REF"), any(), eq(UUID.fromString(ADMIN_ID)), any()))
                 .thenReturn(page);
 
-        mockMvc.perform(get("/api/v1/transactions"))
+        mockMvc.perform(get("/api/v1/admin/transactions")
+                        .param("search", "TX-REF")
+                        .header("X-Request-Id", "req-12345"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].id").value(txId.toString()))
-                .andExpect(jsonPath("$.data.content[0].transactionReference").value("TX-REF-12345"))
-                .andExpect(jsonPath("$.data.content[0].payableAmount").value(4500.00))
-                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.content[0].transactionReference").value("TX-REF-ADMIN-99"))
                 .andExpect(jsonPath("$.data.totalElements").value(1));
     }
 
     @Test
-    @DisplayName("GET /api/v1/transactions/{transactionId} — returns transaction details")
-    void testGetTransactionById() throws Exception {
+    @DisplayName("GET /api/v1/admin/transactions/{transactionId} — retrieve detail by admin")
+    void testGetAdminTransactionById() throws Exception {
         UUID txId = UUID.randomUUID();
-        UUID paymentId = UUID.randomUUID();
 
         var detail = new TransactionDetailResponse(
-                txId, "TX-REF-12345", null, null, null,
-                new BigDecimal("5000.00"), new BigDecimal("500.00"), new BigDecimal("4500.00"),
-                "INR", "UPI", TransactionStatus.SUCCESS, paymentId, null, "PAY-PROV-123",
+                txId, "TX-REF-ADMIN-99", null, null, null,
+                new BigDecimal("1000.00"), new BigDecimal("100.00"), new BigDecimal("900.00"),
+                "INR", "UPI", TransactionStatus.SUCCESS, UUID.randomUUID(), UUID.randomUUID(), "PROV-99",
                 Instant.now(), Instant.now()
         );
 
-        when(transactionService.getCustomerTransactionById(eq(txId), eq(UUID.fromString(CUSTOMER_ID))))
+        when(transactionService.getAdminTransactionById(eq(txId), eq(UUID.fromString(ADMIN_ID)), any()))
                 .thenReturn(detail);
 
-        mockMvc.perform(get("/api/v1/transactions/" + txId))
+        mockMvc.perform(get("/api/v1/admin/transactions/" + txId)
+                        .header("X-Request-Id", "req-12345"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(txId.toString()))
-                .andExpect(jsonPath("$.data.transactionReference").value("TX-REF-12345"))
-                .andExpect(jsonPath("$.data.status").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.paymentMethod").value("UPI"));
+                .andExpect(jsonPath("$.data.transactionReference").value("TX-REF-ADMIN-99"))
+                .andExpect(jsonPath("$.data.providerTransactionId").value("PROV-99"));
     }
 }

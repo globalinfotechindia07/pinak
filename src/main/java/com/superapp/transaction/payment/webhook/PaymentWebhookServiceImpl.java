@@ -158,81 +158,92 @@ public class PaymentWebhookServiceImpl implements PaymentWebhookService {
                 "Webhook verified for payment: " + payment.getId());
 
         // 6. State Machine Transitions
+        final Payment verifiedPayment = payment;
+        final String providerPaymentMethod = payment.getProvider();
         Optional<Transaction> txOpt = payment.getTransactionId() != null ?
                 transactionRepository.findById(payment.getTransactionId()) : Optional.empty();
 
         if (event.status() == PaymentStatus.SUCCESS) {
-            if (payment.getStatus() == PaymentStatus.SUCCESS) {
-                log.info("Payment {} already marked SUCCESS", payment.getId());
-                return Map.of("status", "SUCCESS", "paymentId", payment.getId());
+            if (verifiedPayment.getStatus() == PaymentStatus.SUCCESS) {
+                log.info("Payment {} already marked SUCCESS", verifiedPayment.getId());
+                return Map.of("status", "SUCCESS", "paymentId", verifiedPayment.getId());
             }
 
-            PaymentStateMachine.validateTransition(payment.getStatus(), PaymentStatus.SUCCESS);
-            payment.setStatus(PaymentStatus.SUCCESS);
-            payment.setProviderPaymentId(event.providerPaymentId());
-            payment.setPaidAt(Instant.now());
-            paymentRepository.save(payment);
+            PaymentStateMachine.validateTransition(verifiedPayment.getStatus(), PaymentStatus.SUCCESS);
+            verifiedPayment.setStatus(PaymentStatus.SUCCESS);
+            verifiedPayment.setProviderPaymentId(event.providerPaymentId());
+            verifiedPayment.setPaidAt(Instant.now());
+            paymentRepository.save(verifiedPayment);
 
             txOpt.ifPresent(tx -> {
                 tx.setStatus(TransactionStatus.SUCCESS);
+                if (event.providerPaymentId() != null) {
+                    tx.setProviderTransactionId(event.providerPaymentId());
+                }
+                if (providerPaymentMethod != null) {
+                    tx.setPaymentMethod(providerPaymentMethod);
+                }
                 transactionRepository.save(tx);
             });
 
-            auditService.record(AuditEventType.PAYMENT_SUCCESS, payment.getCustomerId(), null, null, requestId,
-                    "Payment confirmed: " + payment.getId());
+            auditService.record(AuditEventType.PAYMENT_SUCCESS, verifiedPayment.getCustomerId(), null, null, requestId,
+                    "Payment confirmed: " + verifiedPayment.getId());
 
             if (notificationService != null) {
                 try {
-                    notificationService.createPaymentNotification(payment);
+                    notificationService.createPaymentNotification(verifiedPayment);
                 } catch (Exception ex) {
                     log.warn("Failed to create payment success notification: {}", ex.getMessage());
                 }
             }
 
         } else if (event.status() == PaymentStatus.FAILED) {
-            if (payment.getStatus() == PaymentStatus.FAILED) {
-                return Map.of("status", "FAILED", "paymentId", payment.getId());
+            if (verifiedPayment.getStatus() == PaymentStatus.FAILED) {
+                return Map.of("status", "FAILED", "paymentId", verifiedPayment.getId());
             }
 
-            PaymentStateMachine.validateTransition(payment.getStatus(), PaymentStatus.FAILED);
-            payment.setStatus(PaymentStatus.FAILED);
-            payment.setFailureCode(event.failureCode());
-            payment.setFailureReason(event.failureReason());
-            paymentRepository.save(payment);
+            PaymentStateMachine.validateTransition(verifiedPayment.getStatus(), PaymentStatus.FAILED);
+            verifiedPayment.setStatus(PaymentStatus.FAILED);
+            verifiedPayment.setFailureCode(event.failureCode());
+            verifiedPayment.setFailureReason(event.failureReason());
+            paymentRepository.save(verifiedPayment);
 
             txOpt.ifPresent(tx -> {
                 tx.setStatus(TransactionStatus.FAILED);
+                if (providerPaymentMethod != null) {
+                    tx.setPaymentMethod(providerPaymentMethod);
+                }
                 transactionRepository.save(tx);
             });
 
-            auditService.record(AuditEventType.PAYMENT_FAILED, payment.getCustomerId(), null, null, requestId,
-                    "Payment failed: " + payment.getId() + " code=" + event.failureCode());
+            auditService.record(AuditEventType.PAYMENT_FAILED, verifiedPayment.getCustomerId(), null, null, requestId,
+                    "Payment failed: " + verifiedPayment.getId() + " code=" + event.failureCode());
 
             if (notificationService != null) {
                 try {
-                    notificationService.createPaymentNotification(payment);
+                    notificationService.createPaymentNotification(verifiedPayment);
                 } catch (Exception ex) {
                     log.warn("Failed to create payment failure notification: {}", ex.getMessage());
                 }
             }
 
         } else if (event.status() == PaymentStatus.REFUNDED) {
-            PaymentStateMachine.validateTransition(payment.getStatus(), PaymentStatus.REFUNDED);
-            payment.setStatus(PaymentStatus.REFUNDED);
-            paymentRepository.save(payment);
+            PaymentStateMachine.validateTransition(verifiedPayment.getStatus(), PaymentStatus.REFUNDED);
+            verifiedPayment.setStatus(PaymentStatus.REFUNDED);
+            paymentRepository.save(verifiedPayment);
 
             txOpt.ifPresent(tx -> {
                 tx.setStatus(TransactionStatus.REFUNDED);
                 transactionRepository.save(tx);
             });
 
-            auditService.record(AuditEventType.PAYMENT_REFUNDED, payment.getCustomerId(), null, null, requestId,
-                    "Payment refunded: " + payment.getId());
+            auditService.record(AuditEventType.PAYMENT_REFUNDED, verifiedPayment.getCustomerId(), null, null, requestId,
+                    "Payment refunded: " + verifiedPayment.getId());
         }
 
         return Map.of(
-                "status", payment.getStatus().name(),
-                "paymentId", payment.getId(),
+                "status", verifiedPayment.getStatus().name(),
+                "paymentId", verifiedPayment.getId(),
                 "eventId", event.eventId()
         );
     }
