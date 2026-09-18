@@ -16,6 +16,7 @@ import com.superapp.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,6 +43,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final AuditService auditService;
 
+    @Autowired
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        UserMapper userMapper, AuditService auditService) {
         this.userRepository = userRepository;

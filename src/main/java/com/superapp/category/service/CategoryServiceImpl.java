@@ -17,6 +17,7 @@ import com.superapp.common.response.ApiError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final AuditService auditService;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public CategoryServiceImpl(CategoryRepository categoryRepository,
                                CategoryMapper categoryMapper,
                                AuditService auditService,

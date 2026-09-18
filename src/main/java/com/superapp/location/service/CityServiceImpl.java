@@ -19,6 +19,7 @@ import com.superapp.store.repository.StoreRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class CityServiceImpl implements CityService {
     private final ObjectMapper objectMapper;
     private final StoreRepository storeRepository;
 
+    @Autowired
     public CityServiceImpl(CityRepository cityRepository,
                            CityMapper cityMapper,
                            AuditService auditService,

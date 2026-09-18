@@ -21,6 +21,7 @@ import com.superapp.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class MerchantServiceImpl implements MerchantService {
     private final AuditService auditService;
     private final MerchantMapper merchantMapper;
 
+    @Autowired
     public MerchantServiceImpl(
             MerchantRepository merchantRepository,
             CategoryRepository categoryRepository,

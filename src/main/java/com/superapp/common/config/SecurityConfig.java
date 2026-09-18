@@ -77,8 +77,8 @@ public class SecurityConfig {
                 // Public categories lookup, public discovery endpoints, and public offer details
                 .requestMatchers(HttpMethod.GET, "/api/v1/categories/**", "/api/v1/discovery/**", "/api/v1/offers/**").permitAll()
 
-                // Health check
-                .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                // Health check (custom endpoint + Spring Boot Actuator health probe)
+                .requestMatchers(HttpMethod.GET, "/api/v1/health", "/actuator/health", "/actuator/health/**").permitAll()
 
                 // Swagger / OpenAPI (disable in production if needed via property)
                 .requestMatchers(

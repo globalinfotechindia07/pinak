@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class StoreServiceImpl implements StoreService {
     private final AuditService auditService;
     private final StoreMapper storeMapper;
 
+    @Autowired
     public StoreServiceImpl(
             StoreRepository storeRepository,
             MerchantRepository merchantRepository,

@@ -42,6 +42,20 @@
         </dependency>
 
         <!-- ==========================================
+             Spring Boot Actuator (Health check & metrics)
+             ========================================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- ==========================================
              Spring Data JPA + Hibernate
              ========================================== -->
         <dependency>

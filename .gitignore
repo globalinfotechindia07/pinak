@@ -8,3 +8,14 @@ logs/
 .settings/
 .project
 .classpath
+
+# Secrets, Environment Files & Credentials
+.env
+.env.*
+*.pem
+*.key
+*.crt
+application-local.properties
+application-local.yml
+secrets/
+credentials/
