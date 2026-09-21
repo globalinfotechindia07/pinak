@@ -12,8 +12,11 @@ logs/
 # Secrets, Environment Files & Credentials
 .env
 .env.*
+!.env.example
 *.pem
 *.key
+*.p12
+*.jks
 *.crt
 application-local.properties
 application-local.yml

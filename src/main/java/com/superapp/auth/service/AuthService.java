@@ -433,7 +433,7 @@ public class AuthService {
         otpStorageService.setCooldown(phone, java.time.Duration.ofSeconds(60));
 
         otpService.sendMobileOtp(phone, otp);
-        log.info("🔐 [OTP CHALLENGE] Generated OTP for phone={} otpRequestId={} otp={}", phone, otpRequestId, otp);
+        log.info("🔐 [OTP CHALLENGE] Generated OTP challenge for phone={} otpRequestId={}", phone, otpRequestId);
 
         auditService.record(AuditEventType.MOBILE_OTP_SENT, null, ipAddress, userAgent, requestId,
                 "{\"phone\":\"" + phone + "\",\"otpRequestId\":\"" + otpRequestId + "\"}");
@@ -558,7 +558,7 @@ public class AuthService {
         String code = otpService.generateOtp();
         otpStorageService.storeMfaChallenge(challengeId, user.getId(), code, java.time.Duration.ofMinutes(5));
 
-        log.info("🔐 [ADMIN MFA] Generated MFA code for admin={} challengeId={} code={}", user.getEmail(), challengeId, code);
+        log.info("🔐 [ADMIN MFA] Generated MFA challenge for admin={} challengeId={}", user.getEmail(), challengeId);
 
         return new AdminMfaChallengeResponse(true, challengeId);
     }
