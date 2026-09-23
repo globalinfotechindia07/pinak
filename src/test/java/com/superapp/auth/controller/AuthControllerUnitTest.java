@@ -127,4 +127,56 @@ class AuthControllerUnitTest {
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.data.user.role").value("CUSTOMER"));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/login — accepts email in payload")
+    void login_withEmailPayload_success() throws Exception {
+        var userSummary = new UserSummary(
+                UUID.randomUUID().toString(), "Customer 3210", "cust@example.com",
+                "+919876543210", Role.CUSTOMER.name(), UserStatus.ACTIVE.name(), true, true
+        );
+        var authResponse = AuthResponse.of("access-jwt-token", "refresh-jwt-token", 900L, userSummary);
+
+        when(authService.login(any(), any(), any(), any())).thenReturn(authResponse);
+
+        String jsonPayload = """
+                {
+                  "email": "cust@example.com",
+                  "password": "Password@123"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("access-jwt-token"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/login — accepts phone number in payload")
+    void login_withPhonePayload_success() throws Exception {
+        var userSummary = new UserSummary(
+                UUID.randomUUID().toString(), "Customer 3210", "cust@example.com",
+                "+919876543210", Role.CUSTOMER.name(), UserStatus.ACTIVE.name(), true, true
+        );
+        var authResponse = AuthResponse.of("access-jwt-token", "refresh-jwt-token", 900L, userSummary);
+
+        when(authService.login(any(), any(), any(), any())).thenReturn(authResponse);
+
+        String jsonPayload = """
+                {
+                  "phone": "+919876543210",
+                  "password": "Password@123"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("access-jwt-token"));
+    }
 }

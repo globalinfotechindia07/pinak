@@ -135,10 +135,11 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress, String userAgent, String requestId) {
-        String identifier = request.identifier().trim().toLowerCase();
+        String rawIdentifier = request.identifier().trim();
+        String identifier = rawIdentifier.contains("@") ? rawIdentifier.toLowerCase() : rawIdentifier;
         log.info("Login attempt for identifier={}", identifier);
 
-        // Find by email or mobile
+        // Find by email or mobile/phone
         User user = findByIdentifier(identifier);
 
         // Check account status BEFORE password (prevents timing leak on blocked accounts)
@@ -262,7 +263,8 @@ public class AuthService {
      */
     @Transactional
     public String forgotPassword(ForgotPasswordRequest request, String ipAddress, String userAgent, String requestId) {
-        String identifier = request.identifier().trim().toLowerCase();
+        String rawIdentifier = request.identifier().trim();
+        String identifier = rawIdentifier.contains("@") ? rawIdentifier.toLowerCase() : rawIdentifier;
         log.info("Forgot password request for identifier={}", identifier);
 
         String rawOtp = null;
@@ -283,7 +285,8 @@ public class AuthService {
      */
     @Transactional
     public String verifyResetOtp(VerifyResetOtpRequest request) {
-        String identifier = request.identifier().trim().toLowerCase();
+        String rawIdentifier = request.identifier().trim();
+        String identifier = rawIdentifier.contains("@") ? rawIdentifier.toLowerCase() : rawIdentifier;
         User user = findByIdentifier(identifier);
         return passwordResetService.verifyOtp(user, request.otp());
     }
@@ -619,13 +622,62 @@ public class AuthService {
     // ---- Helpers ----
 
     /**
-     * Finds a user by email or mobile number.
+     * Finds a user by email, mobile number, or phone number.
+     * Supports various phone number formats (with or without +91, dashes, spaces, etc.).
      * Throws AuthException.invalidCredentials() on failure (no enumeration).
      */
     private User findByIdentifier(String identifier) {
-        // Try email first, then mobile
-        return userRepository.findByEmail(identifier)
-                .or(() -> userRepository.findByMobile(identifier))
-                .orElseThrow(AuthException::invalidCredentials);
+        if (identifier == null || identifier.isBlank()) {
+            throw AuthException.invalidCredentials();
+        }
+
+        String trimmed = identifier.trim();
+
+        // 1. Direct lookup by email, mobile, and phone
+        var directUser = userRepository.findByEmail(trimmed.toLowerCase())
+                .or(() -> userRepository.findByMobile(trimmed))
+                .or(() -> userRepository.findByPhone(trimmed));
+        if (directUser.isPresent()) {
+            return directUser.get();
+        }
+
+        // 2. Phone number normalization: strip spaces, dashes, parentheses, dots
+        String cleaned = trimmed.replaceAll("[\\s\\-\\(\\)\\.]", "");
+        if (!cleaned.equals(trimmed)) {
+            var cleanedUser = userRepository.findByMobile(cleaned)
+                    .or(() -> userRepository.findByPhone(cleaned));
+            if (cleanedUser.isPresent()) {
+                return cleanedUser.get();
+            }
+        }
+
+        // 3. Country code normalization (+91 vs local 10-digit number)
+        if (cleaned.startsWith("+91") && cleaned.length() == 13) {
+            String local10 = cleaned.substring(3);
+            var localUser = userRepository.findByMobile(local10)
+                    .or(() -> userRepository.findByPhone(local10));
+            if (localUser.isPresent()) {
+                return localUser.get();
+            }
+        } else if (cleaned.length() == 10 && cleaned.chars().allMatch(Character::isDigit)) {
+            String withCountryCode = "+91" + cleaned;
+            var ccUser = userRepository.findByMobile(withCountryCode)
+                    .or(() -> userRepository.findByPhone(withCountryCode));
+            if (ccUser.isPresent()) {
+                return ccUser.get();
+            }
+        } else if (cleaned.startsWith("0") && cleaned.length() == 11 && cleaned.chars().allMatch(Character::isDigit)) {
+            String local10 = cleaned.substring(1);
+            String withCountryCode = "+91" + local10;
+            var altUser = userRepository.findByMobile(local10)
+                    .or(() -> userRepository.findByPhone(local10))
+                    .or(() -> userRepository.findByMobile(withCountryCode))
+                    .or(() -> userRepository.findByPhone(withCountryCode));
+            if (altUser.isPresent()) {
+                return altUser.get();
+            }
+        }
+
+        throw AuthException.invalidCredentials();
     }
 }

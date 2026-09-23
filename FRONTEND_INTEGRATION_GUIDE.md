@@ -122,7 +122,18 @@ graph TD
 * **Displays**: Store address, operating hours, phone, and list of approved offers.
 
 #### Screen 3: Customer Login / Signup
-* **Password Login**: `POST /api/v1/auth/login` (Body: `email`, `password`)
+* **Password Login (Email OR Phone Number)**: `POST /api/v1/auth/login`
+  - Users can enter whichever they feel comfortable with (email or phone):
+  ```json
+  // Option A: Email login
+  { "email": "customer@superapp.com", "password": "Customer@123456" }
+
+  // Option B: Phone number login
+  { "phone": "+919876543210", "password": "Customer@123456" }
+
+  // Option C: Generic identifier
+  { "identifier": "customer@superapp.com", "password": "Customer@123456" }
+  ```
 * **Phone OTP Flow**:
   1. `POST /api/v1/auth/otp/send` (Body: `phone`) ➔ Returns `otpRequestId`.
   2. `POST /api/v1/auth/otp/verify` (Body: `phone`, `otp`, `otpRequestId`) ➔ Returns `accessToken` and `refreshToken`.

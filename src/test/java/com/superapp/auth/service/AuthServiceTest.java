@@ -252,6 +252,69 @@ class AuthServiceTest {
             AuthResponse result = authService.login(request, IP, UA, RID);
             assertThat(result).isNotNull();
         }
+
+        @Test
+        @DisplayName("Login by 10-digit mobile number matches stored +91 number")
+        void loginBy10DigitMobileMatchesCountryCode() {
+            activeCustomer.setMobile("+919876543210");
+            var request = new LoginRequest("9876543210", "StrongPass@1", null, null);
+
+            when(userRepository.findByEmail("9876543210")).thenReturn(Optional.empty());
+            when(userRepository.findByMobile("9876543210")).thenReturn(Optional.empty());
+            when(userRepository.findByPhone("9876543210")).thenReturn(Optional.empty());
+            when(userRepository.findByMobile("+919876543210")).thenReturn(Optional.of(activeCustomer));
+            when(passwordEncoder.matches("StrongPass@1", "$2a$12$hashed")).thenReturn(true);
+            when(sessionService.createSession(any(), any(), any(), any(), any()))
+                    .thenReturn(new com.superapp.user.entity.UserSession());
+            when(jwtService.generateAccessToken(any(UUID.class), any())).thenReturn("access-token");
+            when(tokenService.issueRefreshToken(any(), any())).thenReturn("refresh-token");
+            when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
+
+            AuthResponse result = authService.login(request, IP, UA, RID);
+            assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("Login by +91 mobile number matches stored 10-digit number")
+        void loginByCountryCodeMobileMatches10Digit() {
+            activeCustomer.setMobile("9876543210");
+            var request = new LoginRequest("+919876543210", "StrongPass@1", null, null);
+
+            when(userRepository.findByEmail("+919876543210")).thenReturn(Optional.empty());
+            when(userRepository.findByMobile("+919876543210")).thenReturn(Optional.empty());
+            when(userRepository.findByPhone("+919876543210")).thenReturn(Optional.empty());
+            when(userRepository.findByMobile("9876543210")).thenReturn(Optional.of(activeCustomer));
+            when(passwordEncoder.matches("StrongPass@1", "$2a$12$hashed")).thenReturn(true);
+            when(sessionService.createSession(any(), any(), any(), any(), any()))
+                    .thenReturn(new com.superapp.user.entity.UserSession());
+            when(jwtService.generateAccessToken(any(UUID.class), any())).thenReturn("access-token");
+            when(tokenService.issueRefreshToken(any(), any())).thenReturn("refresh-token");
+            when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
+
+            AuthResponse result = authService.login(request, IP, UA, RID);
+            assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("Login with spaces and dashes in phone number is normalized and matches")
+        void loginWithFormattedPhone() {
+            activeCustomer.setMobile("+919876543210");
+            var request = new LoginRequest("+91 98765-43210", "StrongPass@1", null, null);
+
+            when(userRepository.findByEmail("+91 98765-43210")).thenReturn(Optional.empty());
+            when(userRepository.findByMobile("+91 98765-43210")).thenReturn(Optional.empty());
+            when(userRepository.findByPhone("+91 98765-43210")).thenReturn(Optional.empty());
+            when(userRepository.findByMobile("+919876543210")).thenReturn(Optional.of(activeCustomer));
+            when(passwordEncoder.matches("StrongPass@1", "$2a$12$hashed")).thenReturn(true);
+            when(sessionService.createSession(any(), any(), any(), any(), any()))
+                    .thenReturn(new com.superapp.user.entity.UserSession());
+            when(jwtService.generateAccessToken(any(UUID.class), any())).thenReturn("access-token");
+            when(tokenService.issueRefreshToken(any(), any())).thenReturn("refresh-token");
+            when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
+
+            AuthResponse result = authService.login(request, IP, UA, RID);
+            assertThat(result).isNotNull();
+        }
     }
 
     @Nested
