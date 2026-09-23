@@ -867,14 +867,17 @@
                 {
                   "listen": "test",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
-                      "var jsonData = pm.response.json();",
-                      "if (jsonData.success && jsonData.data) {",
-                      "    pm.collectionVariables.set('resetToken', jsonData.data);",
-                      "    console.log('Captured Reset Token:', jsonData.data);",
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    var token = (json.data && json.data.resetToken) ? json.data.resetToken : json.data;",
+                      "    if (token) {",
+                      "        pm.collectionVariables.set(\"resetToken\", token);",
+                      "        console.log(\"\u2705 resetToken auto-saved: \" + token);",
+                      "    }",
                       "}"
-                    ],
-                    "type": "text/javascript"
+                    ]
                   }
                 }
               ],

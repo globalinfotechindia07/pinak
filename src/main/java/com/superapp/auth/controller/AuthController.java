@@ -243,15 +243,16 @@ public class AuthController {
 
     @PostMapping("/verify-reset-otp")
     @Operation(summary = "Verify password reset OTP")
-    public ResponseEntity<ApiResponse<String>> verifyResetOtp(
+    public ResponseEntity<ApiResponse<VerifyResetOtpResponse>> verifyResetOtp(
             @Valid @RequestBody VerifyResetOtpRequest request,
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.OTP_VERIFY, getClientIp(httpRequest));
 
         String resetToken = authService.verifyResetOtp(request);
-        return ResponseEntity.ok(ApiResponse.success("OTP verified. Use the reset token to set a new password.",
-                resetToken));
+        return ResponseEntity.ok(ApiResponse.success(
+                "OTP verified. Use the reset token to set a new password.",
+                new VerifyResetOtpResponse(resetToken)));
     }
 
     @PostMapping("/reset-password")
