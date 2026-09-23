@@ -1125,6 +1125,46 @@
                   ]
                 }
               }
+            },
+            {
+              "name": "Change Password (POST /auth/change-password)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"currentPassword\": \"Customer@123456\",\n  \"newPassword\": \"Customer@NewPass99\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/change-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "change-password"
+                  ]
+                },
+                "description": "Change password for currently authenticated user. Requires currentPassword and strong newPassword meeting policy rules. On success, active sessions are invalidated to enforce re-login."
+              }
             }
           ]
         },
