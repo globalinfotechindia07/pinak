@@ -7,6 +7,7 @@ import jakarta.validation.constraints.*;
 
 /**
  * Request body for user registration (Customer, Merchant, or Admin).
+ * Includes confirmPassword to verify password entry consistency.
  * Profile picture can only be provided during registration.
  * Role defaults to CUSTOMER if omitted.
  */
@@ -32,6 +33,9 @@ public record RegisterRequest(
         @PasswordPolicy
         String password,
 
+        @Schema(description = "Confirmation password (must match password)", example = "Password@123")
+        String confirmPassword,
+
         @Schema(description = "Profile picture URL (optional, settable only during registration)", example = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400")
         @Size(max = 1024, message = "Profile picture URL must not exceed 1024 characters")
         String profilePictureUrl,
@@ -39,11 +43,16 @@ public record RegisterRequest(
         @Schema(description = "Account role: CUSTOMER, MERCHANT, or ADMIN (defaults to CUSTOMER if omitted)", example = "CUSTOMER")
         Role role
 ) {
+    // Overloaded constructors for backward compatibility with existing tests
     public RegisterRequest(String firstName, String lastName, String email, String mobile, String password) {
-        this(firstName, lastName, email, mobile, password, null, null);
+        this(firstName, lastName, email, mobile, password, password, null, null);
     }
 
     public RegisterRequest(String firstName, String lastName, String email, String mobile, String password, String profilePictureUrl) {
-        this(firstName, lastName, email, mobile, password, profilePictureUrl, null);
+        this(firstName, lastName, email, mobile, password, password, profilePictureUrl, null);
+    }
+
+    public RegisterRequest(String firstName, String lastName, String email, String mobile, String password, String profilePictureUrl, Role role) {
+        this(firstName, lastName, email, mobile, password, password, profilePictureUrl, role);
     }
 }

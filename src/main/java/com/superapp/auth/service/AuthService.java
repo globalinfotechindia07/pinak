@@ -77,6 +77,14 @@ public class AuthService {
         String email = request.email().trim().toLowerCase();
         log.info("Registration attempt for email={}", email);
 
+        // Verify password confirmation if provided
+        if (request.confirmPassword() != null && !request.confirmPassword().isBlank()) {
+            if (!request.password().equals(request.confirmPassword())) {
+                log.warn("Registration rejected: password and confirmPassword do not match for email={}", email);
+                throw new AppException("Passwords do not match", ApiError.INVALID_CREDENTIALS, 400);
+            }
+        }
+
         // Check email uniqueness
         if (userRepository.existsByEmail(email)) {
             log.warn("Registration rejected: email already exists: {}", email);

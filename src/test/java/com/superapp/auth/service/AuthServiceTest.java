@@ -122,6 +122,35 @@ class AuthServiceTest {
             assertThat(result.role()).isEqualTo("MERCHANT");
             assertThat(result.profilePictureUrl()).isEqualTo("https://example.com/avatar.jpg");
         }
+
+        @Test
+        @DisplayName("Mismatched confirmPassword throws AppException")
+        void mismatchedConfirmPasswordThrows() {
+            var request = new RegisterRequest("John", "Doe", "john@example.com", null,
+                    "StrongPass@1", "DifferentPass@2", null, null);
+
+            assertThatThrownBy(() -> authService.register(request, IP, UA, RID))
+                    .isInstanceOf(com.superapp.common.exception.AppException.class)
+                    .hasMessage("Passwords do not match");
+
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Matching confirmPassword succeeds")
+        void matchingConfirmPasswordSucceeds() {
+            var request = new RegisterRequest("John", "Doe", "john@example.com", null,
+                    "StrongPass@1", "StrongPass@1", null, null);
+
+            when(userRepository.existsByEmail("john@example.com")).thenReturn(false);
+            when(passwordEncoder.encode("StrongPass@1")).thenReturn("$2a$12$hashed");
+            when(userRepository.save(any(User.class))).thenReturn(activeCustomer);
+
+            UserSummary result = authService.register(request, IP, UA, RID);
+
+            assertThat(result).isNotNull();
+            verify(userRepository).save(any(User.class));
+        }
     }
 
     @Nested
