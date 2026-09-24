@@ -1068,7 +1068,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane.doe.updated@example.com\"\n}"
+                  "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane.doe.updated@example.com\",\n  \"mobile\": \"+919876543210\",\n  \"profilePictureUrl\": \"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400\"\n}\n// All fields are optional — send only the fields you want to update."
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/me",
@@ -1193,7 +1193,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"currentPassword\": \"Customer@123456\",\n  \"newPassword\": \"Customer@NewPass99\"\n}",
+                  "raw": "{\n  \"currentPassword\": \"Customer@123456\",\n  \"newPassword\": \"Customer@NewPass99\",\n  \"confirmNewPassword\": \"Customer@NewPass99\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1212,7 +1212,7 @@
                     "change-password"
                   ]
                 },
-                "description": "Change password for currently authenticated user. Requires currentPassword and strong newPassword meeting policy rules. On success, active sessions are invalidated to enforce re-login."
+                "description": "Change password for currently authenticated user. Requires currentPassword, newPassword (must meet policy: 8-128 chars, upper+lower+digit+special), and confirmNewPassword (must match newPassword). On success all active sessions are invalidated to enforce re-login."
               }
             }
           ]

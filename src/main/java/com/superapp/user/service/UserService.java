@@ -75,8 +75,9 @@ public class UserService {
     }
 
     /**
-     * Updates the authenticated user's profile (firstName, lastName, email only).
-     * Phone, role, status, and sensitive security fields cannot be modified here.
+     * Updates the authenticated user's profile.
+     * ALL fields are optional — only non-null/non-blank values are applied.
+     * Updatable: firstName, lastName, email, mobile, profilePictureUrl.
      */
     @Transactional
     public UserResponse updateMyProfile(UUID authenticatedUserId, UpdateProfileRequest request) {
@@ -111,6 +112,20 @@ public class UserService {
                 user.setEmailVerified(false);
                 emailChanged = true;
             }
+        }
+
+        if (request.mobile() != null && !request.mobile().isBlank()) {
+            String mobile = request.mobile().trim();
+            if (!mobile.equals(user.getMobile()) && !mobile.equals(user.getPhone())) {
+                if (userRepository.existsByMobile(mobile) || userRepository.existsByPhone(mobile)) {
+                    throw DuplicateResourceException.mobile(mobile);
+                }
+            }
+            user.setMobile(mobile);
+        }
+
+        if (request.profilePictureUrl() != null && !request.profilePictureUrl().isBlank()) {
+            user.setProfilePictureUrl(request.profilePictureUrl().trim());
         }
 
         user.setProfileCompleted(calculateProfileCompleted(user));
