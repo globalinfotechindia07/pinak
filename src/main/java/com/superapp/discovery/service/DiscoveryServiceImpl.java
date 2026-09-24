@@ -113,8 +113,7 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                 now,
                 sortByDistance,
                 size,
-                offset
-        );
+                offset);
 
         long total = discoveryRepository.countNearbyStores(
                 query.lat(),
@@ -122,8 +121,7 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                 radius,
                 query.categoryId(),
                 hasOffer,
-                now
-        );
+                now);
 
         List<NearbyStoreResponse> content = rows.stream()
                 .map(discoveryMapper::toNearbyResponse)
@@ -167,8 +165,7 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                 radius,
                 now,
                 size,
-                offset
-        );
+                offset);
 
         long total = discoveryRepository.countSearchStores(
                 query.q(),
@@ -176,8 +173,7 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                 hasCoordinates,
                 lat,
                 lng,
-                radius
-        );
+                radius);
 
         List<StoreSearchResponse> content = rows.stream()
                 .map(discoveryMapper::toSearchResponse)
@@ -259,8 +255,7 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                 storeId,
                 store.getMerchantId(),
                 Instant.now(),
-                pageable
-        );
+                pageable);
 
         List<OfferResponse> content = offersPage.getContent().stream()
                 .map(OfferResponse::fromEntity)
@@ -270,8 +265,7 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                 pageIndex,
                 pageSize,
                 offersPage.getTotalElements(),
-                offersPage.getTotalPages()
-        );
+                offersPage.getTotalPages());
         PagedResult<OfferResponse> result = PagedResult.of(content, meta);
 
         putInCache("discovery_offers", cacheKey, result);
@@ -296,14 +290,14 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                 null,
                 null,
                 query.getEffectivePage(),
-                query.getEffectiveSize()
-        );
+                query.getEffectiveSize());
         PagedResult<StoreSearchResponse> storeResult = searchStores(storeQuery, null);
         List<StoreSearchResponse> stores = storeResult.content();
 
         // 2. Search Categories
         String kwLower = keyword.toLowerCase();
-        List<Category> activeCategories = categoryRepository.findByStatusOrderByDisplayOrderAsc(com.superapp.category.entity.CategoryStatus.ACTIVE);
+        List<Category> activeCategories = categoryRepository
+                .findByStatusOrderByDisplayOrderAsc(com.superapp.category.entity.CategoryStatus.ACTIVE);
         List<CategoryTreeResponse> matchingCategories = activeCategories.stream()
                 .filter(cat -> (cat.getName() != null && cat.getName().toLowerCase().contains(kwLower))
                         || (cat.getDescription() != null && cat.getDescription().toLowerCase().contains(kwLower)))

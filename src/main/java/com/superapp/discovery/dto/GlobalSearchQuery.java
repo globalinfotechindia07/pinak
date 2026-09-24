@@ -6,8 +6,7 @@ public record GlobalSearchQuery(
         String q,
         UUID cityId,
         Integer page,
-        Integer size
-) {
+        Integer size) {
     public int getEffectivePage() {
         return (page == null || page < 0) ? 0 : page;
     }

@@ -65,15 +65,19 @@ public class DiscoveryController {
 
     @GetMapping("/search/global")
     @Operation(summary = "Global unified search across stores, categories, and active offers",
-            description = "Single unified search query returning stores, matching categories, and offers in one response payload")
+            description = "Single unified search query returning stores, matching categories, and offers in one response payload. Supports location sorting and type filtering (ALL, STORE, OFFER, CATEGORY).")
     public ResponseEntity<ApiResponse<GlobalSearchResponse>> globalSearch(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID cityId,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double radius,
+            @RequestParam(required = false, defaultValue = "ALL") String type,
             @RequestParam(required = false, defaultValue = "0") Integer page,
             @RequestParam(required = false, defaultValue = "10") Integer size,
             HttpServletRequest request) {
 
-        GlobalSearchQuery query = new GlobalSearchQuery(q, cityId, page, size);
+        GlobalSearchQuery query = new GlobalSearchQuery(q, cityId, lat, lng, radius, type, page, size);
         GlobalSearchResponse response = discoveryService.globalSearch(query, getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.success("Global search results fetched successfully", response));
