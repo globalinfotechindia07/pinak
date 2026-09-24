@@ -5,6 +5,8 @@ import com.superapp.category.dto.CreateCategoryRequest;
 import com.superapp.category.dto.UpdateCategoryRequest;
 import com.superapp.category.entity.CategoryStatus;
 
+import com.superapp.category.dto.CategoryTreeResponse;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -14,6 +16,10 @@ public interface CategoryService {
     List<CategoryResponse> getDiscoveryCategories(CategoryStatus status);
 
     CategoryResponse getDiscoveryCategoryById(UUID id);
+
+    List<CategoryTreeResponse> getCategoryTree();
+
+    List<CategoryTreeResponse> getSubcategoriesOf(UUID parentId);
 
     // ---- Admin APIs ----
     CategoryResponse createCategoryAdmin(CreateCategoryRequest request, String adminUserId);

@@ -156,6 +156,73 @@
               }
             },
             {
+              "name": "Customer Discovery: Get Category Hierarchy Tree (District Style)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/categories/tree",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "categories",
+                    "tree"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Discovery: Get Subcategories by Parent Category ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/categories/{{categoryId}}/subcategories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "categories",
+                    "{{categoryId}}",
+                    "subcategories"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Discovery: Global Unified Search (Stores, Categories, Offers)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/search/global?q=pizza",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "search",
+                    "global"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "pizza"
+                    }
+                  ]
+                }
+              }
+            },
+            {
               "name": "Customer Discovery: Get Active Cities",
               "request": {
                 "method": "GET",

@@ -1,5 +1,6 @@
 package com.superapp.discovery.service;
 
+import com.superapp.category.dto.CategoryTreeResponse;
 import com.superapp.category.entity.Category;
 import com.superapp.category.repository.CategoryRepository;
 import com.superapp.common.config.RateLimitService;
@@ -275,6 +276,50 @@ public class DiscoveryServiceImpl implements DiscoveryService {
 
         putInCache("discovery_offers", cacheKey, result);
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GlobalSearchResponse globalSearch(GlobalSearchQuery query, String clientIp) {
+        checkRateLimit(clientIp);
+
+        String keyword = query.q() != null ? query.q().trim() : "";
+        if (keyword.isEmpty()) {
+            return GlobalSearchResponse.of(keyword, List.of(), List.of(), List.of());
+        }
+
+        // 1. Search Stores
+        StoreSearchQuery storeQuery = new StoreSearchQuery(
+                keyword,
+                null,
+                null,
+                null,
+                null,
+                query.getEffectivePage(),
+                query.getEffectiveSize()
+        );
+        PagedResult<StoreSearchResponse> storeResult = searchStores(storeQuery, null);
+        List<StoreSearchResponse> stores = storeResult.content();
+
+        // 2. Search Categories
+        String kwLower = keyword.toLowerCase();
+        List<Category> activeCategories = categoryRepository.findByStatusOrderByDisplayOrderAsc(com.superapp.category.entity.CategoryStatus.ACTIVE);
+        List<CategoryTreeResponse> matchingCategories = activeCategories.stream()
+                .filter(cat -> (cat.getName() != null && cat.getName().toLowerCase().contains(kwLower))
+                        || (cat.getDescription() != null && cat.getDescription().toLowerCase().contains(kwLower)))
+                .map(cat -> cat.getParent() != null
+                        ? CategoryTreeResponse.leaf(cat)
+                        : CategoryTreeResponse.from(cat, List.of()))
+                .limit(5)
+                .toList();
+
+        // 3. Search Offers
+        List<Offer> activeOffers = offerRepository.searchActiveOffers(keyword, Instant.now(), PageRequest.of(0, 5));
+        List<OfferResponse> matchingOffers = activeOffers.stream()
+                .map(OfferResponse::fromEntity)
+                .toList();
+
+        return GlobalSearchResponse.of(keyword, stores, matchingCategories, matchingOffers);
     }
 
     private void checkRateLimit(String clientIp) {

@@ -13,4 +13,6 @@ public interface DiscoveryService {
     StoreDiscoveryDetailResponse getStoreDetails(UUID storeId);
 
     PagedResult<OfferResponse> getStoreOffers(UUID storeId, int page, int size);
+
+    GlobalSearchResponse globalSearch(GlobalSearchQuery query, String clientIp);
 }

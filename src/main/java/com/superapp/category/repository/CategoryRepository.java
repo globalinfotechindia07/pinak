@@ -26,6 +26,10 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
     List<Category> findByStatus(CategoryStatus status);
 
+    List<Category> findByParentIsNullAndStatusOrderByDisplayOrderAsc(CategoryStatus status);
+
+    List<Category> findByParentIdAndStatusOrderByDisplayOrderAsc(UUID parentId, CategoryStatus status);
+
     List<Category> findByStatusOrderByDisplayOrderAsc(CategoryStatus status);
 
     List<Category> findAllByOrderByDisplayOrderAsc();

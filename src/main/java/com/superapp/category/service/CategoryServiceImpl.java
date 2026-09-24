@@ -2,6 +2,7 @@ package com.superapp.category.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.superapp.category.dto.CategoryResponse;
+import com.superapp.category.dto.CategoryTreeResponse;
 import com.superapp.category.dto.CreateCategoryRequest;
 import com.superapp.category.dto.UpdateCategoryRequest;
 import com.superapp.category.entity.Category;
@@ -81,6 +82,38 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         return categoryMapper.toSingleDiscoveryResponse(category);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "master_categories_active", key = "'tree'")
+    public List<CategoryTreeResponse> getCategoryTree() {
+        List<Category> rootCategories = categoryRepository.findByParentIsNullAndStatusOrderByDisplayOrderAsc(CategoryStatus.ACTIVE);
+        return rootCategories.stream()
+                .map(root -> {
+                    List<Category> subcats = categoryRepository.findByParentIdAndStatusOrderByDisplayOrderAsc(root.getId(), CategoryStatus.ACTIVE);
+                    List<CategoryTreeResponse> subcatResponses = subcats.stream()
+                            .map(CategoryTreeResponse::leaf)
+                            .toList();
+                    return CategoryTreeResponse.from(root, subcatResponses);
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoryTreeResponse> getSubcategoriesOf(UUID parentId) {
+        Category parent = categoryRepository.findById(parentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found", ApiError.CATEGORY_NOT_FOUND));
+
+        if (!parent.isActive()) {
+            throw new ResourceNotFoundException("Category not found", ApiError.CATEGORY_NOT_FOUND);
+        }
+
+        List<Category> subcats = categoryRepository.findByParentIdAndStatusOrderByDisplayOrderAsc(parentId, CategoryStatus.ACTIVE);
+        return subcats.stream()
+                .map(CategoryTreeResponse::leaf)
+                .toList();
     }
 
     // =========================================================================

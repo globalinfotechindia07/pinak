@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,6 +22,20 @@ public interface OfferRepository extends JpaRepository<Offer, UUID>, JpaSpecific
     Page<Offer> findByMerchantId(UUID merchantId, Pageable pageable);
 
     Page<Offer> findByMerchantIdAndStoreId(UUID merchantId, UUID storeId, Pageable pageable);
+
+    @Query("""
+            SELECT o FROM Offer o
+            WHERE o.status = 'ACTIVE'
+            AND o.approvalStatus = 'APPROVED'
+            AND :now BETWEEN o.validFrom AND o.validTo
+            AND (LOWER(o.title) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(o.description) LIKE LOWER(CONCAT('%', :q, '%')))
+            ORDER BY o.createdAt DESC
+            """)
+    List<Offer> searchActiveOffers(
+            @Param("q") String q,
+            @Param("now") Instant now,
+            Pageable pageable
+    );
 
     @Query("""
             SELECT o FROM Offer o
