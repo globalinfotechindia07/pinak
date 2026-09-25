@@ -14,8 +14,12 @@ export function useMockStore() {
   }, []);
 
   return {
+    isAuthenticated: mockStore.isAuthenticated(),
+    currentUser: mockStore.getCurrentUser(),
     role: mockStore.getCurrentRole(),
     setRole: (role: any) => mockStore.setCurrentRole(role),
+    login: (role: any, email?: string) => mockStore.login(role, email),
+    logout: () => mockStore.logout(),
     merchants: mockStore.getMerchants(),
     stores: mockStore.getStores(),
     offers: mockStore.getOffers(),

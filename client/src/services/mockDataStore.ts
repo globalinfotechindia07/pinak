@@ -22,6 +22,8 @@ const STORAGE_KEYS = {
   AUDIT: "pinak_audit_v2",
   NOTIFICATIONS: "pinak_notifications_v2",
   CURRENT_USER: "pinak_current_user_v2",
+  IS_AUTHENTICATED: "pinak_is_authenticated_v2",
+  USER_EMAIL: "pinak_user_email_v2",
 };
 
 // Seed Categories
@@ -493,15 +495,60 @@ export const mockStore = {
   },
 
   // Auth / Role
+  isAuthenticated(): boolean {
+    const val = localStorage.getItem(STORAGE_KEYS.IS_AUTHENTICATED);
+    return val === null ? true : val === "true";
+  },
   getCurrentRole(): UserRole {
     return (localStorage.getItem(STORAGE_KEYS.CURRENT_USER) as UserRole) || "admin";
+  },
+  getCurrentUser(): { name: string; email: string; role: UserRole } {
+    const role = this.getCurrentRole();
+    const storedEmail = localStorage.getItem(STORAGE_KEYS.USER_EMAIL);
+    if (role === "admin") {
+      return {
+        name: "Riya Shah",
+        email: storedEmail || "riya.admin@pinak.app",
+        role: "admin"
+      };
+    } else {
+      return {
+        name: "The Curry Leaf",
+        email: storedEmail || "sunil@curryleaf.in",
+        role: "merchant"
+      };
+    }
   },
   setCurrentRole(role: UserRole) {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, role);
     this.addAudit({
       action: "Role switched",
       entity: `${role} workspace`,
-      actor: "Current User",
+      actor: this.getCurrentUser().email,
+      severity: "info"
+    });
+    emitChange();
+  },
+  login(role: UserRole, email?: string) {
+    localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, "true");
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, role);
+    if (email) {
+      localStorage.setItem(STORAGE_KEYS.USER_EMAIL, email);
+    }
+    this.addAudit({
+      action: "User signed in",
+      entity: `${role} session`,
+      actor: email || (role === "admin" ? "riya.admin@pinak.app" : "sunil@curryleaf.in"),
+      severity: "info"
+    });
+    emitChange();
+  },
+  logout() {
+    localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, "false");
+    this.addAudit({
+      action: "User signed out",
+      entity: "Session terminated",
+      actor: this.getCurrentUser().email,
       severity: "info"
     });
     emitChange();

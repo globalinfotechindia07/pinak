@@ -10,7 +10,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Building2,
-  Check
+  Check,
+  LogOut
 } from "lucide-react";
 import { UserRole } from "../../types";
 
@@ -24,6 +25,7 @@ interface TopbarProps {
   onOpenNotifications: () => void;
   unreadCount: number;
   onResetDemo: () => void;
+  onLogout?: () => void;
   onSearchSelect?: (type: string, id: string) => void;
 }
 
@@ -36,7 +38,8 @@ export const Topbar: React.FC<TopbarProps> = ({
   onToggleTheme,
   onOpenNotifications,
   unreadCount,
-  onResetDemo
+  onResetDemo,
+  onLogout
 }) => {
   const [showRoleMenu, setShowRoleMenu] = useState(false);
 
@@ -179,11 +182,33 @@ export const Topbar: React.FC<TopbarProps> = ({
                     </div>
                     {role === "merchant" && <Check size={14} />}
                   </button>
+
+                  <div className="border-t border-slate-100 dark:border-slate-800 my-1 pt-1">
+                    <button
+                      onClick={() => {
+                        setShowRoleMenu(false);
+                        onLogout?.();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                    >
+                      <LogOut size={15} />
+                      <span>Sign Out / Logout</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </>
           )}
         </div>
+
+        {/* Dedicated Fast Logout Button */}
+        <button
+          onClick={onLogout}
+          className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+          title="Sign Out"
+        >
+          <LogOut size={18} />
+        </button>
       </div>
     </header>
   );

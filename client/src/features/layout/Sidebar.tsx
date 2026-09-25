@@ -18,7 +18,8 @@ import {
   QrCode,
   Receipt,
   Send,
-  X
+  X,
+  LogOut
 } from "lucide-react";
 import { UserRole } from "../../types";
 
@@ -32,6 +33,7 @@ interface SidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   onOpenAI: () => void;
+  onLogout?: () => void;
   pendingOffersCount: number;
   pendingMerchantsCount: number;
   pendingStoresCount: number;
@@ -47,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   onCloseMobile,
   onOpenAI,
+  onLogout,
   pendingOffersCount,
   pendingMerchantsCount,
   pendingStoresCount
@@ -251,6 +254,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 title="Open PINAK AI"
               >
                 <Sparkles size={18} />
+              </button>
+            )}
+          </div>
+
+          {/* User Account & Logout Footer */}
+          <div className="p-3 border-t border-slate-100 dark:border-slate-800/80 shrink-0">
+            {!isCollapsed ? (
+              <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs ${
+                      role === "admin"
+                        ? "bg-gradient-to-br from-violet-600 to-indigo-700"
+                        : "bg-gradient-to-br from-amber-500 to-rose-600"
+                    }`}
+                  >
+                    {role === "admin" ? "RS" : "TC"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                      {role === "admin" ? "Riya Shah" : "The Curry Leaf"}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">
+                      {role === "admin" ? "riya.admin@pinak.app" : "sunil@curryleaf.in"}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={onLogout}
+                  className="p-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 transition-colors shrink-0"
+                  title="Sign out of console"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onLogout}
+                className="w-full flex justify-center p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                title="Sign out"
+              >
+                <LogOut size={18} />
               </button>
             )}
           </div>

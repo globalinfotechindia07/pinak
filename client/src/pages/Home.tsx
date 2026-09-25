@@ -6,6 +6,7 @@ import { Sidebar } from "../features/layout/Sidebar";
 import { Topbar } from "../features/layout/Topbar";
 import { NotificationDrawer } from "../features/layout/NotificationDrawer";
 import { AIAssistantDrawer } from "../features/layout/AIAssistantDrawer";
+import { Login } from "./Login";
 
 // Admin Feature Modules
 import { OverviewDashboard } from "../features/admin/OverviewDashboard";
@@ -101,6 +102,16 @@ export default function Home() {
   const pendingStoresCount = store.stores.filter((s) => s.status === "PENDING_APPROVAL").length;
   const unreadNotifications = store.notifications.filter((n) => !n.read).length;
 
+  const handleLogout = () => {
+    store.logout();
+    toast.success("Logged out successfully. Have a great day!");
+  };
+
+  // If user is logged out, render the Login screen
+  if (!store.isAuthenticated) {
+    return <Login />;
+  }
+
   return (
     <div className="flex min-h-screen bg-[#f8f9fc] dark:bg-[#0c0e17] text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* Sidebar */}
@@ -114,6 +125,7 @@ export default function Home() {
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         onOpenAI={() => setIsAIOpen(true)}
+        onLogout={handleLogout}
         pendingOffersCount={pendingOffersCount}
         pendingMerchantsCount={pendingMerchantsCount}
         pendingStoresCount={pendingStoresCount}
@@ -134,6 +146,7 @@ export default function Home() {
             store.resetToDefaults();
             toast.success("Demo dataset reset to original seeds!");
           }}
+          onLogout={handleLogout}
         />
 
         {/* Page Body with Motion Transition */}
