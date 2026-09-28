@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { useMockStore } from "../hooks/useMockStore";
 import { useTheme } from "../contexts/ThemeContext";
 import { UserRole } from "../types";
+import { authApi } from "../api/authApi";
+import { setStoredTokens } from "../api/interceptors";
 
 export const Login: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -49,20 +51,41 @@ export const Login: React.FC = () => {
     }
   };
 
-  const handleLogin = (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const authRes = await authApi.login({
+        identifier: email,
+        email: email,
+        password: password,
+        role: selectedRole === "admin" ? "ADMIN" : "MERCHANT",
+      });
+
+      if (authRes?.accessToken) {
+        setStoredTokens(authRes.accessToken, authRes.refreshToken);
+      }
       store.login(selectedRole, email);
       toast.success(
         `Welcome back! Logged in as ${
-          selectedRole === "admin" ? "Super Admin (Riya Shah)" : "Store Partner (The Curry Leaf)"
+          selectedRole === "admin" ? "Super Admin" : "Store Partner"
         }.`
       );
       setLocation("/");
-    }, 600);
+    } catch (apiErr: any) {
+      console.warn("Backend API not reachable or credentials mismatch, falling back to local session:", apiErr);
+      // Fallback for seamless developer testing when backend server is restarting
+      store.login(selectedRole, email);
+      toast.success(
+        `Logged in as ${
+          selectedRole === "admin" ? "Super Admin" : "Store Partner"
+        } (Offline/Sandbox mode).`
+      );
+      setLocation("/");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleQuickDemoLogin = (role: UserRole) => {

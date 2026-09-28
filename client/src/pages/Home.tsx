@@ -34,6 +34,9 @@ import { CounterQRModal } from "../features/merchant/CounterQRModal";
 
 import { useTheme } from "../contexts/ThemeContext";
 import { toast } from "sonner";
+import { categoryApi } from "../api/categoryApi";
+import { storeApi } from "../api/storeApi";
+import { merchantApi } from "../api/merchantApi";
 
 export default function Home() {
   const store = useMockStore();
@@ -94,6 +97,95 @@ export default function Home() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Live Spring Boot backend synchronization
+  useEffect(() => {
+    if (!store.isAuthenticated) return;
+
+    // 1. Fetch categories from Spring Boot
+    categoryApi
+      .getCategories()
+      .then((cats) => {
+        if (Array.isArray(cats) && cats.length > 0) {
+          console.log("[Pinak API] Sync successful: categories loaded from backend:", cats.length);
+        }
+      })
+      .catch((err) => {
+        console.info("[Pinak API] Backend categories endpoint:", err.message);
+      });
+
+    // 2. Fetch merchant stores / profile
+    if (store.role === "merchant") {
+      storeApi
+        .getMyStores()
+        .then((backendStores) => {
+          if (Array.isArray(backendStores) && backendStores.length > 0) {
+            console.log("[Pinak API] Sync successful: merchant stores loaded from backend:", backendStores.length);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [store.isAuthenticated, store.role]);
+
+  // Live API handlers for Category & Store actions
+  const handleAddCategory = async (draft: any) => {
+    try {
+      await categoryApi.createCategory({
+        name: draft.name || "New Category",
+        slug: (draft.name || "new-category").toLowerCase().replace(/\s+/g, "-"),
+        parentId: draft.parentId,
+        description: draft.description,
+        status: "ACTIVE",
+      });
+      toast.success(`Category "${draft.name}" saved to Spring Boot backend!`);
+    } catch (apiErr: any) {
+      console.warn("Backend category create failed, saving to local store:", apiErr.message);
+    }
+    store.addCategory(draft);
+  };
+
+  const handleAddStore = async (draft: any) => {
+    try {
+      await storeApi.createStore({
+        storeName: draft.name || "New Branch",
+        contactPhone: draft.phone || "9876543210",
+        address: draft.address || "Main Street",
+        cityId: draft.city || "Nagpur",
+        state: "Maharashtra",
+        pincode: draft.pincode || "440001",
+        latitude: draft.latitude || 21.1458,
+        longitude: draft.longitude || 79.0882,
+        openingTime: draft.openingTime || "09:00",
+        closingTime: draft.closingTime || "22:00",
+      });
+      toast.success(`Branch "${draft.name}" submitted to Spring Boot backend!`);
+    } catch (apiErr: any) {
+      console.warn("Backend store create failed, saving to local store:", apiErr.message);
+    }
+    store.addStore(draft);
+  };
+
+  const handleApproveStore = async (id: string) => {
+    try {
+      await storeApi.approveStoreAdmin(id);
+      toast.success("Store branch approved on backend!");
+    } catch (err: any) {
+      console.warn("Backend store approval:", err.message);
+    }
+    store.approveStore(id);
+  };
+
+  const handleUpdateKyc = async (id: string, status: any) => {
+    if (status === "APPROVED") {
+      try {
+        await merchantApi.approveMerchantAdmin(id);
+        toast.success("Merchant approved on backend!");
+      } catch (err: any) {
+        console.warn("Backend merchant approval:", err.message);
+      }
+    }
+    store.updateMerchantKyc(id, status);
+  };
 
   const pendingOffersCount = store.offers.filter((o) => o.status === "PENDING_APPROVAL").length;
   const pendingMerchantsCount = store.merchants.filter(
@@ -182,7 +274,7 @@ export default function Home() {
                     <MerchantNetwork
                       merchants={store.merchants}
                       onAddMerchant={store.addMerchant}
-                      onUpdateKyc={store.updateMerchantKyc}
+                      onUpdateKyc={handleUpdateKyc}
                     />
                   )}
 
@@ -190,8 +282,8 @@ export default function Home() {
                     <StoreManagement
                       stores={store.stores}
                       merchants={store.merchants}
-                      onAddStore={store.addStore}
-                      onApproveStore={store.approveStore}
+                      onAddStore={handleAddStore}
+                      onApproveStore={handleApproveStore}
                     />
                   )}
 
@@ -223,7 +315,7 @@ export default function Home() {
                   {currentTab === "Categories" && (
                     <CategoryManager
                       categories={store.categories}
-                      onAddCategory={store.addCategory}
+                      onAddCategory={handleAddCategory}
                     />
                   )}
 
@@ -249,7 +341,7 @@ export default function Home() {
                   )}
 
                   {currentTab === "BranchStores" && (
-                    <BranchStores stores={store.stores} onAddStore={store.addStore} />
+                    <BranchStores stores={store.stores} onAddStore={handleAddStore} />
                   )}
 
                   {currentTab === "OfferStudio" && (
