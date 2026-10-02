@@ -35,8 +35,9 @@ public class CorsConfig {
         config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of(
-                "Authorization", "Content-Type", "X-Request-ID", "X-Requested-With", "Accept"));
-        config.setExposedHeaders(List.of("X-Request-ID"));
+                "Authorization", "Content-Type", "X-Request-ID", "X-Requested-With", "Accept",
+                "X-XSRF-TOKEN", "X-CSRF-Token", "X-Client-Type", "X-Device-Fingerprint", "X-Device-Platform"));
+        config.setExposedHeaders(List.of("X-Request-ID", "Set-Cookie"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L); // Pre-flight cache: 1 hour
 

@@ -1,11 +1,10 @@
 package com.superapp.user.controller;
 
-import com.superapp.auth.dto.SessionResponse;
+import com.superapp.auth.dto.SessionDTO;
 import com.superapp.auth.service.SessionService;
 import com.superapp.common.response.ApiResponse;
 import com.superapp.common.security.CustomUserDetailsService;
-import com.superapp.user.dto.UpdateProfileRequest;
-import com.superapp.user.dto.UserResponse;
+import com.superapp.user.dto.UserDTO;
 import com.superapp.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -43,35 +42,35 @@ public class UserController {
     @GetMapping("/me")
     @Operation(summary = "Get current authenticated user profile")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<UserResponse>> getMyProfile(
+    public ResponseEntity<ApiResponse<UserDTO.Response>> getMyProfile(
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UserResponse response = userService.getMyProfile(userId);
+        UserDTO.Response response = userService.getMyProfile(userId);
         return ResponseEntity.ok(ApiResponse.success("User fetched successfully", response));
     }
 
     @PutMapping("/me")
     @Operation(summary = "Update current authenticated user profile")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<UserResponse>> updateMyProfile(
+    public ResponseEntity<ApiResponse<UserDTO.Response>> updateMyProfile(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody UpdateProfileRequest request) {
+            @Valid @RequestBody UserDTO.UpdateProfileRequest request) {
 
         // IDOR protection: always use authenticated user ID — never a client-supplied ID
         UUID userId = UUID.fromString(userDetails.getUsername());
-        UserResponse response = userService.updateMyProfile(userId, request);
+        UserDTO.Response response = userService.updateMyProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", response));
     }
 
     @GetMapping("/me/sessions")
     @Operation(summary = "List active sessions for current user")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<List<SessionResponse>>> getMySessions(
+    public ResponseEntity<ApiResponse<List<SessionDTO.Response>>> getMySessions(
             @AuthenticationPrincipal UserDetails userDetails) {
 
         UUID userId = UUID.fromString(userDetails.getUsername());
-        List<SessionResponse> sessions = sessionService.getActiveSessions(userId);
+        List<SessionDTO.Response> sessions = sessionService.getActiveSessions(userId);
         return ResponseEntity.ok(ApiResponse.success("Sessions fetched successfully", sessions));
     }
 

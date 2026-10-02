@@ -10,7 +10,7 @@ import com.superapp.store.enums.StoreStatus;
 import com.superapp.store.repository.StoreRepository;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.repository.TransactionRepository;
-import com.superapp.user.dto.AdminDashboardSummaryResponse;
+import com.superapp.user.dto.UserDTO;
 import com.superapp.user.entity.UserStatus;
 import com.superapp.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -66,7 +66,7 @@ class AdminDashboardUnitTest {
         when(transactionRepository.countByStatus(TransactionStatus.FAILED)).thenReturn(1300L);
         when(transactionRepository.countByStatus(TransactionStatus.REFUNDED)).thenReturn(500L);
 
-        AdminDashboardSummaryResponse summary = dashboardService.getDashboardSummary();
+        UserDTO.AdminDashboardSummaryResponse summary = dashboardService.getDashboardSummary();
 
         assertThat(summary).isNotNull();
         assertThat(summary.users().total()).isEqualTo(1000L);

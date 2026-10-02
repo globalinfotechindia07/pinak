@@ -1,7 +1,7 @@
 package com.superapp.user.controller;
 
 import com.superapp.common.response.ApiResponse;
-import com.superapp.user.dto.AdminDashboardSummaryResponse;
+import com.superapp.user.dto.UserDTO;
 import com.superapp.user.service.AdminDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -27,8 +27,8 @@ public class AdminDashboardController {
 
     @GetMapping
     @Operation(summary = "Get platform operational dashboard summary metrics")
-    public ResponseEntity<ApiResponse<AdminDashboardSummaryResponse>> getDashboardSummary() {
-        AdminDashboardSummaryResponse summary = adminDashboardService.getDashboardSummary();
+    public ResponseEntity<ApiResponse<UserDTO.AdminDashboardSummaryResponse>> getDashboardSummary() {
+        UserDTO.AdminDashboardSummaryResponse summary = adminDashboardService.getDashboardSummary();
         return ResponseEntity.ok(ApiResponse.success("Dashboard summary fetched successfully", summary));
     }
 }

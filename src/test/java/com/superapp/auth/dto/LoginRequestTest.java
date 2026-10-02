@@ -1,6 +1,7 @@
 package com.superapp.auth.dto;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.superapp.auth.dto.AuthDTO.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

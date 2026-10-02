@@ -59,15 +59,19 @@ public class SecurityConfig {
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
                 // Public auth endpoints
+                .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf", "/api/v1/auth/invite/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
                         "/api/v1/auth/register",
                         "/api/v1/auth/login",
+                        "/api/v1/auth/pos/pin-login",
                         "/api/v1/auth/otp/**",
                         "/api/v1/auth/refresh",
                         "/api/v1/auth/token/refresh",
+                        "/api/v1/auth/logout",
                         "/api/v1/auth/forgot-password",
                         "/api/v1/auth/verify-reset-otp",
                         "/api/v1/auth/reset-password",
+                        "/api/v1/auth/invite/**",
                         "/api/v1/admin/auth/**"
                 ).permitAll()
 

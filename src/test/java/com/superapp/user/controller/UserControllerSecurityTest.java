@@ -8,8 +8,7 @@ import com.superapp.common.exception.GlobalExceptionHandler;
 import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.common.exception.UserSuspendedException;
 import com.superapp.common.security.CustomUserDetailsService;
-import com.superapp.user.dto.UpdateProfileRequest;
-import com.superapp.user.dto.UserResponse;
+import com.superapp.user.dto.UserDTO;
 import com.superapp.user.entity.Role;
 import com.superapp.user.entity.UserStatus;
 import com.superapp.user.service.UserService;
@@ -94,7 +93,7 @@ class UserControllerSecurityTest {
         @DisplayName("GET /api/v1/users/me always resolves authenticated user and ignores query or body parameters")
         void getMyProfile_usesAuthenticatedContext_notInjectedId() throws Exception {
             UUID authId = UUID.fromString(AUTHENTICATED_USER_ID);
-            var response = new UserResponse(
+            var response = new UserDTO.Response(
                     authId.toString(), "+919876543210", "rohan@example.com", "Rohan", "User",
                     Role.CUSTOMER.name(), UserStatus.ACTIVE.name(), true, "Rohan User",
                     "+919876543210", true, true, null, Instant.now(), Instant.now()
@@ -120,13 +119,13 @@ class UserControllerSecurityTest {
         @DisplayName("PUT /api/v1/users/me ignores mass-assignment fields (role, status, phone, profileCompleted)")
         void updateMyProfile_preventsMassAssignment() throws Exception {
             UUID authId = UUID.fromString(AUTHENTICATED_USER_ID);
-            var response = new UserResponse(
+            var response = new UserDTO.Response(
                     authId.toString(), "+919876543210", "rohan@example.com", "Rohan", "Itankar",
                     Role.CUSTOMER.name(), UserStatus.ACTIVE.name(), true, "Rohan Itankar",
                     "+919876543210", true, true, null, Instant.now(), Instant.now()
             );
 
-            ArgumentCaptor<UpdateProfileRequest> requestCaptor = ArgumentCaptor.forClass(UpdateProfileRequest.class);
+            ArgumentCaptor<UserDTO.UpdateProfileRequest> requestCaptor = ArgumentCaptor.forClass(UserDTO.UpdateProfileRequest.class);
             when(userService.updateMyProfile(eq(authId), requestCaptor.capture())).thenReturn(response);
 
             // Attempting mass-assignment payload with malicious role, status, phone override
@@ -151,7 +150,7 @@ class UserControllerSecurityTest {
                     .andExpect(jsonPath("$.data.role").value("CUSTOMER"))
                     .andExpect(jsonPath("$.data.phone").value("+919876543210"));
 
-            UpdateProfileRequest captured = requestCaptor.getValue();
+            UserDTO.UpdateProfileRequest captured = requestCaptor.getValue();
             assertThat(captured.firstName()).isEqualTo("Rohan");
             assertThat(captured.lastName()).isEqualTo("Itankar");
             assertThat(captured.email()).isEqualTo("rohan@example.com");

@@ -10,8 +10,9 @@ import com.superapp.store.enums.StoreStatus;
 import com.superapp.store.repository.StoreRepository;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.repository.TransactionRepository;
-import com.superapp.user.dto.AdminDashboardSummaryResponse;
-import com.superapp.user.dto.AdminDashboardSummaryResponse.*;
+import com.superapp.user.dto.UserDTO;
+import com.superapp.user.dto.UserDTO.AdminDashboardSummaryResponse;
+import com.superapp.user.dto.UserDTO.AdminDashboardSummaryResponse.*;
 import com.superapp.user.entity.UserStatus;
 import com.superapp.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -43,7 +44,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminDashboardSummaryResponse getDashboardSummary() {
+    public UserDTO.AdminDashboardSummaryResponse getDashboardSummary() {
         // Users
         long totalUsers = userRepository.count();
         long activeUsers = userRepository.countByStatus(UserStatus.ACTIVE);

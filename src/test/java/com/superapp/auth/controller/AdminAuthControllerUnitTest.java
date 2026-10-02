@@ -1,7 +1,7 @@
 package com.superapp.auth.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.superapp.auth.dto.*;
+import com.superapp.auth.dto.AuthDTO;
 import com.superapp.auth.service.AuthService;
 import com.superapp.common.config.RateLimitService;
 import com.superapp.user.entity.Role;
@@ -44,8 +44,8 @@ class AdminAuthControllerUnitTest {
     @Test
     @DisplayName("POST /api/v1/admin/auth/login — returns MFA challenge")
     void adminLogin_success() throws Exception {
-        var request = new AdminLoginRequest("admin@superapp.com", "Password@123", "device-admin");
-        var response = new AdminMfaChallengeResponse(true, "mfa_challenge_abc");
+        var request = new AuthDTO.AdminLoginRequest("admin@superapp.com", "Password@123", "device-admin");
+        var response = new AuthDTO.AdminMfaChallengeResponse(true, "mfa_challenge_abc");
 
         when(authService.adminLogin(any(), any(), any(), any())).thenReturn(response);
 
@@ -61,12 +61,12 @@ class AdminAuthControllerUnitTest {
     @Test
     @DisplayName("POST /api/v1/admin/auth/mfa/verify — returns Admin JWT tokens")
     void adminVerifyMfa_success() throws Exception {
-        var request = new AdminMfaVerifyRequest("mfa_challenge_abc", "123456", "device-admin");
-        var userSummary = new UserSummary(
+        var request = new AuthDTO.AdminMfaVerifyRequest("mfa_challenge_abc", "123456", "device-admin");
+        var userSummary = new AuthDTO.UserSummary(
                 UUID.randomUUID().toString(), "Admin Master", "admin@superapp.com",
                 null, Role.ADMIN.name(), UserStatus.ACTIVE.name(), true, false
         );
-        var authResponse = AuthResponse.of("admin-jwt", "admin-refresh", 900L, userSummary);
+        var authResponse = AuthDTO.Response.of("admin-jwt", "admin-refresh", 900L, userSummary);
 
         when(authService.adminVerifyMfa(any(), any(), any(), any())).thenReturn(authResponse);
 

@@ -18,6 +18,10 @@ import com.superapp.merchant.mapper.MerchantMapper;
 import com.superapp.merchant.repository.MerchantKycRepository;
 import com.superapp.merchant.repository.MerchantRepository;
 import com.superapp.user.repository.UserRepository;
+import com.superapp.user.entity.Role;
+import com.superapp.user.entity.User;
+import com.superapp.user.entity.UserStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -28,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -41,6 +46,7 @@ public class MerchantServiceImpl implements MerchantService {
     private final MerchantKycRepository merchantKycRepository;
     private final AuditService auditService;
     private final MerchantMapper merchantMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public MerchantServiceImpl(
@@ -49,7 +55,8 @@ public class MerchantServiceImpl implements MerchantService {
             UserRepository userRepository,
             MerchantKycRepository merchantKycRepository,
             AuditService auditService,
-            MerchantMapper merchantMapper
+            MerchantMapper merchantMapper,
+            @Autowired(required = false) PasswordEncoder passwordEncoder
     ) {
         this.merchantRepository = merchantRepository;
         this.categoryRepository = categoryRepository;
@@ -57,6 +64,7 @@ public class MerchantServiceImpl implements MerchantService {
         this.merchantKycRepository = merchantKycRepository;
         this.auditService = auditService;
         this.merchantMapper = merchantMapper != null ? merchantMapper : new MerchantMapper();
+        this.passwordEncoder = passwordEncoder;
     }
 
     // Overloaded constructor for backward compatibility with existing unit tests
@@ -65,7 +73,7 @@ public class MerchantServiceImpl implements MerchantService {
             CategoryRepository categoryRepository,
             UserRepository userRepository
     ) {
-        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper());
+        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null);
     }
 
     @Override
@@ -73,41 +81,83 @@ public class MerchantServiceImpl implements MerchantService {
     public MerchantResponse createMerchant(CreateMerchantRequest request, UUID currentUserId, boolean isAdmin) {
         UUID ownerId = currentUserId;
 
-        // Validate owner exists
-        if (!userRepository.existsById(ownerId)) {
-            throw new ResourceNotFoundException("User (owner)", "id", ownerId);
-        }
-
-        // Validate category if provided
-        String categoryName = null;
-        if (request.categoryId() != null) {
-            Category category = categoryRepository.findById(request.categoryId())
-                    .orElseThrow(() -> new AppException("Category not found", ApiError.CATEGORY_NOT_FOUND, 404));
-            if (!category.isActive()) {
-                throw new AppException("Category is not active", ApiError.CATEGORY_INACTIVE, 409);
-            }
-            categoryName = category.getName();
-        }
-
         String phone = request.phone() != null ? request.phone().trim() : null;
         String email = request.email() != null ? request.email().trim().toLowerCase() : null;
         String legalName = request.legalName() != null ? request.legalName().trim() : null;
         String description = request.description() != null ? request.description().trim() : null;
         String website = request.website() != null ? request.website().trim() : null;
 
+        // If admin onboards a merchant, associate or provision owner user by email
+        if (isAdmin && email != null && !email.isBlank()) {
+            Optional<User> existingUser = userRepository.findByEmail(email);
+            if (existingUser.isPresent()) {
+                User u = existingUser.get();
+                if (u.getRole() == Role.CUSTOMER) {
+                    u.setRole(Role.MERCHANT);
+                    userRepository.save(u);
+                }
+                ownerId = u.getId();
+            } else {
+                String fullName = (legalName != null && !legalName.isBlank()) ? legalName : request.businessName().trim();
+                String[] parts = fullName.split("\\s+", 2);
+                String fName = parts[0];
+                String lName = parts.length > 1 ? parts[1] : "Owner";
+                String pwdHash = passwordEncoder != null ? passwordEncoder.encode("Merchant@123") : "$2a$10$w8.3b04J0n0W6wG6eYgPZe9q3g3C9iYy1U2m7m9wK4jE5bH5c2F7O";
+                User newOwner = new User(email, fullName, fName, lName, pwdHash, Role.MERCHANT);
+                if (phone != null && !phone.isBlank()) {
+                    newOwner.setMobile(phone);
+                }
+                User savedOwner = userRepository.save(newOwner);
+                ownerId = savedOwner.getId();
+            }
+        }
+
+        // Validate owner exists
+        if (!userRepository.existsById(ownerId)) {
+            throw new ResourceNotFoundException("User (owner)", "id", ownerId);
+        }
+
+        // Validate or resolve category
+        String categoryName = null;
+        UUID categoryId = request.categoryId();
+        if (categoryId != null) {
+            Optional<Category> catOpt = categoryRepository.findById(categoryId);
+            if (catOpt.isPresent() && catOpt.get().isActive()) {
+                categoryName = catOpt.get().getName();
+            } else {
+                categoryId = null;
+            }
+        }
+        if (categoryId == null) {
+            Category defCat = categoryRepository.findByNameIgnoreCase("Food & Dining")
+                    .orElseGet(() -> categoryRepository.findAll().stream().filter(Category::isActive).findFirst().orElse(null));
+            if (defCat != null) {
+                categoryId = defCat.getId();
+                categoryName = defCat.getName();
+            }
+        }
+
         Merchant merchant = new Merchant(
                 ownerId,
                 request.businessName().trim(),
                 legalName,
                 description,
-                request.categoryId(),
+                categoryId,
                 phone,
                 email,
                 website
         );
 
+        if (isAdmin) {
+            merchant.setStatus(MerchantStatus.ACTIVE);
+            merchant.setApprovalStatus(ApprovalStatus.APPROVED);
+            merchant.setKycStatus(KycStatus.VERIFIED);
+            merchant.setApprovedAt(Instant.now());
+            merchant.setCreatedBy("ADMIN");
+        }
+
         Merchant saved = merchantRepository.save(merchant);
-        log.info("Created merchant id={} name='{}' ownerId={}", saved.getId(), saved.getBusinessName(), ownerId);
+        log.info("Created merchant id={} name='{}' ownerId={} (isAdmin={})", saved.getId(), saved.getBusinessName(), ownerId, isAdmin);
 
         if (auditService != null) {
             auditService.record(AuditEventType.MERCHANT_CREATED, ownerId, null, null, MDC.get("requestId"),

@@ -30,6 +30,9 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
+        String uri = request.getRequestURI();
+        boolean isSwagger = uri != null && (uri.startsWith("/swagger-ui") || uri.startsWith("/v3/api-docs"));
+
         // Enforce HTTPS in production (Nginx handles TLS termination and sets this)
         response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 
@@ -42,12 +45,18 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
         // Control referrer information
         response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
 
-        // CSP: API-only, no HTML served — restrict everything
-        response.setHeader("Content-Security-Policy", "default-src 'none'");
+        // CSP: Swagger UI requires loading its bundled JS, CSS, fonts, and favicon
+        if (isSwagger) {
+            response.setHeader("Content-Security-Policy",
+                    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'");
+        } else {
+            // API-only, no HTML served — restrict everything
+            response.setHeader("Content-Security-Policy", "default-src 'none'");
 
-        // Prevent caching of API responses (important for auth endpoints)
-        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-        response.setHeader("Pragma", "no-cache");
+            // Prevent caching of API responses (important for auth endpoints)
+            response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+            response.setHeader("Pragma", "no-cache");
+        }
 
         filterChain.doFilter(request, response);
     }

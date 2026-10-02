@@ -1,7 +1,7 @@
 package com.superapp.user.service;
-
-import com.superapp.user.dto.AdminDashboardSummaryResponse;
+ 
+import com.superapp.user.dto.UserDTO;
 
 public interface AdminDashboardService {
-    AdminDashboardSummaryResponse getDashboardSummary();
+    UserDTO.AdminDashboardSummaryResponse getDashboardSummary();
 }

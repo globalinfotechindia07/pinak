@@ -21,13 +21,21 @@ public class OtpService {
 
     private final boolean mockMode;
     private final int otpLength;
+    private final com.superapp.common.email.EmailService emailService;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public OtpService(
-            @Value("${app.mail.mock:true}") boolean mockMode,
-            @Value("${app.otp.length:6}") int otpLength
+            @Value("${app.mail.mock:false}") boolean mockMode,
+            @Value("${app.otp.length:6}") int otpLength,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.superapp.common.email.EmailService emailService
     ) {
         this.mockMode = mockMode;
         this.otpLength = otpLength;
+        this.emailService = emailService;
+    }
+
+    public OtpService(boolean mockMode, int otpLength) {
+        this(mockMode, otpLength, null);
     }
 
     /**
@@ -47,13 +55,10 @@ public class OtpService {
      * @param otp    the plaintext OTP (NOT stored — only its hash is stored in DB)
      */
     public void sendPasswordResetOtp(String email, String otp) {
-        if (mockMode) {
-            log.info("🔐 [MOCK] Password Reset OTP for {}: {} (expires in {} min) — NOT sent via email",
-                    email, otp, "${app.otp.expiry-minutes:15}");
+        if (emailService != null && emailService.isSmtpConfigured()) {
+            emailService.sendPasswordResetOtp(email, otp);
         } else {
-            // TODO: Integrate real SMTP via JavaMailSender
-            log.warn("Real mail sending not implemented. Falling back to mock mode for: {}", email);
-            log.info("🔐 [MOCK-FALLBACK] Password Reset OTP for {}: {}", email, otp);
+            log.info("🔐 [MOCK / DEV] Password Reset OTP for {}: {} (expires in 15 min)", email, otp);
         }
     }
 
@@ -61,10 +66,10 @@ public class OtpService {
      * Sends (or mocks) an email verification OTP.
      */
     public void sendEmailVerificationOtp(String email, String otp) {
-        if (mockMode) {
-            log.info("📧 [MOCK] Email Verification OTP for {}: {} — NOT sent via email", email, otp);
+        if (emailService != null && emailService.isSmtpConfigured()) {
+            emailService.sendEmailVerificationOtp(email, otp);
         } else {
-            log.info("📧 [MOCK-FALLBACK] Email Verification OTP for {}: {}", email, otp);
+            log.info("📧 [MOCK / DEV] Email Verification OTP for {}: {}", email, otp);
         }
     }
 

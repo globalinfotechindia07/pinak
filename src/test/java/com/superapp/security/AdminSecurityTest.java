@@ -1,6 +1,6 @@
 package com.superapp.security;
 
-import com.superapp.auth.dto.RegisterRequest;
+import com.superapp.auth.dto.AuthDTO;
 import com.superapp.auth.repository.PasswordResetTokenRepository;
 import com.superapp.auth.service.*;
 import com.superapp.category.controller.AdminCategoryController;
@@ -16,6 +16,8 @@ import com.superapp.user.controller.AdminController;
 import com.superapp.user.controller.AdminDashboardController;
 import com.superapp.user.entity.Role;
 import com.superapp.user.entity.User;
+import com.superapp.user.repository.RoleRepository;
+import com.superapp.user.repository.StaffMemberRepository;
 import com.superapp.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +40,8 @@ import static org.mockito.Mockito.when;
 class AdminSecurityTest {
 
     @Mock UserRepository userRepository;
+    @Mock StaffMemberRepository staffMemberRepository;
+    @Mock RoleRepository roleRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtService jwtService;
     @Mock TokenService tokenService;
@@ -57,7 +61,7 @@ class AdminSecurityTest {
         @Test
         @DisplayName("Register with Role.ADMIN throws 403 Forbidden")
         void registerWithAdminRole_throwsForbidden() {
-            var request = new RegisterRequest("Admin", "Hacker", "admin@evil.com", null, "StrongPass@1", null, Role.ADMIN);
+            var request = new AuthDTO.RegisterRequest("Admin", "Hacker", "admin@evil.com", null, "StrongPass@1", null, null, Role.ADMIN);
             when(userRepository.existsByEmail("admin@evil.com")).thenReturn(false);
 
             assertThatThrownBy(() -> authService.register(request, "127.0.0.1", "curl", "req-1"))
@@ -72,7 +76,7 @@ class AdminSecurityTest {
         @Test
         @DisplayName("Register with Role.SUPER_ADMIN throws 403 Forbidden")
         void registerWithSuperAdminRole_throwsForbidden() {
-            var request = new RegisterRequest("Super", "Hacker", "super@evil.com", null, "StrongPass@1", null, Role.SUPER_ADMIN);
+            var request = new AuthDTO.RegisterRequest("Super", "Hacker", "super@evil.com", null, "StrongPass@1", null, null, Role.SUPER_ADMIN);
             when(userRepository.existsByEmail("super@evil.com")).thenReturn(false);
 
             assertThatThrownBy(() -> authService.register(request, "127.0.0.1", "curl", "req-2"))
@@ -87,7 +91,7 @@ class AdminSecurityTest {
         @Test
         @DisplayName("Register with Role.MERCHANT or default CUSTOMER succeeds")
         void registerWithAllowedRoles_succeeds() {
-            var reqMerchant = new RegisterRequest("Merchant", "Owner", "merchant@biz.com", null, "StrongPass@1", null, Role.MERCHANT);
+            var reqMerchant = new AuthDTO.RegisterRequest("Merchant", "Owner", "merchant@biz.com", null, "StrongPass@1", null, null, Role.MERCHANT);
             when(userRepository.existsByEmail("merchant@biz.com")).thenReturn(false);
             when(passwordEncoder.encode("StrongPass@1")).thenReturn("$2a$12$hash");
             when(userRepository.save(any(User.class))).thenAnswer(inv -> {

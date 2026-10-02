@@ -1,9 +1,6 @@
 package com.superapp.auth.controller;
 
-import com.superapp.auth.dto.AdminLoginRequest;
-import com.superapp.auth.dto.AdminMfaChallengeResponse;
-import com.superapp.auth.dto.AdminMfaVerifyRequest;
-import com.superapp.auth.dto.AuthResponse;
+import com.superapp.auth.dto.AuthDTO;
 import com.superapp.auth.service.AuthService;
 import com.superapp.common.config.RateLimitService;
 import com.superapp.common.response.ApiResponse;
@@ -19,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Admin authentication controller: username/password login generating MFA challenge,
- * and MFA verification issuing privileged Admin JWT tokens.
+ * and MFA verification issuing privileged Admin JWT tokens with unified platform staff support.
  */
 @RestController
 @RequestMapping("/api/v1/admin/auth")
@@ -36,13 +33,13 @@ public class AdminAuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Admin login requiring MFA challenge")
-    public ResponseEntity<ApiResponse<AdminMfaChallengeResponse>> login(
-            @Valid @RequestBody AdminLoginRequest request,
+    public ResponseEntity<ApiResponse<AuthDTO.AdminMfaChallengeResponse>> login(
+            @Valid @RequestBody AuthDTO.AdminLoginRequest request,
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.LOGIN, getClientIp(httpRequest));
 
-        AdminMfaChallengeResponse response = authService.adminLogin(
+        AuthDTO.AdminMfaChallengeResponse response = authService.adminLogin(
                 request,
                 getClientIp(httpRequest),
                 httpRequest.getHeader("User-Agent"),
@@ -54,13 +51,13 @@ public class AdminAuthController {
 
     @PostMapping("/mfa/verify")
     @Operation(summary = "Verify Admin MFA code and issue admin JWT tokens")
-    public ResponseEntity<ApiResponse<AuthResponse>> verifyMfa(
-            @Valid @RequestBody AdminMfaVerifyRequest request,
+    public ResponseEntity<ApiResponse<AuthDTO.Response>> verifyMfa(
+            @Valid @RequestBody AuthDTO.AdminMfaVerifyRequest request,
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.OTP_VERIFY, getClientIp(httpRequest));
 
-        AuthResponse authResponse = authService.adminVerifyMfa(
+        AuthDTO.Response authResponse = authService.adminVerifyMfa(
                 request,
                 getClientIp(httpRequest),
                 httpRequest.getHeader("User-Agent"),

@@ -369,19 +369,36 @@ public class StoreServiceImpl implements StoreService {
 
         validateCoordinates(request.latitude(), request.longitude());
 
+        String cityId = request.cityId() != null ? request.cityId().trim().toLowerCase() : "nagpur";
+        if (cityRepository != null && !cityRepository.existsById(cityId)) {
+            cityId = cityRepository.findAll().stream()
+                    .filter(c -> c.getName().equalsIgnoreCase(request.cityId()))
+                    .map(City::getId)
+                    .findFirst()
+                    .orElse("nagpur");
+        }
+
         Store store = new Store(
                 request.merchantId(),
                 request.storeName().trim(),
                 request.address().trim(),
-                request.cityId(),
+                cityId,
                 request.state().trim(),
                 request.pincode().trim(),
                 request.latitude(),
                 request.longitude()
         );
 
+        if (isAdmin) {
+            store.setStatus(StoreStatus.ACTIVE);
+            store.setApprovalStatus(ApprovalStatus.APPROVED);
+            store.setApprovedAt(Instant.now());
+        }
+        store.setCreatedBy(currentUserId.toString());
+        store.setUpdatedBy(currentUserId.toString());
+
         Store saved = storeRepository.save(store);
-        log.info("Created store id={} name='{}' for merchantId={}", saved.getId(), saved.getStoreName(), merchant.getId());
+        log.info("Created store id={} name='{}' for merchantId={} (isAdmin={})", saved.getId(), saved.getStoreName(), merchant.getId(), isAdmin);
         return StoreResponse.fromEntity(saved, merchant.getBusinessName());
     }
 

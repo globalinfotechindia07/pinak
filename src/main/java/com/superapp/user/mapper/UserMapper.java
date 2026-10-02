@@ -1,6 +1,6 @@
 package com.superapp.user.mapper;
 
-import com.superapp.user.dto.UserResponse;
+import com.superapp.user.dto.UserDTO;
 import com.superapp.user.entity.User;
 import org.springframework.stereotype.Component;
 
@@ -12,15 +12,15 @@ import org.springframework.stereotype.Component;
 public class UserMapper {
 
     /**
-     * Maps a User entity to a safe UserResponse DTO.
+     * Maps a User entity to a safe UserDTO.Response representation.
      *
      * @param user User entity
-     * @return UserResponse DTO
+     * @return UserDTO.Response
      */
-    public UserResponse toResponse(User user) {
+    public UserDTO.Response toResponse(User user) {
         if (user == null) {
             return null;
         }
-        return UserResponse.from(user);
+        return UserDTO.Response.from(user);
     }
 }

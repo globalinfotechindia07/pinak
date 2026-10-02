@@ -1,21 +1,26 @@
 package com.superapp.auth.service;
 
-import com.superapp.auth.dto.*;
+import com.superapp.auth.dto.AuthDTO;
+import com.superapp.auth.dto.OtpDTO;
+import com.superapp.auth.dto.SessionDTO;
 import com.superapp.auth.repository.PasswordResetTokenRepository;
-import com.superapp.user.entity.PasswordResetToken;
 import com.superapp.common.audit.AuditEventType;
 import com.superapp.common.audit.AuditService;
 import com.superapp.common.exception.AppException;
 import com.superapp.common.exception.AuthException;
 import com.superapp.common.exception.DuplicateResourceException;
-import com.superapp.common.response.ApiError;
 import com.superapp.common.exception.PasswordException;
-import com.superapp.common.exception.ResourceNotFoundException;
+import com.superapp.common.response.ApiError;
 import com.superapp.common.security.JwtService;
+import com.superapp.user.entity.PasswordResetToken;
 import com.superapp.user.entity.Role;
+import com.superapp.user.entity.RoleEntity;
+import com.superapp.user.entity.StaffMember;
 import com.superapp.user.entity.User;
 import com.superapp.user.entity.UserSession;
 import com.superapp.user.entity.UserStatus;
+import com.superapp.user.repository.RoleRepository;
+import com.superapp.user.repository.StaffMemberRepository;
 import com.superapp.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +28,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+import java.util.UUID;
+
 /**
  * Core authentication service: registration, login, token refresh, logout,
- * change password, forgot/reset password, and session management.
+ * change password, forgot/reset password, admin MFA challenge, POS PIN login,
+ * and unified staff scoped permissions enrichment.
  */
 @Service
 public class AuthService {
@@ -33,6 +42,8 @@ public class AuthService {
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
+    private final StaffMemberRepository staffMemberRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final TokenService tokenService;
@@ -45,6 +56,8 @@ public class AuthService {
 
     public AuthService(
             UserRepository userRepository,
+            StaffMemberRepository staffMemberRepository,
+            RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             TokenService tokenService,
@@ -56,6 +69,8 @@ public class AuthService {
             OtpStorageService otpStorageService
     ) {
         this.userRepository = userRepository;
+        this.staffMemberRepository = staffMemberRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.tokenService = tokenService;
@@ -68,12 +83,50 @@ public class AuthService {
     }
 
     /**
+     * Builds enriched UserSummary containing Multi-Tier Staff (Platform, Merchant, Store)
+     * and scoped role permissions if the user is an assigned staff member.
+     */
+    public AuthDTO.UserSummary buildEnrichedUserSummary(User user) {
+        var staffList = staffMemberRepository.findByUserId(user.getId());
+        var staffOpt = staffList.stream()
+                .filter(s -> "ACTIVE".equalsIgnoreCase(s.getStatus()))
+                .findFirst();
+
+        if (staffOpt.isPresent()) {
+            StaffMember staff = staffOpt.get();
+            if ("PLATFORM".equalsIgnoreCase(staff.getScope()) && user.getRole() != Role.ADMIN && user.getRole() != Role.SUPER_ADMIN) {
+                user.setRole(Role.ADMIN);
+                user = userRepository.save(user);
+            } else if (("MERCHANT".equalsIgnoreCase(staff.getScope()) || "STORE".equalsIgnoreCase(staff.getScope()))
+                    && user.getRole() == Role.CUSTOMER) {
+                user.setRole(Role.MERCHANT);
+                user = userRepository.save(user);
+            }
+            Optional<RoleEntity> roleOpt = staff.getRoleId() != null ? roleRepository.findById(staff.getRoleId()) : Optional.empty();
+            String roleName = roleOpt.map(RoleEntity::getDisplayName).orElse(null);
+            String permissions = roleOpt.map(RoleEntity::getPermissions).orElse(null);
+
+            return AuthDTO.UserSummary.from(
+                    user,
+                    staff.getScope(),
+                    staff.getRoleId(),
+                    roleName,
+                    staff.getMerchantId(),
+                    staff.getStoreId(),
+                    permissions
+            );
+        }
+
+        return AuthDTO.UserSummary.from(user);
+    }
+
+    /**
      * Registers a new CUSTOMER account.
      * Validates uniqueness of email and mobile, hashes password, assigns CUSTOMER role.
      * Never returns: password, tokens, or internal security info.
      */
     @Transactional
-    public UserSummary register(RegisterRequest request, String ipAddress, String userAgent, String requestId) {
+    public AuthDTO.UserSummary register(AuthDTO.RegisterRequest request, String ipAddress, String userAgent, String requestId) {
         String email = request.email().trim().toLowerCase();
         log.info("Registration attempt for email={}", email);
 
@@ -126,7 +179,7 @@ public class AuthService {
         auditService.record(AuditEventType.REGISTER_SUCCESS, saved.getId(),
                 ipAddress, userAgent, requestId);
 
-        return UserSummary.from(saved);
+        return buildEnrichedUserSummary(saved);
     }
 
     /**
@@ -134,7 +187,7 @@ public class AuthService {
      * Uses 'Invalid credentials' for all failures (no account enumeration).
      */
     @Transactional
-    public AuthResponse login(LoginRequest request, String ipAddress, String userAgent, String requestId) {
+    public AuthDTO.Response login(AuthDTO.LoginRequest request, String ipAddress, String userAgent, String requestId) {
         String rawIdentifier = request.identifier().trim();
         String identifier = rawIdentifier.contains("@") ? rawIdentifier.toLowerCase() : rawIdentifier;
         log.info("Login attempt for identifier={}", identifier);
@@ -167,6 +220,22 @@ public class AuthService {
         UserSession session = sessionService.createSession(
                 user, request.deviceId(), request.deviceName(), ipAddress, userAgent);
 
+        // Synchronize role for platform or merchant/store staff if necessary
+        var activeStaff = staffMemberRepository.findByUserId(user.getId()).stream()
+                .filter(s -> "ACTIVE".equalsIgnoreCase(s.getStatus()) || "INVITED".equalsIgnoreCase(s.getStatus()))
+                .findFirst();
+        if (activeStaff.isPresent()) {
+            StaffMember staff = activeStaff.get();
+            if ("PLATFORM".equalsIgnoreCase(staff.getScope()) && user.getRole() != Role.ADMIN && user.getRole() != Role.SUPER_ADMIN) {
+                user.setRole(Role.ADMIN);
+                user = userRepository.save(user);
+            } else if (("MERCHANT".equalsIgnoreCase(staff.getScope()) || "STORE".equalsIgnoreCase(staff.getScope()))
+                    && user.getRole() == Role.CUSTOMER) {
+                user.setRole(Role.MERCHANT);
+                user = userRepository.save(user);
+            }
+        }
+
         // Issue tokens
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getRole().name());
         String refreshToken = tokenService.issueRefreshToken(user, session);
@@ -176,8 +245,8 @@ public class AuthService {
                 ipAddress, userAgent, requestId,
                 "{\"device\":\"" + request.deviceName() + "\"}");
 
-        return AuthResponse.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
-                UserSummary.from(user));
+        return AuthDTO.Response.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
+                buildEnrichedUserSummary(user));
     }
 
     /**
@@ -185,7 +254,7 @@ public class AuthService {
      * Full rotation with reuse detection handled in TokenService.
      */
     @Transactional
-    public AuthResponse refreshToken(RefreshTokenRequest request, String ipAddress, String userAgent, String requestId) {
+    public AuthDTO.Response refreshToken(SessionDTO.RefreshTokenRequest request, String ipAddress, String userAgent, String requestId) {
         log.debug("Token refresh attempt");
 
         TokenService.RotationResult result = tokenService.rotateRefreshToken(request.refreshToken());
@@ -205,8 +274,8 @@ public class AuthService {
                 ipAddress, userAgent, requestId);
 
         log.info("Token refreshed for user={}", user.getId());
-        return AuthResponse.of(newAccessToken, result.newRawRefreshToken(),
-                jwtService.getAccessTokenExpirationSeconds(), UserSummary.from(user));
+        return AuthDTO.Response.of(newAccessToken, result.newRawRefreshToken(),
+                jwtService.getAccessTokenExpirationSeconds(), buildEnrichedUserSummary(user));
     }
 
     /**
@@ -216,7 +285,7 @@ public class AuthService {
     public void logout(User user, String sessionId, String ipAddress, String userAgent, String requestId) {
         if (sessionId != null) {
             try {
-                sessionService.revokeSession(user, java.util.UUID.fromString(sessionId));
+                sessionService.revokeSession(user, UUID.fromString(sessionId));
             } catch (Exception e) {
                 log.debug("Session {} not found on logout (may already be revoked)", sessionId);
             }
@@ -242,7 +311,7 @@ public class AuthService {
      * Changes password for an authenticated user. Invalidates all existing sessions.
      */
     @Transactional
-    public void changePassword(User user, ChangePasswordRequest request,
+    public void changePassword(User user, AuthDTO.ChangePasswordRequest request,
                                String ipAddress, String userAgent, String requestId) {
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw PasswordException.incorrectCurrentPassword();
@@ -262,7 +331,7 @@ public class AuthService {
      * Initiates forgot password flow. Returns generic response to prevent account enumeration.
      */
     @Transactional
-    public String forgotPassword(ForgotPasswordRequest request, String ipAddress, String userAgent, String requestId) {
+    public String forgotPassword(AuthDTO.ForgotPasswordRequest request, String ipAddress, String userAgent, String requestId) {
         String rawIdentifier = request.identifier().trim();
         String identifier = rawIdentifier.contains("@") ? rawIdentifier.toLowerCase() : rawIdentifier;
         log.info("Forgot password request for identifier={}", identifier);
@@ -284,7 +353,7 @@ public class AuthService {
      * Verifies the password reset OTP. Returns reset token for /reset-password step.
      */
     @Transactional
-    public String verifyResetOtp(VerifyResetOtpRequest request) {
+    public String verifyResetOtp(OtpDTO.VerifyResetPasswordRequest request) {
         String rawIdentifier = request.identifier().trim();
         String identifier = rawIdentifier.contains("@") ? rawIdentifier.toLowerCase() : rawIdentifier;
         User user = findByIdentifier(identifier);
@@ -296,10 +365,10 @@ public class AuthService {
      * Invalidates all sessions after reset.
      */
     @Transactional
-    public void resetPassword(ResetPasswordRequest request, String ipAddress, String userAgent, String requestId) {
-        java.util.UUID tokenId;
+    public void resetPassword(AuthDTO.ResetPasswordRequest request, String ipAddress, String userAgent, String requestId) {
+        UUID tokenId;
         try {
-            tokenId = java.util.UUID.fromString(request.resetToken());
+            tokenId = UUID.fromString(request.resetToken());
         } catch (IllegalArgumentException e) {
             throw AuthException.tokenInvalid();
         }
@@ -327,7 +396,7 @@ public class AuthService {
     /**
      * Sends a phone-based OTP for login/authentication.
      */
-    public SendOtpResponse sendPhoneOtp(SendOtpRequest request, String ipAddress, String userAgent, String requestId) {
+    public OtpDTO.SendResponse sendPhoneOtp(OtpDTO.SendPhoneRequest request, String ipAddress, String userAgent, String requestId) {
         String phone = request.phone().trim();
         log.info("Request to send OTP to phone={}", phone);
 
@@ -345,14 +414,14 @@ public class AuthService {
         auditService.record(AuditEventType.MOBILE_OTP_SENT, null, ipAddress, userAgent, requestId,
                 "{\"phone\":\"" + phone + "\"}");
 
-        return new SendOtpResponse(phone, ttl.toSeconds(), 60, "OTP sent successfully. [Mock OTP: " + otp + "]");
+        return new OtpDTO.SendResponse(phone, ttl.toSeconds(), 60, "OTP sent successfully. [Mock OTP: " + otp + "]");
     }
 
     /**
      * Verifies phone OTP, provisions/authenticates user, and returns JWT token pair.
      */
     @Transactional
-    public AuthResponse verifyPhoneOtp(VerifyPhoneOtpRequest request, String ipAddress, String userAgent, String requestId) {
+    public AuthDTO.Response verifyPhoneOtp(OtpDTO.VerifyPhoneRequest request, String ipAddress, String userAgent, String requestId) {
         String phone = request.phone().trim();
         String enteredOtp = request.otp().trim();
         log.info("Verifying OTP for phone={}", phone);
@@ -379,14 +448,14 @@ public class AuthService {
             String last4 = phone.length() >= 4 ? phone.substring(phone.length() - 4) : phone;
             String generatedEmail = phone.replace("+", "") + "@customer.superapp.internal";
             if (userRepository.existsByEmail(generatedEmail)) {
-                generatedEmail = "user_" + java.util.UUID.randomUUID().toString().substring(0, 8) + "@customer.superapp.internal";
+                generatedEmail = "user_" + UUID.randomUUID().toString().substring(0, 8) + "@customer.superapp.internal";
             }
             User newUser = new User(
                     generatedEmail,
                     "Customer " + last4,
                     "Customer",
                     last4,
-                    passwordEncoder.encode(java.util.UUID.randomUUID().toString()),
+                    passwordEncoder.encode(UUID.randomUUID().toString()),
                     Role.CUSTOMER
             );
             newUser.setMobile(phone);
@@ -420,14 +489,14 @@ public class AuthService {
         auditService.record(AuditEventType.LOGIN_SUCCESS, user.getId(), ipAddress, userAgent, requestId,
                 "{\"method\":\"PHONE_OTP\"}");
 
-        return AuthResponse.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
-                UserSummary.from(user));
+        return AuthDTO.Response.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
+                buildEnrichedUserSummary(user));
     }
 
     /**
-     * Request OTP endpoint generating otpRequestId without leaking account enumeration.
+     * Request OTP challenge endpoint generating otpRequestId without leaking account enumeration.
      */
-    public OtpRequestResponse requestOtp(OtpRequestDto request, String ipAddress, String userAgent, String requestId) {
+    public OtpDTO.ChallengeResponse requestOtp(OtpDTO.RequestChallenge request, String ipAddress, String userAgent, String requestId) {
         String phone = request.phone().trim();
         log.info("Requesting OTP for phone={}", phone);
 
@@ -435,7 +504,7 @@ public class AuthService {
             throw new com.superapp.common.exception.RateLimitException("Please wait before requesting another OTP.");
         }
 
-        String otpRequestId = "otp_req_" + java.util.UUID.randomUUID().toString().replace("-", "");
+        String otpRequestId = "otp_req_" + UUID.randomUUID().toString().replace("-", "");
         String otp = otpService.generateOtp();
         java.time.Duration ttl = java.time.Duration.ofSeconds(300);
 
@@ -449,14 +518,14 @@ public class AuthService {
         auditService.record(AuditEventType.MOBILE_OTP_SENT, null, ipAddress, userAgent, requestId,
                 "{\"phone\":\"" + phone + "\",\"otpRequestId\":\"" + otpRequestId + "\"}");
 
-        return new OtpRequestResponse(otpRequestId, 300);
+        return new OtpDTO.ChallengeResponse(otpRequestId, 300);
     }
 
     /**
      * Verifies OTP using otpRequestId, single-use invalidation, attempt limits, issuing tokens.
      */
     @Transactional
-    public AuthResponse verifyOtpWithRequestId(OtpVerifyRequestDto request, String ipAddress, String userAgent, String requestId) {
+    public AuthDTO.Response verifyOtpWithRequestId(OtpDTO.VerifyChallengeRequest request, String ipAddress, String userAgent, String requestId) {
         String phone = request.phone().trim();
         String otpRequestId = request.otpRequestId().trim();
         String enteredOtp = request.otp().trim();
@@ -464,22 +533,22 @@ public class AuthService {
 
         var challengeOpt = otpStorageService.getOtpChallenge(otpRequestId);
         if (challengeOpt.isEmpty()) {
-            throw new AuthException("Invalid or expired OTP request", com.superapp.common.response.ApiError.INVALID_OTP);
+            throw new AuthException("Invalid or expired OTP request", ApiError.INVALID_OTP);
         }
 
         var challenge = challengeOpt.get();
         if (!challenge.phone().equals(phone)) {
-            throw new AuthException("Invalid OTP request for this phone number", com.superapp.common.response.ApiError.INVALID_OTP);
+            throw new AuthException("Invalid OTP request for this phone number", ApiError.INVALID_OTP);
         }
 
         int attempts = otpStorageService.incrementChallengeAttempts(otpRequestId, java.time.Duration.ofSeconds(300));
         if (attempts > 5) {
             otpStorageService.deleteOtpChallenge(otpRequestId);
-            throw new AuthException("Too many failed attempts. Please request a new OTP.", com.superapp.common.response.ApiError.INVALID_OTP);
+            throw new AuthException("Too many failed attempts. Please request a new OTP.", ApiError.INVALID_OTP);
         }
 
         if (!challenge.otp().equals(enteredOtp) && !"123456".equals(enteredOtp)) {
-            throw new AuthException("Invalid OTP", com.superapp.common.response.ApiError.INVALID_OTP);
+            throw new AuthException("Invalid OTP", ApiError.INVALID_OTP);
         }
 
         // Single-use invalidation
@@ -491,14 +560,14 @@ public class AuthService {
             String last4 = phone.length() >= 4 ? phone.substring(phone.length() - 4) : phone;
             String generatedEmail = phone.replace("+", "") + "@customer.superapp.internal";
             if (userRepository.existsByEmail(generatedEmail)) {
-                generatedEmail = "user_" + java.util.UUID.randomUUID().toString().substring(0, 8) + "@customer.superapp.internal";
+                generatedEmail = "user_" + UUID.randomUUID().toString().substring(0, 8) + "@customer.superapp.internal";
             }
             User newUser = new User(
                     generatedEmail,
                     "Customer " + last4,
                     "Customer",
                     last4,
-                    passwordEncoder.encode(java.util.UUID.randomUUID().toString()),
+                    passwordEncoder.encode(UUID.randomUUID().toString()),
                     Role.CUSTOMER
             );
             newUser.setMobile(phone);
@@ -531,23 +600,25 @@ public class AuthService {
         auditService.record(AuditEventType.LOGIN_SUCCESS, user.getId(), ipAddress, userAgent, requestId,
                 "{\"method\":\"PHONE_OTP_CHALLENGE\"}");
 
-        return AuthResponse.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
-                UserSummary.from(user));
+        return AuthDTO.Response.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
+                buildEnrichedUserSummary(user));
     }
 
     /**
-     * Admin login: checks credentials and role, returns MFA challenge.
+     * Admin login: checks credentials and platform role, returns MFA challenge.
+     * Allows SUPER_ADMIN, ADMIN, or active PLATFORM staff members.
      */
     @Transactional(readOnly = true)
-    public AdminMfaChallengeResponse adminLogin(AdminLoginRequest request, String ipAddress, String userAgent, String requestId) {
+    public AuthDTO.AdminMfaChallengeResponse adminLogin(AuthDTO.AdminLoginRequest request, String ipAddress, String userAgent, String requestId) {
         String email = request.email().trim().toLowerCase();
         log.info("Admin login attempt for email={}", email);
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(AuthException::invalidCredentials);
 
-        if (!Role.ADMIN.equals(user.getRole()) && !Role.SUPER_ADMIN.equals(user.getRole())) {
-            log.warn("Non-admin user attempted admin login: email={} role={}", email, user.getRole());
+        boolean isPlatformStaff = staffMemberRepository.findActivePlatformStaff(user.getId()).isPresent();
+        if (!Role.ADMIN.equals(user.getRole()) && !Role.SUPER_ADMIN.equals(user.getRole()) && !isPlatformStaff) {
+            log.warn("Non-platform user attempted admin login: email={} role={}", email, user.getRole());
             throw AuthException.invalidCredentials();
         }
 
@@ -565,32 +636,32 @@ public class AuthService {
             throw AuthException.invalidCredentials();
         }
 
-        String challengeId = "mfa_" + java.util.UUID.randomUUID().toString().replace("-", "");
+        String challengeId = "mfa_" + UUID.randomUUID().toString().replace("-", "");
         String code = otpService.generateOtp();
         otpStorageService.storeMfaChallenge(challengeId, user.getId(), code, java.time.Duration.ofMinutes(5));
 
         log.info("🔐 [ADMIN MFA] Generated MFA challenge for admin={} challengeId={}", user.getEmail(), challengeId);
 
-        return new AdminMfaChallengeResponse(true, challengeId);
+        return new AuthDTO.AdminMfaChallengeResponse(true, challengeId);
     }
 
     /**
-     * Admin MFA verification: verifies code and issues tokens.
+     * Admin MFA verification: verifies code and issues tokens with enriched staff permissions.
      */
     @Transactional
-    public AuthResponse adminVerifyMfa(AdminMfaVerifyRequest request, String ipAddress, String userAgent, String requestId) {
+    public AuthDTO.Response adminVerifyMfa(AuthDTO.AdminMfaVerifyRequest request, String ipAddress, String userAgent, String requestId) {
         String challengeId = request.challengeId().trim();
         String code = request.code().trim();
         log.info("Admin MFA verification for challengeId={}", challengeId);
 
         var mfaOpt = otpStorageService.getMfaChallenge(challengeId);
         if (mfaOpt.isEmpty()) {
-            throw new AuthException("Invalid or expired MFA challenge", com.superapp.common.response.ApiError.INVALID_OTP);
+            throw new AuthException("Invalid or expired MFA challenge", ApiError.INVALID_OTP);
         }
 
         var mfa = mfaOpt.get();
         if (!mfa.code().equals(code) && !"123456".equals(code)) {
-            throw new AuthException("Invalid MFA code", com.superapp.common.response.ApiError.INVALID_OTP);
+            throw new AuthException("Invalid MFA code", ApiError.INVALID_OTP);
         }
 
         // Single use invalidation
@@ -615,8 +686,41 @@ public class AuthService {
         auditService.record(AuditEventType.LOGIN_SUCCESS, user.getId(), ipAddress, userAgent, requestId,
                 "{\"method\":\"ADMIN_MFA\"}");
 
-        return AuthResponse.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
-                UserSummary.from(user));
+        return AuthDTO.Response.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
+                buildEnrichedUserSummary(user));
+    }
+
+    /**
+     * Fast Store POS Counter Terminal login via 4-digit PIN for store cashiers/staff.
+     */
+    @Transactional
+    public AuthDTO.Response posPinLogin(AuthDTO.PosPinLoginRequest request, String ipAddress, String userAgent, String requestId) {
+        User user = findByIdentifier(request.phone());
+
+        var staffOpt = staffMemberRepository.findActiveStoreStaff(user.getId(), request.storeId());
+        if (staffOpt.isEmpty()) {
+            auditService.record(AuditEventType.LOGIN_FAILED, user.getId(), ipAddress, userAgent, requestId,
+                    "{\"reason\":\"NOT_ASSIGNED_TO_STORE\",\"storeId\":\"" + request.storeId() + "\"}");
+            throw AuthException.invalidCredentials("Staff member not assigned to this store");
+        }
+
+        StaffMember staff = staffOpt.get();
+        if (staff.getPosPin() == null || !passwordEncoder.matches(request.posPin(), staff.getPosPin())) {
+            auditService.record(AuditEventType.LOGIN_FAILED, user.getId(), ipAddress, userAgent, requestId,
+                    "{\"reason\":\"INVALID_POS_PIN\",\"storeId\":\"" + request.storeId() + "\"}");
+            throw AuthException.invalidCredentials("Invalid POS PIN");
+        }
+
+        UserSession session = sessionService.createSession(
+                user, request.deviceId(), request.deviceName() != null ? request.deviceName() : "POS Terminal", ipAddress, userAgent);
+        String accessToken = jwtService.generateAccessToken(user.getId(), user.getRole().name());
+        String refreshToken = tokenService.issueRefreshToken(user, session);
+
+        auditService.record(AuditEventType.LOGIN_SUCCESS, user.getId(), ipAddress, userAgent, requestId,
+                "{\"method\":\"POS_PIN\",\"storeId\":\"" + request.storeId() + "\"}");
+
+        return AuthDTO.Response.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationSeconds(),
+                buildEnrichedUserSummary(user));
     }
 
     // ---- Helpers ----

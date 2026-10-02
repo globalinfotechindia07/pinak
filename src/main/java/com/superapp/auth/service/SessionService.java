@@ -1,6 +1,6 @@
 package com.superapp.auth.service;
 
-import com.superapp.auth.dto.SessionResponse;
+import com.superapp.auth.dto.SessionDTO;
 import com.superapp.auth.repository.UserSessionRepository;
 import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.user.entity.User;
@@ -60,18 +60,18 @@ public class SessionService {
      * Returns all active sessions for a user (safe for client display).
      */
     @Transactional(readOnly = true)
-    public List<SessionResponse> getActiveSessions(User user) {
+    public List<SessionDTO.Response> getActiveSessions(User user) {
         return sessionRepository.findActiveSessions(user, Instant.now())
                 .stream()
-                .map(SessionResponse::from)
+                .map(SessionDTO.Response::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<SessionResponse> getActiveSessions(UUID userId) {
+    public List<SessionDTO.Response> getActiveSessions(UUID userId) {
         return sessionRepository.findActiveSessionsByUserId(userId, Instant.now())
                 .stream()
-                .map(SessionResponse::from)
+                .map(SessionDTO.Response::from)
                 .toList();
     }
 

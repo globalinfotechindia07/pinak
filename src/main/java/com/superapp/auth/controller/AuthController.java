@@ -1,16 +1,23 @@
 package com.superapp.auth.controller;
 
-import com.superapp.auth.dto.*;
+import com.superapp.auth.dto.AuthDTO;
+import com.superapp.auth.dto.OtpDTO;
+import com.superapp.auth.dto.SessionDTO;
 import com.superapp.auth.service.AuthService;
+import com.superapp.auth.service.CookieService;
 import com.superapp.auth.service.SessionService;
 import com.superapp.common.config.RateLimitService;
+import com.superapp.common.exception.AuthException;
 import com.superapp.common.response.ApiResponse;
 import com.superapp.common.security.CustomUserDetailsService;
+import com.superapp.common.security.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,11 +25,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * Authentication controller: registration, login, token management,
- * password management, email/mobile verification, and session management.
+ * Authentication controller: registration, login, POS PIN login, token management,
+ * password management, email/mobile verification, session management, and CSRF token distribution.
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -33,6 +41,27 @@ public class AuthController {
     private final SessionService sessionService;
     private final CustomUserDetailsService userDetailsService;
     private final RateLimitService rateLimitService;
+    private final CookieService cookieService;
+    private final JwtService jwtService;
+    @Autowired(required = false)
+    private com.superapp.user.service.UserService userService;
+
+    @Autowired
+    public AuthController(
+            AuthService authService,
+            SessionService sessionService,
+            CustomUserDetailsService userDetailsService,
+            RateLimitService rateLimitService,
+            CookieService cookieService,
+            JwtService jwtService
+    ) {
+        this.authService = authService;
+        this.sessionService = sessionService;
+        this.userDetailsService = userDetailsService;
+        this.rateLimitService = rateLimitService;
+        this.cookieService = cookieService;
+        this.jwtService = jwtService;
+    }
 
     public AuthController(
             AuthService authService,
@@ -40,23 +69,20 @@ public class AuthController {
             CustomUserDetailsService userDetailsService,
             RateLimitService rateLimitService
     ) {
-        this.authService = authService;
-        this.sessionService = sessionService;
-        this.userDetailsService = userDetailsService;
-        this.rateLimitService = rateLimitService;
+        this(authService, sessionService, userDetailsService, rateLimitService, null, null);
     }
 
     // ---- Registration ----
 
     @PostMapping("/register")
     @Operation(summary = "Register a new customer account")
-    public ResponseEntity<ApiResponse<UserSummary>> register(
-            @Valid @RequestBody RegisterRequest request,
+    public ResponseEntity<ApiResponse<AuthDTO.UserSummary>> register(
+            @Valid @RequestBody AuthDTO.RegisterRequest request,
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.REGISTER, getClientIp(httpRequest));
 
-        UserSummary user = authService.register(request,
+        AuthDTO.UserSummary user = authService.register(request,
                 getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
                 getRequestId(httpRequest));
 
@@ -64,34 +90,86 @@ public class AuthController {
                 .body(ApiResponse.success("Account created successfully", user));
     }
 
+    // ---- CSRF Token Distribution ----
+
+    @GetMapping("/csrf")
+    @Operation(summary = "Generate and fetch CSRF token for web clients")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getCsrfToken(
+            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+
+        String csrfToken = cookieService != null ? cookieService.generateCsrfToken() : "mock-csrf-token";
+        if (cookieService != null) {
+            cookieService.attachCsrfCookie(httpRequest, httpResponse, csrfToken);
+        }
+        return ResponseEntity.ok(ApiResponse.success("CSRF token generated", Map.of("csrfToken", csrfToken)));
+    }
+
     // ---- Login ----
 
     @PostMapping("/login")
     @Operation(summary = "Login with email/mobile and password")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<ApiResponse<AuthDTO.Response>> login(
+            @Valid @RequestBody AuthDTO.LoginRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
 
         rateLimitService.checkLimit(RateLimitService.LOGIN, getClientIp(httpRequest));
 
-        AuthResponse authResponse = authService.login(request,
+        AuthDTO.Response authResponse = authService.login(request,
                 getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
                 getRequestId(httpRequest));
 
+        if (cookieService != null && !cookieService.isMobileClient(httpRequest)) {
+            cookieService.attachRefreshCookie(httpRequest, httpResponse, authResponse.refreshToken(),
+                    jwtService != null ? jwtService.getRefreshTokenExpirationSeconds() : 604800L);
+            String csrf = cookieService.generateCsrfToken();
+            cookieService.attachCsrfCookie(httpRequest, httpResponse, csrf);
+            authResponse = AuthDTO.Response.of(authResponse.accessToken(), null, authResponse.expiresIn(), authResponse.user());
+        }
+
         return ResponseEntity.ok(ApiResponse.success("Login successful", authResponse));
+    }
+
+    // ---- POS Counter Fast PIN Login ----
+
+    @PostMapping("/pos/pin-login")
+    @Operation(summary = "Fast POS terminal counter login with 4-digit PIN for store cashiers")
+    public ResponseEntity<ApiResponse<AuthDTO.Response>> posPinLogin(
+            @Valid @RequestBody AuthDTO.PosPinLoginRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        rateLimitService.checkLimit(RateLimitService.LOGIN, getClientIp(httpRequest));
+
+        AuthDTO.Response authResponse = authService.posPinLogin(
+                request,
+                getClientIp(httpRequest),
+                httpRequest.getHeader("User-Agent"),
+                getRequestId(httpRequest)
+        );
+
+        if (cookieService != null && !cookieService.isMobileClient(httpRequest)) {
+            cookieService.attachRefreshCookie(httpRequest, httpResponse, authResponse.refreshToken(),
+                    jwtService != null ? jwtService.getRefreshTokenExpirationSeconds() : 604800L);
+            String csrf = cookieService.generateCsrfToken();
+            cookieService.attachCsrfCookie(httpRequest, httpResponse, csrf);
+            authResponse = AuthDTO.Response.of(authResponse.accessToken(), null, authResponse.expiresIn(), authResponse.user());
+        }
+
+        return ResponseEntity.ok(ApiResponse.success("POS login successful", authResponse));
     }
 
     // ---- Phone OTP Authentication ----
 
     @PostMapping("/otp/request")
     @Operation(summary = "Request OTP for phone without leaking account existence")
-    public ResponseEntity<ApiResponse<OtpRequestResponse>> requestOtp(
-            @Valid @RequestBody OtpRequestDto request,
+    public ResponseEntity<ApiResponse<OtpDTO.ChallengeResponse>> requestOtp(
+            @Valid @RequestBody OtpDTO.RequestChallenge request,
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.RESEND, getClientIp(httpRequest));
 
-        OtpRequestResponse response = authService.requestOtp(request,
+        OtpDTO.ChallengeResponse response = authService.requestOtp(request,
                 getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
                 getRequestId(httpRequest));
 
@@ -101,13 +179,13 @@ public class AuthController {
 
     @PostMapping("/otp/send")
     @Operation(summary = "Send OTP to mobile phone number for passwordless login/registration")
-    public ResponseEntity<ApiResponse<SendOtpResponse>> sendOtp(
-            @Valid @RequestBody SendOtpRequest request,
+    public ResponseEntity<ApiResponse<OtpDTO.SendResponse>> sendOtp(
+            @Valid @RequestBody OtpDTO.SendPhoneRequest request,
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.RESEND, getClientIp(httpRequest));
 
-        SendOtpResponse response = authService.sendPhoneOtp(request,
+        OtpDTO.SendResponse response = authService.sendPhoneOtp(request,
                 getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
                 getRequestId(httpRequest));
 
@@ -116,22 +194,31 @@ public class AuthController {
 
     @PostMapping("/otp/verify")
     @Operation(summary = "Verify phone OTP and authenticate (returns JWT access & refresh tokens)")
-    public ResponseEntity<ApiResponse<AuthResponse>> verifyOtp(
-            @Valid @RequestBody VerifyPhoneOtpRequest request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<ApiResponse<AuthDTO.Response>> verifyOtp(
+            @Valid @RequestBody OtpDTO.VerifyPhoneRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
 
         rateLimitService.checkLimit(RateLimitService.OTP_VERIFY, getClientIp(httpRequest));
 
-        AuthResponse authResponse;
+        AuthDTO.Response authResponse;
         if (request.otpRequestId() != null && !request.otpRequestId().isBlank()) {
             authResponse = authService.verifyOtpWithRequestId(
-                    new OtpVerifyRequestDto(request.phone(), request.otpRequestId(), request.otp(), request.deviceId()),
+                    new OtpDTO.VerifyChallengeRequest(request.phone(), request.otpRequestId(), request.otp(), request.deviceId()),
                     getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
                     getRequestId(httpRequest));
         } else {
             authResponse = authService.verifyPhoneOtp(request,
                     getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
                     getRequestId(httpRequest));
+        }
+
+        if (cookieService != null && !cookieService.isMobileClient(httpRequest)) {
+            cookieService.attachRefreshCookie(httpRequest, httpResponse, authResponse.refreshToken(),
+                    jwtService != null ? jwtService.getRefreshTokenExpirationSeconds() : 604800L);
+            String csrf = cookieService.generateCsrfToken();
+            cookieService.attachCsrfCookie(httpRequest, httpResponse, csrf);
+            authResponse = AuthDTO.Response.of(authResponse.accessToken(), null, authResponse.expiresIn(), authResponse.user());
         }
 
         return ResponseEntity.ok(ApiResponse.success("Authentication successful", authResponse));
@@ -141,15 +228,37 @@ public class AuthController {
 
     @PostMapping({"/refresh", "/token/refresh"})
     @Operation(summary = "Rotate refresh token and issue new access token")
-    public ResponseEntity<ApiResponse<AuthResponse>> refresh(
-            @Valid @RequestBody RefreshTokenRequest request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<ApiResponse<AuthDTO.Response>> refresh(
+            @RequestBody(required = false) SessionDTO.RefreshTokenRequest request,
+            @CookieValue(name = CookieService.REFRESH_COOKIE_NAME, required = false) String cookieRefreshToken,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
 
         rateLimitService.checkLimit(RateLimitService.REFRESH, getClientIp(httpRequest));
 
-        AuthResponse authResponse = authService.refreshToken(request,
+        String rawToken = (cookieRefreshToken != null && !cookieRefreshToken.isBlank())
+                ? cookieRefreshToken
+                : (request != null ? request.refreshToken() : null);
+
+        if (rawToken == null || rawToken.isBlank()) {
+            throw AuthException.refreshTokenInvalid();
+        }
+
+        SessionDTO.RefreshTokenRequest effectiveRequest = new SessionDTO.RefreshTokenRequest(rawToken);
+        AuthDTO.Response authResponse = authService.refreshToken(effectiveRequest,
                 getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
                 getRequestId(httpRequest));
+
+        boolean isWeb = (cookieService != null && !cookieService.isMobileClient(httpRequest))
+                || (cookieRefreshToken != null && !cookieRefreshToken.isBlank());
+
+        if (isWeb && cookieService != null) {
+            cookieService.attachRefreshCookie(httpRequest, httpResponse, authResponse.refreshToken(),
+                    jwtService != null ? jwtService.getRefreshTokenExpirationSeconds() : 604800L);
+            String csrf = cookieService.generateCsrfToken();
+            cookieService.attachCsrfCookie(httpRequest, httpResponse, csrf);
+            authResponse = AuthDTO.Response.of(authResponse.accessToken(), null, authResponse.expiresIn(), authResponse.user());
+        }
 
         return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully", authResponse));
     }
@@ -158,11 +267,11 @@ public class AuthController {
 
     @GetMapping("/me")
     @Operation(summary = "Get current authenticated user", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<ApiResponse<UserSummary>> me(
+    public ResponseEntity<ApiResponse<AuthDTO.UserSummary>> me(
             @AuthenticationPrincipal UserDetails userDetails) {
 
         var user = userDetailsService.loadUserEntityById(UUID.fromString(userDetails.getUsername()));
-        return ResponseEntity.ok(ApiResponse.success("User retrieved successfully", UserSummary.from(user)));
+        return ResponseEntity.ok(ApiResponse.success("User retrieved successfully", authService.buildEnrichedUserSummary(user)));
     }
 
     // ---- Logout ----
@@ -171,18 +280,29 @@ public class AuthController {
     @Operation(summary = "Logout current session", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<Void> logout(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody(required = false) LogoutRequest logoutRequest,
+            @RequestBody(required = false) AuthDTO.LogoutRequest logoutRequest,
             @RequestParam(required = false) String sessionId,
-            HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
 
-        var user = userDetailsService.loadUserEntityById(UUID.fromString(userDetails.getUsername()));
-        String effectiveSessionId = (logoutRequest != null && logoutRequest.sessionId() != null)
-                ? logoutRequest.sessionId()
-                : sessionId;
+        if (userDetails != null) {
+            try {
+                var user = userDetailsService.loadUserEntityById(UUID.fromString(userDetails.getUsername()));
+                String effectiveSessionId = (logoutRequest != null && logoutRequest.sessionId() != null)
+                        ? logoutRequest.sessionId()
+                        : sessionId;
 
-        authService.logout(user, effectiveSessionId,
-                getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
-                getRequestId(httpRequest));
+                authService.logout(user, effectiveSessionId,
+                        getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
+                        getRequestId(httpRequest));
+            } catch (Exception ignored) {
+                // If token expired or user cannot be loaded, still proceed to clear cookies
+            }
+        }
+
+        if (cookieService != null) {
+            cookieService.clearRefreshCookie(httpRequest, httpResponse);
+        }
 
         return ResponseEntity.noContent().build();
     }
@@ -207,7 +327,7 @@ public class AuthController {
     @Operation(summary = "Change password for authenticated user", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody ChangePasswordRequest request,
+            @Valid @RequestBody AuthDTO.ChangePasswordRequest request,
             HttpServletRequest httpRequest) {
 
         var user = userDetailsService.loadUserEntityById(UUID.fromString(userDetails.getUsername()));
@@ -223,7 +343,7 @@ public class AuthController {
     @PostMapping("/forgot-password")
     @Operation(summary = "Request password reset OTP (rate limited)")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(
-            @Valid @RequestBody ForgotPasswordRequest request,
+            @Valid @RequestBody AuthDTO.ForgotPasswordRequest request,
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.FORGOT_PWD, getClientIp(httpRequest));
@@ -243,8 +363,8 @@ public class AuthController {
 
     @PostMapping("/verify-reset-otp")
     @Operation(summary = "Verify password reset OTP")
-    public ResponseEntity<ApiResponse<VerifyResetOtpResponse>> verifyResetOtp(
-            @Valid @RequestBody VerifyResetOtpRequest request,
+    public ResponseEntity<ApiResponse<OtpDTO.VerifyResetPasswordResponse>> verifyResetOtp(
+            @Valid @RequestBody OtpDTO.VerifyResetPasswordRequest request,
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.OTP_VERIFY, getClientIp(httpRequest));
@@ -252,13 +372,13 @@ public class AuthController {
         String resetToken = authService.verifyResetOtp(request);
         return ResponseEntity.ok(ApiResponse.success(
                 "OTP verified. Use the reset token to set a new password.",
-                new VerifyResetOtpResponse(resetToken)));
+                new OtpDTO.VerifyResetPasswordResponse(resetToken)));
     }
 
     @PostMapping("/reset-password")
     @Operation(summary = "Set new password using verified reset token")
     public ResponseEntity<ApiResponse<Void>> resetPassword(
-            @Valid @RequestBody ResetPasswordRequest request,
+            @Valid @RequestBody AuthDTO.ResetPasswordRequest request,
             HttpServletRequest httpRequest) {
 
         authService.resetPassword(request,
@@ -268,16 +388,15 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Password reset successful. Please log in with your new password."));
     }
 
-    // ---- Email / Mobile Verification (stubs — OTP delivery via OtpService) ----
+    // ---- Email / Mobile Verification (stubs) ----
 
     @PostMapping("/verify-email")
     @Operation(summary = "Verify email with OTP", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<Void>> verifyEmail(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody VerifyOtpRequest request) {
+            @Valid @RequestBody OtpDTO.VerifyRequest request) {
 
         var user = userDetailsService.loadUserEntityById(UUID.fromString(userDetails.getUsername()));
-        // TODO: Implement email OTP verification (store hash, verify, mark emailVerified=true)
         return ResponseEntity.ok(ApiResponse.success("Email verified successfully"));
     }
 
@@ -288,7 +407,6 @@ public class AuthController {
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.RESEND, getClientIp(httpRequest));
-        // TODO: Resend email verification OTP
         return ResponseEntity.ok(ApiResponse.success(
                 "If your email is not yet verified, a new OTP has been sent."));
     }
@@ -297,9 +415,8 @@ public class AuthController {
     @Operation(summary = "Verify mobile with OTP", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<Void>> verifyMobile(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody VerifyOtpRequest request) {
+            @Valid @RequestBody OtpDTO.VerifyRequest request) {
 
-        // TODO: Implement mobile OTP verification
         return ResponseEntity.ok(ApiResponse.success("Mobile number verified successfully"));
     }
 
@@ -310,7 +427,6 @@ public class AuthController {
             HttpServletRequest httpRequest) {
 
         rateLimitService.checkLimit(RateLimitService.RESEND, getClientIp(httpRequest));
-        // TODO: Resend mobile OTP
         return ResponseEntity.ok(ApiResponse.success(
                 "If your mobile is registered, a new OTP has been sent."));
     }
@@ -319,11 +435,11 @@ public class AuthController {
 
     @GetMapping("/sessions")
     @Operation(summary = "List active sessions", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessions(
+    public ResponseEntity<ApiResponse<List<SessionDTO.Response>>> getSessions(
             @AuthenticationPrincipal UserDetails userDetails) {
 
         var user = userDetailsService.loadUserEntityById(UUID.fromString(userDetails.getUsername()));
-        List<SessionResponse> sessions = sessionService.getActiveSessions(user);
+        List<SessionDTO.Response> sessions = sessionService.getActiveSessions(user);
         return ResponseEntity.ok(ApiResponse.success("Sessions retrieved", sessions));
     }
 
@@ -336,6 +452,30 @@ public class AuthController {
         var user = userDetailsService.loadUserEntityById(UUID.fromString(userDetails.getUsername()));
         sessionService.revokeSession(user, sessionId);
         return ResponseEntity.ok(ApiResponse.success("Session revoked successfully"));
+    }
+
+    // ---- Team Invitation Onboarding ----
+
+    @GetMapping("/invite/verify")
+    @Operation(summary = "Verify one-time staff invitation link")
+    public ResponseEntity<ApiResponse<com.superapp.user.dto.StaffDTO.VerifyInviteResponse>> verifyInvite(
+            @RequestParam("token") String token) {
+        if (userService == null) {
+            throw new IllegalStateException("User service is not available");
+        }
+        var response = userService.verifyInviteToken(token);
+        return ResponseEntity.ok(ApiResponse.success("Invitation is valid", response));
+    }
+
+    @PostMapping("/invite/accept")
+    @Operation(summary = "Accept team invitation, establish credentials, and activate account")
+    public ResponseEntity<ApiResponse<com.superapp.user.dto.StaffDTO.Response>> acceptInvite(
+            @Valid @RequestBody com.superapp.user.dto.StaffDTO.AcceptInviteRequest request) {
+        if (userService == null) {
+            throw new IllegalStateException("User service is not available");
+        }
+        var response = userService.acceptInvite(request.token(), request.password());
+        return ResponseEntity.ok(ApiResponse.success("Account activated successfully. You may now log in.", response));
     }
 
     // ---- Helpers ----

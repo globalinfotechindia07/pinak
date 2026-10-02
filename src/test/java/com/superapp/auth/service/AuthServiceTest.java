@@ -1,6 +1,7 @@
 package com.superapp.auth.service;
 
-import com.superapp.auth.dto.*;
+import com.superapp.auth.dto.AuthDTO;
+import com.superapp.auth.dto.OtpDTO;
 import com.superapp.auth.repository.PasswordResetTokenRepository;
 import com.superapp.common.audit.AuditService;
 import com.superapp.common.exception.AuthException;
@@ -9,6 +10,8 @@ import com.superapp.common.security.JwtService;
 import com.superapp.user.entity.Role;
 import com.superapp.user.entity.User;
 import com.superapp.user.entity.UserStatus;
+import com.superapp.user.repository.RoleRepository;
+import com.superapp.user.repository.StaffMemberRepository;
 import com.superapp.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +35,8 @@ import static org.mockito.Mockito.*;
 class AuthServiceTest {
 
     @Mock UserRepository userRepository;
+    @Mock StaffMemberRepository staffMemberRepository;
+    @Mock RoleRepository roleRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtService jwtService;
     @Mock TokenService tokenService;
@@ -64,13 +69,13 @@ class AuthServiceTest {
         @Test
         @DisplayName("Successful registration returns safe UserSummary")
         void successfulRegistration() {
-            var request = new RegisterRequest("John", "Doe", "john@example.com", null, "StrongPass@1");
+            var request = new AuthDTO.RegisterRequest("John", "Doe", "john@example.com", null, "StrongPass@1");
 
             when(userRepository.existsByEmail("john@example.com")).thenReturn(false);
             when(passwordEncoder.encode("StrongPass@1")).thenReturn("$2a$12$hashed");
             when(userRepository.save(any(User.class))).thenReturn(activeCustomer);
 
-            UserSummary result = authService.register(request, IP, UA, RID);
+            AuthDTO.UserSummary result = authService.register(request, IP, UA, RID);
 
             assertThat(result).isNotNull();
             assertThat(result.email()).isEqualTo("john@example.com");
@@ -81,7 +86,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("Duplicate email throws DuplicateResourceException")
         void duplicateEmailThrows() {
-            var request = new RegisterRequest("John", "Doe", "john@example.com", null, "StrongPass@1");
+            var request = new AuthDTO.RegisterRequest("John", "Doe", "john@example.com", null, "StrongPass@1");
             when(userRepository.existsByEmail("john@example.com")).thenReturn(true);
 
             assertThatThrownBy(() -> authService.register(request, IP, UA, RID))
@@ -93,7 +98,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("Duplicate mobile throws DuplicateResourceException")
         void duplicateMobileThrows() {
-            var request = new RegisterRequest("John", "Doe", "john@example.com", "+911234567890", "StrongPass@1");
+            var request = new AuthDTO.RegisterRequest("John", "Doe", "john@example.com", "+911234567890", "StrongPass@1");
             when(userRepository.existsByEmail("john@example.com")).thenReturn(false);
             when(userRepository.existsByMobile("+911234567890")).thenReturn(true);
 
@@ -104,8 +109,8 @@ class AuthServiceTest {
         @Test
         @DisplayName("Registration with profilePictureUrl and MERCHANT role succeeds")
         void registerWithProfilePictureAndRole() {
-            var request = new RegisterRequest("Jane", "Merchant", "merchant.jane@example.com",
-                    null, "StrongPass@1", "https://example.com/avatar.jpg", com.superapp.user.entity.Role.MERCHANT);
+            var request = new AuthDTO.RegisterRequest("Jane", "Merchant", "merchant.jane@example.com",
+                    null, "StrongPass@1", null, "https://example.com/avatar.jpg", Role.MERCHANT);
 
             when(userRepository.existsByEmail("merchant.jane@example.com")).thenReturn(false);
             when(passwordEncoder.encode("StrongPass@1")).thenReturn("$2a$12$hashed");
@@ -115,7 +120,7 @@ class AuthServiceTest {
                 return u;
             });
 
-            UserSummary result = authService.register(request, IP, UA, RID);
+            AuthDTO.UserSummary result = authService.register(request, IP, UA, RID);
 
             assertThat(result).isNotNull();
             assertThat(result.email()).isEqualTo("merchant.jane@example.com");
@@ -126,7 +131,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("Mismatched confirmPassword throws AppException")
         void mismatchedConfirmPasswordThrows() {
-            var request = new RegisterRequest("John", "Doe", "john@example.com", null,
+            var request = new AuthDTO.RegisterRequest("John", "Doe", "john@example.com", null,
                     "StrongPass@1", "DifferentPass@2", null, null);
 
             assertThatThrownBy(() -> authService.register(request, IP, UA, RID))
@@ -139,14 +144,14 @@ class AuthServiceTest {
         @Test
         @DisplayName("Matching confirmPassword succeeds")
         void matchingConfirmPasswordSucceeds() {
-            var request = new RegisterRequest("John", "Doe", "john@example.com", null,
+            var request = new AuthDTO.RegisterRequest("John", "Doe", "john@example.com", null,
                     "StrongPass@1", "StrongPass@1", null, null);
 
             when(userRepository.existsByEmail("john@example.com")).thenReturn(false);
             when(passwordEncoder.encode("StrongPass@1")).thenReturn("$2a$12$hashed");
             when(userRepository.save(any(User.class))).thenReturn(activeCustomer);
 
-            UserSummary result = authService.register(request, IP, UA, RID);
+            AuthDTO.UserSummary result = authService.register(request, IP, UA, RID);
 
             assertThat(result).isNotNull();
             verify(userRepository).save(any(User.class));
@@ -160,7 +165,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("Successful login returns AuthResponse with tokens")
         void successfulLogin() {
-            var request = new LoginRequest("john@example.com", "StrongPass@1", "device-001", "My Android");
+            var request = new AuthDTO.LoginRequest("john@example.com", "StrongPass@1", "device-001", "My Android");
 
             when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(activeCustomer));
             when(passwordEncoder.matches("StrongPass@1", "$2a$12$hashed")).thenReturn(true);
@@ -170,7 +175,7 @@ class AuthServiceTest {
             when(tokenService.issueRefreshToken(any(), any())).thenReturn("refresh-token");
             when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-            AuthResponse result = authService.login(request, IP, UA, RID);
+            AuthDTO.Response result = authService.login(request, IP, UA, RID);
 
             assertThat(result.accessToken()).isEqualTo("access-token");
             assertThat(result.refreshToken()).isEqualTo("refresh-token");
@@ -181,7 +186,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("Wrong password throws AuthException with INVALID_CREDENTIALS")
         void wrongPasswordThrows() {
-            var request = new LoginRequest("john@example.com", "WrongPassword@1", null, null);
+            var request = new AuthDTO.LoginRequest("john@example.com", "WrongPassword@1", null, null);
 
             when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(activeCustomer));
             when(passwordEncoder.matches("WrongPassword@1", "$2a$12$hashed")).thenReturn(false);
@@ -194,7 +199,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("Non-existing account throws INVALID_CREDENTIALS (no enumeration)")
         void nonExistingAccountThrows() {
-            var request = new LoginRequest("nobody@example.com", "Any@1234", null, null);
+            var request = new AuthDTO.LoginRequest("nobody@example.com", "Any@1234", null, null);
 
             when(userRepository.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
             when(userRepository.findByMobile("nobody@example.com")).thenReturn(Optional.empty());
@@ -210,7 +215,7 @@ class AuthServiceTest {
         @DisplayName("Blocked account throws ACCOUNT_BLOCKED")
         void blockedAccountThrows() {
             activeCustomer.setStatus(UserStatus.BLOCKED);
-            var request = new LoginRequest("john@example.com", "StrongPass@1", null, null);
+            var request = new AuthDTO.LoginRequest("john@example.com", "StrongPass@1", null, null);
 
             when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(activeCustomer));
 
@@ -224,7 +229,7 @@ class AuthServiceTest {
         @DisplayName("Inactive account throws ACCOUNT_INACTIVE")
         void inactiveAccountThrows() {
             activeCustomer.setStatus(UserStatus.INACTIVE);
-            var request = new LoginRequest("john@example.com", "StrongPass@1", null, null);
+            var request = new AuthDTO.LoginRequest("john@example.com", "StrongPass@1", null, null);
 
             when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(activeCustomer));
 
@@ -238,7 +243,7 @@ class AuthServiceTest {
         @DisplayName("Login by mobile number succeeds")
         void loginByMobile() {
             activeCustomer.setMobile("+911234567890");
-            var request = new LoginRequest("+911234567890", "StrongPass@1", null, null);
+            var request = new AuthDTO.LoginRequest("+911234567890", "StrongPass@1", null, null);
 
             when(userRepository.findByEmail("+911234567890")).thenReturn(Optional.empty());
             when(userRepository.findByMobile("+911234567890")).thenReturn(Optional.of(activeCustomer));
@@ -249,7 +254,7 @@ class AuthServiceTest {
             when(tokenService.issueRefreshToken(any(), any())).thenReturn("refresh-token");
             when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-            AuthResponse result = authService.login(request, IP, UA, RID);
+            AuthDTO.Response result = authService.login(request, IP, UA, RID);
             assertThat(result).isNotNull();
         }
 
@@ -257,7 +262,7 @@ class AuthServiceTest {
         @DisplayName("Login by 10-digit mobile number matches stored +91 number")
         void loginBy10DigitMobileMatchesCountryCode() {
             activeCustomer.setMobile("+919876543210");
-            var request = new LoginRequest("9876543210", "StrongPass@1", null, null);
+            var request = new AuthDTO.LoginRequest("9876543210", "StrongPass@1", null, null);
 
             when(userRepository.findByEmail("9876543210")).thenReturn(Optional.empty());
             when(userRepository.findByMobile("9876543210")).thenReturn(Optional.empty());
@@ -270,7 +275,7 @@ class AuthServiceTest {
             when(tokenService.issueRefreshToken(any(), any())).thenReturn("refresh-token");
             when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-            AuthResponse result = authService.login(request, IP, UA, RID);
+            AuthDTO.Response result = authService.login(request, IP, UA, RID);
             assertThat(result).isNotNull();
         }
 
@@ -278,7 +283,7 @@ class AuthServiceTest {
         @DisplayName("Login by +91 mobile number matches stored 10-digit number")
         void loginByCountryCodeMobileMatches10Digit() {
             activeCustomer.setMobile("9876543210");
-            var request = new LoginRequest("+919876543210", "StrongPass@1", null, null);
+            var request = new AuthDTO.LoginRequest("+919876543210", "StrongPass@1", null, null);
 
             when(userRepository.findByEmail("+919876543210")).thenReturn(Optional.empty());
             when(userRepository.findByMobile("+919876543210")).thenReturn(Optional.empty());
@@ -291,7 +296,7 @@ class AuthServiceTest {
             when(tokenService.issueRefreshToken(any(), any())).thenReturn("refresh-token");
             when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-            AuthResponse result = authService.login(request, IP, UA, RID);
+            AuthDTO.Response result = authService.login(request, IP, UA, RID);
             assertThat(result).isNotNull();
         }
 
@@ -299,7 +304,7 @@ class AuthServiceTest {
         @DisplayName("Login with spaces and dashes in phone number is normalized and matches")
         void loginWithFormattedPhone() {
             activeCustomer.setMobile("+919876543210");
-            var request = new LoginRequest("+91 98765-43210", "StrongPass@1", null, null);
+            var request = new AuthDTO.LoginRequest("+91 98765-43210", "StrongPass@1", null, null);
 
             when(userRepository.findByEmail("+91 98765-43210")).thenReturn(Optional.empty());
             when(userRepository.findByMobile("+91 98765-43210")).thenReturn(Optional.empty());
@@ -312,7 +317,7 @@ class AuthServiceTest {
             when(tokenService.issueRefreshToken(any(), any())).thenReturn("refresh-token");
             when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-            AuthResponse result = authService.login(request, IP, UA, RID);
+            AuthDTO.Response result = authService.login(request, IP, UA, RID);
             assertThat(result).isNotNull();
         }
     }
@@ -324,11 +329,11 @@ class AuthServiceTest {
         @Test
         @DisplayName("sendPhoneOtp generates and stores OTP")
         void sendPhoneOtp_success() {
-            var request = new SendOtpRequest("+919876543210");
+            var request = new OtpDTO.SendPhoneRequest("+919876543210");
             when(otpStorageService.isCooldownActive("+919876543210")).thenReturn(false);
             when(otpService.generateOtp()).thenReturn("123456");
 
-            SendOtpResponse response = authService.sendPhoneOtp(request, IP, UA, RID);
+            OtpDTO.SendResponse response = authService.sendPhoneOtp(request, IP, UA, RID);
 
             assertThat(response).isNotNull();
             assertThat(response.phone()).isEqualTo("+919876543210");
@@ -340,7 +345,7 @@ class AuthServiceTest {
         @DisplayName("verifyPhoneOtp with valid OTP authenticates existing user")
         void verifyPhoneOtp_existingUser_success() {
             activeCustomer.setMobile("+919876543210");
-            var request = new VerifyPhoneOtpRequest("+919876543210", "123456", "d1", "Pixel");
+            var request = new OtpDTO.VerifyPhoneRequest("+919876543210", "123456", "d1", "Pixel");
 
             when(otpStorageService.incrementAttempts(eq("+919876543210"), any())).thenReturn(1);
             when(otpStorageService.getOtp("+919876543210")).thenReturn(Optional.of("123456"));
@@ -351,7 +356,7 @@ class AuthServiceTest {
             when(tokenService.issueRefreshToken(any(), any())).thenReturn("refresh-token-123");
             when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-            AuthResponse response = authService.verifyPhoneOtp(request, IP, UA, RID);
+            AuthDTO.Response response = authService.verifyPhoneOtp(request, IP, UA, RID);
 
             assertThat(response).isNotNull();
             assertThat(response.accessToken()).isEqualTo("access-token-123");
@@ -361,7 +366,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("verifyPhoneOtp with invalid OTP throws exception")
         void verifyPhoneOtp_wrongOtp_throws() {
-            var request = new VerifyPhoneOtpRequest("+919876543210", "000000", null, null);
+            var request = new OtpDTO.VerifyPhoneRequest("+919876543210", "000000", null, null);
 
             when(otpStorageService.incrementAttempts(eq("+919876543210"), any())).thenReturn(1);
             when(otpStorageService.getOtp("+919876543210")).thenReturn(Optional.of("123456"));

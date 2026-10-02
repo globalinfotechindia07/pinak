@@ -1,6 +1,7 @@
 package com.superapp.auth.service;
 
-import com.superapp.auth.dto.*;
+import com.superapp.auth.dto.AuthDTO;
+import com.superapp.auth.dto.OtpDTO;
 import com.superapp.auth.repository.PasswordResetTokenRepository;
 import com.superapp.common.audit.AuditService;
 import com.superapp.common.exception.AuthException;
@@ -8,9 +9,12 @@ import com.superapp.common.exception.RateLimitException;
 import com.superapp.common.response.ApiError;
 import com.superapp.common.security.JwtService;
 import com.superapp.user.entity.Role;
+import com.superapp.user.entity.StaffMember;
 import com.superapp.user.entity.User;
 import com.superapp.user.entity.UserSession;
 import com.superapp.user.entity.UserStatus;
+import com.superapp.user.repository.RoleRepository;
+import com.superapp.user.repository.StaffMemberRepository;
 import com.superapp.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +38,8 @@ import static org.mockito.Mockito.*;
 class AuthServiceChallengeAndMfaTest {
 
     @Mock UserRepository userRepository;
+    @Mock StaffMemberRepository staffMemberRepository;
+    @Mock RoleRepository roleRepository;
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtService jwtService;
     @Mock TokenService tokenService;
@@ -71,8 +77,8 @@ class AuthServiceChallengeAndMfaTest {
         when(otpStorageService.isCooldownActive("+919876543210")).thenReturn(false);
         when(otpService.generateOtp()).thenReturn("654321");
 
-        OtpRequestDto request = new OtpRequestDto("+919876543210", "LOGIN", "dev-1");
-        OtpRequestResponse response = authService.requestOtp(request, IP, UA, RID);
+        OtpDTO.RequestChallenge request = new OtpDTO.RequestChallenge("+919876543210", "LOGIN", "dev-1");
+        OtpDTO.ChallengeResponse response = authService.requestOtp(request, IP, UA, RID);
 
         assertThat(response).isNotNull();
         assertThat(response.otpRequestId()).startsWith("otp_req_");
@@ -88,7 +94,7 @@ class AuthServiceChallengeAndMfaTest {
     void requestOtp_cooldownActive_throwsRateLimit() {
         when(otpStorageService.isCooldownActive("+919876543210")).thenReturn(true);
 
-        OtpRequestDto request = new OtpRequestDto("+919876543210", "LOGIN", "dev-1");
+        OtpDTO.RequestChallenge request = new OtpDTO.RequestChallenge("+919876543210", "LOGIN", "dev-1");
         assertThatThrownBy(() -> authService.requestOtp(request, IP, UA, RID))
                 .isInstanceOf(RateLimitException.class);
 
@@ -111,8 +117,8 @@ class AuthServiceChallengeAndMfaTest {
         when(tokenService.issueRefreshToken(any(), any())).thenReturn("mock-refresh-token");
         when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-        OtpVerifyRequestDto request = new OtpVerifyRequestDto("+919876543210", reqId, "654321", "dev-1");
-        AuthResponse response = authService.verifyOtpWithRequestId(request, IP, UA, RID);
+        OtpDTO.VerifyChallengeRequest request = new OtpDTO.VerifyChallengeRequest("+919876543210", reqId, "654321", "dev-1");
+        AuthDTO.Response response = authService.verifyOtpWithRequestId(request, IP, UA, RID);
 
         assertThat(response).isNotNull();
         assertThat(response.accessToken()).isEqualTo("mock-access-token");
@@ -125,7 +131,7 @@ class AuthServiceChallengeAndMfaTest {
     void verifyOtpWithRequestId_missing_throwsInvalidOtp() {
         when(otpStorageService.getOtpChallenge("otp_req_expired")).thenReturn(Optional.empty());
 
-        OtpVerifyRequestDto request = new OtpVerifyRequestDto("+919876543210", "otp_req_expired", "654321", "dev-1");
+        OtpDTO.VerifyChallengeRequest request = new OtpDTO.VerifyChallengeRequest("+919876543210", "otp_req_expired", "654321", "dev-1");
         assertThatThrownBy(() -> authService.verifyOtpWithRequestId(request, IP, UA, RID))
                 .isInstanceOf(AuthException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ApiError.INVALID_OTP);
@@ -137,7 +143,7 @@ class AuthServiceChallengeAndMfaTest {
         when(otpStorageService.getOtpChallenge("otp_req_123"))
                 .thenReturn(Optional.of(new OtpStorageService.OtpChallenge("+919876543210", "LOGIN", "654321", 0)));
 
-        OtpVerifyRequestDto request = new OtpVerifyRequestDto("+919999999999", "otp_req_123", "654321", "dev-1");
+        OtpDTO.VerifyChallengeRequest request = new OtpDTO.VerifyChallengeRequest("+919999999999", "otp_req_123", "654321", "dev-1");
         assertThatThrownBy(() -> authService.verifyOtpWithRequestId(request, IP, UA, RID))
                 .isInstanceOf(AuthException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ApiError.INVALID_OTP);
@@ -151,7 +157,7 @@ class AuthServiceChallengeAndMfaTest {
                 .thenReturn(Optional.of(new OtpStorageService.OtpChallenge("+919876543210", "LOGIN", "654321", 5)));
         when(otpStorageService.incrementChallengeAttempts(eq(reqId), any())).thenReturn(6);
 
-        OtpVerifyRequestDto request = new OtpVerifyRequestDto("+919876543210", reqId, "111111", "dev-1");
+        OtpDTO.VerifyChallengeRequest request = new OtpDTO.VerifyChallengeRequest("+919876543210", reqId, "111111", "dev-1");
         assertThatThrownBy(() -> authService.verifyOtpWithRequestId(request, IP, UA, RID))
                 .isInstanceOf(AuthException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ApiError.INVALID_OTP);
@@ -166,8 +172,8 @@ class AuthServiceChallengeAndMfaTest {
         when(passwordEncoder.matches("Secret@123", adminUser.getPassword())).thenReturn(true);
         when(otpService.generateOtp()).thenReturn("987654");
 
-        AdminLoginRequest request = new AdminLoginRequest("admin@superapp.com", "Secret@123", "admin-device");
-        AdminMfaChallengeResponse response = authService.adminLogin(request, IP, UA, RID);
+        AuthDTO.AdminLoginRequest request = new AuthDTO.AdminLoginRequest("admin@superapp.com", "Secret@123", "admin-device");
+        AuthDTO.AdminMfaChallengeResponse response = authService.adminLogin(request, IP, UA, RID);
 
         assertThat(response).isNotNull();
         assertThat(response.mfaRequired()).isTrue();
@@ -176,11 +182,34 @@ class AuthServiceChallengeAndMfaTest {
     }
 
     @Test
-    @DisplayName("adminLogin — rejects non-admin users with INVALID_CREDENTIALS")
+    @DisplayName("adminLogin — generates MFA challenge for user with active PLATFORM staff member role")
+    void adminLogin_platformStaff_success() {
+        User staffUser = new User("ops@superapp.com", "Ops Manager", "Ops", "Manager",
+                "$2a$12$hashedpwd", Role.CUSTOMER); // Role in users is customer or staff
+        staffUser.setId(UUID.randomUUID());
+        staffUser.setStatus(UserStatus.ACTIVE);
+
+        StaffMember staff = new StaffMember(staffUser.getId(), "PLATFORM", "REGIONAL_OPS", "ACTIVE");
+
+        when(userRepository.findByEmail("ops@superapp.com")).thenReturn(Optional.of(staffUser));
+        when(staffMemberRepository.findActivePlatformStaff(staffUser.getId())).thenReturn(Optional.of(staff));
+        when(passwordEncoder.matches("Secret@123", staffUser.getPassword())).thenReturn(true);
+        when(otpService.generateOtp()).thenReturn("987654");
+
+        AuthDTO.AdminLoginRequest request = new AuthDTO.AdminLoginRequest("ops@superapp.com", "Secret@123", "ops-device");
+        AuthDTO.AdminMfaChallengeResponse response = authService.adminLogin(request, IP, UA, RID);
+
+        assertThat(response).isNotNull();
+        assertThat(response.mfaRequired()).isTrue();
+    }
+
+    @Test
+    @DisplayName("adminLogin — rejects non-admin and non-platform staff with INVALID_CREDENTIALS")
     void adminLogin_nonAdmin_rejected() {
         when(userRepository.findByEmail("customer@superapp.com")).thenReturn(Optional.of(customerUser));
+        when(staffMemberRepository.findActivePlatformStaff(customerUser.getId())).thenReturn(Optional.empty());
 
-        AdminLoginRequest request = new AdminLoginRequest("customer@superapp.com", "Secret@123", "device-x");
+        AuthDTO.AdminLoginRequest request = new AuthDTO.AdminLoginRequest("customer@superapp.com", "Secret@123", "device-x");
         assertThatThrownBy(() -> authService.adminLogin(request, IP, UA, RID))
                 .isInstanceOf(AuthException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ApiError.INVALID_CREDENTIALS);
@@ -201,8 +230,8 @@ class AuthServiceChallengeAndMfaTest {
         when(tokenService.issueRefreshToken(any(), any())).thenReturn("admin-refresh-token");
         when(jwtService.getAccessTokenExpirationSeconds()).thenReturn(900L);
 
-        AdminMfaVerifyRequest request = new AdminMfaVerifyRequest(challengeId, "987654", "admin-device");
-        AuthResponse response = authService.adminVerifyMfa(request, IP, UA, RID);
+        AuthDTO.AdminMfaVerifyRequest request = new AuthDTO.AdminMfaVerifyRequest(challengeId, "987654", "admin-device");
+        AuthDTO.Response response = authService.adminVerifyMfa(request, IP, UA, RID);
 
         assertThat(response).isNotNull();
         assertThat(response.accessToken()).isEqualTo("admin-access-token");
@@ -217,7 +246,7 @@ class AuthServiceChallengeAndMfaTest {
         when(otpStorageService.getMfaChallenge(challengeId))
                 .thenReturn(Optional.of(new OtpStorageService.MfaChallenge(adminUser.getId(), "987654")));
 
-        AdminMfaVerifyRequest request = new AdminMfaVerifyRequest(challengeId, "000000", "admin-device");
+        AuthDTO.AdminMfaVerifyRequest request = new AuthDTO.AdminMfaVerifyRequest(challengeId, "000000", "admin-device");
         assertThatThrownBy(() -> authService.adminVerifyMfa(request, IP, UA, RID))
                 .isInstanceOf(AuthException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ApiError.INVALID_OTP);

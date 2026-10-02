@@ -2,11 +2,10 @@ package com.superapp.user.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.superapp.auth.dto.SessionResponse;
+import com.superapp.auth.dto.SessionDTO;
 import com.superapp.auth.service.SessionService;
 import com.superapp.common.security.CustomUserDetailsService;
-import com.superapp.user.dto.UpdateProfileRequest;
-import com.superapp.user.dto.UserResponse;
+import com.superapp.user.dto.UserDTO;
 import com.superapp.user.entity.Role;
 import com.superapp.user.entity.UserStatus;
 import com.superapp.user.service.UserService;
@@ -80,7 +79,7 @@ class UserControllerUnitTest {
     @DisplayName("GET /api/v1/users/me — returns authenticated user profile")
     void getMyProfile_success() throws Exception {
         UUID userId = UUID.fromString(USER_ID);
-        var userResponse = new UserResponse(
+        var userResponse = new UserDTO.Response(
                 userId.toString(), "Customer Test", "Customer", "Test",
                 "cust@example.com", "+919876543210", Role.CUSTOMER.name(), UserStatus.ACTIVE.name(),
                 true, true, "https://example.com/avatar.jpg", Instant.now(), Instant.now()
@@ -101,8 +100,8 @@ class UserControllerUnitTest {
     @DisplayName("PUT /api/v1/users/me — updates profile fields including email")
     void updateMyProfile_success() throws Exception {
         UUID userId = UUID.fromString(USER_ID);
-        var request = new UpdateProfileRequest("UpdatedFirst", "UpdatedLast", "updated@example.com", "+919876543210");
-        var userResponse = new UserResponse(
+        var request = new UserDTO.UpdateProfileRequest("UpdatedFirst", "UpdatedLast", "updated@example.com", "+919876543210");
+        var userResponse = new UserDTO.Response(
                 userId.toString(), "UpdatedFirst UpdatedLast", "UpdatedFirst", "UpdatedLast",
                 "updated@example.com", "+919876543210", Role.CUSTOMER.name(), UserStatus.ACTIVE.name(),
                 true, false, null, Instant.now(), Instant.now()
@@ -124,7 +123,7 @@ class UserControllerUnitTest {
     void getMySessions_success() throws Exception {
         UUID userId = UUID.fromString(USER_ID);
         UUID sessionId = UUID.randomUUID();
-        var sessionResponse = new SessionResponse(
+        var sessionResponse = new SessionDTO.Response(
                 sessionId.toString(), "device-1", "Pixel 8", "127.0.0.1", Instant.now(), Instant.now(), Instant.now().plusSeconds(3600), true
         );
 

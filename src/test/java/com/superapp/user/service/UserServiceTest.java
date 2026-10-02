@@ -5,9 +5,7 @@ import com.superapp.common.audit.AuditService;
 import com.superapp.common.exception.DuplicateResourceException;
 import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.common.exception.UserSuspendedException;
-import com.superapp.user.dto.CreateUserRequest;
-import com.superapp.user.dto.UpdateProfileRequest;
-import com.superapp.user.dto.UserResponse;
+import com.superapp.user.dto.UserDTO;
 import com.superapp.user.entity.Role;
 import com.superapp.user.entity.User;
 import com.superapp.user.entity.UserStatus;
@@ -72,7 +70,7 @@ class UserServiceTest {
         void getMyProfile_success() {
             when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
 
-            UserResponse response = userService.getMyProfile(userId);
+            UserDTO.Response response = userService.getMyProfile(userId);
 
             assertThat(response).isNotNull();
             assertThat(response.id()).isEqualTo(userId.toString());
@@ -127,8 +125,8 @@ class UserServiceTest {
             when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
             when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            UpdateProfileRequest request = new UpdateProfileRequest("Rohan", "Itankar", null);
-            UserResponse response = userService.updateMyProfile(userId, request);
+            UserDTO.UpdateProfileRequest request = new UserDTO.UpdateProfileRequest("Rohan", "Itankar", null);
+            UserDTO.Response response = userService.updateMyProfile(userId, request);
 
             assertThat(response.firstName()).isEqualTo("Rohan");
             assertThat(response.lastName()).isEqualTo("Itankar");
@@ -145,8 +143,8 @@ class UserServiceTest {
             when(userRepository.existsByEmail("new.rohan@example.com")).thenReturn(false);
             when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            UpdateProfileRequest request = new UpdateProfileRequest("Rohan", "Itankar", "  NEW.ROHAN@EXAMPLE.COM  ");
-            UserResponse response = userService.updateMyProfile(userId, request);
+            UserDTO.UpdateProfileRequest request = new UserDTO.UpdateProfileRequest("Rohan", "Itankar", "  NEW.ROHAN@EXAMPLE.COM  ");
+            UserDTO.Response response = userService.updateMyProfile(userId, request);
 
             assertThat(response.email()).isEqualTo("new.rohan@example.com");
             assertThat(sampleUser.isEmailVerified()).isFalse();
@@ -161,7 +159,7 @@ class UserServiceTest {
             when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
             when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
 
-            UpdateProfileRequest request = new UpdateProfileRequest("Rohan", "Itankar", "taken@example.com");
+            UserDTO.UpdateProfileRequest request = new UserDTO.UpdateProfileRequest("Rohan", "Itankar", "taken@example.com");
 
             assertThatThrownBy(() -> userService.updateMyProfile(userId, request))
                     .isInstanceOf(DuplicateResourceException.class)
@@ -176,7 +174,7 @@ class UserServiceTest {
             sampleUser.setStatus(UserStatus.SUSPENDED);
             when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
 
-            UpdateProfileRequest request = new UpdateProfileRequest("Rohan", "Itankar", "rohan@example.com");
+            UserDTO.UpdateProfileRequest request = new UserDTO.UpdateProfileRequest("Rohan", "Itankar", "rohan@example.com");
 
             assertThatThrownBy(() -> userService.updateMyProfile(userId, request))
                     .isInstanceOf(UserSuspendedException.class);
@@ -236,12 +234,12 @@ class UserServiceTest {
                 return u;
             });
 
-            CreateUserRequest request = new CreateUserRequest(
+            UserDTO.CreateRequest request = new UserDTO.CreateRequest(
                     "Admin", "User", "admin.new@example.com", "+919998887776",
                     "SecretPass123!", Role.ADMIN, "https://example.com/pic.jpg"
             );
 
-            UserResponse response = userService.createUser(request);
+            UserDTO.Response response = userService.createUser(request);
 
             assertThat(response).isNotNull();
             assertThat(response.role()).isEqualTo("ADMIN");
