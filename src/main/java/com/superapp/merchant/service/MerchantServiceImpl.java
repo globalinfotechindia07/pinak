@@ -87,11 +87,26 @@ public class MerchantServiceImpl implements MerchantService {
         String description = request.description() != null ? request.description().trim() : null;
         String website = request.website() != null ? request.website().trim() : null;
 
+        // Global check: ensure no merchant is already registered with this email
+        if (email != null && !email.isBlank()) {
+            if (merchantRepository.existsByEmailIgnoreCase(email)) {
+                throw new AppException("A merchant is already registered with email: " + email, ApiError.EMAIL_ALREADY_EXISTS, 400);
+            }
+        }
+
         // If admin onboards a merchant, associate or provision owner user by email
         if (isAdmin && email != null && !email.isBlank()) {
             Optional<User> existingUser = userRepository.findByEmail(email);
             if (existingUser.isPresent()) {
                 User u = existingUser.get();
+                // Reject role collision: platform staff/admins cannot be registered as merchant owners
+                if (u.getRole() == Role.ADMIN || u.getRole() == Role.SUPER_ADMIN) {
+                    throw new AppException(
+                            "Role Conflict: Email '" + email + "' belongs to an internal platform administrator. " +
+                            "Platform staff cannot be registered as commercial merchant owners. Please provide a distinct commercial email.",
+                            ApiError.VALIDATION_FAILED, 400
+                    );
+                }
                 if (u.getRole() == Role.CUSTOMER) {
                     u.setRole(Role.MERCHANT);
                     userRepository.save(u);

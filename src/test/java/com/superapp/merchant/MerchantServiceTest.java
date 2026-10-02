@@ -15,6 +15,8 @@ import com.superapp.merchant.mapper.MerchantMapper;
 import com.superapp.merchant.repository.MerchantKycRepository;
 import com.superapp.merchant.repository.MerchantRepository;
 import com.superapp.merchant.service.MerchantServiceImpl;
+import com.superapp.user.entity.Role;
+import com.superapp.user.entity.User;
 import com.superapp.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -104,6 +106,40 @@ class MerchantServiceTest {
         assertThatThrownBy(() -> merchantService.createMerchant(request, ownerId, false))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("Category is not active");
+    }
+
+    @Test
+    @DisplayName("Create merchant fails if email already belongs to an existing merchant")
+    void createMerchant_duplicateMerchantEmail_throwsException() {
+        CreateMerchantRequest request = new CreateMerchantRequest(
+                "Acme Fitness", "Acme Fitness LLC", "Desc", categoryId, "9876543210", "duplicate@test.com", "https://acme.com"
+        );
+
+        when(merchantRepository.existsByEmailIgnoreCase("duplicate@test.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> merchantService.createMerchant(request, ownerId, false))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("A merchant is already registered with email");
+    }
+
+    @Test
+    @DisplayName("Create merchant fails if email belongs to an internal platform administrator (Role Conflict)")
+    void createMerchant_adminEmailRoleConflict_throwsException() {
+        CreateMerchantRequest request = new CreateMerchantRequest(
+                "Acme Fitness", "Acme Fitness LLC", "Desc", categoryId, "9876543210", "admin@superapp.com", "https://acme.com"
+        );
+
+        User adminUser = new User();
+        adminUser.setEmail("admin@superapp.com");
+        adminUser.setRole(Role.ADMIN);
+
+        when(merchantRepository.existsByEmailIgnoreCase("admin@superapp.com")).thenReturn(false);
+        when(userRepository.findByEmail("admin@superapp.com")).thenReturn(Optional.of(adminUser));
+
+        assertThatThrownBy(() -> merchantService.createMerchant(request, ownerId, true))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("Role Conflict")
+                .hasMessageContaining("belongs to an internal platform administrator");
     }
 
     @Test
