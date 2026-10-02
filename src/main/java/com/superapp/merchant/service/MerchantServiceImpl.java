@@ -119,20 +119,20 @@ public class MerchantServiceImpl implements MerchantService {
 
         // Validate or resolve category
         String categoryName = null;
-        UUID categoryId = request.categoryId();
-        if (categoryId != null) {
-            Optional<Category> catOpt = categoryRepository.findById(categoryId);
-            if (catOpt.isPresent() && catOpt.get().isActive()) {
-                categoryName = catOpt.get().getName();
-            } else {
-                categoryId = null;
+        UUID resolvedCategoryId = request.categoryId();
+        if (resolvedCategoryId != null) {
+            final UUID catId = resolvedCategoryId;
+            Category cat = categoryRepository.findById(catId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Category", "id", catId));
+            if (!cat.isActive()) {
+                throw new AppException("Category is not active: " + catId, ApiError.CATEGORY_INACTIVE, 400);
             }
-        }
-        if (categoryId == null) {
+            categoryName = cat.getName();
+        } else {
             Category defCat = categoryRepository.findByNameIgnoreCase("Food & Dining")
                     .orElseGet(() -> categoryRepository.findAll().stream().filter(Category::isActive).findFirst().orElse(null));
             if (defCat != null) {
-                categoryId = defCat.getId();
+                resolvedCategoryId = defCat.getId();
                 categoryName = defCat.getName();
             }
         }
@@ -142,7 +142,7 @@ public class MerchantServiceImpl implements MerchantService {
                 request.businessName().trim(),
                 legalName,
                 description,
-                categoryId,
+                resolvedCategoryId,
                 phone,
                 email,
                 website
