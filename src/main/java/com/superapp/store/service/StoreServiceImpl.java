@@ -369,14 +369,7 @@ public class StoreServiceImpl implements StoreService {
 
         validateCoordinates(request.latitude(), request.longitude());
 
-        String cityId = request.cityId() != null ? request.cityId().trim().toLowerCase() : "nagpur";
-        if (cityRepository != null && !cityRepository.existsById(cityId)) {
-            cityId = cityRepository.findAll().stream()
-                    .filter(c -> c.getName().equalsIgnoreCase(request.cityId()))
-                    .map(City::getId)
-                    .findFirst()
-                    .orElse("nagpur");
-        }
+        String cityId = resolveAndValidateCity(request.cityId());
 
         Store store = new Store(
                 request.merchantId(),
@@ -399,6 +392,12 @@ public class StoreServiceImpl implements StoreService {
 
         Store saved = storeRepository.save(store);
         log.info("Created store id={} name='{}' for merchantId={} (isAdmin={})", saved.getId(), saved.getStoreName(), merchant.getId(), isAdmin);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.STORE_CREATED, currentUserId, null, null, MDC.get("requestId"),
+                    "{\"storeId\":\"" + saved.getId() + "\",\"merchantId\":\"" + merchant.getId() + "\",\"isAdmin\":" + isAdmin + "}");
+        }
+
         return StoreResponse.fromEntity(saved, merchant.getBusinessName());
     }
 
@@ -561,14 +560,30 @@ public class StoreServiceImpl implements StoreService {
         }
     }
 
-    private void validateCity(String cityId) {
-        if (cityRepository != null && cityId != null && !cityId.isBlank()) {
-            City city = cityRepository.findById(cityId)
-                    .orElseThrow(() -> new AppException("City not found", ApiError.CITY_NOT_FOUND, 404));
-            if (!city.isActive()) {
-                throw new AppException("City is not active", ApiError.CITY_INACTIVE, 409);
+    private String resolveAndValidateCity(String rawCity) {
+        if (rawCity == null || rawCity.isBlank()) {
+            return "nagpur";
+        }
+        String normalized = rawCity.trim();
+        if (cityRepository != null) {
+            City city = cityRepository.findById(normalized.toLowerCase())
+                    .or(() -> cityRepository.findAll().stream()
+                            .filter(c -> c.getName().equalsIgnoreCase(normalized) ||
+                                         (c.getSlug() != null && c.getSlug().equalsIgnoreCase(normalized)))
+                            .findFirst())
+                    .orElse(null);
+            if (city != null) {
+                if (!city.isActive()) {
+                    throw new AppException("City is not active", ApiError.CITY_INACTIVE, 409);
+                }
+                return city.getId();
             }
         }
+        return normalized.toLowerCase();
+    }
+
+    private void validateCity(String cityId) {
+        resolveAndValidateCity(cityId);
     }
 
     private String buildAddress(String line1, String line2) {
