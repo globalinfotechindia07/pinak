@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Store as StoreIcon,
   Plus,
@@ -15,7 +15,8 @@ import {
   Trash2,
   Download,
   Power,
-  PowerOff
+  PowerOff,
+  Pencil
 } from "lucide-react";
 import { Store as StoreType, Merchant } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
@@ -25,6 +26,7 @@ import { toast } from "sonner";
 import { storeBranchSchema } from "../../lib/validationSchemas";
 import { StoreLocationPicker } from "../../components/StoreLocationPicker";
 import { IndiaAddressFields } from "../../components/IndiaAddressFields";
+import { StoreScheduleSelector } from "../../components/StoreScheduleSelector";
 
 interface StoreManagementProps {
   stores: StoreType[];
@@ -45,8 +47,15 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
 }) => {
   const [cityFilter, setCityFilter] = useState("ALL");
   const [selectedStore, setSelectedStore] = useState<StoreType | null>(null);
+  const [storeToEdit, setStoreToEdit] = useState<StoreType | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<StoreType | null>(null);
+
+  // Dynamic cities that have at least one store listed
+  const availableCities = useMemo(() => {
+    const uniqueCities = Array.from(new Set(stores.map((s) => s.city).filter(Boolean))).sort();
+    return ["ALL", ...uniqueCities];
+  }, [stores]);
 
   // Filtered by city chip if selected
   const displayedStores = cityFilter === "ALL" 
@@ -169,6 +178,15 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
           )}
 
           <button
+            onClick={() => setStoreToEdit(s)}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 transition-colors border border-amber-200/50 dark:border-amber-800/40"
+            title="Edit store outlet details"
+          >
+            <Pencil size={12} className="text-amber-600" />
+            <span>Edit</span>
+          </button>
+
+          <button
             onClick={() => setSelectedStore(s)}
             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 transition-colors border border-purple-200/50 dark:border-purple-800/40"
           >
@@ -229,10 +247,10 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
         </div>
       </div>
 
-      {/* City Chips Toolbar */}
+      {/* Dynamic City Chips Toolbar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">City Filter:</span>
-        {["ALL", "Nagpur", "Pune", "Mumbai"].map((city) => (
+        {availableCities.map((city) => (
           <button
             key={city}
             onClick={() => setCityFilter(city)}
@@ -281,6 +299,21 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
           onApprove={() => {
             onApproveStore(selectedStore.id);
             setSelectedStore({ ...selectedStore, status: "ACTIVE" });
+          }}
+        />
+      )}
+
+      {/* Edit Store Branch Right-Side Slide-Over Drawer */}
+      {storeToEdit && (
+        <EditStoreDrawer
+          store={storeToEdit}
+          onClose={() => setStoreToEdit(null)}
+          onSave={(updates) => {
+            if (onUpdateStore) {
+              onUpdateStore(storeToEdit.id, updates);
+            }
+            setStoreToEdit(null);
+            toast.success(`Store branch "${updates.branchName || storeToEdit.branchName}" updated successfully!`);
           }}
         />
       )}
@@ -791,15 +824,11 @@ function AddStoreDrawer({
               </div>
             </div>
 
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Operating Hours</label>
-              <input
-                type="text"
-                value={operatingHours}
-                onChange={e => setOperatingHours(e.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
-              />
-            </div>
+            {/* Standardized Operating Hours & Schedule Selector */}
+            <StoreScheduleSelector
+              value={operatingHours}
+              onChange={(val) => setOperatingHours(val)}
+            />
 
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
               <button
@@ -814,6 +843,174 @@ function AddStoreDrawer({
                 className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md"
               >
                 Save Branch
+              </button>
+            </div>
+          </form>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+// Right-side Slide-over Drawer for Editing Existing Store Branch
+function EditStoreDrawer({
+  store,
+  onClose,
+  onSave
+}: {
+  store: StoreType;
+  onClose: () => void;
+  onSave: (updates: Partial<StoreType>) => void;
+}) {
+  const [branchName, setBranchName] = useState(store.branchName || "");
+  const [phone, setPhone] = useState(store.phone || "");
+  const [address, setAddress] = useState(store.address || "");
+  const [state, setState] = useState(store.state || "Maharashtra");
+  const [district, setDistrict] = useState(store.district || "Nagpur");
+  const [city, setCity] = useState(store.city || "Nagpur");
+  const [pincode, setPincode] = useState(store.pincode || "440010");
+  const [latitude, setLatitude] = useState(store.latitude || 21.1458);
+  const [longitude, setLongitude] = useState(store.longitude || 79.0882);
+  const [operatingHours, setOperatingHours] = useState(store.operatingHours || "09:00 AM – 10:00 PM (Daily)");
+  const [status, setStatus] = useState<StoreType["status"]>(store.status || "ACTIVE");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      branchName: branchName.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
+      state: state.trim(),
+      district: district.trim(),
+      city: city.trim(),
+      pincode: pincode.trim(),
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      operatingHours: operatingHours.trim(),
+      status
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+        <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="flex items-center gap-2">
+              <Pencil size={18} className="text-amber-500" />
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Edit Store Branch</h3>
+                <p className="text-[11px] text-slate-400">Update branch details, phone & schedule</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <X size={18} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+            <div>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Branch Name *</label>
+              <input
+                type="text"
+                required
+                value={branchName}
+                onChange={(e) => setBranchName(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Contact Phone</label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Store Map Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as StoreType["status"])}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
+                >
+                  <option value="ACTIVE">Active on Map</option>
+                  <option value="INACTIVE">Inactive / Closed</option>
+                  <option value="PENDING_APPROVAL">Pending Approval</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Standardized Operating Hours & Schedule Selector */}
+            <StoreScheduleSelector
+              value={operatingHours}
+              onChange={(newSchedule) => setOperatingHours(newSchedule)}
+            />
+
+            {/* Pre-populated Indian Address Fields */}
+            <IndiaAddressFields
+              state={state}
+              district={district}
+              city={city}
+              pincode={pincode}
+              address={address}
+              onStateChange={setState}
+              onDistrictChange={setDistrict}
+              onCityChange={setCity}
+              onPincodeChange={setPincode}
+              onAddressChange={setAddress}
+            />
+
+            {/* Location Map Picker */}
+            <div>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-xs">Pinpoint Location on Map *</label>
+              <StoreLocationPicker
+                latitude={latitude}
+                longitude={longitude}
+                city={city}
+                state={state}
+                storeName={branchName}
+                height="180px"
+                onChange={(lat, lng) => {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                }}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Latitude</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={latitude}
+                  onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Longitude</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={longitude}
+                  onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+              <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Cancel
+              </button>
+              <button type="submit" className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md">
+                Save Store Changes
               </button>
             </div>
           </form>

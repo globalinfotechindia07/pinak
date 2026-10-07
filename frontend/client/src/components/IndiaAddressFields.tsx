@@ -182,25 +182,50 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
 
       {/* City & Pincode */}
       <div className="grid grid-cols-2 gap-3">
-        {/* City with Autocomplete Datalist */}
+        {/* City / Locality Dropdown with Search & Custom Input Support */}
         <div>
           <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-xs">
             City / Locality *
           </label>
           <div className="relative">
-            <input
-              type="text"
-              list="india-city-suggestions"
-              value={city}
-              onChange={(e) => onCityChange(e.target.value)}
-              placeholder="e.g. Nagpur"
-              className={cn(
-                "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden transition-all",
-                errors.city
-                  ? "border-rose-500 ring-1 ring-rose-500/20"
-                  : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-              )}
-            />
+            {availableCities.length > 0 ? (
+              <select
+                value={city}
+                onChange={(e) => onCityChange(e.target.value)}
+                className={cn(
+                  "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white appearance-none cursor-pointer focus:outline-hidden transition-all",
+                  errors.city
+                    ? "border-rose-500 ring-1 ring-rose-500/20"
+                    : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
+                )}
+              >
+                <option value="" disabled>Select City / Locality</option>
+                {availableCities.map((ct) => (
+                  <option key={ct} value={ct}>
+                    {ct}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                list="india-city-suggestions"
+                value={city}
+                onChange={(e) => onCityChange(e.target.value)}
+                placeholder="e.g. Nagpur"
+                className={cn(
+                  "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden transition-all",
+                  errors.city
+                    ? "border-rose-500 ring-1 ring-rose-500/20"
+                    : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
+                )}
+              />
+            )}
+            {availableCities.length > 0 && (
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 text-xs">
+                ▼
+              </div>
+            )}
             <datalist id="india-city-suggestions">
               {availableCities.map((ct) => (
                 <option key={ct} value={ct}>

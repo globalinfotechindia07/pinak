@@ -453,6 +453,9 @@ export const appStore = {
   },
   addStore(draft: Partial<Store>): Store {
     const all = this.getStores();
+    const currentUser = this.getCurrentUser();
+    const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Store Admin";
+
     const newStore: Store = {
       id: draft.id || `store-${Date.now()}`,
       merchantId: draft.merchantId || "",
@@ -476,21 +479,87 @@ export const appStore = {
       managerName: draft.managerName,
     };
     setStored(STORAGE_KEYS.STORES, [newStore, ...all]);
+
+    this.addAudit({
+      action: "STORE_CREATED",
+      entity: `Store Branch: ${newStore.branchName} (${newStore.id})`,
+      actor: actorName,
+      severity: "success",
+      metadata: {
+        storeId: newStore.id,
+        branchName: newStore.branchName,
+        merchantName: newStore.merchantName,
+        city: newStore.city,
+        state: newStore.state,
+        createdBy: actorName
+      }
+    });
+
     return newStore;
   },
   approveStore(id: string) {
     const all = this.getStores();
+    const currentUser = this.getCurrentUser();
+    const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Platform Admin";
+    const target = all.find(s => s.id === id);
+
     const updated = all.map(s => s.id === id ? { ...s, status: "ACTIVE" as const } : s);
     setStored(STORAGE_KEYS.STORES, updated);
+
+    this.addAudit({
+      action: "STORE_APPROVED",
+      entity: `Store Branch: ${target?.branchName || id}`,
+      actor: actorName,
+      severity: "success",
+      metadata: {
+        storeId: id,
+        branchName: target?.branchName,
+        status: "ACTIVE",
+        approvedBy: actorName
+      }
+    });
   },
   updateStore(id: string, updates: Partial<Store>) {
     const all = this.getStores();
+    const currentUser = this.getCurrentUser();
+    const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Store Administrator";
+    const target = all.find(s => s.id === id);
+
     const updated = all.map(s => s.id === id ? { ...s, ...updates } : s);
     setStored(STORAGE_KEYS.STORES, updated);
+
+    this.addAudit({
+      action: updates.status ? `STORE_STATUS_${updates.status}` : "STORE_UPDATED",
+      entity: `Store Branch: ${target?.branchName || id}`,
+      actor: actorName,
+      severity: updates.status === "INACTIVE" ? "warning" : "info",
+      metadata: {
+        storeId: id,
+        branchName: target?.branchName,
+        updates,
+        updatedBy: actorName
+      }
+    });
   },
   deleteStore(id: string) {
     const all = this.getStores();
+    const currentUser = this.getCurrentUser();
+    const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Platform Admin";
+    const target = all.find(s => s.id === id);
+
     setStored(STORAGE_KEYS.STORES, all.filter(s => s.id !== id));
+
+    this.addAudit({
+      action: "STORE_DELETED",
+      entity: `Store Branch: ${target?.branchName || id}`,
+      actor: actorName,
+      severity: "critical",
+      metadata: {
+        storeId: id,
+        branchName: target?.branchName,
+        deletedBy: actorName
+      }
+    });
   },
 
   getOffers(): Offer[] {
