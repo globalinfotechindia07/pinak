@@ -19,18 +19,21 @@ import {
   Pause,
   Sparkles
 } from "lucide-react";
-import { Offer, Merchant } from "../../types";
+import { Offer, Merchant, Store } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
-import { offerCampaignSchema } from "../../lib/validationSchemas";
+import { useAppStore } from "../../hooks/useAppStore";
+import { OfferCampaignFormDrawer } from "../../components/OfferCampaignFormDrawer";
+import { OfferDetailsDrawer } from "../../components/OfferDetailsDrawer";
 
 interface OfferGovernanceProps {
   offers: Offer[];
   merchants: Merchant[];
+  stores?: Store[];
   onAddOffer: (draft: Partial<Offer>) => void;
-  onUpdateOfferStatus: (id: string, status: "ACTIVE" | "REJECTED" | "EXPIRED" | "PENDING_APPROVAL" | "PAUSED") => void;
+  onUpdateOfferStatus: (id: string, status: "ACTIVE" | "REJECTED" | "EXPIRED" | "PENDING_APPROVAL" | "PAUSED", reason?: string) => void;
   onDeleteOffer?: (id: string) => void;
   onCloneOffer?: (id: string) => void;
 }
@@ -38,11 +41,14 @@ interface OfferGovernanceProps {
 export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
   offers,
   merchants,
+  stores: propStores,
   onAddOffer,
   onUpdateOfferStatus,
   onDeleteOffer,
   onCloneOffer
 }) => {
+  const storeState = useAppStore();
+  const stores = propStores || storeState.stores;
   const [filter, setFilter] = useState("ALL");
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -399,176 +405,25 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
         ]}
       />
 
-      {/* Offer Review Right Slide-Over Drawer */}
+      {/* Offer Details & Audit History Drawer */}
       {selectedOffer && (
-        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
-            onClick={() => setSelectedOffer(null)}
-          />
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-            <aside className="w-screen max-w-lg bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-pink-100 dark:bg-pink-950/60 text-pink-600 flex items-center justify-center font-bold text-sm shadow-xs">
-                    <TicketPercent size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                      Campaign Offer Review
-                    </h3>
-                    <p className="text-[11px] text-slate-400 font-mono">ID: {selectedOffer.id}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={
-                      selectedOffer.status === "ACTIVE"
-                        ? "success"
-                        : selectedOffer.status === "REJECTED" || selectedOffer.status === "EXPIRED"
-                        ? "destructive"
-                        : "warning"
-                    }
-                  >
-                    {selectedOffer.status === "ACTIVE" ? (
-                      <CheckCircle2 size={12} />
-                    ) : selectedOffer.status === "PENDING_APPROVAL" ? (
-                      <Clock size={12} />
-                    ) : (
-                      <XCircle size={12} />
-                    )}
-                    {selectedOffer.status.replace("_", " ")}
-                  </Badge>
-                  <button
-                    onClick={() => setSelectedOffer(null)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-                {/* Title & Brand Card */}
-                <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-2">
-                  <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
-                    Promotional Campaign
-                  </span>
-                  <h4 className="text-lg font-bold text-slate-900 dark:text-white font-['Manrope']">
-                    {selectedOffer.title}
-                  </h4>
-                  <div className="pt-2 border-t border-purple-200/50 dark:border-purple-900/50 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500">Merchant Brand:</span>
-                    <span className="font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
-                      <Building2 size={12} />
-                      {selectedOffer.merchantName}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Economics / Discount Rules */}
-                <div className="space-y-1.5">
-                  <span className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                    Discount Structure & Spend Threshold
-                  </span>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
-                      <p className="text-slate-400 font-semibold uppercase text-[10px]">Discount Value</p>
-                      <p className="text-base font-extrabold text-pink-600 dark:text-pink-400 mt-0.5 font-mono">
-                        {selectedOffer.type === "FLAT_AMT"
-                          ? `₹${selectedOffer.value} Off`
-                          : selectedOffer.type === "FLAT_PCT"
-                          ? `${selectedOffer.value}% Off`
-                          : "Buy 1 Get 1"}
-                      </p>
-                      {selectedOffer.maxDiscount && (
-                        <p className="text-[10px] text-slate-400 mt-0.5">Maximum Cap: ₹{selectedOffer.maxDiscount}</p>
-                      )}
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
-                      <p className="text-slate-400 font-semibold uppercase text-[10px]">Minimum Spend</p>
-                      <p className="text-base font-extrabold text-slate-800 dark:text-slate-200 mt-0.5 font-mono">
-                        ₹{selectedOffer.minBillAmount}
-                      </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Minimum cart threshold</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Terms and Conditions */}
-                <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/20 space-y-1.5">
-                  <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs">Terms & Conditions</h5>
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-xs">
-                    {selectedOffer.terms || "Standard merchant terms apply to all redemptions."}
-                  </p>
-                </div>
-
-                {/* Campaign Analytics & Schedule */}
-                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500">Live Customer Claims:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
-                      {selectedOffer.redemptions.toLocaleString()} claimed
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500">Valid Until:</span>
-                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
-                      {selectedOffer.validTo}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-200/50 dark:border-slate-800">
-                    <span className="text-slate-500">Discovery Engine:</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                      <CheckCircle2 size={11} /> Eligible for Mobile Discovery
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-2.5">
-                <button
-                  onClick={() => {
-                    onUpdateOfferStatus(selectedOffer.id, "REJECTED");
-                    setSelectedOffer(null);
-                    toast.info(`Offer campaign marked as Rejected`);
-                  }}
-                  className="px-3.5 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/40 text-xs font-bold transition-colors"
-                >
-                  Reject Deal
-                </button>
-                <button
-                  onClick={() => {
-                    onUpdateOfferStatus(selectedOffer.id, "PENDING_APPROVAL");
-                    setSelectedOffer(null);
-                    toast.info(`Offer campaign set to Pending Review`);
-                  }}
-                  className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-semibold transition-colors"
-                >
-                  Request Changes
-                </button>
-                <button
-                  onClick={() => {
-                    onUpdateOfferStatus(selectedOffer.id, "ACTIVE");
-                    setSelectedOffer(null);
-                    toast.success(`Offer approved & published to mobile discovery!`);
-                  }}
-                  className="btn-gradient px-4 py-2.5 rounded-xl text-white text-xs font-bold shadow-md"
-                >
-                  Approve for Discovery
-                </button>
-              </div>
-            </aside>
-          </div>
-        </div>
+        <OfferDetailsDrawer
+          offer={selectedOffer}
+          onClose={() => setSelectedOffer(null)}
+          isAdmin={true}
+          onUpdateStatus={(status, reason) => {
+            onUpdateOfferStatus(selectedOffer.id, status as any, reason);
+            setSelectedOffer(null);
+          }}
+        />
       )}
 
-      {/* Create Offer Drawer */}
+      {/* Create / Edit Campaign Drawer */}
       {isAddOpen && (
-        <CreateOfferDrawer
-          merchants={merchants}
+        <OfferCampaignFormDrawer
           onClose={() => setIsAddOpen(false)}
+          merchants={merchants}
+          stores={stores}
           onSave={(draft) => {
             onAddOffer(draft);
             setIsAddOpen(false);
@@ -630,257 +485,3 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     </div>
   );
 };
-
-function CreateOfferDrawer({
-  merchants,
-  onClose,
-  onSave
-}: {
-  merchants: Merchant[];
-  onClose: () => void;
-  onSave: (draft: any) => void;
-}) {
-  const [merchantId, setMerchantId] = useState(merchants[0]?.id || "m-1");
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState<"FLAT_PCT" | "FLAT_AMT" | "BOGO">("FLAT_AMT");
-  const [value, setValue] = useState(200);
-  const [minBillAmount, setMinBillAmount] = useState(1000);
-  const [maxDiscount, setMaxDiscount] = useState(500);
-  const [validTo, setValidTo] = useState("2026-10-31");
-  const [terms, setTerms] = useState("Valid on all dine-in bills exceeding threshold.");
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const selectedMerchant = merchants.find(m => m.id === merchantId);
-
-  const clearError = (field: string) => {
-    if (errors[field]) {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
-
-  const handlePublish = (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = offerCampaignSchema.safeParse({
-      title: title.trim(),
-      type,
-      value: Number(value),
-      maxDiscount: maxDiscount ? Number(maxDiscount) : undefined,
-      minBillAmount: Number(minBillAmount),
-      validTo: validTo.trim(),
-      terms: terms.trim(),
-    });
-
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach(issue => {
-        const key = issue.path[0] as string;
-        if (!fieldErrors[key]) {
-          fieldErrors[key] = issue.message;
-        }
-      });
-      setErrors(fieldErrors);
-      toast.error(result.error.issues[0]?.message || "Please fix validation errors");
-      return;
-    }
-
-    setErrors({});
-    onSave({
-      merchantId,
-      merchantName: selectedMerchant?.businessName || "Merchant",
-      title: title.trim(),
-      type,
-      value: Number(value),
-      minBillAmount: Number(minBillAmount),
-      maxDiscount: maxDiscount ? Number(maxDiscount) : undefined,
-      validTo: validTo.trim(),
-      terms: terms.trim(),
-      status: "ACTIVE"
-    });
-    toast.success(`Platform offer "${title}" published!`);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-        <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Create Campaign Offer
-              </h3>
-              <p className="text-[11px] text-slate-400">Configure discount rules, spend limits, and validity</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          <form onSubmit={handlePublish} noValidate className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Merchant *</label>
-              <select
-                value={merchantId}
-                onChange={e => setMerchantId(e.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white"
-              >
-                {merchants.map(m => (
-                  <option key={m.id} value={m.id}>{m.businessName} ({m.city})</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Campaign Title *</label>
-              <input
-                type="text"
-                value={title}
-                onChange={e => {
-                  setTitle(e.target.value);
-                  clearError("title");
-                }}
-                placeholder="e.g. Weekend Special Fest"
-                className={cn(
-                  "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-hidden",
-                  errors.title ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                )}
-              />
-              {errors.title && (
-                <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} className="shrink-0" />
-                  <span>{errors.title}</span>
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Discount Type *</label>
-                <select
-                  value={type}
-                  onChange={e => {
-                    setType(e.target.value as any);
-                    clearError("type");
-                  }}
-                  className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
-                >
-                  <option value="FLAT_AMT">Flat Amount (₹)</option>
-                  <option value="FLAT_PCT">Percentage (%)</option>
-                  <option value="BOGO">Buy 1 Get 1 (BOGO)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  {type === "FLAT_AMT" ? "Flat Value (₹) *" : type === "FLAT_PCT" ? "Percentage (%) *" : "Qty *"}
-                </label>
-                <input
-                  type="number"
-                  value={value}
-                  onChange={e => {
-                    setValue(parseFloat(e.target.value) || 0);
-                    clearError("value");
-                  }}
-                  className={cn(
-                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:outline-hidden",
-                    errors.value ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                  )}
-                />
-                {errors.value && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" />
-                    <span>{errors.value}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Min Bill Amount (₹) *</label>
-                <input
-                  type="number"
-                  value={minBillAmount}
-                  onChange={e => {
-                    setMinBillAmount(parseFloat(e.target.value) || 0);
-                    clearError("minBillAmount");
-                  }}
-                  className={cn(
-                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-hidden",
-                    errors.minBillAmount ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                  )}
-                />
-                {errors.minBillAmount && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" />
-                    <span>{errors.minBillAmount}</span>
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Valid Until *</label>
-                <input
-                  type="date"
-                  value={validTo}
-                  onChange={e => {
-                    setValidTo(e.target.value);
-                    clearError("validTo");
-                  }}
-                  className={cn(
-                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-hidden",
-                    errors.validTo ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                  )}
-                />
-                {errors.validTo && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" />
-                    <span>{errors.validTo}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Terms & Conditions</label>
-              <textarea
-                value={terms}
-                onChange={e => {
-                  setTerms(e.target.value);
-                  clearError("terms");
-                }}
-                className={cn(
-                  "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-hidden",
-                  errors.terms ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                )}
-                rows={3}
-              />
-              {errors.terms && (
-                <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} className="shrink-0" />
-                  <span>{errors.terms}</span>
-                </p>
-              )}
-            </div>
-
-            <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-2">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400">Cancel</button>
-              <button
-                type="submit"
-                className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md hover:opacity-95 transition-opacity"
-              >
-                Publish Campaign
-              </button>
-            </div>
-          </form>
-        </aside>
-      </div>
-    </div>
-  );
-}

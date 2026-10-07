@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { TicketPercent, Plus, CheckCircle2, Clock, XCircle, Sparkles, X, LayoutGrid, List, QrCode } from "lucide-react";
+import { TicketPercent, Plus, CheckCircle2, Clock, XCircle, Sparkles, X, LayoutGrid, List, QrCode, Eye, ShieldCheck, Tag, History } from "lucide-react";
 import { Offer, Store } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
 import { useAppStore } from "../../hooks/useAppStore";
+import { OfferCampaignFormDrawer } from "../../components/OfferCampaignFormDrawer";
+import { OfferDetailsDrawer } from "../../components/OfferDetailsDrawer";
 
 interface OfferStudioProps {
   offers: Offer[];
@@ -25,17 +27,11 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
   const currentMerchantName = store.currentUser?.name || "Merchant Partner";
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+
   const isMyMerchant = (id?: string) => !currentMerchantId || !id || id === currentMerchantId || id === store.currentUser?.merchantId || id === "m-1";
   const myOffers = store.role === "merchant" ? offers : offers.filter((o) => isMyMerchant(o.merchantId));
-
-  // Form states
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState<"FLAT_PCT" | "FLAT_AMT" | "BOGO">("FLAT_AMT");
-  const [value, setValue] = useState(150);
-  const [minBill, setMinBill] = useState(800);
-  const [validTo, setValidTo] = useState("2026-10-31");
-  const [terms, setTerms] = useState("Valid on all dine-in bills exceeding minimum threshold.");
 
   const columns: Column<Offer>[] = [
     {
@@ -49,23 +45,44 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
           </div>
           <div>
             <p className="font-bold text-slate-900 dark:text-white leading-tight">{o.title}</p>
-            <p className="text-[11px] text-slate-400">Min spend: ₹{o.minBillAmount}</p>
+            {o.tagline && <p className="text-[11px] text-pink-600 dark:text-pink-400 font-medium truncate max-w-xs">{o.tagline}</p>}
+            <p className="text-[11px] text-slate-400 mt-0.5">Min spend: ₹{o.minBillAmount}</p>
           </div>
         </div>
       )
     },
     {
-      header: "Discount Value",
+      header: "Discount Value & Caps",
       sortable: true,
       accessor: "value",
       render: (o) => (
-        <span className="font-extrabold text-pink-600 dark:text-pink-400 font-mono text-xs">
-          {o.type === "FLAT_AMT"
-            ? `Flat ₹${o.value} Off`
-            : o.type === "FLAT_PCT"
-            ? `${o.value}% Off`
-            : "Buy 1 Get 1"}
-        </span>
+        <div>
+          <span className="font-extrabold text-pink-600 dark:text-pink-400 font-mono text-xs block">
+            {o.type === "FLAT_AMT"
+              ? `Flat ₹${o.value} Off`
+              : o.type === "FLAT_PCT"
+              ? `${o.value}% Off`
+              : "Buy 1 Get 1"}
+          </span>
+          {o.maxDiscount && (
+            <span className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold block">
+              Max cap: ₹{o.maxDiscount}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      header: "Usage Protection",
+      render: (o) => (
+        <div className="text-[11px] space-y-0.5">
+          <p className="text-slate-600 dark:text-slate-300 font-medium">
+            Per user: <span className="font-bold font-mono text-purple-600">{o.perUserLimit ? `${o.perUserLimit}x` : "Unlimited"}</span>
+          </p>
+          <p className="text-slate-400">
+            Budget cap: <span className="font-mono">{o.maxTotalRedemptions ? `${o.maxTotalRedemptions} total` : "Unlimited"}</span>
+          </p>
+        </div>
       )
     },
     {
@@ -82,10 +99,10 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
       header: "Expiry Date",
       sortable: true,
       accessor: "validTo",
-      render: (o) => <span className="font-mono text-xs text-slate-500">{o.validTo}</span>
+      render: (o) => <span className="font-mono text-xs text-slate-500">{o.validTo ? o.validTo.split("T")[0] : "Ongoing"}</span>
     },
     {
-      header: "Verification Status",
+      header: "Status",
       sortable: true,
       accessor: "status",
       render: (o) => (
@@ -103,6 +120,19 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
           {o.status.replace("_", " ")}
         </Badge>
       )
+    },
+    {
+      header: "Actions",
+      className: "text-right",
+      render: (o) => (
+        <button
+          onClick={() => setSelectedOffer(o)}
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 border border-purple-200/50 dark:border-purple-800/40"
+        >
+          <Eye size={12} />
+          <span>Details & History</span>
+        </button>
+      )
     }
   ];
 
@@ -114,7 +144,7 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
             Merchant Offer Studio
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Create reward campaigns for your stores. Offers go through admin verification before publishing to mobile discovery.
+            Create financial discount campaigns with fraud caps, store targeting, time scheduling & audit trails.
           </p>
         </div>
 
@@ -194,16 +224,44 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
                   <h3 className="text-base font-bold text-slate-900 dark:text-white font-['Manrope']">
                     {o.title}
                   </h3>
-                  <p className="text-xl font-extrabold text-pink-600 dark:text-pink-400 mt-1 font-['Manrope']">
-                    {o.type === "FLAT_AMT"
-                      ? `Flat ₹${o.value} Off`
-                      : o.type === "FLAT_PCT"
-                      ? `${o.value}% Off`
-                      : "Buy 1 Get 1"}
-                  </p>
+                  {o.tagline && (
+                    <p className="text-xs text-pink-600 dark:text-pink-400 font-medium italic mt-0.5">
+                      "{o.tagline}"
+                    </p>
+                  )}
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-xl font-extrabold text-pink-600 dark:text-pink-400 font-['Manrope']">
+                      {o.type === "FLAT_AMT"
+                        ? `Flat ₹${o.value} Off`
+                        : o.type === "FLAT_PCT"
+                        ? `${o.value}% Off`
+                        : "Buy 1 Get 1"}
+                    </span>
+                    {o.maxDiscount && (
+                      <span className="text-xs text-purple-600 dark:text-purple-400 font-bold">
+                        (max cap ₹{o.maxDiscount})
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Min bill requirement: ₹{o.minBillAmount}
                   </p>
+                </div>
+
+                {/* Fraud Controls & Limits */}
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-500">Per-Customer Limit:</span>
+                    <span className="font-bold text-purple-700 dark:text-purple-300">
+                      {o.perUserLimit ? `${o.perUserLimit}x per user` : "Unlimited"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-500">Campaign Budget:</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400">
+                      {o.maxTotalRedemptions ? `${o.maxTotalRedemptions} redemptions` : "Unlimited"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 text-xs text-slate-600 dark:text-slate-400 space-y-1">
@@ -216,7 +274,13 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
                 <span className="font-bold text-slate-800 dark:text-slate-200">
                   {o.redemptions} Redemptions
                 </span>
-                <span className="text-slate-400">Valid to {o.validTo}</span>
+                <button
+                  onClick={() => setSelectedOffer(o)}
+                  className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-bold hover:underline"
+                >
+                  <Eye size={12} />
+                  <span>Inspect & Audit</span>
+                </button>
               </div>
             </div>
           ))}
@@ -233,126 +297,29 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
         />
       )}
 
-      {/* Create Offer Right Slide-Over Drawer */}
+      {/* Create Offer Campaign Drawer */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={() => setIsCreateOpen(false)} />
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-            <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="flex items-center gap-2">
-                  <TicketPercent size={18} className="text-pink-600" />
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Create Offer Campaign</h3>
-                </div>
-                <button onClick={() => setIsCreateOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-                  <X size={18} />
-                </button>
-              </div>
+        <OfferCampaignFormDrawer
+          merchantId={currentMerchantId}
+          merchantName={currentMerchantName}
+          stores={stores}
+          onClose={() => setIsCreateOpen(false)}
+          onSave={(draft) => {
+            onAddOffer(draft);
+            setIsCreateOpen(false);
+          }}
+        />
+      )}
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Offer Title</label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Lunch Hour Delight"
-                    className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Discount Type</label>
-                    <select
-                      value={type}
-                      onChange={(e) => setType(e.target.value as any)}
-                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
-                    >
-                      <option value="FLAT_AMT">Flat Amount (₹)</option>
-                      <option value="FLAT_PCT">Percentage (%)</option>
-                      <option value="BOGO">Buy 1 Get 1 (BOGO)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Value</label>
-                    <input
-                      type="number"
-                      value={value}
-                      onChange={(e) => setValue(parseFloat(e.target.value) || 0)}
-                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Min Bill (₹)</label>
-                    <input
-                      type="number"
-                      value={minBill}
-                      onChange={(e) => setMinBill(parseFloat(e.target.value) || 0)}
-                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Valid To</label>
-                    <input
-                      type="date"
-                      value={validTo}
-                      onChange={(e) => setValidTo(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Terms & Conditions</label>
-                  <textarea
-                    value={terms}
-                    onChange={(e) => setTerms(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
-                    rows={3}
-                  />
-                </div>
-
-                {/* Live Preview Card */}
-                <div className="p-4 rounded-2xl bg-pink-50/50 dark:bg-pink-950/20 border border-pink-200/60 dark:border-pink-900/50 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-pink-600 dark:text-pink-400">Customer App Badge Preview</span>
-                  <p className="font-bold text-slate-900 dark:text-white text-sm">{title || "Your Campaign Title"}</p>
-                  <p className="text-pink-600 dark:text-pink-400 font-extrabold text-base">
-                    {type === "FLAT_AMT" ? `Flat ₹${value} Off` : type === "FLAT_PCT" ? `${value}% Off` : "Buy 1 Get 1"}
-                  </p>
-                  <p className="text-slate-400 text-[11px]">Valid on orders above ₹{minBill}</p>
-                </div>
-              </div>
-
-              <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-2">
-                <button onClick={() => setIsCreateOpen(false)} className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400">Cancel</button>
-                <button
-                  onClick={() => {
-                    onAddOffer({
-                      merchantId: currentMerchantId || "m-1",
-                      merchantName: currentMerchantName,
-                      title,
-                      type,
-                      value,
-                      minBillAmount: minBill,
-                      validTo,
-                      terms
-                    });
-                    setIsCreateOpen(false);
-                    toast.success(`Offer "${title}" submitted for Super-Admin approval!`);
-                  }}
-                  disabled={!title}
-                  className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold disabled:opacity-50 shadow-md"
-                >
-                  Submit for Approval
-                </button>
-              </div>
-            </aside>
-          </div>
-        </div>
+      {/* Offer Inspector & Audit Drawer */}
+      {selectedOffer && (
+        <OfferDetailsDrawer
+          offer={selectedOffer}
+          stores={stores}
+          auditLogs={store.auditLogs}
+          isAdmin={false}
+          onClose={() => setSelectedOffer(null)}
+        />
       )}
     </div>
   );

@@ -84,13 +84,23 @@ export interface Offer {
   merchantId: string;
   merchantName: string;
   storeId?: string; // If specific to branch, or 'all'
+  applicableStoreIds?: string[];
   title: string;
+  tagline?: string;
   type: OfferType;
   value: number; // e.g., 20 (%) or 200 (flat ₹)
-  maxDiscount?: number;
+  maxDiscount?: number; // Mandatory cap for percentage deals (P0)
   minBillAmount: number;
+  perUserLimit?: number; // Usage limit per customer (e.g. 1, 3, or null for unlimited)
+  maxTotalRedemptions?: number; // Campaign total budget cap across all customers
   validFrom: string;
   validTo: string;
+  activeDays?: string[]; // e.g. ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  startTime?: string; // Happy hours start time e.g. "12:00"
+  endTime?: string; // Happy hours end time e.g. "16:00"
+  redemptionMethod?: "AUTO_APPLIED" | "PROMO_CODE";
+  promoCode?: string;
+  imageUrl?: string;
   status: OfferStatus;
   redemptions: number;
   terms: string;

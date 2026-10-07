@@ -570,53 +570,167 @@ export const appStore = {
   },
   addOffer(draft: Partial<Offer>): Offer {
     const all = this.getOffers();
+    const currentUser = this.getCurrentUser();
+    const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Merchant Partner";
+    const actorRole = currentUser?.staffRoleName || (currentUser?.role === "admin" ? "SUPERADMIN" : "MERCHANT_OWNER");
+
     const newOffer: Offer = {
       id: draft.id || `off-${Date.now()}`,
       merchantId: draft.merchantId || "",
       merchantName: draft.merchantName || "Partner Merchant",
       storeId: draft.storeId || "all",
+      applicableStoreIds: draft.applicableStoreIds || [],
       title: draft.title || "Special Offer",
+      tagline: draft.tagline || "",
       type: draft.type || "FLAT_PCT",
       value: draft.value || 10,
-      maxDiscount: draft.maxDiscount || 100,
+      maxDiscount: draft.maxDiscount,
       minBillAmount: draft.minBillAmount || 300,
+      perUserLimit: draft.perUserLimit ?? 1,
+      maxTotalRedemptions: draft.maxTotalRedemptions,
       validFrom: draft.validFrom || new Date().toISOString().split("T")[0],
       validTo: draft.validTo || "2026-12-31",
-      status: draft.status || "ACTIVE",
+      activeDays: draft.activeDays || ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      startTime: draft.startTime || "",
+      endTime: draft.endTime || "",
+      redemptionMethod: draft.redemptionMethod || "AUTO_APPLIED",
+      promoCode: draft.promoCode || "",
+      imageUrl: draft.imageUrl || "",
+      status: draft.status || "PENDING_APPROVAL",
       redemptions: draft.redemptions || 0,
       terms: draft.terms || "Standard terms apply.",
       createdAt: draft.createdAt || new Date().toISOString(),
     };
     setStored(STORAGE_KEYS.OFFERS, [newOffer, ...all]);
+
+    this.addAudit({
+      action: "OFFER_CREATED",
+      entity: `Offer Campaign: ${newOffer.title} (${newOffer.id})`,
+      actor: actorName,
+      severity: "success",
+      metadata: {
+        offerId: newOffer.id,
+        title: newOffer.title,
+        merchantName: newOffer.merchantName,
+        discountType: newOffer.type,
+        value: newOffer.value,
+        maxDiscountCap: newOffer.maxDiscount || "No Cap",
+        perUserLimit: newOffer.perUserLimit || "Unlimited",
+        maxTotalBudget: newOffer.maxTotalRedemptions || "Unlimited",
+        redemptionMethod: newOffer.redemptionMethod,
+        createdRole: actorRole,
+        actor: actorName
+      }
+    });
+
     return newOffer;
   },
-  updateOfferStatus(id: string, status: "ACTIVE" | "PAUSED" | "EXPIRED" | "PENDING_APPROVAL") {
+  updateOfferStatus(id: string, status: "ACTIVE" | "PAUSED" | "EXPIRED" | "PENDING_APPROVAL" | "REJECTED", reason?: string) {
     const all = this.getOffers();
+    const currentUser = this.getCurrentUser();
+    const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Operations Admin";
+    const target = all.find(o => o.id === id);
+
     const updated = all.map(o => o.id === id ? { ...o, status } : o);
     setStored(STORAGE_KEYS.OFFERS, updated);
+
+    const actionType =
+      status === "ACTIVE"
+        ? "OFFER_APPROVED"
+        : status === "REJECTED"
+        ? "OFFER_REJECTED"
+        : status === "PAUSED"
+        ? "OFFER_PAUSED"
+        : status === "EXPIRED"
+        ? "OFFER_EXPIRED"
+        : "OFFER_STATUS_CHANGED";
+
+    this.addAudit({
+      action: actionType,
+      entity: `Offer Campaign: ${target?.title || id}`,
+      actor: actorName,
+      severity: status === "ACTIVE" ? "success" : status === "REJECTED" ? "critical" : "warning",
+      metadata: {
+        offerId: id,
+        title: target?.title,
+        previousStatus: target?.status,
+        newStatus: status,
+        reason: reason || undefined,
+        updatedBy: actorName
+      }
+    });
   },
   updateOffer(id: string, updates: Partial<Offer>) {
     const all = this.getOffers();
+    const currentUser = this.getCurrentUser();
+    const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Offer Administrator";
+    const target = all.find(o => o.id === id);
+
     const updated = all.map(o => o.id === id ? { ...o, ...updates } : o);
     setStored(STORAGE_KEYS.OFFERS, updated);
+
+    this.addAudit({
+      action: "OFFER_UPDATED",
+      entity: `Offer Campaign: ${target?.title || id}`,
+      actor: actorName,
+      severity: "info",
+      metadata: {
+        offerId: id,
+        title: target?.title,
+        updates,
+        updatedBy: actorName
+      }
+    });
   },
   deleteOffer(id: string) {
     const all = this.getOffers();
+    const currentUser = this.getCurrentUser();
+    const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Platform Admin";
+    const target = all.find(o => o.id === id);
+
     setStored(STORAGE_KEYS.OFFERS, all.filter(o => o.id !== id));
+
+    this.addAudit({
+      action: "OFFER_DELETED",
+      entity: `Offer Campaign: ${target?.title || id}`,
+      actor: actorName,
+      severity: "critical",
+      metadata: {
+        offerId: id,
+        title: target?.title,
+        deletedBy: actorName
+      }
+    });
   },
   cloneOffer(id: string): Offer | null {
     const all = this.getOffers();
+    const currentUser = this.getCurrentUser();
+    const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Merchant Partner";
     const existing = all.find(o => o.id === id);
     if (!existing) return null;
     const cloned: Offer = {
       ...existing,
       id: `off-${Date.now()}`,
       title: `${existing.title} (Copy)`,
-      status: "ACTIVE",
+      status: "PENDING_APPROVAL",
       redemptions: 0,
       createdAt: new Date().toISOString(),
     };
     setStored(STORAGE_KEYS.OFFERS, [cloned, ...all]);
+
+    this.addAudit({
+      action: "OFFER_CREATED",
+      entity: `Offer Campaign: ${cloned.title} (${cloned.id})`,
+      actor: actorName,
+      severity: "success",
+      metadata: {
+        offerId: cloned.id,
+        title: cloned.title,
+        clonedFrom: id,
+        clonedBy: actorName
+      }
+    });
+
     return cloned;
   },
 

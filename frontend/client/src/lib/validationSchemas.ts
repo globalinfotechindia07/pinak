@@ -174,6 +174,7 @@ export const offerCampaignSchema = z
       .string()
       .min(3, "Offer title must be at least 3 characters")
       .max(255, "Title must not exceed 255 characters"),
+    tagline: z.string().max(255, "Tagline cannot exceed 255 characters").optional(),
     type: z.enum(["FLAT_INR", "FLAT_PCT", "CASHBACK", "FLAT_AMT", "BOGO"], {
       message: "Please select an offer discount type",
     }),
@@ -187,16 +188,50 @@ export const offerCampaignSchema = z
     minBillAmount: z
       .number({ message: "Min bill amount must be a number" })
       .min(0, "Minimum bill amount cannot be negative"),
+    perUserLimit: z
+      .number({ message: "Per-user limit must be a number" })
+      .min(1, "Per-user redemption limit must be at least 1")
+      .optional()
+      .nullable(),
+    maxTotalRedemptions: z
+      .number({ message: "Total redemptions cap must be a number" })
+      .min(1, "Campaign usage limit must be at least 1")
+      .optional()
+      .nullable(),
+    storeScope: z.enum(["ALL", "SPECIFIC"]).default("ALL"),
+    applicableStoreIds: z.array(z.string()).optional(),
     validFrom: z.string().optional(),
     validTo: z.string().min(1, "Please select campaign end date"),
+    activeDays: z.array(z.string()).optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    redemptionMethod: z.enum(["AUTO_APPLIED", "PROMO_CODE"]).default("AUTO_APPLIED"),
+    promoCode: z.string().optional(),
+    imageUrl: z.string().optional(),
     terms: z.string().max(2000, "Terms cannot exceed 2000 characters").optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.type === "FLAT_PCT" && data.value > 100) {
+    if (data.type === "FLAT_PCT") {
+      if (data.value > 100) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["value"],
+          message: "Percentage discount cannot exceed 100%",
+        });
+      }
+      if (!data.maxDiscount || data.maxDiscount <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["maxDiscount"],
+          message: "Maximum discount cap (₹) is mandatory for percentage deals",
+        });
+      }
+    }
+    if (data.redemptionMethod === "PROMO_CODE" && (!data.promoCode || data.promoCode.trim().length < 3)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["value"],
-        message: "Percentage discount cannot exceed 100%",
+        path: ["promoCode"],
+        message: "Promo code is required (min 3 characters, e.g. PINAK50)",
       });
     }
     if (data.validFrom && data.validTo && new Date(data.validTo) < new Date(data.validFrom)) {
