@@ -23,6 +23,7 @@ import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
 import { merchantApi } from "../../api/merchantApi";
 import { transactionApi } from "../../api/transactionApi";
+import { cn } from "../../lib/utils";
 import { useAppStore } from "../../hooks/useAppStore";
 
 interface SettlementRecord {
@@ -58,17 +59,41 @@ export const MerchantProfile: React.FC = () => {
   const [bankAccountNum, setBankAccountNum] = useState("");
   const [bankIfsc, setBankIfsc] = useState("");
   const [bankName, setBankName] = useState("");
+  const [accountHolderName, setAccountHolderName] = useState(currentMerchant?.legalEntityName || currentMerchant?.businessName || "");
   const [settlementMode, setSettlementMode] = useState<"instant" | "batch">("instant");
 
   // Drawer state for updating bank details
   const [isBankDrawerOpen, setIsBankDrawerOpen] = useState(false);
   const [tempUpi, setTempUpi] = useState(currentMerchant?.bankUpiId || "merchant@upi");
   const [tempAcc, setTempAcc] = useState("");
+  const [tempAccConfirm, setTempAccConfirm] = useState("");
   const [tempIfsc, setTempIfsc] = useState("");
   const [tempBank, setTempBank] = useState("");
+  const [tempHolderName, setTempHolderName] = useState("");
   const [isVerifyingPenny, setIsVerifyingPenny] = useState(false);
   const [pennyVerified, setPennyVerified] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const lookupIfscBank = (ifsc: string): string => {
+    const code = (ifsc || "").toUpperCase().trim();
+    if (code.startsWith("SBIN")) return "State Bank of India";
+    if (code.startsWith("HDFC")) return "HDFC Bank";
+    if (code.startsWith("ICIC")) return "ICICI Bank";
+    if (code.startsWith("UTIB")) return "Axis Bank";
+    if (code.startsWith("PNBK")) return "Punjab National Bank";
+    if (code.startsWith("KKBK")) return "Kotak Mahindra Bank";
+    if (code.startsWith("YESB")) return "Yes Bank";
+    if (code.startsWith("BARB")) return "Bank of Baroda";
+    if (code.startsWith("CNRB")) return "Canara Bank";
+    if (code.startsWith("IDIB")) return "Indian Bank";
+    if (code.startsWith("MAHB")) return "Bank of Maharashtra";
+    if (code.startsWith("UBIN")) return "Union Bank of India";
+    if (code.startsWith("INDB")) return "IndusInd Bank";
+    if (code.startsWith("IDFB")) return "IDFC FIRST Bank";
+    if (code.startsWith("SCBL")) return "Standard Chartered Bank";
+    if (code.startsWith("HSBC")) return "HSBC Bank";
+    return "";
+  };
 
   // Live settlement history
   const [settlements, setSettlements] = useState<SettlementRecord[]>([]);
@@ -90,14 +115,19 @@ export const MerchantProfile: React.FC = () => {
           if (profile.bankAccountNumber) {
             setBankAccountNum(profile.bankAccountNumber);
             setTempAcc(profile.bankAccountNumber);
+            setTempAccConfirm(profile.bankAccountNumber);
           }
           if (profile.bankIfsc) {
             setBankIfsc(profile.bankIfsc);
             setTempIfsc(profile.bankIfsc);
           }
+          if (profile.bankName) {
+            setBankName(profile.bankName);
+            setTempBank(profile.bankName);
+          }
           if (profile.accountHolderName) {
-            setBankName(profile.accountHolderName);
-            setTempBank(profile.accountHolderName);
+            setAccountHolderName(profile.accountHolderName);
+            setTempHolderName(profile.accountHolderName);
           }
         }
       })
@@ -157,19 +187,25 @@ export const MerchantProfile: React.FC = () => {
 
   const handleSaveBankDetails = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (tempAccConfirm && tempAcc.trim() !== tempAccConfirm.trim()) {
+      toast.error("Account Number and Confirm Account Number do not match!");
+      return;
+    }
     try {
       await merchantApi.updateProfile({
         bankUpiId: tempUpi.trim(),
+        bankName: tempBank.trim(),
+        accountHolderName: tempHolderName.trim() || legalName.trim() || businessName.trim(),
         bankAccountNumber: tempAcc.trim(),
-        bankIfsc: tempIfsc.trim(),
-        accountHolderName: tempBank.trim(),
+        bankIfsc: tempIfsc.trim().toUpperCase(),
       });
       setBankUpiId(tempUpi);
       setBankAccountNum(tempAcc);
-      setBankIfsc(tempIfsc);
+      setBankIfsc(tempIfsc.toUpperCase());
       setBankName(tempBank);
+      setAccountHolderName(tempHolderName || legalName || businessName);
       setIsBankDrawerOpen(false);
-      toast.success("Settlement bank account updated and validated for direct UPI disbursements!");
+      toast.success("Settlement bank account updated and validated for direct payouts!");
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || "Failed to update bank details");
     }
@@ -559,13 +595,14 @@ export const MerchantProfile: React.FC = () => {
               <form onSubmit={handleSaveBankDetails} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Primary UPI VPA (Direct Settlement)
+                    Primary UPI VPA (Direct Settlement) *
                   </label>
                   <input
                     type="text"
                     required
                     value={tempUpi}
                     onChange={(e) => setTempUpi(e.target.value)}
+                    placeholder="e.g. merchant@icici"
                     className="w-full px-3 py-2 rounded-xl border border-purple-300 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-950/20 font-mono font-bold text-purple-700 dark:text-purple-300 text-xs"
                   />
                   <span className="text-[10px] text-slate-400 block mt-1">
@@ -575,41 +612,97 @@ export const MerchantProfile: React.FC = () => {
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Bank Name & Branch
+                    Account Holder Name *
                   </label>
                   <input
                     type="text"
                     required
-                    value={tempBank}
-                    onChange={(e) => setTempBank(e.target.value)}
+                    value={tempHolderName}
+                    onChange={(e) => setTempHolderName(e.target.value)}
+                    placeholder="e.g. Haldiram Foods International Pvt Ltd"
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
                   />
                 </div>
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Account Number
+                    IFSC Code (Automated Branch Lookup) *
                   </label>
                   <input
                     type="text"
                     required
-                    value={tempAcc}
-                    onChange={(e) => setTempAcc(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs font-semibold"
+                    maxLength={11}
+                    value={tempIfsc}
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase();
+                      setTempIfsc(val);
+                      const autoBank = lookupIfscBank(val);
+                      if (autoBank) {
+                        setTempBank(autoBank);
+                      }
+                    }}
+                    placeholder="e.g. SBIN0001234, ICIC0000001, HDFC0000128"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs font-semibold uppercase"
                   />
+                  {tempIfsc && lookupIfscBank(tempIfsc) && (
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">
+                      ✓ Auto-detected Bank: {lookupIfscBank(tempIfsc)}
+                    </span>
+                  )}
                 </div>
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    IFSC Code
+                    Bank Name *
                   </label>
                   <input
                     type="text"
                     required
-                    value={tempIfsc}
-                    onChange={(e) => setTempIfsc(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs font-semibold uppercase"
+                    value={tempBank}
+                    onChange={(e) => setTempBank(e.target.value)}
+                    placeholder="e.g. State Bank of India"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                      Account Number *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={tempAcc}
+                      onChange={(e) => setTempAcc(e.target.value)}
+                      placeholder="e.g. 30981234567"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                      Confirm Account Number *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={tempAccConfirm}
+                      onChange={(e) => setTempAccConfirm(e.target.value)}
+                      placeholder="Re-enter Account Number"
+                      className={cn(
+                        "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 font-mono text-xs font-semibold",
+                        tempAccConfirm && tempAcc !== tempAccConfirm
+                          ? "border-rose-500 ring-1 ring-rose-500/20"
+                          : "border-slate-200 dark:border-slate-700"
+                      )}
+                    />
+                    {tempAccConfirm && tempAcc !== tempAccConfirm && (
+                      <span className="text-[10px] text-rose-500 font-bold block mt-1">
+                        Account numbers do not match
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Penny Drop Verification */}

@@ -20,6 +20,7 @@ export interface MerchantProfileDTO {
   gstin?: string;
   panNumber?: string;
   bankUpiId: string; // Zero-escrow direct UPI settlement VPA
+  bankName?: string;
   bankAccountNumber?: string;
   bankIfsc?: string;
   accountHolderName?: string;
@@ -45,6 +46,7 @@ export interface UpdateMerchantProfileRequest {
   legalEntityName?: string;
   categoryId?: string;
   bankUpiId?: string;
+  bankName?: string;
   bankAccountNumber?: string;
   bankIfsc?: string;
   accountHolderName?: string;

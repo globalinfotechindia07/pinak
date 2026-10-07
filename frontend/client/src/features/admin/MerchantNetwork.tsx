@@ -34,7 +34,9 @@ import {
   PowerOff,
   MoreVertical,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Edit2,
+  Save
 } from "lucide-react";
 import { Merchant } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
@@ -60,6 +62,27 @@ import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { useAppStore } from "../../hooks/useAppStore";
 import { merchantApi } from "../../api/merchantApi";
 
+export const lookupIfscBank = (ifsc: string): string => {
+  const code = (ifsc || "").toUpperCase().trim();
+  if (code.startsWith("SBIN")) return "State Bank of India";
+  if (code.startsWith("HDFC")) return "HDFC Bank";
+  if (code.startsWith("ICIC")) return "ICICI Bank";
+  if (code.startsWith("UTIB")) return "Axis Bank";
+  if (code.startsWith("PNBK")) return "Punjab National Bank";
+  if (code.startsWith("KKBK")) return "Kotak Mahindra Bank";
+  if (code.startsWith("YESB")) return "Yes Bank";
+  if (code.startsWith("BARB")) return "Bank of Baroda";
+  if (code.startsWith("CNRB")) return "Canara Bank";
+  if (code.startsWith("IDIB")) return "Indian Bank";
+  if (code.startsWith("MAHB")) return "Bank of Maharashtra";
+  if (code.startsWith("UBIN")) return "Union Bank of India";
+  if (code.startsWith("INDB")) return "IndusInd Bank";
+  if (code.startsWith("IDFB")) return "IDFC FIRST Bank";
+  if (code.startsWith("SCBL")) return "Standard Chartered Bank";
+  if (code.startsWith("HSBC")) return "HSBC Bank";
+  return "";
+};
+
 interface MerchantNetworkProps {
   merchants: Merchant[];
   onAddMerchant: (draft: any) => Promise<void> | void;
@@ -79,10 +102,11 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
 }) => {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
-  const [kycTab, setKycTab] = useState<"overview" | "documents" | "outlets">("overview");
+  const [kycTab, setKycTab] = useState<"overview" | "documents" | "outlets" | "audit">("overview");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [merchantToDelete, setMerchantToDelete] = useState<Merchant | null>(null);
+  const [merchantToEdit, setMerchantToEdit] = useState<Merchant | null>(null);
 
   const handleResendInvite = async (m: Merchant) => {
     try {
@@ -193,6 +217,21 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
         st.merchantName.toLowerCase() === selectedMerchant.businessName.toLowerCase()
     );
   }, [selectedMerchant, allStores]);
+
+  // Audit logs related to selected merchant
+  const merchantAuditLogs = useMemo(() => {
+    if (!selectedMerchant) return [];
+    const logs = store.auditLogs || [];
+    return logs.filter((log: any) => {
+      const isTarget = log.metadata?.targetId === selectedMerchant.id;
+      const isDetailsMatch =
+        (log.details && log.details.includes(selectedMerchant.id)) ||
+        (log.details && log.details.includes(selectedMerchant.businessName)) ||
+        (log.metadata?.details && log.metadata.details.toString().includes(selectedMerchant.id)) ||
+        (log.metadata?.details && log.metadata.details.toString().includes(selectedMerchant.businessName));
+      return isTarget || isDetailsMatch;
+    });
+  }, [selectedMerchant, store.auditLogs]);
 
   // Advanced Table Columns
   const columns: Column<Merchant>[] = [
@@ -345,6 +384,14 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
               >
                 <ShieldCheck size={14} className="text-purple-600 dark:text-purple-400" />
                 <span>Review KYC Documents</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setMerchantToEdit(m)}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+              >
+                <Edit2 size={14} className="text-purple-600 dark:text-purple-400" />
+                <span>Edit Merchant Profile</span>
               </DropdownMenuItem>
 
               <DropdownMenuItem
@@ -635,6 +682,18 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                     })()}
                     <button
                       type="button"
+                      onClick={() => {
+                        setMerchantToEdit(selectedMerchant);
+                        setSelectedMerchant(null);
+                      }}
+                      className="px-2 py-1 rounded-lg border border-purple-200 dark:border-purple-800/80 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100 transition-colors flex items-center gap-1"
+                      title="Edit Merchant Brand Details"
+                    >
+                      <Edit2 size={13} />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleResendInvite(selectedMerchant)}
                       className="p-1.5 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors"
                       title="Resend welcome and login credentials email"
@@ -651,12 +710,12 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                 </div>
 
                 {/* Sub-Navigation Tabs */}
-                <div className="grid grid-cols-3 gap-1 p-1 mt-3 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-xs">
+                <div className="grid grid-cols-4 gap-1 p-1 mt-3 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-xs">
                   <button
                     type="button"
                     onClick={() => setKycTab("overview")}
                     className={cn(
-                      "py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                      "py-2 px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
                       kycTab === "overview"
                         ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -670,14 +729,14 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                     type="button"
                     onClick={() => setKycTab("documents")}
                     className={cn(
-                      "py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                      "py-2 px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
                       kycTab === "documents"
                         ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     <FileText size={13} />
-                    <span>Documents</span>
+                    <span>Docs</span>
                     <span className={cn(
                       "w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center",
                       kycTab === "documents"
@@ -692,14 +751,14 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                     type="button"
                     onClick={() => setKycTab("outlets")}
                     className={cn(
-                      "py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                      "py-2 px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
                       kycTab === "outlets"
                         ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     <Store size={13} />
-                    <span>Outlets</span>
+                    <span>Stores</span>
                     <span className={cn(
                       "w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center",
                       kycTab === "outlets"
@@ -707,6 +766,28 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                         : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
                     )}>
                       {merchantStores.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setKycTab("audit")}
+                    className={cn(
+                      "py-2 px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
+                      kycTab === "audit"
+                        ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    )}
+                  >
+                    <Clock size={13} />
+                    <span>Audit</span>
+                    <span className={cn(
+                      "w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center",
+                      kycTab === "audit"
+                        ? "bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+                    )}>
+                      {merchantAuditLogs.length}
                     </span>
                   </button>
                 </div>
@@ -1068,6 +1149,63 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                     )}
                   </div>
                 )}
+
+                {/* TAB 4: AUDIT LOGS & EVENT HISTORY */}
+                {kycTab === "audit" && (
+                  <div className="space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Clock size={14} className="text-purple-600 dark:text-purple-400" />
+                        <span>Audit Logs & Security History ({merchantAuditLogs.length})</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">Immutable Security Trail</span>
+                    </div>
+
+                    {merchantAuditLogs.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {merchantAuditLogs.map((log: any, idx: number) => {
+                          const isSuccess = log.severity === "success" || log.action?.includes("APPROVED") || log.action?.includes("CREATED");
+                          const isWarning = log.severity === "warning" || log.action?.includes("REJECTED");
+                          const isCritical = log.severity === "critical" || log.action?.includes("SUSPENDED");
+                          return (
+                            <div
+                              key={log.id || idx}
+                              className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5"
+                            >
+                              <div className="flex items-center justify-between">
+                                <Badge variant={isSuccess ? "success" : isWarning ? "warning" : isCritical ? "destructive" : "secondary"}>
+                                  {log.action || "EVENT"}
+                                </Badge>
+                                <span className="text-[10px] font-mono text-slate-400">
+                                  {log.time ? new Date(log.time).toLocaleString() : "Just now"}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                                {log.metadata?.details || log.details || `${log.action} action executed.`}
+                              </p>
+                              <div className="pt-1.5 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-200/50 dark:border-slate-800/60">
+                                <span className="font-semibold text-purple-700 dark:text-purple-300">
+                                  User: {log.actor || "riya.admin@pinak.app (Super Admin)"}
+                                </span>
+                                <span className="font-mono text-slate-400">Entity: {log.entity || "Merchant"}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
+                        <Clock size={28} className="mx-auto text-slate-300 dark:text-slate-600" />
+                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                          No audit log entries recorded yet for this merchant.
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          Actions like profile edits, KYC status changes, and status toggles will be captured here.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Drawer Footer Actions */}
@@ -1076,6 +1214,16 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                 <button
                   onClick={() => {
                     onUpdateKyc(selectedMerchant.id, "APPROVED");
+                    store.addAudit({
+                      action: "KYC_APPROVED",
+                      entity: "Merchant",
+                      actor: store.currentUser?.email ? `${store.currentUser.name || "Admin"} (${store.currentUser.email})` : "riya.admin@pinak.app (Super Admin)",
+                      severity: "success",
+                      metadata: {
+                        targetId: selectedMerchant.id,
+                        details: `Approved KYC documents & commercial verification for merchant brand "${selectedMerchant.businessName}".`
+                      }
+                    });
                     setSelectedMerchant(null);
                     toast.success(`Merchant KYC for ${selectedMerchant.businessName} Approved!`);
                   }}
@@ -1097,6 +1245,16 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                     title="Request merchant to re-upload documents or provide clarification"
                     onClick={() => {
                       onUpdateKyc(selectedMerchant.id, "PENDING_REVIEW");
+                      store.addAudit({
+                        action: "KYC_REVISION_REQUESTED",
+                        entity: "Merchant",
+                        actor: store.currentUser?.email ? `${store.currentUser.name || "Admin"} (${store.currentUser.email})` : "riya.admin@pinak.app (Super Admin)",
+                        severity: "warning",
+                        metadata: {
+                          targetId: selectedMerchant.id,
+                          details: `Requested document clarification/revision from merchant "${selectedMerchant.businessName}".`
+                        }
+                      });
                       setSelectedMerchant(null);
                       toast.info(`Clarification requested from ${selectedMerchant.businessName}. Application marked for revision.`);
                     }}
@@ -1109,6 +1267,16 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                   <button
                     onClick={() => {
                       onUpdateKyc(selectedMerchant.id, "REJECTED");
+                      store.addAudit({
+                        action: "KYC_REJECTED",
+                        entity: "Merchant",
+                        actor: store.currentUser?.email ? `${store.currentUser.name || "Admin"} (${store.currentUser.email})` : "riya.admin@pinak.app (Super Admin)",
+                        severity: "critical",
+                        metadata: {
+                          targetId: selectedMerchant.id,
+                          details: `Rejected merchant KYC application for "${selectedMerchant.businessName}".`
+                        }
+                      });
                       setSelectedMerchant(null);
                       toast.info(`Merchant KYC for ${selectedMerchant.businessName} marked as Rejected`);
                     }}
@@ -1132,7 +1300,46 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
           onClose={() => setIsAddOpen(false)}
           onSave={async (draft) => {
             await onAddMerchant(draft);
+            store.addAudit({
+              action: "MERCHANT_CREATED",
+              entity: "Merchant",
+              actor: store.currentUser?.email ? `${store.currentUser.name || "Admin"} (${store.currentUser.email})` : "riya.admin@pinak.app (Super Admin)",
+              severity: "success",
+              metadata: {
+                details: `Onboarded merchant brand "${draft.businessName}" (${draft.categoryName}) in ${draft.city}, ${draft.state}. Bank VPA: ${draft.bankUpiId || "N/A"}`
+              }
+            });
             setIsAddOpen(false);
+          }}
+        />
+      )}
+
+      {/* Edit Merchant Drawer (Right Side) */}
+      {merchantToEdit && (
+        <EditMerchantDrawer
+          merchant={merchantToEdit}
+          onClose={() => setMerchantToEdit(null)}
+          onSave={async (updates) => {
+            try {
+              await merchantApi.updateMerchantAdmin(merchantToEdit.id, updates);
+              if (onUpdateMerchant) {
+                onUpdateMerchant(merchantToEdit.id, updates);
+              }
+              store.addAudit({
+                action: "MERCHANT_UPDATED",
+                entity: "Merchant",
+                actor: store.currentUser?.email ? `${store.currentUser.name || "Admin"} (${store.currentUser.email})` : "riya.admin@pinak.app (Super Admin)",
+                severity: "info",
+                metadata: {
+                  targetId: merchantToEdit.id,
+                  details: `Updated merchant identity & settlement bank details for ${updates.businessName || merchantToEdit.businessName}.`
+                }
+              });
+              toast.success(`Merchant "${updates.businessName || merchantToEdit.businessName}" updated successfully!`);
+              setMerchantToEdit(null);
+            } catch (err: any) {
+              toast.error(err?.response?.data?.message || err?.message || "Failed to save merchant updates");
+            }
           }}
         />
       )}
@@ -1230,6 +1437,11 @@ function AddMerchantDrawer({
     ownerName: "",
     ownerEmail: "",
     ownerPhone: "",
+    bankName: "",
+    accountHolderName: "",
+    bankAccountNumber: "",
+    confirmBankAccountNumber: "",
+    bankIfsc: "",
     bankUpiId: "",
     gstin: "",
     pan: "",
@@ -1460,6 +1672,11 @@ function AddMerchantDrawer({
       ownerName: pick.ownerName,
       ownerEmail: uniqueEmail,
       ownerPhone: uniquePhone,
+      bankName: "ICICI Bank",
+      accountHolderName: pick.legalEntityName,
+      bankAccountNumber: "30981234567",
+      confirmBankAccountNumber: "30981234567",
+      bankIfsc: "ICIC0000001",
       bankUpiId: pick.bankUpiId,
       gstin: pick.gstin,
       pan: pick.pan,
@@ -1674,6 +1891,10 @@ function AddMerchantDrawer({
       ownerName: formData.ownerName.trim(),
       ownerEmail: formData.ownerEmail.trim().toLowerCase(),
       ownerPhone: formData.ownerPhone.trim(),
+      bankName: formData.bankName.trim(),
+      accountHolderName: formData.accountHolderName.trim() || formData.legalEntityName.trim() || formData.businessName.trim(),
+      bankAccountNumber: formData.bankAccountNumber.trim(),
+      bankIfsc: formData.bankIfsc.trim().toUpperCase(),
       bankUpiId: formData.bankUpiId.trim() || `${formData.businessName.toLowerCase().replace(/[^a-z0-9]/g, "")}@upi`,
       gstin: formData.gstin.trim().toUpperCase(),
       pan: formData.pan.trim().toUpperCase(),
@@ -2025,32 +2246,55 @@ function AddMerchantDrawer({
                     </div>
                   </div>
 
-                  {/* City Selector with Datalist */}
+                  {/* City / Town Dropdown */}
                   <div>
-                    <label className="font-semibold text-slate-600 dark:text-slate-400 block mb-1 text-[11px]">
-                      Headquarters City / Town *
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
+                        Headquarters City / Town *
+                      </label>
+                      {hqCities.length > 0 && (
+                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
+                          ({hqCities.length} cities loaded for {formData.district || formData.state})
+                        </span>
+                      )}
+                    </div>
                     <div className="relative">
-                      <input
-                        type="text"
-                        list="merchant-hq-city-suggestions"
-                        value={formData.city}
-                        onChange={(e) => handleHqCityChange(e.target.value)}
-                        placeholder="e.g. Nagpur"
-                        className={cn(
-                          "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden",
-                          errors.city
-                            ? "border-rose-500 ring-1 ring-rose-500/20"
-                            : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                        )}
-                      />
-                      <datalist id="merchant-hq-city-suggestions">
-                        {hqCities.map((ct) => (
-                          <option key={ct} value={ct}>
-                            {ct} ({formData.district || formData.state})
-                          </option>
-                        ))}
-                      </datalist>
+                      {hqCities.length > 0 ? (
+                        <select
+                          value={formData.city}
+                          onChange={(e) => handleHqCityChange(e.target.value)}
+                          className={cn(
+                            "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white appearance-none cursor-pointer focus:outline-hidden",
+                            errors.city
+                              ? "border-rose-500 ring-1 ring-rose-500/20"
+                              : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
+                          )}
+                        >
+                          {hqCities.map((ct) => (
+                            <option key={ct} value={ct}>
+                              {ct}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={formData.city}
+                          onChange={(e) => handleHqCityChange(e.target.value)}
+                          placeholder="e.g. Nagpur"
+                          className={cn(
+                            "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden",
+                            errors.city
+                              ? "border-rose-500 ring-1 ring-rose-500/20"
+                              : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
+                          )}
+                        />
+                      )}
+                      {hqCities.length > 0 && (
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 text-xs">
+                          ▼
+                        </div>
+                      )}
                     </div>
                     {errors.city && (
                       <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
@@ -2268,7 +2512,106 @@ function AddMerchantDrawer({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="pt-2 space-y-3">
+                  <h5 className="font-bold text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-1">
+                    <CreditCard size={14} />
+                    <span>Payout Settlement Bank Account</span>
+                  </h5>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                      Account Holder Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.accountHolderName}
+                      onChange={(e) => updateField("accountHolderName", e.target.value)}
+                      placeholder="e.g. Curry Leaf Hospitality Pvt Ltd"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        IFSC Code (Automated Lookup)
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={11}
+                        value={formData.bankIfsc}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase();
+                          updateField("bankIfsc", val);
+                          const autoBank = lookupIfscBank(val);
+                          if (autoBank) {
+                            updateField("bankName", autoBank);
+                          }
+                        }}
+                        placeholder="SBIN0001234 / ICIC0000001"
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs font-semibold uppercase"
+                      />
+                      {formData.bankIfsc && lookupIfscBank(formData.bankIfsc) && (
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                          ✓ Auto-detected: {lookupIfscBank(formData.bankIfsc)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.bankName}
+                        onChange={(e) => updateField("bankName", e.target.value)}
+                        placeholder="State Bank of India"
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        Account Number
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.bankAccountNumber}
+                        onChange={(e) => updateField("bankAccountNumber", e.target.value)}
+                        placeholder="30981234567"
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        Confirm Account Number
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.confirmBankAccountNumber}
+                        onChange={(e) => updateField("confirmBankAccountNumber", e.target.value)}
+                        placeholder="Re-enter Account Number"
+                        className={cn(
+                          "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 font-mono text-xs font-semibold",
+                          formData.confirmBankAccountNumber && formData.bankAccountNumber !== formData.confirmBankAccountNumber
+                            ? "border-rose-500 ring-1 ring-rose-500/20"
+                            : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
+                        )}
+                      />
+                      {formData.confirmBankAccountNumber && formData.bankAccountNumber !== formData.confirmBankAccountNumber && (
+                        <span className="text-[10px] text-rose-500 font-bold block mt-0.5">
+                          Account numbers do not match
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                       Settlement Bank UPI VPA
@@ -3027,6 +3370,395 @@ function BulkImportDrawer({
               )}
             </button>
           </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+// Enterprise Merchant Editing Slide-over Drawer
+function EditMerchantDrawer({
+  merchant,
+  onClose,
+  onSave,
+}: {
+  merchant: Merchant;
+  onClose: () => void;
+  onSave: (updates: Partial<Merchant>) => Promise<void> | void;
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    businessName: merchant.businessName || "",
+    legalEntityName: merchant.legalEntityName || "",
+    categoryName: merchant.categoryName || "Food & Dining",
+    ownerName: merchant.ownerName || "",
+    ownerEmail: merchant.ownerEmail || "",
+    ownerPhone: merchant.ownerPhone || "",
+    state: merchant.state || "Maharashtra",
+    district: merchant.district || "Nagpur",
+    city: merchant.city || "Nagpur",
+    address: (merchant as any).address || "",
+    pincode: (merchant as any).pincode || "",
+    bankName: (merchant as any).bankName || "",
+    accountHolderName: (merchant as any).accountHolderName || merchant.legalEntityName || merchant.businessName || "",
+    bankAccountNumber: (merchant as any).bankAccountNumber || "",
+    confirmBankAccountNumber: (merchant as any).bankAccountNumber || "",
+    bankIfsc: (merchant as any).bankIfsc || "",
+    bankUpiId: merchant.bankUpiId || "",
+    gstin: merchant.gstin || "",
+    pan: merchant.pan || "",
+    commissionRate: merchant.commissionRate || 5.0,
+  });
+
+  const states = useMemo(() => getAllStates(), []);
+  const hqDistricts = useMemo(() => getDistrictsForState(formData.state), [formData.state]);
+  const hqCities = useMemo(() => getCitiesForDistrictOrState(formData.state, formData.district), [formData.state, formData.district]);
+
+  const handleStateChange = (newState: string) => {
+    const dists = getDistrictsForState(newState);
+    const newDist = dists[0] || "";
+    const cities = getCitiesForDistrictOrState(newState, newDist);
+    const newCity = cities[0] || "";
+    setFormData((prev) => ({ ...prev, state: newState, district: newDist, city: newCity }));
+  };
+
+  const handleDistrictChange = (newDist: string) => {
+    const cities = getCitiesForDistrictOrState(formData.state, newDist);
+    const newCity = cities[0] || "";
+    setFormData((prev) => ({ ...prev, district: newDist, city: newCity }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.businessName.trim()) {
+      toast.error("Business name is required!");
+      return;
+    }
+    if (formData.confirmBankAccountNumber && formData.bankAccountNumber !== formData.confirmBankAccountNumber) {
+      toast.error("Account Number and Confirm Account Number do not match!");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await onSave({
+        businessName: formData.businessName.trim(),
+        legalEntityName: formData.legalEntityName.trim() || formData.businessName.trim(),
+        categoryName: formData.categoryName,
+        ownerName: formData.ownerName.trim(),
+        ownerEmail: formData.ownerEmail.trim().toLowerCase(),
+        ownerPhone: formData.ownerPhone.trim(),
+        state: formData.state.trim(),
+        district: formData.district.trim(),
+        city: formData.city.trim(),
+        address: formData.address.trim(),
+        pincode: formData.pincode.trim(),
+        bankName: formData.bankName.trim(),
+        accountHolderName: formData.accountHolderName.trim() || formData.businessName.trim(),
+        bankAccountNumber: formData.bankAccountNumber.trim(),
+        bankIfsc: formData.bankIfsc.trim().toUpperCase(),
+        bankUpiId: formData.bankUpiId.trim(),
+        gstin: formData.gstin.trim().toUpperCase(),
+        pan: formData.pan.trim().toUpperCase(),
+        commissionRate: Number(formData.commissionRate) || 5.0,
+      } as any);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to update merchant");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+        <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-transparent flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-purple-600 text-white shadow-md">
+                <Edit2 size={18} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Edit Partner Merchant</h3>
+                <p className="text-xs text-slate-500">ID: {merchant.id} · {merchant.businessName}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <X size={18} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
+            {/* Business Identity */}
+            <div className="space-y-3">
+              <h4 className="font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-1 flex items-center gap-1.5">
+                <Building2 size={14} className="text-purple-600" />
+                <span>Brand & Category Identity</span>
+              </h4>
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Brand / Trade Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.businessName}
+                  onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Legal Entity Name</label>
+                <input
+                  type="text"
+                  value={formData.legalEntityName}
+                  onChange={(e) => setFormData({ ...formData, legalEntityName: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Primary Category</label>
+                <select
+                  value={formData.categoryName}
+                  onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                >
+                  {["Food & Dining", "Fashion & Retail", "Beauty & Wellness", "Gym & Fitness", "Health & Pharmacy", "Grocery & Supermarkets", "Entertainment & Leisure", "Travel & Hospitality", "Electronics & Appliances", "Home & Living"].map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Owner Contact Info */}
+            <div className="space-y-3 pt-2">
+              <h4 className="font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-1 flex items-center gap-1.5">
+                <UserCheck size={14} className="text-purple-600" />
+                <span>Authorized Signatory & Contact</span>
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Owner Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.ownerName}
+                    onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Phone Number *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.ownerPhone}
+                    onChange={(e) => setFormData({ ...formData, ownerPhone: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Owner Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.ownerEmail}
+                  onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Address & HQ Location */}
+            <div className="space-y-3 pt-2">
+              <h4 className="font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-1 flex items-center gap-1.5">
+                <MapPin size={14} className="text-purple-600" />
+                <span>Headquarters Address & Location</span>
+              </h4>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="font-semibold text-slate-600 block mb-1 text-[11px]">State *</label>
+                  <select
+                    value={formData.state}
+                    onChange={(e) => handleStateChange(e.target.value)}
+                    className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                  >
+                    {states.map((st) => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-600 block mb-1 text-[11px]">District *</label>
+                  <select
+                    value={formData.district}
+                    onChange={(e) => handleDistrictChange(e.target.value)}
+                    className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                  >
+                    {hqDistricts.map((dst) => (
+                      <option key={dst} value={dst}>{dst}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-600 block mb-1 text-[11px]">City / Town *</label>
+                  <select
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                  >
+                    {hqCities.map((ct) => (
+                      <option key={ct} value={ct}>{ct}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Bank Settlement Details */}
+            <div className="space-y-3 pt-2">
+              <h4 className="font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-1 flex items-center gap-1.5">
+                <CreditCard size={14} className="text-purple-600" />
+                <span>Settlement Bank Details</span>
+              </h4>
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Settlement UPI VPA / QR ID</label>
+                <input
+                  type="text"
+                  value={formData.bankUpiId}
+                  onChange={(e) => setFormData({ ...formData, bankUpiId: e.target.value })}
+                  placeholder="e.g. brand@icici"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-semibold"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Account Holder Name</label>
+                <input
+                  type="text"
+                  value={formData.accountHolderName}
+                  onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
+                  placeholder="e.g. Curry Leaf Hospitality Pvt Ltd"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">IFSC Code (Auto Lookup)</label>
+                  <input
+                    type="text"
+                    maxLength={11}
+                    value={formData.bankIfsc}
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase();
+                      const autoBank = lookupIfscBank(val);
+                      setFormData({
+                        ...formData,
+                        bankIfsc: val,
+                        bankName: autoBank || formData.bankName,
+                      });
+                    }}
+                    placeholder="e.g. SBIN0001234"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs font-semibold uppercase"
+                  />
+                  {formData.bankIfsc && lookupIfscBank(formData.bankIfsc) && (
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                      ✓ {lookupIfscBank(formData.bankIfsc)}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Bank Name</label>
+                  <input
+                    type="text"
+                    value={formData.bankName}
+                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                    placeholder="State Bank of India"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Account Number</label>
+                  <input
+                    type="text"
+                    value={formData.bankAccountNumber}
+                    onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Confirm Account Number</label>
+                  <input
+                    type="text"
+                    value={formData.confirmBankAccountNumber}
+                    onChange={(e) => setFormData({ ...formData, confirmBankAccountNumber: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Tax & Commission */}
+            <div className="space-y-3 pt-2">
+              <h4 className="font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-1 flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-purple-600" />
+                <span>Tax Compliance & Platform Take-Rate</span>
+              </h4>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">GSTIN</label>
+                  <input
+                    type="text"
+                    maxLength={15}
+                    value={formData.gstin}
+                    onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
+                    className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs uppercase font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">PAN</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={formData.pan}
+                    onChange={(e) => setFormData({ ...formData, pan: e.target.value.toUpperCase() })}
+                    className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs uppercase font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">Commission (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={formData.commissionRate}
+                    onChange={(e) => setFormData({ ...formData, commissionRate: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-1/3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn-gradient w-2/3 py-2.5 rounded-xl text-white font-bold text-xs shadow-lg flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                <span>Save Changes</span>
+              </button>
+            </div>
+          </form>
         </aside>
       </div>
     </div>

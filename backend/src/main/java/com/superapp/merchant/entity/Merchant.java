@@ -8,7 +8,8 @@ import java.util.UUID;
 
 /**
  * Merchant represents the Brand / Business entity.
- * Critical architectural rule: Merchant DOES NOT represent geographic branch location.
+ * Critical architectural rule: Merchant DOES NOT represent geographic branch
+ * location.
  * Location strictly belongs to the physical Store (Branch).
  */
 @Entity
@@ -99,7 +100,7 @@ public class Merchant {
     }
 
     public Merchant(UUID ownerUserId, String businessName, String legalName, String description,
-                    UUID categoryId, String phone, String email, String website) {
+            UUID categoryId, String phone, String email, String website) {
         this.ownerUserId = ownerUserId;
         this.businessName = businessName;
         this.legalName = legalName;
@@ -118,9 +119,12 @@ public class Merchant {
         Instant now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;
-        if (this.status == null) this.status = MerchantStatus.ACTIVE;
-        if (this.approvalStatus == null) this.approvalStatus = ApprovalStatus.PENDING_APPROVAL;
-        if (this.kycStatus == null) this.kycStatus = KycStatus.PENDING;
+        if (this.status == null)
+            this.status = MerchantStatus.ACTIVE;
+        if (this.approvalStatus == null)
+            this.approvalStatus = ApprovalStatus.PENDING_APPROVAL;
+        if (this.kycStatus == null)
+            this.kycStatus = KycStatus.PENDING;
     }
 
     @PreUpdate
@@ -318,8 +322,10 @@ public class Merchant {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Merchant merchant)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof Merchant merchant))
+            return false;
         return Objects.equals(id, merchant.id);
     }
 

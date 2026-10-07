@@ -59,6 +59,11 @@ export const merchantOnboardingSchema = z
       .refine((val) => !val || UPI_VPA_REGEX.test(val.trim()), {
         message: "Invalid UPI VPA format (e.g. brand@icici)",
       }),
+    bankName: z.string().optional(),
+    accountHolderName: z.string().optional(),
+    bankAccountNumber: z.string().optional(),
+    confirmBankAccountNumber: z.string().optional(),
+    bankIfsc: z.string().optional(),
     commissionRate: z
       .number({ message: "Platform take-rate must be a number" })
       .min(0, "Take-rate cannot be negative")

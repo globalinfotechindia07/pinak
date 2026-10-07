@@ -52,7 +52,7 @@ public class AdminMerchantController {
         return ResponseEntity.ok(ApiResponse.success("Merchant retrieved", response));
     }
 
-    @RequestMapping(value = "/{merchantId}/approve", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @RequestMapping(value = "/{merchantId}/approve", method = { RequestMethod.PATCH, RequestMethod.POST })
     @Operation(summary = "Approve merchant application", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<MerchantApprovalActionResponse>> approveMerchant(
             @PathVariable UUID merchantId,
@@ -62,29 +62,31 @@ public class AdminMerchantController {
         return ResponseEntity.ok(ApiResponse.success("Merchant approved successfully", response));
     }
 
-    @RequestMapping(value = "/{merchantId}/reject", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @RequestMapping(value = "/{merchantId}/reject", method = { RequestMethod.PATCH, RequestMethod.POST })
     @Operation(summary = "Reject merchant application with reason", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<MerchantApprovalActionResponse>> rejectMerchant(
             @PathVariable UUID merchantId,
             @Valid @RequestBody AdminRejectMerchantRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         UUID adminUserId = UUID.fromString(userDetails.getUsername());
-        MerchantApprovalActionResponse response = merchantService.rejectMerchant(merchantId, request.getReason(), adminUserId);
+        MerchantApprovalActionResponse response = merchantService.rejectMerchant(merchantId, request.getReason(),
+                adminUserId);
         return ResponseEntity.ok(ApiResponse.success("Merchant rejected successfully", response));
     }
 
-    @RequestMapping(value = "/{merchantId}/suspend", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @RequestMapping(value = "/{merchantId}/suspend", method = { RequestMethod.PATCH, RequestMethod.POST })
     @Operation(summary = "Suspend merchant account with reason", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<MerchantApprovalActionResponse>> suspendMerchant(
             @PathVariable UUID merchantId,
             @Valid @RequestBody AdminSuspendMerchantRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         UUID adminUserId = UUID.fromString(userDetails.getUsername());
-        MerchantApprovalActionResponse response = merchantService.suspendMerchant(merchantId, request.getReason(), adminUserId);
+        MerchantApprovalActionResponse response = merchantService.suspendMerchant(merchantId, request.getReason(),
+                adminUserId);
         return ResponseEntity.ok(ApiResponse.success("Merchant suspended successfully", response));
     }
 
-    @RequestMapping(value = "/{merchantId}/activate", method = {RequestMethod.PATCH, RequestMethod.POST})
+    @RequestMapping(value = "/{merchantId}/activate", method = { RequestMethod.PATCH, RequestMethod.POST })
     @Operation(summary = "Reactivate suspended merchant account", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<MerchantApprovalActionResponse>> activateMerchant(
             @PathVariable UUID merchantId,
@@ -102,7 +104,8 @@ public class AdminMerchantController {
             @AuthenticationPrincipal UserDetails userDetails) {
         UUID adminUserId = UUID.fromString(userDetails.getUsername());
         merchantService.resendMerchantWelcomeEmail(merchantId, adminUserId);
-        return ResponseEntity.ok(ApiResponse.success("Welcome & onboarding email dispatched successfully to merchant", null));
+        return ResponseEntity
+                .ok(ApiResponse.success("Welcome & onboarding email dispatched successfully to merchant", null));
     }
 
     @DeleteMapping("/{merchantId}")

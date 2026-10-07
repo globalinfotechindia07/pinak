@@ -65,8 +65,7 @@ public class MerchantServiceImpl implements MerchantService {
             MerchantMapper merchantMapper,
             @Autowired(required = false) PasswordEncoder passwordEncoder,
             @Autowired(required = false) com.superapp.common.email.EmailService emailService,
-            @Autowired(required = false) StaffMemberRepository staffMemberRepository
-    ) {
+            @Autowired(required = false) StaffMemberRepository staffMemberRepository) {
         this.merchantRepository = merchantRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
@@ -82,9 +81,9 @@ public class MerchantServiceImpl implements MerchantService {
     public MerchantServiceImpl(
             MerchantRepository merchantRepository,
             CategoryRepository categoryRepository,
-            UserRepository userRepository
-    ) {
-        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null, null);
+            UserRepository userRepository) {
+        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null,
+                null);
     }
 
     @Override
@@ -101,7 +100,8 @@ public class MerchantServiceImpl implements MerchantService {
         // Global check: ensure no merchant is already registered with this email
         if (email != null && !email.isBlank()) {
             if (merchantRepository.existsByEmailIgnoreCase(email)) {
-                throw new AppException("A merchant is already registered with email: " + email, ApiError.EMAIL_ALREADY_EXISTS, 400);
+                throw new AppException("A merchant is already registered with email: " + email,
+                        ApiError.EMAIL_ALREADY_EXISTS, 400);
             }
         }
 
@@ -110,12 +110,12 @@ public class MerchantServiceImpl implements MerchantService {
             Optional<User> existingUser = userRepository.findByEmail(email);
             if (existingUser.isPresent()) {
                 User u = existingUser.get();
-                // Reject role collision: platform staff/admins cannot be registered as merchant owners
+                // Reject role collision: platform staff/admins cannot be registered as merchant
+                // owners
                 if (u.getRole() == Role.ADMIN || u.getRole() == Role.SUPER_ADMIN) {
                     throw new AppException(
                             "This email is already associated with an administrator account. Please use a separate email address for the merchant owner.",
-                            ApiError.VALIDATION_FAILED, 400
-                    );
+                            ApiError.VALIDATION_FAILED, 400);
                 }
                 if (u.getRole() == Role.CUSTOMER) {
                     u.setRole(Role.MERCHANT);
@@ -123,11 +123,13 @@ public class MerchantServiceImpl implements MerchantService {
                 }
                 ownerId = u.getId();
             } else {
-                String fullName = (legalName != null && !legalName.isBlank()) ? legalName : request.businessName().trim();
+                String fullName = (legalName != null && !legalName.isBlank()) ? legalName
+                        : request.businessName().trim();
                 String[] parts = fullName.split("\\s+", 2);
                 String fName = parts[0];
                 String lName = parts.length > 1 ? parts[1] : "Owner";
-                // Secure random initial password hash - owner will set master password via direct invitation link
+                // Secure random initial password hash - owner will set master password via
+                // direct invitation link
                 String pwdHash = passwordEncoder != null
                         ? passwordEncoder.encode(UUID.randomUUID().toString())
                         : "$2a$10$w8.3b04J0n0W6wG6eYgPZe9q3g3C9iYy1U2m7m9wK4jE5bH5c2F7O";
@@ -159,7 +161,8 @@ public class MerchantServiceImpl implements MerchantService {
             categoryName = cat.getName();
         } else {
             Category defCat = categoryRepository.findByNameIgnoreCase("Food & Dining")
-                    .orElseGet(() -> categoryRepository.findAll().stream().filter(Category::isActive).findFirst().orElse(null));
+                    .orElseGet(() -> categoryRepository.findAll().stream().filter(Category::isActive).findFirst()
+                            .orElse(null));
             if (defCat != null) {
                 resolvedCategoryId = defCat.getId();
                 categoryName = defCat.getName();
@@ -174,8 +177,7 @@ public class MerchantServiceImpl implements MerchantService {
                 resolvedCategoryId,
                 phone,
                 email,
-                website
-        );
+                website);
 
         if (request.bankUpiId() != null && !request.bankUpiId().isBlank()) {
             merchant.setBankUpiId(request.bankUpiId().trim());
@@ -196,27 +198,36 @@ public class MerchantServiceImpl implements MerchantService {
         }
 
         Merchant saved = merchantRepository.save(merchant);
-        log.info("Created merchant id={} name='{}' ownerId={} (isAdmin={})", saved.getId(), saved.getBusinessName(), ownerId, isAdmin);
+        log.info("Created merchant id={} name='{}' ownerId={} (isAdmin={})", saved.getId(), saved.getBusinessName(),
+                ownerId, isAdmin);
 
         if (auditService != null) {
-            String auditMeta = "{\"merchantId\":\"" + saved.getId() + "\",\"businessName\":\"" + saved.getBusinessName() +
-                    "\",\"ownerEmail\":\"" + (email != null ? email : "") + "\",\"ownerName\":\"" + (legalName != null ? legalName : saved.getBusinessName()) + "\"}";
-            auditService.record(AuditEventType.MERCHANT_CREATED, isAdmin ? currentUserId : ownerId, null, null, MDC.get("requestId"), auditMeta);
+            String auditMeta = "{\"merchantId\":\"" + saved.getId() + "\",\"businessName\":\"" + saved.getBusinessName()
+                    +
+                    "\",\"ownerEmail\":\"" + (email != null ? email : "") + "\",\"ownerName\":\""
+                    + (legalName != null ? legalName : saved.getBusinessName()) + "\"}";
+            auditService.record(AuditEventType.MERCHANT_CREATED, isAdmin ? currentUserId : ownerId, null, null,
+                    MDC.get("requestId"), auditMeta);
         }
 
-        // Dispatch merchant welcome email with direct password setup link (Unified Invitation Token)
+        // Dispatch merchant welcome email with direct password setup link (Unified
+        // Invitation Token)
         if (isAdmin && emailService != null && email != null && !email.isBlank()) {
-            String contactName = (legalName != null && !legalName.isBlank()) ? legalName : request.businessName().trim();
-            String inviteToken = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+            String contactName = (legalName != null && !legalName.isBlank()) ? legalName
+                    : request.businessName().trim();
+            String inviteToken = UUID.randomUUID().toString().replace("-", "")
+                    + UUID.randomUUID().toString().replace("-", "");
             Instant inviteExpiresAt = Instant.now().plus(48, ChronoUnit.HOURS);
             String inviteUrl = "http://localhost:3000/accept-invite?token=" + inviteToken;
 
-            String permissionsJson = "{\"inviteToken\":\"" + inviteToken + "\",\"inviteExpiresAt\":\"" + inviteExpiresAt + "\"}";
+            String permissionsJson = "{\"inviteToken\":\"" + inviteToken + "\",\"inviteExpiresAt\":\"" + inviteExpiresAt
+                    + "\"}";
 
             if (staffMemberRepository != null) {
                 List<StaffMember> existingAssignments = staffMemberRepository.findByUserId(ownerId);
                 StaffMember staff = existingAssignments.stream()
-                        .filter(s -> "MERCHANT".equalsIgnoreCase(s.getScope()) && Objects.equals(s.getMerchantId(), saved.getId()))
+                        .filter(s -> "MERCHANT".equalsIgnoreCase(s.getScope())
+                                && Objects.equals(s.getMerchantId(), saved.getId()))
                         .findFirst()
                         .orElse(null);
 
@@ -230,8 +241,7 @@ public class MerchantServiceImpl implements MerchantService {
                             null,
                             "INVITED",
                             permissionsJson,
-                            currentUserId
-                    );
+                            currentUserId);
                 } else {
                     staff.setRoleId("MERCHANT_OWNER");
                     staff.setStatus("INVITED");
@@ -239,7 +249,8 @@ public class MerchantServiceImpl implements MerchantService {
                     staff.setInvitedBy(currentUserId);
                 }
                 staffMemberRepository.save(staff);
-                log.info("Provisioned MERCHANT_OWNER staff member for ownerId={} on merchantId={} with direct password setup token",
+                log.info(
+                        "Provisioned MERCHANT_OWNER staff member for ownerId={} on merchantId={} with direct password setup token",
                         ownerId, saved.getId());
             }
 
@@ -273,7 +284,8 @@ public class MerchantServiceImpl implements MerchantService {
                 .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
 
         if (!merchant.getOwnerUserId().equals(currentUserId)) {
-            throw new AppException("You do not have permission to access this merchant", ApiError.MERCHANT_ACCESS_DENIED, 403);
+            throw new AppException("You do not have permission to access this merchant",
+                    ApiError.MERCHANT_ACCESS_DENIED, 403);
         }
 
         String categoryName = null;
@@ -290,11 +302,16 @@ public class MerchantServiceImpl implements MerchantService {
         }
 
         merchant.setBusinessName(request.businessName().trim());
-        if (request.legalName() != null) merchant.setLegalName(request.legalName().trim());
-        if (request.description() != null) merchant.setDescription(request.description().trim());
-        if (request.phone() != null) merchant.setPhone(request.phone().trim());
-        if (request.email() != null) merchant.setEmail(request.email().trim().toLowerCase());
-        if (request.website() != null) merchant.setWebsite(request.website().trim());
+        if (request.legalName() != null)
+            merchant.setLegalName(request.legalName().trim());
+        if (request.description() != null)
+            merchant.setDescription(request.description().trim());
+        if (request.phone() != null)
+            merchant.setPhone(request.phone().trim());
+        if (request.email() != null)
+            merchant.setEmail(request.email().trim().toLowerCase());
+        if (request.website() != null)
+            merchant.setWebsite(request.website().trim());
 
         Merchant updated = merchantRepository.save(merchant);
         log.info("Merchant profile updated id={} by owner={}", updated.getId(), currentUserId);
@@ -319,8 +336,7 @@ public class MerchantServiceImpl implements MerchantService {
                 request.documentNumber().trim(),
                 request.businessRegistrationNumber() != null ? request.businessRegistrationNumber().trim() : null,
                 request.taxId() != null ? request.taxId().trim() : null,
-                request.documentUrl() != null ? request.documentUrl().trim() : null
-        );
+                request.documentUrl() != null ? request.documentUrl().trim() : null);
 
         MerchantKyc savedKyc = merchantKycRepository != null ? merchantKycRepository.save(kyc) : kyc;
 
@@ -334,7 +350,8 @@ public class MerchantServiceImpl implements MerchantService {
 
         if (auditService != null) {
             auditService.record(AuditEventType.MERCHANT_KYC_SUBMITTED, currentUserId, null, null, MDC.get("requestId"),
-                    "{\"merchantId\":\"" + merchant.getId() + "\",\"documentType\":\"" + request.documentType() + "\"}");
+                    "{\"merchantId\":\"" + merchant.getId() + "\",\"documentType\":\"" + request.documentType()
+                            + "\"}");
         }
 
         return new MerchantKycResponse(
@@ -342,8 +359,7 @@ public class MerchantServiceImpl implements MerchantService {
                 merchant.getId(),
                 savedKyc.getDocumentType(),
                 savedKyc.getStatus(),
-                savedKyc.getCreatedAt()
-        );
+                savedKyc.getCreatedAt());
     }
 
     @Override
@@ -352,9 +368,11 @@ public class MerchantServiceImpl implements MerchantService {
         Merchant merchant = merchantRepository.findById(merchantId)
                 .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
 
-        // State transition check: cannot approve if already APPROVED or not in pending/draft/rejected state
+        // State transition check: cannot approve if already APPROVED or not in
+        // pending/draft/rejected state
         if (merchant.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            throw new AppException("Merchant cannot be approved in its current state", ApiError.INVALID_MERCHANT_STATE, 409);
+            throw new AppException("Merchant cannot be approved in its current state", ApiError.INVALID_MERCHANT_STATE,
+                    409);
         }
 
         merchant.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -444,7 +462,8 @@ public class MerchantServiceImpl implements MerchantService {
 
         if (auditService != null) {
             auditService.record(AuditEventType.MERCHANT_REACTIVATED, adminUserId, null, null, MDC.get("requestId"),
-                    "{\"merchantId\":\"" + merchantId + "\",\"action\":\"ACTIVATE\",\"reason\":\"" + (reason != null ? reason : "") + "\"}");
+                    "{\"merchantId\":\"" + merchantId + "\",\"action\":\"ACTIVATE\",\"reason\":\""
+                            + (reason != null ? reason : "") + "\"}");
         }
 
         return MerchantApprovalActionResponse.approved(merchantId.toString());
@@ -466,17 +485,20 @@ public class MerchantServiceImpl implements MerchantService {
                 : merchant.getBusinessName();
 
         // Generate fresh 48-hour invitation token
-        String inviteToken = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+        String inviteToken = UUID.randomUUID().toString().replace("-", "")
+                + UUID.randomUUID().toString().replace("-", "");
         Instant inviteExpiresAt = Instant.now().plus(48, ChronoUnit.HOURS);
         String inviteUrl = "http://localhost:3000/accept-invite?token=" + inviteToken;
 
-        String permissionsJson = "{\"inviteToken\":\"" + inviteToken + "\",\"inviteExpiresAt\":\"" + inviteExpiresAt + "\"}";
+        String permissionsJson = "{\"inviteToken\":\"" + inviteToken + "\",\"inviteExpiresAt\":\"" + inviteExpiresAt
+                + "\"}";
 
         UUID ownerId = merchant.getOwnerUserId();
         if (staffMemberRepository != null && ownerId != null) {
             List<StaffMember> existingAssignments = staffMemberRepository.findByUserId(ownerId);
             StaffMember staff = existingAssignments.stream()
-                    .filter(s -> "MERCHANT".equalsIgnoreCase(s.getScope()) && Objects.equals(s.getMerchantId(), merchantId))
+                    .filter(s -> "MERCHANT".equalsIgnoreCase(s.getScope())
+                            && Objects.equals(s.getMerchantId(), merchantId))
                     .findFirst()
                     .orElse(null);
 
@@ -490,8 +512,7 @@ public class MerchantServiceImpl implements MerchantService {
                         null,
                         "INVITED",
                         permissionsJson,
-                        adminUserId
-                );
+                        adminUserId);
             } else {
                 staff.setRoleId("MERCHANT_OWNER");
                 staff.setStatus("INVITED");
@@ -510,7 +531,8 @@ public class MerchantServiceImpl implements MerchantService {
 
         if (auditService != null) {
             auditService.record(AuditEventType.MERCHANT_UPDATED, adminUserId, null, null, MDC.get("requestId"),
-                    "{\"merchantId\":\"" + merchantId + "\",\"action\":\"RESEND_WELCOME_EMAIL\",\"recipient\":\"" + email + "\"}");
+                    "{\"merchantId\":\"" + merchantId + "\",\"action\":\"RESEND_WELCOME_EMAIL\",\"recipient\":\""
+                            + email + "\"}");
         }
     }
 
@@ -534,7 +556,8 @@ public class MerchantServiceImpl implements MerchantService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<MerchantResponse> getAllMerchants(Pageable pageable, MerchantStatus status, ApprovalStatus approvalStatus) {
+    public Page<MerchantResponse> getAllMerchants(Pageable pageable, MerchantStatus status,
+            ApprovalStatus approvalStatus) {
         if (status != null && approvalStatus != null) {
             return merchantRepository.findByStatusAndApprovalStatus(status, approvalStatus, pageable)
                     .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
@@ -557,12 +580,14 @@ public class MerchantServiceImpl implements MerchantService {
 
     @Override
     @Transactional
-    public MerchantResponse updateMerchant(UUID id, UpdateMerchantRequest request, UUID currentUserId, boolean isAdmin) {
+    public MerchantResponse updateMerchant(UUID id, UpdateMerchantRequest request, UUID currentUserId,
+            boolean isAdmin) {
         Merchant merchant = merchantRepository.findById(id)
                 .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
 
         if (!isAdmin && !merchant.getOwnerUserId().equals(currentUserId)) {
-            throw new AppException("You do not have permission to modify this merchant", ApiError.MERCHANT_ACCESS_DENIED, 403);
+            throw new AppException("You do not have permission to modify this merchant",
+                    ApiError.MERCHANT_ACCESS_DENIED, 403);
         }
 
         String categoryName = null;
@@ -576,11 +601,16 @@ public class MerchantServiceImpl implements MerchantService {
         }
 
         merchant.setBusinessName(request.businessName().trim());
-        if (request.legalName() != null) merchant.setLegalName(request.legalName().trim());
-        if (request.description() != null) merchant.setDescription(request.description().trim());
-        if (request.phone() != null) merchant.setPhone(request.phone().trim());
-        if (request.email() != null) merchant.setEmail(request.email().trim().toLowerCase());
-        if (request.website() != null) merchant.setWebsite(request.website().trim());
+        if (request.legalName() != null)
+            merchant.setLegalName(request.legalName().trim());
+        if (request.description() != null)
+            merchant.setDescription(request.description().trim());
+        if (request.phone() != null)
+            merchant.setPhone(request.phone().trim());
+        if (request.email() != null)
+            merchant.setEmail(request.email().trim().toLowerCase());
+        if (request.website() != null)
+            merchant.setWebsite(request.website().trim());
 
         Merchant updated = merchantRepository.save(merchant);
         log.info("Updated merchant id={} name='{}'", updated.getId(), updated.getBusinessName());
@@ -595,7 +625,8 @@ public class MerchantServiceImpl implements MerchantService {
                 .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
 
         if (!isAdmin && !merchant.getOwnerUserId().equals(currentUserId)) {
-            throw new AppException("You do not have permission to delete this merchant", ApiError.MERCHANT_ACCESS_DENIED, 403);
+            throw new AppException("You do not have permission to delete this merchant",
+                    ApiError.MERCHANT_ACCESS_DENIED, 403);
         }
 
         merchantRepository.delete(merchant);
@@ -621,7 +652,8 @@ public class MerchantServiceImpl implements MerchantService {
     }
 
     private String getCategoryName(UUID categoryId) {
-        if (categoryId == null) return null;
+        if (categoryId == null)
+            return null;
         return categoryRepository.findById(categoryId)
                 .map(Category::getName)
                 .orElse(null);

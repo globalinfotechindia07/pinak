@@ -83,6 +83,12 @@ export const merchantApi = {
     await apiClient.patch(`/admin/merchants/${id}/activate`, null, { params: { reason } });
   },
 
+  // Admin: Update Merchant Profile
+  updateMerchantAdmin: async (id: string, payload: any): Promise<MerchantProfileDTO> => {
+    const res = await apiClient.put<ApiResponse<MerchantProfileDTO>>(`/admin/merchants/${id}`, payload);
+    return res.data?.data || (res.data as unknown as MerchantProfileDTO);
+  },
+
   // Admin: Resend Welcome / Invitation Email
   resendInvite: async (id: string): Promise<void> => {
     await apiClient.post(`/admin/merchants/${id}/resend-invite`);
