@@ -1,0 +1,4461 @@
+{
+  "info": {
+    "_postman_id": "8f5a6b7c-1234-5678-abcd-ef0123456789",
+    "name": "Merchant Discovery Super-App API (Workflow-Arranged for Frontend)",
+    "description": "Organized workflow-first Postman collection for frontend developers building the Customer App, Merchant Dashboard, and Admin Back-Office Portal. Pointed to Live Render backend (https://pinak-server-6.onrender.com).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://pinak-server-6.onrender.com",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "string"
+    },
+    {
+      "key": "merchantId",
+      "value": "4855d325-f20f-40a4-9c68-1cca97e2548a",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentRef",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mockResetOtp",
+      "value": "123456",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "storeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "redemptionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otpRequestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mfaChallengeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "localBaseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "offerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "merchantToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "\ud83d\udcf1 1. Customer App Workflow",
+      "description": "End-to-end customer mobile and web journey: Public store discovery, GPS nearby search, customer authentication, profile, voucher redemption, payments, wallet rewards, and notifications.",
+      "item": [
+        {
+          "name": "1.1 Public Discovery & Store Search",
+          "description": "Public unauthenticated APIs for landing page, home screen, category browsing, and GPS store discovery.",
+          "item": [
+            {
+              "name": "Customer Discovery: Get All Active Categories",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "categories"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Discovery: Get Category by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/categories/{{categoryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "categories",
+                    "{{categoryId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Discovery: Get Category Hierarchy Tree (District Style)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/categories/tree",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "categories",
+                    "tree"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Discovery: Get Subcategories by Parent Category ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/categories/{{categoryId}}/subcategories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "categories",
+                    "{{categoryId}}",
+                    "subcategories"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Discovery: Global Unified Search (Stores, Categories, Offers)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/search/global?q=pizza",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "search",
+                    "global"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "pizza"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Discovery: Get Active Cities",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/cities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "cities"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Discovery: Get City by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/cities/{{cityId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "cities",
+                    "{{cityId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Find Nearby Stores (PostGIS Distance)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/nearby?lat=18.5204&lng=73.8567&radius=5000&sort=distance",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "nearby"
+                  ],
+                  "query": [
+                    {
+                      "key": "lat",
+                      "value": "18.5204"
+                    },
+                    {
+                      "key": "lng",
+                      "value": "73.8567"
+                    },
+                    {
+                      "key": "radius",
+                      "value": "5000"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "distance"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Find Nearby Stores (Filtered by Category & Offers)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/nearby?lat=18.5204&lng=73.8567&radius=10000&categoryId={{categoryId}}&hasOffer=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "nearby"
+                  ],
+                  "query": [
+                    {
+                      "key": "lat",
+                      "value": "18.5204"
+                    },
+                    {
+                      "key": "lng",
+                      "value": "73.8567"
+                    },
+                    {
+                      "key": "radius",
+                      "value": "10000"
+                    },
+                    {
+                      "key": "categoryId",
+                      "value": "{{categoryId}}"
+                    },
+                    {
+                      "key": "hasOffer",
+                      "value": "true"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Search Stores & Merchants (Keyword)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/search?q=coffee",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "coffee"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Search Stores with Location Proximity",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/search?q=coffee&lat=18.5204&lng=73.8567&radius=5000",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "coffee"
+                    },
+                    {
+                      "key": "lat",
+                      "value": "18.5204"
+                    },
+                    {
+                      "key": "lng",
+                      "value": "73.8567"
+                    },
+                    {
+                      "key": "radius",
+                      "value": "5000"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Store Discovery Details (Public)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/stores/{{storeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "stores",
+                    "{{storeId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Store Active Offers (Public)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discovery/stores/{{storeId}}/offers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discovery",
+                    "stores",
+                    "{{storeId}}",
+                    "offers"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer: Get Verified Offer Details (Public)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/offers/{{offerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "offers",
+                    "{{offerId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer: Discover Nearby Stores (PostGIS GPS)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/stores/nearby?latitude=18.5204&longitude=73.8567&radiusMeters=5000",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stores",
+                    "nearby"
+                  ],
+                  "query": [
+                    {
+                      "key": "latitude",
+                      "value": "18.5204"
+                    },
+                    {
+                      "key": "longitude",
+                      "value": "73.8567"
+                    },
+                    {
+                      "key": "radiusMeters",
+                      "value": "5000"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Customer Authentication & Sessions",
+          "description": "Customer registration, OTP verification, password login, token refresh, and session logout.",
+          "item": [
+            {
+              "name": "Send Phone OTP",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+919876543210\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/otp/send",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "otp",
+                    "send"
+                  ]
+                },
+                "description": "Sends numeric OTP to phone number. In dev/mock mode, check application terminal/logs for the printed OTP."
+              }
+            },
+            {
+              "name": "Verify Phone OTP & Login",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.accessToken) {",
+                      "        pm.collectionVariables.set(\"accessToken\", json.data.accessToken);",
+                      "        pm.collectionVariables.set(\"refreshToken\", json.data.refreshToken);",
+                      "        console.log(\"\u2705 Phone OTP login tokens auto-saved\");",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+919876543210\",\n  \"otp\": \"123456\",\n  \"deviceId\": \"device-pixel-8\",\n  \"deviceName\": \"Google Pixel 8\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/otp/verify",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "otp",
+                    "verify"
+                  ]
+                },
+                "description": "Verifies phone OTP, auto-creates or fetches customer account, and sets {{accessToken}} variable automatically."
+              }
+            },
+            {
+              "name": "Request OTP (Public - 202 Accepted)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data.otpRequestId) {",
+                      "    pm.collectionVariables.set('otpRequestId', jsonData.data.otpRequestId);",
+                      "    console.log('Saved otpRequestId: ' + jsonData.data.otpRequestId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+919876543210\",\n  \"purpose\": \"LOGIN\",\n  \"deviceId\": \"device_abc123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/otp/request",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "otp",
+                    "request"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Verify OTP with otpRequestId (Public - 200 OK)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data.accessToken) {",
+                      "    pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+                      "    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+919876543210\",\n  \"otpRequestId\": \"{{otpRequestId}}\",\n  \"otp\": \"123456\",\n  \"deviceId\": \"device_abc123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/otp/verify",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "otp",
+                    "verify"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Register Customer (Password & Avatar)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Alex\",\n  \"lastName\": \"Smith\",\n  \"email\": \"alex.smith@example.com\",\n  \"mobile\": \"+919811223344\",\n  \"password\": \"Alex@Secure123\",\n  \"confirmPassword\": \"Alex@Secure123\",\n  \"profilePictureUrl\": \"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "register"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.accessToken) {",
+                      "        pm.collectionVariables.set(\"accessToken\", json.data.accessToken);",
+                      "        pm.collectionVariables.set(\"refreshToken\", json.data.refreshToken);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Login (Email / Password)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.accessToken) {",
+                      "        pm.collectionVariables.set(\"accessToken\", json.data.accessToken);",
+                      "        pm.collectionVariables.set(\"refreshToken\", json.data.refreshToken);",
+                      "        if (json.data.user && json.data.user.id) {",
+                      "            pm.collectionVariables.set(\"customerId\", json.data.user.id);",
+                      "        }",
+                      "        console.log(\"\u2705 Customer accessToken auto-saved to collection variable\");",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"customer@superapp.com\",\n  \"password\": \"Customer@123456\",\n  \"deviceId\": \"dev-1\",\n  \"deviceName\": \"Web Browser\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Login (Mobile / Password)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.accessToken) {",
+                      "        pm.collectionVariables.set(\"accessToken\", json.data.accessToken);",
+                      "        pm.collectionVariables.set(\"refreshToken\", json.data.refreshToken);",
+                      "        if (json.data.user && json.data.user.id) {",
+                      "            pm.collectionVariables.set(\"customerId\", json.data.user.id);",
+                      "        }",
+                      "        console.log(\"✅ Customer accessToken auto-saved to collection variable\");",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+919876543210\",\n  \"password\": \"Customer@123456\",\n  \"deviceId\": \"dev-1\",\n  \"deviceName\": \"Mobile App\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Refresh Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.accessToken) {",
+                      "        pm.collectionVariables.set(\"accessToken\", json.data.accessToken);",
+                      "        pm.collectionVariables.set(\"refreshToken\", json.data.refreshToken);",
+                      "        console.log(\"\u2705 Refreshed accessToken auto-saved\");",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "refresh"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Refresh Token (/token/refresh - 200 OK)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data.accessToken) {",
+                      "    pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+                      "    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/token/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "token",
+                    "refresh"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Current User (Auth Me)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "me"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Forgot Password (Request OTP)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200 || pm.response.code === 202) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.resetToken) {",
+                      "        pm.collectionVariables.set(\"resetToken\", json.data.resetToken);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"customer@superapp.com\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "forgot-password"
+                  ]
+                },
+                "description": "Requests password reset OTP. In dev/mock mode, OTP is logged and printed in response message."
+              }
+            },
+            {
+              "name": "Verify Password Reset OTP",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    var token = (json.data && json.data.resetToken) ? json.data.resetToken : json.data;",
+                      "    if (token) {",
+                      "        pm.collectionVariables.set(\"resetToken\", token);",
+                      "        console.log(\"\u2705 resetToken auto-saved: \" + token);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"customer@superapp.com\",\n  \"otp\": \"{{mockResetOtp}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/verify-reset-otp",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "verify-reset-otp"
+                  ]
+                },
+                "description": "Verifies OTP and returns temporary reset token ID."
+              }
+            },
+            {
+              "name": "Reset Password (Set New Password)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"resetToken\": \"{{resetToken}}\",\n  \"newPassword\": \"Customer@NewPass123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "reset-password"
+                  ]
+                },
+                "description": "Sets a new strong password using verified reset token, invalidating all existing sessions."
+              }
+            },
+            {
+              "name": "Revoke Session / Logout (204 No Content)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sessionId\": \"{{sessionId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/logout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "logout"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Customer Profile & Security",
+          "description": "Authenticated customer profile management, active device sessions, and session revocation.",
+          "item": [
+            {
+              "name": "Get Own Profile (GET /users/me)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Own Profile (PUT /users/me)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane.doe.updated@example.com\",\n  \"mobile\": \"+919876543210\",\n  \"profilePictureUrl\": \"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400\"\n}\n// All fields are optional — send only the fields you want to update."
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Protected Area",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/customer-area",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "customer-area"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get My Active Sessions (GET /users/me/sessions)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data.length > 0) {",
+                      "    pm.collectionVariables.set('sessionId', jsonData.data[0].id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me/sessions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me",
+                    "sessions"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Revoke My Session (DELETE /users/me/sessions/{sessionId})",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me/sessions/{{sessionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me",
+                    "sessions",
+                    "{{sessionId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Change Password (POST /auth/change-password)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"currentPassword\": \"Customer@123456\",\n  \"newPassword\": \"Customer@NewPass99\",\n  \"confirmNewPassword\": \"Customer@NewPass99\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/change-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "change-password"
+                  ]
+                },
+                "description": "Change password for currently authenticated user. Requires currentPassword, newPassword (must meet policy: 8-128 chars, upper+lower+digit+special), and confirmNewPassword (must match newPassword). On success all active sessions are invalidated to enforce re-login."
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Offer Redemption & Checkout",
+          "description": "Claiming discounts, initiating UPI/gateway payment intents, mock webhooks, and redemption confirmation.",
+          "item": [
+            {
+              "name": "Customer: Redeem Offer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "redemp-key-{{$timestamp}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Request-Id",
+                    "value": "req-redemp-{{$timestamp}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"paymentId\": \"{{paymentId}}\",\n  \"offerId\": \"{{offerId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/redemptions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "redemptions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.id) {",
+                      "        pm.collectionVariables.set(\"redemptionId\", json.data.id);",
+                      "        console.log(\"\u2705 redemptionId auto-saved: \" + json.data.id);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Customer: Get Redemption History",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/redemptions?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "redemptions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer: Get Redemption by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/redemptions/{{redemptionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "redemptions",
+                    "{{redemptionId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Initiate Payment Intent",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.paymentId) {",
+                      "        pm.collectionVariables.set(\"paymentId\", json.data.paymentId);",
+                      "        pm.collectionVariables.set(\"paymentRef\", json.data.paymentReference || json.data.paymentId);",
+                      "        console.log(\"\u2705 paymentId auto-saved: \" + json.data.paymentId);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "7b8f2f90-1234-4567-89ab-{{$randomUUID}}"
+                  },
+                  {
+                    "key": "X-Request-Id",
+                    "value": "req_{{$randomUUID}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"offerId\": \"{{offerId}}\",\n  \"storeId\": \"{{storeId}}\",\n  \"grossAmount\": 5000.00,\n  \"currency\": \"INR\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments"
+                  ]
+                },
+                "description": "Initiates payment for an eligible offer/store with mandatory Idempotency-Key. Backend calculates discount, payable amount, and returns provider intent."
+              }
+            },
+            {
+              "name": "Get Payment by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments",
+                    "{{paymentId}}"
+                  ]
+                },
+                "description": "Fetch status and details of an existing payment by ID."
+              }
+            },
+            {
+              "name": "Cancel Payment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments",
+                    "{{paymentId}}",
+                    "cancel"
+                  ]
+                },
+                "description": "Cancel an INITIATED or PENDING payment."
+              }
+            },
+            {
+              "name": "Payment Provider Webhook (MOCK_UPI)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-Webhook-Signature",
+                    "value": "valid_test_signature"
+                  },
+                  {
+                    "key": "X-Request-Id",
+                    "value": "wh_{{$randomUUID}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": \"evt_{{$randomUUID}}\",\n  \"eventType\": \"payment.success\",\n  \"paymentId\": \"{{paymentId}}\",\n  \"providerPaymentId\": \"pay_gw_{{$randomUUID}}\",\n  \"amount\": 4500.00,\n  \"currency\": \"INR\",\n  \"status\": \"SUCCESS\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments/webhooks/MOCK_UPI",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments",
+                    "webhooks",
+                    "MOCK_UPI"
+                  ]
+                },
+                "description": "Public provider webhook ingestion with signature verification, replay protection, and status transition."
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 Wallet, Rewards & History",
+          "description": "Customer reward points balance, points audit ledger, and payment transaction receipts.",
+          "item": [
+            {
+              "name": "Customer: Get Reward Balance",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/rewards",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "rewards"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer: Get Reward Ledger",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/rewards/ledger?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "rewards",
+                    "ledger"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer / Admin: Get Reward Ledger Entry by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/rewards/ledger/{{entryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "rewards",
+                    "ledger",
+                    "{{entryId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Customer Transaction History",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/transactions?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Retrieve customer transaction ledger history with merchant, store, and offer details."
+              }
+            },
+            {
+              "name": "Get Transaction Details by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/transactions/{{transactionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "transactions",
+                    "{{transactionId}}"
+                  ]
+                },
+                "description": "Fetch detailed transaction breakdown by internal transaction ID."
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.6 Notifications & Preferences",
+          "description": "In-app notification feed, unread counters, mark as read, and user notification channel preferences.",
+          "item": [
+            {
+              "name": "List User Notifications",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications?page=0&size=20&isRead=false",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    },
+                    {
+                      "key": "isRead",
+                      "value": "false"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Notification Details",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "{{notificationId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Mark Notification as Read",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "{{notificationId}}",
+                    "read"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Mark All Notifications as Read",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/read-all",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "read-all"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Unread Notification Count",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/unread-count",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "unread-count"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Notification Preferences",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/preferences",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "preferences"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Notification Preferences",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"paymentNotifications\": true,\n  \"rewardNotifications\": true,\n  \"offerNotifications\": false,\n  \"systemNotifications\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/preferences",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "preferences"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "\ud83c\udfea 2. Merchant Portal Workflow",
+      "description": "Merchant partner dashboard journey: Onboarding, KYC business verification, physical store branch management, offer creation, and redemption tracking.",
+      "item": [
+        {
+          "name": "2.1 Merchant Onboarding & Auth",
+          "description": "Merchant account registration, login, and authenticated profile access.",
+          "item": [
+            {
+              "name": "Register Merchant (Password & Avatar)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Ramesh\",\n  \"lastName\": \"Kirana\",\n  \"email\": \"ramesh.store@superapp.com\",\n  \"mobile\": \"+919877665544\",\n  \"password\": \"Merchant@123456\",\n  \"confirmPassword\": \"Merchant@123456\",\n  \"role\": \"MERCHANT\",\n  \"profilePictureUrl\": \"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "register"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Login Merchant (Password)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.accessToken) {",
+                      "        pm.collectionVariables.set(\"accessToken\", json.data.accessToken);",
+                      "        pm.collectionVariables.set(\"merchantToken\", json.data.accessToken);",
+                      "        console.log(\"\u2705 Merchant accessToken auto-saved\");",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"merchant@superapp.com\",\n  \"password\": \"Merchant@123456\",\n  \"deviceId\": \"dev-merchant\",\n  \"deviceName\": \"Merchant Portal\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant Protected Area",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/merchant-area",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "merchant-area"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: Get Authenticated Profile",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "profile"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: Update Authenticated Profile",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"businessName\": \"ABC Fitness & Wellness Global\",\n  \"legalName\": \"ABC Fitness Pvt Ltd\",\n  \"description\": \"Premium fitness centers across Maharashtra\",\n  \"phone\": \"+919876543210\",\n  \"email\": \"contact@abcfitness.com\",\n  \"website\": \"https://abcfitness.com\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "profile"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Business Profile & KYC Verification",
+          "description": "Creating brand business profile, submitting GST/KYC identity documents, and viewing verification status.",
+          "item": [
+            {
+              "name": "Merchant: Create Business Profile",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"businessName\": \"ABC Fitness & Wellness\",\n  \"categoryId\": \"{{categoryId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchants",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchants"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.id) {",
+                      "        pm.collectionVariables.set(\"merchantId\", json.data.id);",
+                      "        console.log(\"\u2705 merchantId auto-saved: \" + json.data.id);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Merchant Profile",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"businessName\": \"ABC Fitness Global\",\n  \"categoryId\": \"{{categoryId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchants/{{merchantId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchants",
+                    "{{merchantId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Merchant by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchants/{{merchantId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchants",
+                    "{{merchantId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get All Merchants",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchants?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchants"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: Submit KYC Documents",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"documentType\": \"GST_CERTIFICATE\",\n  \"documentNumber\": \"27AAAAA0000A1Z5\",\n  \"businessRegistrationNumber\": \"U12345MH2022PTC123456\",\n  \"taxId\": \"TAX987654321\",\n  \"documentUrl\": \"https://storage.superapp.com/kyc/gst-cert.pdf\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/kyc",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "kyc"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Store Branches & Locations",
+          "description": "Setting up physical branch stores with address and GPS coordinates, submitting for admin approval.",
+          "item": [
+            {
+              "name": "Merchant: Create Store Branch (Ownership Derivation)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"ABC Retail - Dharampeth\",\n  \"description\": \"ABC Retail Dharampeth Branch\",\n  \"addressLine1\": \"123 Main Road\",\n  \"addressLine2\": \"Near Market\",\n  \"cityId\": \"PUNE\",\n  \"state\": \"Maharashtra\",\n  \"pincode\": \"440010\",\n  \"latitude\": 21.1458,\n  \"longitude\": 79.0882,\n  \"phone\": \"+919876543210\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/stores",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "stores"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.id) {",
+                      "        pm.collectionVariables.set(\"storeId\", json.data.id);",
+                      "        console.log(\"\u2705 storeId auto-saved: \" + json.data.id);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Merchant: Create Store Branch",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"merchantId\": \"{{merchantId}}\",\n  \"storeName\": \"ABC Fitness Pune Branch\",\n  \"address\": \"101 FC Road, Shivajinagar\",\n  \"cityId\": \"PUNE\",\n  \"state\": \"Maharashtra\",\n  \"pincode\": \"411004\",\n  \"latitude\": 18.5204,\n  \"longitude\": 73.8567\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/stores",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stores"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: List My Store Branches",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/stores?page=0&size=20&status=ACTIVE",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "stores"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "value": "ACTIVE"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: Get Store Branch by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/stores/{{storeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "stores",
+                    "{{storeId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: Update Store Branch",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"ABC Retail - Dharampeth Updated\",\n  \"description\": \"Updated Branch Description\",\n  \"addressLine1\": \"456 New Road\",\n  \"addressLine2\": \"Near Market Center\",\n  \"cityId\": \"PUNE\",\n  \"state\": \"Maharashtra\",\n  \"pincode\": \"440010\",\n  \"latitude\": 21.1459,\n  \"longitude\": 79.0883,\n  \"phone\": \"+919876543210\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/stores/{{storeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "stores",
+                    "{{storeId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: Submit Store for Approval",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/stores/{{storeId}}/submit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "stores",
+                    "{{storeId}}",
+                    "submit"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get All Stores",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/stores?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stores"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Store by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/stores/{{storeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stores",
+                    "{{storeId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Stores by Merchant ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchants/{{merchantId}}/stores",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchants",
+                    "{{merchantId}}",
+                    "stores"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Offer Creation & Management",
+          "description": "Creating discount/cashback deals for branches, updating terms, and submitting for approval.",
+          "item": [
+            {
+              "name": "Merchant: Create Offer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"title\": \"10% Cashback on All Items\",\n  \"description\": \"Get 10% cashback on eligible purchases\",\n  \"offerType\": \"CASHBACK\",\n  \"value\": 10,\n  \"minTransactionAmount\": 500,\n  \"maxDiscountAmount\": 500,\n  \"usageLimit\": 1000,\n  \"perCustomerLimit\": 1,\n  \"validFrom\": \"2026-09-10T00:00:00Z\",\n  \"validTo\": \"2026-09-30T23:59:59Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/offers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "offers"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.id) {",
+                      "        pm.collectionVariables.set(\"offerId\", json.data.id);",
+                      "        console.log(\"\u2705 offerId auto-saved: \" + json.data.id);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Merchant: Get My Offers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/offers?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "offers"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: Get Single Offer",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/offers/{{offerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "offers",
+                    "{{offerId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: Update Offer",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"title\": \"15% Cashback on All Items\",\n  \"description\": \"Get 15% cashback on eligible purchases\",\n  \"offerType\": \"CASHBACK\",\n  \"value\": 15,\n  \"minTransactionAmount\": 500,\n  \"maxDiscountAmount\": 750,\n  \"usageLimit\": 1000,\n  \"perCustomerLimit\": 1,\n  \"validFrom\": \"2026-09-10T00:00:00Z\",\n  \"validTo\": \"2026-09-30T23:59:59Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/offers/{{offerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "offers",
+                    "{{offerId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant: Submit Offer for Approval",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/offers/{{offerId}}/submit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "offers",
+                    "{{offerId}}",
+                    "submit"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Store Redemptions & Transactions",
+          "description": "Tracking customer voucher redemptions and viewing financial settlement transactions.",
+          "item": [
+            {
+              "name": "Merchant: Get Store Redemptions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/redemptions?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "redemptions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Merchant Store Transactions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{merchantAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/transactions?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Retrieve transactions across all stores belonging to authenticated merchant."
+              }
+            },
+            {
+              "name": "Merchant Store Transaction Detail",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{merchantAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/transactions/{{transactionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "transactions",
+                    "{{transactionId}}"
+                  ]
+                },
+                "description": "Retrieve detailed transaction information for a transaction belonging to merchant's store."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "\ud83d\udee1\ufe0f 3. Admin Back-Office Portal Workflow",
+      "description": "Platform administration & operations: Secure 2FA login, KPI dashboard, approving merchants, stores, and offers, master data, and audits.",
+      "item": [
+        {
+          "name": "3.1 Secure Admin Auth & 2FA",
+          "description": "2-step admin login: credential verification -> MFA OTP challenge generation -> MFA verification.",
+          "item": [
+            {
+              "name": "Login Admin (Password)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.success && jsonData.data) {",
+                      "    pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+                      "    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+                      "    console.log('Admin token saved');",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"admin@superapp.com\",\n  \"password\": \"Admin@123456\",\n  \"deviceId\": \"dev-admin\",\n  \"deviceName\": \"Admin Dashboard\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin Login (Returns MFA Challenge)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.challengeId) {",
+                      "        pm.collectionVariables.set(\"mfaChallengeId\", json.data.challengeId);",
+                      "        console.log(\"\u2705 Admin MFA Challenge ID auto-saved: \" + json.data.challengeId);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@superapp.com\",\n  \"password\": \"Admin@123456\",\n  \"deviceId\": \"admin_laptop_01\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "auth",
+                    "login"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin MFA Verify (Issues Admin JWT)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.accessToken) {",
+                      "        pm.collectionVariables.set(\"accessToken\", json.data.accessToken);",
+                      "        pm.collectionVariables.set(\"adminToken\", json.data.accessToken);",
+                      "        console.log(\"\u2705 Admin JWT accessToken auto-saved\");",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"challengeId\": \"{{mfaChallengeId}}\",\n  \"code\": \"123456\",\n  \"deviceId\": \"admin_laptop_01\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/auth/mfa/verify",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "auth",
+                    "mfa",
+                    "verify"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin Protected Area",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/admin-area",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "admin-area"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Get Dashboard Summary",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/dashboard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "dashboard"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Master Data Management",
+          "description": "Managing platform categories and supported operating cities.",
+          "item": [
+            {
+              "name": "Admin: Create Category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Restaurants & Food\",\n  \"slug\": \"restaurants-food\",\n  \"description\": \"Restaurants, eateries and food outlets\",\n  \"icon\": \"restaurant\",\n  \"displayOrder\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "categories"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.id) {",
+                      "        pm.collectionVariables.set(\"categoryId\", json.data.id);",
+                      "        console.log(\"\u2705 categoryId auto-saved: \" + json.data.id);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Admin: Get All Categories",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "categories"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Get Category by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "categories",
+                    "{{categoryId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Update Category",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Fine Dining & Cafes\",\n  \"slug\": \"fine-dining-cafes\",\n  \"description\": \"Fine dining, cafes and gourmet experiences\",\n  \"icon\": \"restaurant\",\n  \"displayOrder\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "categories",
+                    "{{categoryId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Update Category Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"INACTIVE\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "categories",
+                    "{{categoryId}}",
+                    "status"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Deactivate Category (Soft Delete)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "categories",
+                    "{{categoryId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Create City",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Nagpur\",\n  \"slug\": \"nagpur\",\n  \"state\": \"Maharashtra\",\n  \"country\": \"India\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/cities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "cities"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    var json = pm.response.json();",
+                      "    if (json.data && json.data.id) {",
+                      "        pm.collectionVariables.set(\"cityId\", json.data.id);",
+                      "        console.log(\"\u2705 cityId auto-saved: \" + json.data.id);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Admin: Get All Cities",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/cities",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "cities"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Update City",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Nagpur Smart City\",\n  \"slug\": \"nagpur-smart\",\n  \"state\": \"Maharashtra\",\n  \"country\": \"India\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/cities/{{cityId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "cities",
+                    "{{cityId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Update City Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"INACTIVE\",\n  \"reason\": \"Operational restructuring\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/cities/{{cityId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "cities",
+                    "{{cityId}}",
+                    "status"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Deactivate City (Soft Delete)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/cities/{{cityId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "cities",
+                    "{{cityId}}"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Merchant Approval & KYC Moderation",
+          "description": "Reviewing merchant business applications, KYC documents, approvals, rejections, and suspensions.",
+          "item": [
+            {
+              "name": "Admin: List All Merchants with Filters",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/merchants?page=0&size=20&status=ACTIVE&approvalStatus=PENDING_APPROVAL",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "merchants"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "value": "ACTIVE"
+                    },
+                    {
+                      "key": "approvalStatus",
+                      "value": "PENDING_APPROVAL"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Get Merchant by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "merchants",
+                    "{{merchantId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Approve Merchant Application",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "merchants",
+                    "{{merchantId}}",
+                    "approve"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Reject Merchant Application",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Submitted GST certificate is illegible or expired.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "merchants",
+                    "{{merchantId}}",
+                    "reject"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Suspend Merchant Account",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Multiple consumer fraud reports under investigation.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}/suspend",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "merchants",
+                    "{{merchantId}}",
+                    "suspend"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Activate Merchant Account",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"KYC verified and compliance check completed successfully.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/merchants/{{merchantId}}/activate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "merchants",
+                    "{{merchantId}}",
+                    "activate"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Update Merchant Approval Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"APPROVED\",\n  \"notes\": \"Business verified and approved by compliance team\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchants/{{merchantId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchants",
+                    "{{merchantId}}",
+                    "status"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Store Branch Approval Workflow",
+          "description": "Reviewing physical branch details and approving or rejecting store applications.",
+          "item": [
+            {
+              "name": "Admin: List All Stores with Filters",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/stores?page=0&size=20&status=ACTIVE&approvalStatus=PENDING_APPROVAL",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "stores"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "value": "ACTIVE"
+                    },
+                    {
+                      "key": "approvalStatus",
+                      "value": "PENDING_APPROVAL"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Get Store Details by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/stores/{{storeId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "stores",
+                    "{{storeId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Approve Store Branch",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/stores/{{storeId}}/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "stores",
+                    "{{storeId}}",
+                    "approve"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Reject Store Branch",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Store address could not be verified or invalid physical signboard.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/stores/{{storeId}}/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "stores",
+                    "{{storeId}}",
+                    "reject"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Suspend Store Branch",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Repeated consumer complaints regarding price discrepancy.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/stores/{{storeId}}/suspend",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "stores",
+                    "{{storeId}}",
+                    "suspend"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Activate Store Branch",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Physical store location re-verified and compliant.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/stores/{{storeId}}/activate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "stores",
+                    "{{storeId}}",
+                    "activate"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Update Store Approval Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"APPROVED\",\n  \"notes\": \"Physical branch verified and approved for discovery\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/stores/{{storeId}}/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "stores",
+                    "{{storeId}}",
+                    "status"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.5 Offer Approval & Moderation",
+          "description": "Reviewing promotional deals submitted by merchants before they go public.",
+          "item": [
+            {
+              "name": "Admin: List All Offers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/offers?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "offers"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Get Offer by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/offers/{{offerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "offers",
+                    "{{offerId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Approve Offer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/offers/{{offerId}}/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "offers",
+                    "{{offerId}}",
+                    "approve"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Reject Offer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Offer terms and conditions are incomplete or ambiguous\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/offers/{{offerId}}/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "offers",
+                    "{{offerId}}",
+                    "reject"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Suspend Offer",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Compliance audit flagged misleading discount claims.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/offers/{{offerId}}/suspend",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "offers",
+                    "{{offerId}}",
+                    "suspend"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.6 User Management, Audits & Rewards",
+          "description": "User account creation/moderation, full platform redemptions, transactions, and reward point adjustments.",
+          "item": [
+            {
+              "name": "Admin: List All Users",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users?page=0&size=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "10"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Create User (Admin/Merchant with Avatar)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Suresh\",\n  \"lastName\": \"Manager\",\n  \"email\": \"suresh.admin@superapp.com\",\n  \"mobile\": \"+919822334455\",\n  \"password\": \"Admin@123456\",\n  \"role\": \"ADMIN\",\n  \"profilePictureUrl\": \"https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Get All Redemptions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/redemptions?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "redemptions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Get Redemption by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/redemptions/{{redemptionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "redemptions",
+                    "{{redemptionId}}"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin Transaction History & Search",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "X-Request-Id",
+                    "value": "postman-admin-search"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/transactions?search=TX&status=SUCCESS&page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "search",
+                      "value": "TX"
+                    },
+                    {
+                      "key": "status",
+                      "value": "SUCCESS"
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Platform-wide transaction search and multi-parameter filtering for administrators."
+              }
+            },
+            {
+              "name": "Admin Transaction Detail by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "X-Request-Id",
+                    "value": "postman-admin-detail"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/transactions/{{transactionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "transactions",
+                    "{{transactionId}}"
+                  ]
+                },
+                "description": "Platform administrator full transaction detail view with audit logging."
+              }
+            },
+            {
+              "name": "Admin: Reward Adjustment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "adj-key-{{$timestamp}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"amount\": 100.00,\n  \"type\": \"CREDIT\",\n  \"reason\": \"Customer service compensation\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/rewards/adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "rewards",
+                    "adjustments"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Reward Reversal",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ledgerEntryId\": \"{{entryId}}\",\n  \"reason\": \"Transaction refund reversal\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/rewards/reversals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "rewards",
+                    "reversals"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Get Reward Ledger",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/rewards/ledger?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "rewards",
+                    "ledger"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Admin: Get Customer Reward Account",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/rewards/{{customerId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "rewards",
+                    "{{customerId}}"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "\u2699\ufe0f 4. Health & System Probes",
+      "description": "System liveness, readiness, actuator metrics, and OpenAPI v3 documentation endpoints.",
+      "item": [
+        {
+          "name": "4.1 Health & OpenAPI Probes",
+          "description": "",
+          "item": [
+            {
+              "name": "Health Check",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/health",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "health"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "OpenAPI 3 JSON Specification",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/v3/api-docs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v3",
+                    "api-docs"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

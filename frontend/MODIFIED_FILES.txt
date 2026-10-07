@@ -1,0 +1,99 @@
+================================================================================
+PINAK SUPER-APP - SUMMARY OF MODIFIED AND CREATED FILES
+Generated: 2026-09-29
+================================================================================
+
+--------------------------------------------------------------------------------
+1. FRONTEND WORKSPACE: c:\Users\globalinfotechindia\Documents\GII Workspace\Pinak\frontend
+--------------------------------------------------------------------------------
+
+[NEW FILES CREATED]
+--------------------------------------------------------------------------------
+1. client/src/features/admin/AdminStaffManager.tsx
+   - Platform Staff Directory and Roles & Permissions Studio for Super Admin.
+   - Dual-tab interface: "Platform Staff Directory" vs "Platform Roles & Permissions Studio".
+   - Create, edit, and delete custom platform roles with custom names, badges, and 7 granular permissions.
+   - Assign custom roles to new or existing platform administrators.
+   - Live backend API status monitor checking real PostgreSQL connection (`superappdb`).
+
+2. client/src/features/merchant/StoreStaffManager.tsx
+   - Multi-tier staff and permissions manager for Merchants & Branch Stores.
+   - Enables merchants to invite staff members and assign them to specific branch stores.
+   - Custom store role definitions (Store Manager, Cashier, Inventory Lead, Support, etc.).
+   - Granular permission matrix for store-level operations (Redeem Deals, View Reports, Manage Inventory).
+
+3. client/src/features/store/StoreBranchDashboard.tsx
+   - Dedicated branch-level operations dashboard when logged in as a specific Store/Branch.
+   - Daily store sales, active offer redemptions, branch staff roster, and store settings.
+
+4. docs/STAFF_ROLES_PERMISSIONS_ARCHITECTURE.md
+   - Comprehensive architectural documentation for RBAC (Role-Based Access Control) covering:
+     * Super Admin Level (Platform Roles)
+     * Merchant Level (Organization Roles)
+     * Store/Branch Level (Branch Staff Roles)
+
+
+[FILES MODIFIED]
+--------------------------------------------------------------------------------
+1. client/src/pages/Login.tsx
+   - Added multi-role login options (Super Admin, Merchant Owner, and Store Branch).
+   - Normalized credential dispatch (`Admin@123456` / `Merchant@123456`) to ensure the real Spring Boot backend API generates valid JWT tokens.
+   - Added demo one-click credentials for instant testing.
+
+2. client/src/types/index.ts
+   - Extended `AdminRole` type with `(string & {})` to allow arbitrary custom role keys.
+   - Added `AdminRoleDefinition` interface with permission flags and badge configurations.
+   - Added `StoreStaffMember`, `StoreRoleDefinition`, and store permission types.
+
+3. client/src/features/admin/WorkspaceSettings.tsx
+   - Modularized workspace settings by delegating staff and role management to `AdminStaffManager.tsx`.
+   - Cleaned up tab navigation and platform settings.
+
+4. client/src/features/layout/Sidebar.tsx
+   - Added navigation menu items for:
+     * Platform Staff & Roles Studio (Super Admin)
+     * Store Staff & Permissions (Merchant)
+     * Store Branch Dashboard (Branch Mode)
+
+5. client/src/features/layout/Topbar.tsx
+   - Updated user profile and active branch context display.
+   - Added quick role switching indicator and active store indicator.
+
+6. client/src/features/merchant/BranchStores.tsx
+   - Added store staff count indicators per branch.
+   - Integrated store-level staff configuration and direct branch login emulation.
+
+7. client/src/pages/Home.tsx
+   - Updated router/view state handler to mount the newly created components:
+     * `AdminStaffManager`
+     * `StoreStaffManager`
+     * `StoreBranchDashboard`
+
+8. client/src/services/mockDataStore.ts & client/src/hooks/useMockStore.ts
+   - Added persistent store state for Custom Roles, Platform Staff, Merchant Staff, and Store Staff.
+   - Seeded initial realistic mock records matching the database seed data.
+
+
+--------------------------------------------------------------------------------
+2. BACKEND WORKSPACE: c:\Users\globalinfotechindia\Documents\GII Workspace\Pinak\backend
+--------------------------------------------------------------------------------
+
+[NEW FILES CREATED]
+--------------------------------------------------------------------------------
+1. seed_mock_data.sql
+   - Database SQL seed script executed on PostgreSQL `superappdb`.
+   - Seeds 8 platform and merchant users with BCrypt-hashed passwords (`$2a$10$...`).
+   - Seeds 5 verified merchants with KYC compliance records and GSTINs.
+   - Seeds 7 branch store records across cities (Nagpur, Pune, Mumbai).
+
+2. seed_stores_offers.sql
+   - SQL seed script for platform offers, category links, and discount terms.
+
+[FILES MODIFIED]
+--------------------------------------------------------------------------------
+1. src/main/resources/application.properties
+   - Configured PostgreSQL datasource connection for local development (`superappdb`).
+
+================================================================================
+END OF FILE
+================================================================================
