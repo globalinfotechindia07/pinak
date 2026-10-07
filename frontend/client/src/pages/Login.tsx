@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { useLocation } from "wouter";
 import {
   Sparkles,
-  ShieldCheck,
-  Building2,
   Lock,
   Mail,
   Eye,
@@ -12,7 +10,6 @@ import {
   Sun,
   Moon,
   CheckCircle2,
-  Store,
   X,
   Send
 } from "lucide-react";
@@ -24,12 +21,18 @@ import { UserRole } from "../types";
 import { authApi } from "../api/authApi";
 import { tokenManager } from "../api/tokenManager";
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phoneRegex = /^\+?[0-9]{10,15}$/;
+
 const loginSchema = z.object({
-  email: z
+  identifier: z
     .string()
     .trim()
-    .min(1, "Email address is required")
-    .email("Please enter a valid email address (e.g. name@domain.com)"),
+    .min(1, "Email address or mobile number is required")
+    .refine(
+      (val) => emailRegex.test(val) || phoneRegex.test(val.replace(/[\s-]/g, "")),
+      "Please enter a valid email address or 10-digit mobile number"
+    ),
   password: z
     .string()
     .min(1, "Password is required")
@@ -41,8 +44,7 @@ export const Login: React.FC = () => {
   const store = useAppStore();
   const { theme, toggleTheme } = useTheme();
 
-  const [selectedRole, setSelectedRole] = useState<UserRole>("admin");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -50,19 +52,13 @@ export const Login: React.FC = () => {
   const [isForgotOpen, setIsForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
-  const [selectedStoreId, setSelectedStoreId] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
-  const handleRoleSelect = (role: UserRole) => {
-    setSelectedRole(role);
-    setFormErrors({});
-  };
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setFormErrors({});
 
-    const validation = loginSchema.safeParse({ email, password });
+    const validation = loginSchema.safeParse({ identifier, password });
     if (!validation.success) {
       const fieldErrors: Record<string, string> = {};
       validation.error.issues.forEach((issue) => {
@@ -80,15 +76,21 @@ export const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
+      const trimmedId = identifier.trim();
       const authRes = await authApi.login({
-        identifier: email.trim(),
-        email: email.trim(),
+        identifier: trimmedId,
+        email: trimmedId,
         password: password,
-        role: selectedRole === "admin" ? "ADMIN" : "MERCHANT",
       });
 
-      if (authRes?.user?.status === "SUSPENDED" || authRes?.user?.status === "BLOCKED" || authRes?.user?.status === "INACTIVE") {
-        toast.error("Your account has been suspended or deactivated. Please contact your platform administrator.");
+      if (
+        authRes?.user?.status === "SUSPENDED" ||
+        authRes?.user?.status === "BLOCKED" ||
+        authRes?.user?.status === "INACTIVE"
+      ) {
+        toast.error(
+          "Your account has been suspended or deactivated. Please contact your platform administrator."
+        );
         return;
       }
 
@@ -98,20 +100,24 @@ export const Login: React.FC = () => {
 
       const userRoleStr = String(authRes?.user?.role || "").toUpperCase();
       const staffScope = String(authRes?.user?.staffScope || "").toUpperCase();
-      const isPlatformStaff = staffScope === "PLATFORM" || userRoleStr.includes("ADMIN");
-      const isStoreStaff = staffScope === "STORE" || (!isPlatformStaff && selectedRole === "store");
 
-      const resolvedRole: UserRole =
-        isPlatformStaff
-          ? "admin"
-          : isStoreStaff
-          ? "store"
-          : "merchant";
+      const isPlatformStaff =
+        staffScope === "PLATFORM" || userRoleStr.includes("ADMIN");
+      const isStoreStaff =
+        staffScope === "STORE" ||
+        userRoleStr.includes("STORE") ||
+        userRoleStr.includes("BRANCH");
+
+      const resolvedRole: UserRole = isPlatformStaff
+        ? "admin"
+        : isStoreStaff
+        ? "store"
+        : "merchant";
 
       store.login(
         resolvedRole,
-        email.trim(),
-        isStoreStaff ? (authRes?.user?.storeId || selectedStoreId || undefined) : undefined,
+        trimmedId,
+        isStoreStaff ? authRes?.user?.storeId || undefined : undefined,
         {
           id: authRes?.user?.id,
           name: authRes?.user?.name,
@@ -122,15 +128,25 @@ export const Login: React.FC = () => {
           status: authRes?.user?.status,
         }
       );
+
       toast.success(
-        `Welcome back! Authenticated as ${authRes?.user?.name || (resolvedRole === "admin" ? "Platform Admin" : "Merchant Partner")}.`
+        `Welcome back! Authenticated as ${
+          authRes?.user?.name ||
+          (resolvedRole === "admin"
+            ? "Platform Admin"
+            : resolvedRole === "store"
+            ? "Store Manager"
+            : "Merchant Partner")
+        }.`
       );
+
       const destination =
         resolvedRole === "admin"
           ? "/admin/overview"
           : resolvedRole === "store"
           ? "/store/dashboard"
           : "/merchant/dashboard";
+
       setLocation(destination);
     } catch (apiErr: any) {
       console.error("Login authentication error:", apiErr);
@@ -138,7 +154,7 @@ export const Login: React.FC = () => {
         apiErr?.response?.data?.message ||
         apiErr?.response?.data?.error?.message ||
         apiErr?.message ||
-        "Invalid credentials. Please verify your email and password.";
+        "Invalid credentials. Please verify your email/mobile and password.";
       toast.error(errMsg);
     } finally {
       setIsLoading(false);
@@ -162,7 +178,7 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b0e17] text-slate-900 dark:text-slate-100 flex flex-col justify-between selection:bg-pink-500 selection:text-white transition-colors duration-200">
-      {/* Top Simple Nav */}
+      {/* Top Navigation */}
       <header className="px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-pink-500/25">
@@ -174,11 +190,11 @@ export const Login: React.FC = () => {
                 PINAK
               </span>
               <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
-                Operations
+                Super-App
               </span>
             </div>
             <span className="text-[10px] text-slate-400 block font-semibold -mt-1">
-              Cluster Ops & Multi-Store Portal
+              Unified Merchant & Operations Portal
             </span>
           </div>
         </div>
@@ -207,28 +223,28 @@ export const Login: React.FC = () => {
             <div className="relative z-10 space-y-4">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-md text-white border border-white/20">
                 <Sparkles size={13} />
-                Multi-Store Architecture
+                Unified Super-App Access
               </span>
               <h2 className="text-2xl sm:text-3xl font-black font-['Manrope'] leading-tight">
-                One Platform for Brand HQ & Store Outlets.
+                One Unified Login for Every Role.
               </h2>
               <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
-                Empower brand headquarters to manage stores and corporate staff, while giving store managers and branch supervisors independent access to live order verification and customer rewards.
+                Log in with your registered email address or mobile number and password. Pinak automatically authenticates your credentials, resolves your organizational scope, and redirects you directly to your workspace.
               </p>
             </div>
 
             <div className="relative z-10 pt-8 border-t border-white/20 space-y-3">
               <div className="flex items-center gap-3 text-xs font-semibold text-white/90">
                 <CheckCircle2 size={16} className="text-white shrink-0" />
-                <span>Super Admin: Cluster oversight & KYC verification</span>
+                <span>Platform Admins: Central operations & governance</span>
               </div>
               <div className="flex items-center gap-3 text-xs font-semibold text-white/90">
                 <CheckCircle2 size={16} className="text-white shrink-0" />
-                <span>Merchant HQ: Store creation & corporate staff</span>
+                <span>Merchant Owners: Multi-store management & staff</span>
               </div>
               <div className="flex items-center gap-3 text-xs font-semibold text-white/90">
                 <CheckCircle2 size={16} className="text-white shrink-0" />
-                <span>Store Branches: Store Manager PINs & live order verification</span>
+                <span>Store Branches: Branch operations & live order feed</span>
               </div>
             </div>
           </div>
@@ -236,73 +252,20 @@ export const Login: React.FC = () => {
           {/* Right Form Column */}
           <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between">
             <div>
-              {/* Role Switcher Tabs */}
-              <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl mb-5">
-                <button
-                  type="button"
-                  onClick={() => handleRoleSelect("admin")}
-                  className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    selectedRole === "admin"
-                      ? "bg-white dark:bg-[#1a1f33] text-purple-700 dark:text-purple-300 shadow-xs"
-                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <ShieldCheck size={14} />
-                  <span>Super Admin</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleRoleSelect("merchant")}
-                  className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    selectedRole === "merchant"
-                      ? "bg-white dark:bg-[#1a1f33] text-pink-600 dark:text-pink-300 shadow-xs"
-                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <Building2 size={14} />
-                  <span>Merchant HQ</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleRoleSelect("store")}
-                  className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    selectedRole === "store"
-                      ? "bg-white dark:bg-[#1a1f33] text-amber-600 dark:text-amber-300 shadow-xs"
-                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <Store size={14} />
-                  <span>Store Branch</span>
-                </button>
+              <div className="mb-6">
+                <h1 className="text-2xl font-extrabold font-['Manrope'] text-slate-900 dark:text-white tracking-tight">
+                  Welcome Back
+                </h1>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                  Enter your credentials to access your Pinak Super-App workspace
+                </p>
               </div>
 
               {/* Login Form */}
               <form onSubmit={handleLogin} className="space-y-4 text-xs">
-                {selectedRole === "store" && store.stores.length > 0 && (
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      Select Store Branch Outlet
-                    </label>
-                    <select
-                      value={selectedStoreId}
-                      onChange={(e) => setSelectedStoreId(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-amber-500/30"
-                    >
-                      <option value="">Select branch outlet (optional)</option>
-                      {store.stores.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.storeName} - {s.branchName} ({s.city})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    {selectedRole === "store" ? "Store Branch Login Email" : "Email Address"}
+                    Email Address or Mobile Number
                   </label>
                   <div className="relative">
                     <Mail
@@ -310,29 +273,24 @@ export const Login: React.FC = () => {
                       className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                     />
                     <input
-                      type="email"
-                      placeholder={
-                        selectedRole === "admin"
-                          ? "riya.admin@pinak.app"
-                          : selectedRole === "store"
-                          ? "branch@merchant.in"
-                          : "owner@merchant.in"
-                      }
-                      value={email}
+                      type="text"
+                      placeholder="name@company.com or 9822000000"
+                      value={identifier}
                       onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: "" }));
+                        setIdentifier(e.target.value);
+                        if (formErrors.identifier)
+                          setFormErrors((prev) => ({ ...prev, identifier: "" }));
                       }}
                       className={`w-full pl-10 pr-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-hidden focus:ring-2 ${
-                        formErrors.email
+                        formErrors.identifier
                           ? "border-rose-500 focus:ring-rose-500/30"
                           : "border-slate-200 dark:border-slate-700 focus:ring-pink-500/30"
                       }`}
                     />
                   </div>
-                  {formErrors.email && (
+                  {formErrors.identifier && (
                     <p className="text-[11px] text-rose-500 mt-1 font-medium flex items-center gap-1">
-                      <span>•</span> {formErrors.email}
+                      <span>•</span> {formErrors.identifier}
                     </p>
                   )}
                 </div>
@@ -340,7 +298,7 @@ export const Login: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="font-bold text-slate-700 dark:text-slate-300">
-                      {selectedRole === "store" ? "Store Access PIN" : "Password"}
+                      Password
                     </label>
                     <button
                       type="button"
@@ -357,11 +315,12 @@ export const Login: React.FC = () => {
                     />
                     <input
                       type={showPassword ? "text" : "password"}
-                      placeholder={selectedRole === "store" ? "Enter branch PIN" : "Enter your password"}
+                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => {
                         setPassword(e.target.value);
-                        if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: "" }));
+                        if (formErrors.password)
+                          setFormErrors((prev) => ({ ...prev, password: "" }));
                       }}
                       className={`w-full pl-10 pr-10 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-hidden focus:ring-2 ${
                         formErrors.password
@@ -407,13 +366,7 @@ export const Login: React.FC = () => {
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>
-                        {selectedRole === "admin"
-                          ? "Access Platform Console"
-                          : selectedRole === "store"
-                          ? "Open Store Branch Portal"
-                          : "Enter Merchant HQ Console"}
-                      </span>
+                      <span>Sign In to Pinak Super-App</span>
                       <ArrowRight size={15} />
                     </>
                   )}
@@ -453,16 +406,16 @@ export const Login: React.FC = () => {
               </button>
             </div>
             <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              Enter your registered work email. We will send a secure token to reset your password or counter PIN.
+              Enter your registered work email or mobile number. We will send a secure link or OTP to reset your password.
             </p>
             <form onSubmit={handleSendReset} className="space-y-3 text-xs">
               <input
-                type="email"
+                type="text"
                 required
-                placeholder="you@company.com"
+                placeholder="you@company.com or 9822000000"
                 value={forgotEmail}
                 onChange={(e) => setForgotEmail(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
               />
               <button
                 type="submit"
@@ -479,3 +432,4 @@ export const Login: React.FC = () => {
     </div>
   );
 };
+

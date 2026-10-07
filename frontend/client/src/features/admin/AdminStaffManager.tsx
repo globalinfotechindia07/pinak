@@ -425,7 +425,7 @@ function getCurrentActor(): string {
     const roleTag =
       u.email.toLowerCase() === "riya.admin@pinak.app" ||
       u.staffRoleId === "SUPERADMIN" ||
-      u.role === "SUPER_ADMIN"
+      (u as any).role === "SUPER_ADMIN"
         ? "Super Admin"
         : u.staffRoleName || "Admin";
     return `${u.email} (${roleTag})`;
@@ -932,7 +932,7 @@ export const AdminStaffManager: React.FC = () => {
       return;
     }
     const roleObj = roles.find((r) => r.id === member.role);
-    const roleDisplayName = roleObj?.name || member.roleName || member.role || "Regional Ops Lead";
+    const roleDisplayName = roleObj?.name || (member as any).roleName || member.role || "Regional Ops Lead";
     setDeleteConfirmation({
       type: "member",
       id: member.id,

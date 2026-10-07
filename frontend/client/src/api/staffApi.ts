@@ -49,6 +49,7 @@ export interface InviteStaffPayload {
   phone?: string;
   roleId: string;
   scope: "PLATFORM" | "MERCHANT" | "STORE";
+  storeId?: string;
   customPermissions?: string;
 }
 

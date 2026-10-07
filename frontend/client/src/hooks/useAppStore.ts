@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { appStore } from "../services/dataStore";
+import { UserRole } from "../types";
 
 export function useAppStore() {
   const [, setTick] = useState(0);
@@ -20,8 +21,8 @@ export function useAppStore() {
     hasPermission: (permKey: string) => appStore.hasPermission(permKey),
     activeStoreId: appStore.getActiveStoreId(),
     setActiveStoreId: (id: string | null) => appStore.setActiveStoreId(id),
-    setRole: (role: any) => appStore.setCurrentRole(role),
-    login: (role: any, email?: string, storeId?: string, userMeta?: any) => appStore.login(role, email, storeId, userMeta),
+    setRole: (role: UserRole) => appStore.setCurrentRole(role),
+    login: (role: UserRole, email?: string, storeId?: string, userMeta?: any) => appStore.login(role, email, storeId, userMeta),
     updateCurrentUser: (updates: any) => appStore.updateCurrentUser(updates),
     logout: () => appStore.logout(),
     merchants: appStore.getMerchants(),

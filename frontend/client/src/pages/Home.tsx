@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "../hooks/useAppStore";
-import { UserRole, ADMIN_PERMISSION_KEYS } from "../types";
+import { UserRole, ADMIN_PERMISSION_KEYS, Merchant } from "../types";
 import { Sidebar } from "../features/layout/Sidebar";
 import { Topbar } from "../features/layout/Topbar";
 import { NotificationDrawer } from "../features/layout/NotificationDrawer";

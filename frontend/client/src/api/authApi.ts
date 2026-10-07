@@ -54,10 +54,15 @@ export const authApi = {
       });
     }
 
+    const lowerId = rawId.toLowerCase();
+    const isPlatformDefault = lowerId.includes("admin");
+    const isStoreDefault = lowerId.includes("store") || lowerId.includes("branch");
+
     const user: UserDTO = resData?.user || {
       id: "user-1",
       email: rawId,
-      role: payload.role || "MERCHANT",
+      role: payload.role || (isPlatformDefault ? "ADMIN" : "MERCHANT"),
+      staffScope: isPlatformDefault ? "PLATFORM" : (isStoreDefault ? "STORE" : "MERCHANT"),
       status: "ACTIVE",
     };
 
