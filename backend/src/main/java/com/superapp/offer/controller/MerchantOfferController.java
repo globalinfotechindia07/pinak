@@ -110,4 +110,15 @@ public class MerchantOfferController {
         offerService.deleteMerchantOffer(offerId, currentUserId);
         return ResponseEntity.ok(ApiResponse.success("Offer deleted successfully", null));
     }
+
+    @GetMapping("/{offerId}/audit-logs")
+    @Operation(summary = "Get audit trail history for an offer")
+    public ResponseEntity<ApiResponse<List<com.superapp.common.audit.AuditLogResponse>>> getOfferAuditLogs(
+            @PathVariable UUID offerId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+        List<com.superapp.common.audit.AuditLogResponse> response = offerService.getOfferAuditLogs(offerId, currentUserId);
+        return ResponseEntity.ok(ApiResponse.success("Offer audit logs fetched successfully", response));
+    }
 }
+

@@ -26,6 +26,8 @@ import { Badge } from "./ui/badge";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
 
+import { offerApi } from "../api/offerApi";
+
 interface OfferDetailsDrawerProps {
   offer: Offer;
   stores?: Store[];
@@ -46,14 +48,42 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
   const [activeTab, setActiveTab] = useState<"overview" | "history">("overview");
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
+  const [dbAudits, setDbAudits] = useState<AuditEvent[]>([]);
+
+  useEffect(() => {
+    if (offer && offer.id) {
+      offerApi.getOfferAuditLogs(offer.id)
+        .then((logs) => {
+          if (Array.isArray(logs) && logs.length > 0) {
+            const mapped: AuditEvent[] = logs.map((l: any) => ({
+              id: l.id || String(Math.random()),
+              action: l.action || "OFFER_UPDATED",
+              entity: l.resourceType || "OFFER",
+              actor: l.adminUserId ? `User #${l.adminUserId.substring(0, 8)}` : "Merchant Partner",
+              time: l.createdAt || new Date().toISOString(),
+              severity: l.action?.includes("REJECT") || l.action?.includes("DELETE") ? "critical" : l.action?.includes("APPROV") ? "success" : "info",
+              metadata: {
+                reason: l.reason,
+                requestId: l.requestId,
+                ipAddress: l.ipAddress
+              }
+            }));
+            setDbAudits(mapped);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [offer]);
 
   // Filter audit events related to this specific offer
-  const offerAudits = auditLogs.filter(
+  const storeAudits = auditLogs.filter(
     (a) =>
       (a.metadata as any)?.offerId === offer.id ||
       a.entity?.toLowerCase().includes(offer.title.toLowerCase()) ||
       a.entity?.toLowerCase().includes(offer.id.toLowerCase())
   );
+
+  const offerAudits = dbAudits.length > 0 ? dbAudits : storeAudits;
 
   // Map applicable store names
   const applicableStores = stores.filter(

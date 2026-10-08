@@ -46,6 +46,7 @@ public class OfferServiceImpl implements OfferService {
     private final OfferValidator offerValidator;
     private final OfferMapper offerMapper;
     private final AuditService auditService;
+    private final com.superapp.common.audit.AuditLogRepository auditLogRepository;
     private final CacheManager cacheManager;
 
     public OfferServiceImpl(
@@ -55,6 +56,7 @@ public class OfferServiceImpl implements OfferService {
             OfferValidator offerValidator,
             OfferMapper offerMapper,
             AuditService auditService,
+            com.superapp.common.audit.AuditLogRepository auditLogRepository,
             CacheManager cacheManager) {
         this.offerRepository = offerRepository;
         this.merchantRepository = merchantRepository;
@@ -62,6 +64,7 @@ public class OfferServiceImpl implements OfferService {
         this.offerValidator = offerValidator;
         this.offerMapper = offerMapper;
         this.auditService = auditService;
+        this.auditLogRepository = auditLogRepository;
         this.cacheManager = cacheManager;
     }
 
@@ -233,9 +236,6 @@ public class OfferServiceImpl implements OfferService {
 
     @Override
     @Transactional
-    
-    @Override
-    @Transactional
     public MerchantOfferResponse toggleMerchantOfferStatus(UUID offerId, OfferStatus status, UUID currentUserId) {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
         Offer offer = offerRepository.findById(offerId)
@@ -286,6 +286,21 @@ public class OfferServiceImpl implements OfferService {
         }
 
         evictOfferCaches(offer);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<com.superapp.common.audit.AuditLogResponse> getOfferAuditLogs(UUID offerId, UUID currentUserId) {
+        Merchant merchant = getAuthenticatedMerchant(currentUserId);
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offer not found", ApiError.OFFER_NOT_FOUND));
+
+        if (!offer.getMerchantId().equals(merchant.getId())) {
+            throw new AppException("You do not have permission to access this offer", ApiError.OFFER_ACCESS_DENIED, 403);
+        }
+
+        List<com.superapp.common.audit.AuditLog> logs = auditLogRepository.findByMetadataContainingOrderByCreatedAtDesc(offerId.toString());
+        return logs.stream().map(com.superapp.common.audit.AuditLogResponse::from).toList();
     }
 
     @Override

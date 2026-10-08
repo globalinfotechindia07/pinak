@@ -125,4 +125,10 @@ export const offerApi = {
     const data = res.data?.data;
     return Array.isArray(data) ? data : [];
   },
+
+  // Merchant: Get audit logs for offer
+  getOfferAuditLogs: async (id: string): Promise<any[]> => {
+    const res = await apiClient.get<ApiResponse<any[]>>(`/merchant/offers/${id}/audit-logs`);
+    return Array.isArray(res.data?.data) ? res.data.data : [];
+  },
 };

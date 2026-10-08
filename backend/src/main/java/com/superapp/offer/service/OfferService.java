@@ -31,6 +31,8 @@ public interface OfferService {
 
     void deleteMerchantOffer(UUID offerId, UUID currentUserId);
 
+    List<com.superapp.common.audit.AuditLogResponse> getOfferAuditLogs(UUID offerId, UUID currentUserId);
+
     OfferApprovalResponse submitOfferForApproval(UUID offerId, UUID currentUserId);
 
     // Customer Operations
