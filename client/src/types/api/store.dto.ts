@@ -22,9 +22,13 @@ export interface StoreDTO {
   pincode: string;
   latitude: number;
   longitude: number;
-  openingTime: string; // e.g. "09:00"
+  openingTime: string; // e.g. "10:00"
   closingTime: string; // e.g. "22:00"
+  operatingDays?: string; // e.g. "Daily (Mon - Sun)"
+  managerName?: string;
+  managerEmail?: string;
   status: StoreStatus;
+  approvalStatus?: string;
   activeOfferCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -42,6 +46,9 @@ export interface CreateStoreRequest {
   longitude: number;
   openingTime: string;
   closingTime: string;
+  operatingDays?: string;
+  managerName?: string;
+  managerEmail?: string;
   status?: StoreStatus;
 }
 
@@ -57,6 +64,9 @@ export interface UpdateStoreRequest {
   longitude?: number;
   openingTime?: string;
   closingTime?: string;
+  operatingDays?: string;
+  managerName?: string;
+  managerEmail?: string;
   status?: StoreStatus;
 }
 

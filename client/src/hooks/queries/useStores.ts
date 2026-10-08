@@ -74,6 +74,29 @@ export function useStores() {
     },
   });
 
+  // Mutation: Delete Merchant Store
+  const deleteStoreMutation = useMutation({
+    mutationFn: (id: string) => storeApi.deleteMerchantStore(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: MY_STORES_QUERY_KEY });
+      toast.success("Store branch outlet deleted successfully");
+    },
+    onError: (err) => {
+      handleApiErrorToast(err, "Failed to delete store branch");
+    },
+  });
+
+  // Mutation: Resend Manager Invite
+  const resendInviteMutation = useMutation({
+    mutationFn: (id: string) => storeApi.resendManagerInvite(id),
+    onSuccess: () => {
+      toast.success("Manager activation link resent successfully!");
+    },
+    onError: (err) => {
+      handleApiErrorToast(err, "Failed to resend manager activation link");
+    },
+  });
+
   return {
     stores: myStoresQuery.data || [],
     isLoading: myStoresQuery.isLoading,
@@ -83,6 +106,10 @@ export function useStores() {
     isCreating: createStoreMutation.isPending,
     updateStore: updateStoreMutation.mutateAsync,
     isUpdating: updateStoreMutation.isPending,
+    deleteStore: deleteStoreMutation.mutateAsync,
+    isDeleting: deleteStoreMutation.isPending,
+    resendManagerInvite: resendInviteMutation.mutateAsync,
+    isResendingInvite: resendInviteMutation.isPending,
     toggleStatus: toggleStatusMutation.mutateAsync,
     refetch: myStoresQuery.refetch,
   };

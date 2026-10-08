@@ -34,8 +34,18 @@ export const storeApi = {
 
   // Update Store Branch (Address, Contact, Hours, Coordinates)
   updateStore: async (id: string, payload: UpdateStoreRequest): Promise<StoreDTO> => {
-    const res = await apiClient.put<ApiResponse<StoreDTO>>(`/stores/${id}`, payload);
+    const res = await apiClient.put<ApiResponse<StoreDTO>>(`/merchant/stores/${id}`, payload);
     return res.data?.data || (res.data as unknown as StoreDTO);
+  },
+
+  // Delete Merchant Store Branch
+  deleteMerchantStore: async (id: string): Promise<void> => {
+    await apiClient.delete(`/merchant/stores/${id}`);
+  },
+
+  // Resend Activation / Welcome Invite Link to Store Branch Manager
+  resendManagerInvite: async (id: string): Promise<void> => {
+    await apiClient.post(`/merchant/stores/${id}/resend-invite`);
   },
 
   // Submit Store for Review
