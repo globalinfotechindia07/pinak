@@ -580,6 +580,64 @@ public class UserService {
     }
 
     @Transactional
+    public StaffDTO.Response resendStaffInvite(UUID staffId, UUID resendingUserId) {
+        if (staffMemberRepository == null) throw new IllegalStateException("Staff repository not available");
+        StaffMember staff = staffMemberRepository.findById(staffId)
+                .orElseThrow(() -> ResourceNotFoundException.user("Staff assignment not found"));
+
+        User user = userRepository.findById(staff.getUserId())
+                .orElseThrow(() -> ResourceNotFoundException.user("Invited user not found"));
+
+        String inviteToken = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+        Instant inviteExpiresAt = Instant.now().plus(48, java.time.temporal.ChronoUnit.HOURS);
+        String inviteUrl = "http://localhost:3000/accept-invite?token=" + inviteToken;
+
+        String permissionsJson = staff.getCustomPermissions() != null ? staff.getCustomPermissions() : "{}";
+        try {
+            com.fasterxml.jackson.databind.JsonNode parsed = objectMapper.readTree(permissionsJson);
+            com.fasterxml.jackson.databind.node.ObjectNode node = parsed.isObject()
+                    ? (com.fasterxml.jackson.databind.node.ObjectNode) parsed
+                    : objectMapper.createObjectNode();
+            node.put("inviteToken", inviteToken);
+            node.put("inviteExpiresAt", inviteExpiresAt.toString());
+            permissionsJson = node.toString();
+        } catch (Exception e) {
+            permissionsJson = "{\"inviteToken\":\"" + inviteToken + "\",\"inviteExpiresAt\":\"" + inviteExpiresAt + "\"}";
+        }
+
+        staff.setCustomPermissions(permissionsJson);
+        staff.setStatus("INVITED");
+        staff.setInvitedBy(resendingUserId != null ? resendingUserId : staff.getInvitedBy());
+
+        StaffMember saved = staffMemberRepository.save(staff);
+        RoleEntity role = saved.getRoleId() != null && roleRepository != null ? roleRepository.findById(saved.getRoleId()).orElse(null) : null;
+
+        log.info("📧 [STAFF INVITATION RESENT] Recipient: {} | Direct Link: {}", user.getEmail(), inviteUrl);
+
+        if (emailService != null) {
+            String roleDisplayName = role != null && role.getName() != null ? role.getName() : saved.getRoleId();
+            emailService.sendStaffInvitationEmail(user.getEmail(), user.getName(), roleDisplayName, inviteUrl);
+        }
+
+        if (auditService != null) {
+            String roleDisplayName = role != null && role.getName() != null ? role.getName() : saved.getRoleId();
+            com.fasterxml.jackson.databind.node.ObjectNode metaNode = objectMapper.createObjectNode();
+            metaNode.put("staffEmail", user.getEmail());
+            metaNode.put("staffName", user.getName());
+            metaNode.put("roleId", saved.getRoleId());
+            metaNode.put("roleName", roleDisplayName);
+            metaNode.put("scope", saved.getScope());
+            metaNode.put("resentBy", resendingUserId != null ? resendingUserId.toString() : "Admin");
+            metaNode.put("inviteUrl", inviteUrl);
+            metaNode.put("status", "INVITED");
+            auditService.record(AuditEventType.STAFF_INVITED, user.getId(), null, null,
+                    org.slf4j.MDC.get("requestId"), metaNode.toString());
+        }
+
+        return toStaffResponse(saved, user, role);
+    }
+
+    @Transactional
     public StaffDTO.Response updateStaffStatus(UUID staffId, String status) {
         if (staffMemberRepository == null) throw new IllegalStateException("Staff repository not available");
         StaffMember staff = staffMemberRepository.findById(staffId)

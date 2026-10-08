@@ -198,4 +198,9 @@ export const staffApi = {
   removeMerchantStaff: async (staffId: string): Promise<void> => {
     await apiClient.delete(`/merchant/staff/${staffId}`);
   },
+
+  resendMerchantStaffInvite: async (staffId: string): Promise<BackendStaffResponse> => {
+    const res = await apiClient.post<ApiResponse<BackendStaffResponse>>(`/merchant/staff/${staffId}/resend-invite`);
+    return res.data?.data;
+  },
 };

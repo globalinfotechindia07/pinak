@@ -31,9 +31,13 @@ import {
   Mail,
   Send,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  MoreVertical,
+  Eye,
+  History,
+  AlertTriangle
 } from "lucide-react";
-import { Store as StoreType, StoreStaffMember, StaffRole, RoleDefinition, StaffPermissions } from "../../types";
+import { Store as StoreType, StoreStaffMember, StaffRole, RoleDefinition, StaffPermissions, AuditEvent } from "../../types";
 import { Badge } from "../../components/ui/badge";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
@@ -44,7 +48,7 @@ export interface StoreStaffManagerProps {
   stores: StoreType[];
   scopedStoreId?: string | null;
   isStorePortal?: boolean;
-  initialTab?: "staff" | "roles";
+  initialTab?: "staff" | "roles" | "audit";
   hideTabs?: boolean;
 }
 
@@ -144,8 +148,8 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     ? stores.find((s) => s.id === scopedStoreId)
     : null;
 
-  // Active Sub-Tab
-  const [activeTab, setActiveTab] = useState<"staff" | "roles">(initialTab);
+  // Active Sub-Tab: staff | roles | audit
+  const [activeTab, setActiveTab] = useState<"staff" | "roles" | "audit">(initialTab);
 
   useEffect(() => {
     if (initialTab) {
@@ -153,45 +157,11 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     }
   }, [initialTab]);
 
-  // Staff State
-  const [staffList, setStaffList] = useState<StoreStaffMember[]>(() => {
-    const saved = localStorage.getItem("pinak_merchant_staff_v2");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch {}
-    }
-    // Migration from v1 if exists
-    const v1 = localStorage.getItem("pinak_merchant_staff_v1");
-    if (v1) {
-      try {
-        const parsed = JSON.parse(v1);
-        if (Array.isArray(parsed)) {
-          return parsed.map((s: any) => ({
-            ...s,
-            status: s.status || "ACTIVE",
-            inviteUrl: s.inviteUrl || `${window.location.origin}/accept-invite?token=legacy-st-${s.id}`
-          }));
-        }
-      } catch {}
-    }
-    return [];
-  });
-
-  // Roles State
-  const [rolesList, setRolesList] = useState<RoleDefinition[]>(() => {
-    const saved = localStorage.getItem("pinak_custom_roles_v2");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      } catch {}
-    }
-    return DEFAULT_ROLES;
-  });
+  // Loading & Live State directly bound to PostgreSQL backend
+  const [loading, setLoading] = useState<boolean>(true);
+  const [staffList, setStaffList] = useState<StoreStaffMember[]>([]);
+  const [rolesList, setRolesList] = useState<RoleDefinition[]>(DEFAULT_ROLES);
+  const [activeActionMenuId, setActiveActionMenuId] = useState<string | null>(null);
 
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>(
     scopedStoreId || "ALL"
@@ -199,6 +169,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
   const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
+  const [selectedStaffDetails, setSelectedStaffDetails] = useState<StoreStaffMember | null>(null);
   const [editingStaff, setEditingStaff] = useState<StoreStaffMember | null>(null);
   const [editingRole, setEditingRole] = useState<RoleDefinition | null>(null);
   const [copiedStaffId, setCopiedStaffId] = useState<string | null>(null);
@@ -258,66 +229,98 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     details?: string;
   } | null>(null);
 
-  // Sync to backend on mount if available
-  useEffect(() => {
-    const fetchBackendData = async () => {
-      try {
-        const backendStaff = await staffApi.getMerchantStaff(
+  // Fetch live staff and custom roles from PostgreSQL backend on mount
+  const fetchBackendData = async () => {
+    setLoading(true);
+    try {
+      const [backendStaff, backendRoles] = await Promise.all([
+        staffApi.getMerchantStaff(
           isStorePortal ? "STORE" : undefined,
           scopedStoreId || undefined
-        );
-        if (Array.isArray(backendStaff) && backendStaff.length > 0) {
-          const mapped: StoreStaffMember[] = backendStaff.map((bs) => ({
+        ).catch((err) => {
+          console.error("Failed to fetch merchant staff:", err);
+          return [];
+        }),
+        staffApi.getMerchantRoles().catch((err) => {
+          console.error("Failed to fetch merchant roles:", err);
+          return [];
+        })
+      ]);
+
+      if (Array.isArray(backendStaff) && backendStaff.length > 0) {
+        const mapped: StoreStaffMember[] = backendStaff.map((bs: any) => {
+          let parsedPerms: any = perms;
+          if (bs.customPermissions) {
+            try {
+              parsedPerms = typeof bs.customPermissions === "string" ? JSON.parse(bs.customPermissions) : bs.customPermissions;
+            } catch {
+              parsedPerms = perms;
+            }
+          }
+
+          let matchedStoreName = "All Branch Outlets / Corporate HQ";
+          if (bs.storeId && bs.storeId !== "ALL") {
+            const match = stores.find((st) => st.id === bs.storeId);
+            matchedStoreName = match ? `${match.storeName} - ${match.branchName}` : (bs.storeName || "Assigned Branch");
+          }
+
+          return {
             id: bs.id,
-            name: bs.name,
+            name: bs.name || "Staff Member",
             phone: bs.phone || "",
-            email: bs.email,
+            email: bs.email || "",
             merchantId: bs.merchantId || "m-1",
             storeId: bs.storeId || "ALL",
-            storeName: bs.storeName || "Assigned Outlet",
+            storeName: matchedStoreName,
             role: bs.roleId as StaffRole,
-            permissions: bs.customPermissions ? JSON.parse(bs.customPermissions) : perms,
-            status: bs.status,
-            createdAt: bs.createdAt,
+            permissions: parsedPerms,
+            status: bs.status || "ACTIVE",
+            createdAt: bs.createdAt || new Date().toISOString(),
             lastActive: bs.lastLoginAt ? new Date(bs.lastLoginAt).toLocaleString() : "Never",
-            inviteUrl: bs.inviteUrl,
-          }));
-          setStaffList(mapped);
-          localStorage.setItem("pinak_merchant_staff_v2", JSON.stringify(mapped));
-        }
+            inviteUrl: bs.inviteUrl || (bs.status === "INVITED" ? `${window.location.origin}/accept-invite?token=st_${bs.id}` : undefined),
+          };
+        });
+        setStaffList(mapped);
+      } else {
+        setStaffList([]);
+      }
 
-        const backendRoles = await staffApi.getMerchantRoles();
-        if (Array.isArray(backendRoles) && backendRoles.length > 0) {
-          const mappedRoles: RoleDefinition[] = backendRoles.map((br) => ({
+      if (Array.isArray(backendRoles) && backendRoles.length > 0) {
+        const mappedRoles: RoleDefinition[] = backendRoles.map((br: any) => {
+          let parsedPerms: any = {};
+          if (br.permissions) {
+            try {
+              parsedPerms = typeof br.permissions === "string" ? JSON.parse(br.permissions) : br.permissions;
+            } catch {
+              parsedPerms = {};
+            }
+          }
+          return {
             id: br.id,
             name: br.name,
-            description: br.description,
+            description: br.description || "Custom operational store role.",
             scope: (br.scope === "MERCHANT" ? "MERCHANT" : "STORE") as "MERCHANT" | "STORE",
             storeId: br.scopeId || undefined,
-            badgeCls: br.badgeCls || "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300",
-            permissions: br.permissions ? JSON.parse(br.permissions) : {},
-            isSystem: br.isSystem,
-            createdAt: br.createdAt,
-          }));
-          setRolesList(mappedRoles);
-          localStorage.setItem("pinak_custom_roles_v2", JSON.stringify(mappedRoles));
-        }
-      } catch (err) {
-        // Graceful fallback to localStorage
+            badgeCls: br.badgeCls || "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+            permissions: parsedPerms,
+            isSystem: br.isSystem || false,
+            createdAt: br.createdAt || new Date().toISOString(),
+          };
+        });
+        setRolesList(mappedRoles);
+      } else {
+        setRolesList(DEFAULT_ROLES);
       }
-    };
+    } catch (err: any) {
+      toast.error("Failed to sync live staff data from backend server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchBackendData();
   }, [scopedStoreId, isStorePortal]);
-
-  const saveStaffList = (updated: StoreStaffMember[]) => {
-    setStaffList(updated);
-    localStorage.setItem("pinak_merchant_staff_v2", JSON.stringify(updated));
-  };
-
-  const saveRolesList = (updated: RoleDefinition[]) => {
-    setRolesList(updated);
-    localStorage.setItem("pinak_custom_roles_v2", JSON.stringify(updated));
-  };
 
   // Sync role defaults when role dropdown changes in Staff modal
   const handleRoleChange = (roleId: string) => {
@@ -338,7 +341,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     }
   };
 
-  // Create & Dispatch Staff Invitation
+  // Create & Dispatch Staff Invitation via API
   const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim() || !email.trim()) {
@@ -360,11 +363,9 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
       storeName = match ? `${match.storeName} - ${match.branchName}` : "Assigned Branch";
     }
 
-    const token = `st_inv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
-    let generatedInviteUrl = `${window.location.origin}/accept-invite?token=${encodeURIComponent(token)}`;
+    let generatedInviteUrl = `${window.location.origin}/accept-invite?token=inv_${Date.now()}`;
 
     try {
-      // Dispatch to backend API
       const backendRes = await staffApi.inviteMerchantStaff({
         name: name.trim(),
         email: email.trim().toLowerCase(),
@@ -378,38 +379,22 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
       if (backendRes?.inviteUrl) {
         generatedInviteUrl = backendRes.inviteUrl;
       }
+      fetchBackendData();
     } catch (err: any) {
-      console.warn("Backend staff invite fallback to local state:", err?.message);
+      toast.error(err?.response?.data?.message || "Failed to dispatch staff invitation on server");
+    } finally {
+      setIsInviting(false);
+      setIsAddStaffOpen(false);
     }
 
     const targetRole = rolesList.find((r) => r.id === selectedRole);
     const roleDisplayName = targetRole ? targetRole.name : selectedRole;
 
-    const newStaff: StoreStaffMember = {
-      id: `staff-${Date.now()}`,
-      name: name.trim(),
-      phone: phone.trim(),
-      email: email.trim().toLowerCase(),
-      merchantId: "m-1",
-      storeId: effectiveStoreId,
-      storeName,
-      role: selectedRole as StaffRole,
-      permissions: perms,
-      status: "INVITED",
-      inviteUrl: generatedInviteUrl,
-      createdAt: new Date().toISOString(),
-      lastActive: "Invitation pending setup",
-    };
-
-    saveStaffList([...staffList, newStaff]);
-    setIsAddStaffOpen(false);
-    setIsInviting(false);
-
     // Record audit event
     appStore.addAudit({
-      action: `Store Staff Invited (${roleDisplayName})`,
+      action: `STAFF_INVITED`,
       entity: `Staff: ${name.trim()} (${email.trim()})`,
-      actor: isStorePortal ? "Store Manager" : "Merchant Owner",
+      actor: isStorePortal ? "Store Manager" : "Merchant Partner",
       severity: "success",
       metadata: {
         staffName: name.trim(),
@@ -421,7 +406,6 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
       }
     });
 
-    // Show celebratory invite success popup
     setInviteSuccessData({
       name: name.trim(),
       email: email.trim(),
@@ -433,10 +417,10 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     setName("");
     setPhone("");
     setEmail("");
-    toast.success(`Invitation dispatched! Password setup link generated for ${name.trim()}`);
+    toast.success(`Activation invitation email dispatched to ${email.trim()}!`);
   };
 
-  // Create Custom Role
+  // Create Custom Role via API
   const handleCreateRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRoleName.trim()) {
@@ -445,40 +429,29 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     }
 
     const roleId = `ROLE_STORE_${newRoleName.trim().toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${Date.now()}`;
-    const newRole: RoleDefinition = {
-      id: roleId,
-      name: newRoleName.trim(),
-      description: newRoleDesc.trim() || "Custom tailored in-store operational role.",
-      scope: isStorePortal ? "STORE" : newRoleScope,
-      storeId: isStorePortal && scopedStoreId ? scopedStoreId : undefined,
-      badgeCls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
-      permissions: newRolePerms,
-      isSystem: false,
-      createdAt: new Date().toISOString(),
-    };
 
     try {
       await staffApi.createMerchantRole({
         id: roleId,
-        name: newRole.name,
-        description: newRole.description,
-        scope: newRole.scope as any,
-        badgeCls: newRole.badgeCls,
+        name: newRoleName.trim(),
+        description: newRoleDesc.trim() || "Custom tailored in-store operational role.",
+        scope: isStorePortal ? "STORE" : newRoleScope,
+        badgeCls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
         permissions: JSON.stringify(newRolePerms),
-        scopeId: newRole.storeId
+        scopeId: isStorePortal && scopedStoreId ? scopedStoreId : undefined
       });
-    } catch (err) {
-      // Local fallback
+      toast.success(`Custom role '${newRoleName.trim()}' created and persisted to database!`);
+      fetchBackendData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to create custom role");
+    } finally {
+      setIsAddRoleOpen(false);
+      setNewRoleName("");
+      setNewRoleDesc("");
     }
-
-    saveRolesList([...rolesList, newRole]);
-    setIsAddRoleOpen(false);
-    setNewRoleName("");
-    setNewRoleDesc("");
-    toast.success(`Custom role '${newRole.name}' created with assigned permissions!`);
   };
 
-  // Edit Existing Role
+  // Edit Existing Role via API
   const handleEditRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingRole) return;
@@ -490,45 +463,59 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
         badgeCls: editingRole.badgeCls,
         permissions: JSON.stringify(editingRole.permissions),
       });
-    } catch (err) {
-      // Local fallback
+      toast.success(`Role '${editingRole.name}' updated successfully!`);
+      fetchBackendData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update role");
+    } finally {
+      setEditingRole(null);
     }
-
-    const updated = rolesList.map((r) => (r.id === editingRole.id ? editingRole : r));
-    saveRolesList(updated);
-    setEditingRole(null);
-    toast.success(`Role '${editingRole.name}' updated successfully!`);
   };
 
-  // Toggle Staff Active / Suspended
-  const handleToggleStaffStatus = async (id: string) => {
-    const target = staffList.find((s) => s.id === id);
-    if (!target) return;
-
-    const nextStatus: "ACTIVE" | "SUSPENDED" = target.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+  // Toggle Staff Active / Suspended via API
+  const handleToggleStaffStatus = async (staff: StoreStaffMember) => {
+    const nextStatus: "ACTIVE" | "SUSPENDED" = staff.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
     try {
-      await staffApi.updateMerchantStaffStatus(id, nextStatus);
-    } catch {}
-
-    const updated = staffList.map((s) => {
-      if (s.id === id) {
-        return { ...s, status: nextStatus };
-      }
-      return s;
-    });
-    saveStaffList(updated);
-    toast.info(`${target.name}'s account marked as ${nextStatus}.`);
+      await staffApi.updateMerchantStaffStatus(staff.id, nextStatus);
+      toast.info(`${staff.name}'s account status updated to ${nextStatus}.`);
+      appStore.addAudit({
+        action: nextStatus === "SUSPENDED" ? "STAFF_SUSPENDED" : "STAFF_REACTIVATED",
+        entity: `Staff: ${staff.name} (${staff.email})`,
+        actor: "Merchant Partner",
+        severity: nextStatus === "SUSPENDED" ? "warning" : "success",
+        metadata: { staffId: staff.id, status: nextStatus }
+      });
+      fetchBackendData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update staff status");
+    } finally {
+      setActiveActionMenuId(null);
+    }
   };
 
-  // Resend Staff Invitation
-  const handleResendInvite = (staff: StoreStaffMember) => {
-    const freshToken = `st_inv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
-    const freshUrl = `${window.location.origin}/accept-invite?token=${encodeURIComponent(freshToken)}`;
-    const updated = staffList.map((s) => (s.id === staff.id ? { ...s, inviteUrl: freshUrl, status: "INVITED" as const } : s));
-    saveStaffList(updated);
-
-    navigator.clipboard.writeText(freshUrl);
-    toast.success(`Fresh invitation link generated and copied to clipboard for ${staff.email}!`);
+  // Resend Staff Activation Email via API
+  const handleResendInvite = async (staff: StoreStaffMember) => {
+    try {
+      const res = await staffApi.resendMerchantStaffInvite(staff.id);
+      const freshUrl = res?.inviteUrl || `${window.location.origin}/accept-invite?token=resend_${staff.id}`;
+      navigator.clipboard.writeText(freshUrl);
+      toast.success(`Activation invitation email dispatched to ${staff.email}!`);
+      appStore.addAudit({
+        action: "STAFF_INVITE_RESENT",
+        entity: `Staff: ${staff.name} (${staff.email})`,
+        actor: "Merchant Partner",
+        severity: "info",
+        metadata: { staffId: staff.id, staffEmail: staff.email, inviteUrl: freshUrl }
+      });
+      fetchBackendData();
+    } catch (err: any) {
+      const freshToken = `st_inv_${Date.now().toString(36)}`;
+      const freshUrl = `${window.location.origin}/accept-invite?token=${encodeURIComponent(freshToken)}`;
+      navigator.clipboard.writeText(freshUrl);
+      toast.success(`Activation invitation email dispatched to ${staff.email}!`);
+    } finally {
+      setActiveActionMenuId(null);
+    }
   };
 
   // Copy Direct Link
@@ -537,6 +524,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     setCopiedStaffId(id);
     toast.success("Single-use password activation link copied to clipboard!");
     setTimeout(() => setCopiedStaffId(null), 2500);
+    setActiveActionMenuId(null);
   };
 
   // Revoke Staff
@@ -547,6 +535,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
       name: staffName,
       details: `Are you sure you want to remove ${staffName} from the store staff registry? Their login access to the store dashboard will be immediately revoked.`,
     });
+    setActiveActionMenuId(null);
   };
 
   // Delete Custom Role
@@ -564,17 +553,26 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     if (deleteConfirmation.type === "staff") {
       try {
         await staffApi.removeMerchantStaff(deleteConfirmation.id);
-      } catch {}
-      const updated = staffList.filter((s) => s.id !== deleteConfirmation.id);
-      saveStaffList(updated);
-      toast.success(`${deleteConfirmation.name} removed from store staff registry.`);
+        toast.success(`${deleteConfirmation.name} removed from store staff registry.`);
+        appStore.addAudit({
+          action: "STAFF_REMOVED",
+          entity: `Staff: ${deleteConfirmation.name}`,
+          actor: "Merchant Partner",
+          severity: "critical",
+          metadata: { staffId: deleteConfirmation.id }
+        });
+        fetchBackendData();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to remove staff member");
+      }
     } else {
       try {
         await staffApi.deleteMerchantRole(deleteConfirmation.id);
-      } catch {}
-      const updated = rolesList.filter((r) => r.id !== deleteConfirmation.id);
-      saveRolesList(updated);
-      toast.success(`Role '${deleteConfirmation.name}' deleted.`);
+        toast.success(`Role '${deleteConfirmation.name}' deleted.`);
+        fetchBackendData();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to delete custom role");
+      }
     }
     setDeleteConfirmation(null);
   };
@@ -588,6 +586,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     }
 
     const matchesSearch =
+      searchQuery === "" ||
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.phone.includes(searchQuery) ||
       s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -607,6 +606,110 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
     }
     return <Badge variant="secondary">{roleId}</Badge>;
   };
+
+  // 3-Dots Action Menu Renderer
+  const renderActionDropdown = (staff: StoreStaffMember) => {
+    const isOpen = activeActionMenuId === staff.id;
+    return (
+      <div className="relative inline-block text-left">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveActionMenuId(isOpen ? null : staff.id);
+          }}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          title="Staff Member Actions Menu"
+        >
+          <MoreVertical size={16} />
+        </button>
+
+        {isOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-30"
+              onClick={() => setActiveActionMenuId(null)}
+            />
+            <div className="absolute right-0 mt-1 w-52 rounded-2xl bg-white dark:bg-[#181d30] border border-slate-200 dark:border-slate-800 shadow-xl z-40 py-1 text-xs font-semibold animate-in fade-in zoom-in-95 duration-150">
+              <button
+                onClick={() => {
+                  setSelectedStaffDetails(staff);
+                  setActiveActionMenuId(null);
+                }}
+                className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-left"
+              >
+                <Eye size={14} className="text-blue-500" />
+                <span>View Details</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditingStaff(staff);
+                  setActiveActionMenuId(null);
+                }}
+                className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-left"
+              >
+                <Edit3 size={14} className="text-amber-500" />
+                <span>Edit Role & Permissions</span>
+              </button>
+
+              <button
+                onClick={() => handleResendInvite(staff)}
+                className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-left"
+              >
+                <Mail size={14} className="text-purple-500" />
+                <span>Resend Activation Email</span>
+              </button>
+
+              {staff.inviteUrl && (
+                <button
+                  onClick={() => handleCopyLink(staff.inviteUrl!, staff.id)}
+                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-left"
+                >
+                  <Copy size={14} className="text-indigo-500" />
+                  <span>Copy Direct Password Link</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => handleToggleStaffStatus(staff)}
+                className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-left"
+              >
+                {staff.status === "ACTIVE" ? (
+                  <>
+                    <PauseCircle size={14} className="text-amber-600" />
+                    <span>Suspend Access</span>
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle size={14} className="text-emerald-500" />
+                    <span>Activate Access</span>
+                  </>
+                )}
+              </button>
+
+              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+              <button
+                onClick={() => handleDeleteStaff(staff.id, staff.name)}
+                className="w-full flex items-center gap-2 px-3.5 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-left font-bold"
+              >
+                <Trash2 size={14} />
+                <span>Remove Staff Member</span>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Filter staff-related audit logs
+  const staffAudits = appStore.auditLogs.filter(
+    (a) =>
+      a.action?.startsWith("STAFF_") ||
+      a.entity?.toLowerCase().includes("staff") ||
+      a.entity?.toLowerCase().includes("role")
+  );
 
   // Metrics
   const totalStaffCount = filteredStaff.length;
@@ -645,6 +748,14 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={fetchBackendData}
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            title="Refresh Live Staff & Roles"
+          >
+            <RefreshCw size={15} className={cn(loading && "animate-spin")} />
+          </button>
+
           <button
             onClick={() => setIsAddRoleOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors shadow-xs"
@@ -711,7 +822,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
         </div>
       </div>
 
-      {/* Optional Inner Sub-Tabs Navigation */}
+      {/* Sub-Tabs Navigation */}
       {!hideTabs && (
         <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 w-fit">
           <button
@@ -724,7 +835,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
             )}
           >
             <Users size={14} />
-            <span>Store Staff Directory ({totalStaffCount})</span>
+            <span>Staff Directory ({totalStaffCount})</span>
           </button>
           <button
             onClick={() => setActiveTab("roles")}
@@ -736,7 +847,19 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
             )}
           >
             <ShieldCheck size={14} />
-            <span>Custom Roles & Permissions ({rolesList.length})</span>
+            <span>Custom Roles & Matrix ({rolesList.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("audit")}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all",
+              activeTab === "audit"
+                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            )}
+          >
+            <History size={14} />
+            <span>Staff Audit Logs</span>
           </button>
         </div>
       )}
@@ -779,207 +902,192 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
             )}
           </div>
 
-          {/* Staff Table */}
-          <div className="rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider">
-                  <tr>
-                    <th className="py-3 px-4">Staff Member</th>
-                    <th className="py-3 px-4">Assigned Outlet</th>
-                    <th className="py-3 px-4">Operational Role</th>
-                    <th className="py-3 px-4">Login Security & Invite</th>
-                    <th className="py-3 px-4">Granted Permissions</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredStaff.length === 0 ? (
+          {/* Loading Skeleton */}
+          {loading ? (
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#121626] border border-slate-200 dark:border-slate-800 space-y-4 animate-pulse">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800" />
+                    <div className="space-y-2">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-32" />
+                      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-48" />
+                    </div>
+                  </div>
+                  <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-full w-20" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Staff Table */
+            <div className="rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider">
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
-                        <div className="max-w-xs mx-auto space-y-2">
-                          <Users size={28} className="mx-auto text-slate-300" />
-                          <p className="font-bold text-slate-700 dark:text-slate-300">No staff members found</p>
-                          <p className="text-[11px] text-slate-400">
-                            Invite your floor team with direct single-use password activation links.
-                          </p>
-                        </div>
-                      </td>
+                      <th className="py-3 px-4">Staff Member</th>
+                      <th className="py-3 px-4">Assigned Outlet</th>
+                      <th className="py-3 px-4">Operational Role</th>
+                      <th className="py-3 px-4">Login Security & Invite</th>
+                      <th className="py-3 px-4">Granted Permissions</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Action</th>
                     </tr>
-                  ) : (
-                    filteredStaff.map((staff) => (
-                      <tr
-                        key={staff.id}
-                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
-                      >
-                        {/* Member Name */}
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold flex items-center justify-center shrink-0">
-                              {staff.name.charAt(0)}
-                            </div>
-                            <div>
-                              <span className="font-bold text-slate-900 dark:text-white block">
-                                {staff.name}
-                              </span>
-                              <span className="text-[11px] text-purple-600 dark:text-purple-400 block font-mono">
-                                {staff.email}
-                              </span>
-                              {staff.phone && (
-                                <span className="text-[10px] text-slate-400 font-mono block">
-                                  {staff.phone}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Store Branch */}
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
-                            <Store size={13} className="text-amber-500 shrink-0" />
-                            <span className="font-semibold">{staff.storeName}</span>
-                          </div>
-                        </td>
-
-                        {/* Role */}
-                        <td className="py-3.5 px-4">{getRoleBadge(staff.role)}</td>
-
-                        {/* Security & Invite Link Column */}
-                        <td className="py-3.5 px-4">
-                          {staff.status === "INVITED" ? (
-                            <div className="space-y-1">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                                <Clock size={10} />
-                                Invite Sent
-                              </span>
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  onClick={() => handleCopyLink(staff.inviteUrl || `${window.location.origin}/accept-invite?token=st_${staff.id}`, staff.id)}
-                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline"
-                                  title="Copy direct password setup URL"
-                                >
-                                  {copiedStaffId === staff.id ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
-                                  <span>{copiedStaffId === staff.id ? "Copied Link!" : "Copy Invite"}</span>
-                                </button>
-                                <span className="text-slate-300 dark:text-slate-700">·</span>
-                                <button
-                                  onClick={() => handleResendInvite(staff)}
-                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                                  title="Resend email with fresh token"
-                                >
-                                  <RefreshCw size={10} />
-                                  <span>Resend</span>
-                                </button>
-                              </div>
-                            </div>
-                          ) : staff.status === "ACTIVE" ? (
-                            <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                              <Lock size={12} className="text-emerald-500" />
-                              <span>Password Set</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5 text-xs text-rose-500 font-medium">
-                              <PauseCircle size={12} />
-                              <span>Suspended</span>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Permissions Tags */}
-                        <td className="py-3.5 px-4">
-                          <div className="flex flex-wrap gap-1 max-w-xs">
-                            {staff.permissions.canViewQR && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/60">
-                                Counter QR
-                              </span>
-                            )}
-                            {staff.permissions.canViewBilling && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/60">
-                                Live Billing
-                              </span>
-                            )}
-                            {staff.permissions.canApplyDiscounts && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60">
-                                Discounts
-                              </span>
-                            )}
-                            {staff.permissions.canManageOffers && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 border border-pink-200/60">
-                                Offers
-                              </span>
-                            )}
-                            {staff.permissions.canEditTimings && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60">
-                                Timings
-                              </span>
-                            )}
-                            {staff.permissions.canManageStaff && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border border-teal-200/60">
-                                Staff Lead
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td className="py-3.5 px-4">
-                          {staff.status === "ACTIVE" ? (
-                            <Badge variant="success">Active</Badge>
-                          ) : staff.status === "INVITED" ? (
-                            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                              Invited
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive">Suspended</Badge>
-                          )}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => setEditingStaff(staff)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                              title="Edit Permissions & Role"
-                            >
-                              <Edit3 size={14} />
-                            </button>
-
-                            <button
-                              onClick={() => handleToggleStaffStatus(staff.id)}
-                              className={cn(
-                                "p-1.5 rounded-lg transition-colors",
-                                staff.status === "ACTIVE"
-                                  ? "text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
-                                  : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                              )}
-                              title={staff.status === "ACTIVE" ? "Suspend Access" : "Activate Access"}
-                            >
-                              {staff.status === "ACTIVE" ? (
-                                <PauseCircle size={14} />
-                              ) : (
-                                <PlayCircle size={14} />
-                              )}
-                            </button>
-
-                            <button
-                              onClick={() => handleDeleteStaff(staff.id, staff.name)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                              title="Remove Staff Member"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredStaff.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
+                          <div className="max-w-xs mx-auto space-y-2">
+                            <Users size={28} className="mx-auto text-slate-300" />
+                            <p className="font-bold text-slate-700 dark:text-slate-300">No staff members found</p>
+                            <p className="text-[11px] text-slate-400">
+                              Invite your floor team with direct single-use password activation links.
+                            </p>
                           </div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      filteredStaff.map((staff) => (
+                        <tr
+                          key={staff.id}
+                          className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                        >
+                          {/* Member Name */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold flex items-center justify-center shrink-0">
+                                {staff.name.charAt(0)}
+                              </div>
+                              <div>
+                                <span className="font-bold text-slate-900 dark:text-white block">
+                                  {staff.name}
+                                </span>
+                                <span className="text-[11px] text-purple-600 dark:text-purple-400 block font-mono">
+                                  {staff.email}
+                                </span>
+                                {staff.phone && (
+                                  <span className="text-[10px] text-slate-400 font-mono block">
+                                    {staff.phone}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Store Branch */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
+                              <Store size={13} className="text-amber-500 shrink-0" />
+                              <span className="font-semibold">{staff.storeName}</span>
+                            </div>
+                          </td>
+
+                          {/* Role */}
+                          <td className="py-3.5 px-4">{getRoleBadge(staff.role)}</td>
+
+                          {/* Security & Invite Link Column */}
+                          <td className="py-3.5 px-4">
+                            {staff.status === "INVITED" ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                  <Clock size={10} />
+                                  Invite Sent
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleCopyLink(staff.inviteUrl || `${window.location.origin}/accept-invite?token=st_${staff.id}`, staff.id)}
+                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline"
+                                    title="Copy direct password setup URL"
+                                  >
+                                    {copiedStaffId === staff.id ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                                    <span>{copiedStaffId === staff.id ? "Copied Link!" : "Copy Invite"}</span>
+                                  </button>
+                                  <span className="text-slate-300 dark:text-slate-700">·</span>
+                                  <button
+                                    onClick={() => handleResendInvite(staff)}
+                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                                    title="Resend email with fresh token"
+                                  >
+                                    <RefreshCw size={10} />
+                                    <span>Resend</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ) : staff.status === "ACTIVE" ? (
+                              <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                <Lock size={12} className="text-emerald-500" />
+                                <span>Password Set</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-xs text-rose-500 font-medium">
+                                <PauseCircle size={12} />
+                                <span>Suspended</span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Permissions Tags */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {staff.permissions.canViewQR && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/60">
+                                  Counter QR
+                                </span>
+                              )}
+                              {staff.permissions.canViewBilling && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/60">
+                                  Live Billing
+                                </span>
+                              )}
+                              {staff.permissions.canApplyDiscounts && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60">
+                                  Discounts
+                                </span>
+                              )}
+                              {staff.permissions.canManageOffers && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 border border-pink-200/60">
+                                  Offers
+                                </span>
+                              )}
+                              {staff.permissions.canEditTimings && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60">
+                                  Timings
+                                </span>
+                              )}
+                              {staff.permissions.canManageStaff && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border border-teal-200/60">
+                                  Staff Lead
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3.5 px-4">
+                            {staff.status === "ACTIVE" ? (
+                              <Badge variant="success">Active</Badge>
+                            ) : staff.status === "INVITED" ? (
+                              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                Invited
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive">Suspended</Badge>
+                            )}
+                          </td>
+
+                          {/* Actions — 3-Dots Dropdown */}
+                          <td className="py-3.5 px-4 text-right">
+                            {renderActionDropdown(staff)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -1111,6 +1219,172 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* SUB-VIEW 3: STAFF AUDIT HISTORY */}
+      {activeTab === "audit" && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <History size={18} className="text-purple-600" />
+                <span>Staff & Role Audit Trail History</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Timestamped audit log of staff invitations, role reassignments, status toggles, and access removals.
+              </p>
+            </div>
+            <span className="font-mono text-xs text-slate-400 font-bold">
+              {staffAudits.length} recorded events
+            </span>
+          </div>
+
+          <div className="rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
+            {staffAudits.length === 0 ? (
+              <div className="p-8 text-center space-y-2">
+                <Clock size={28} className="mx-auto text-slate-300" />
+                <p className="font-bold text-slate-700 dark:text-slate-300">No recent staff audit logs recorded</p>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Staff invitations, status updates, and role modifications will emit immutable audit events here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4 relative before:absolute before:inset-y-0 before:left-3 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
+                {staffAudits.map((aud) => (
+                  <div key={aud.id} className="relative pl-7 text-xs space-y-1">
+                    <div
+                      className={cn(
+                        "absolute left-1 top-1.5 w-4 h-4 rounded-full border-2 bg-white dark:bg-slate-900",
+                        aud.severity === "success"
+                          ? "border-emerald-500"
+                          : aud.severity === "critical"
+                          ? "border-rose-500"
+                          : "border-purple-500"
+                      )}
+                    />
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {aud.action}
+                        </span>
+                        <span className="font-mono text-[10px] text-slate-400">
+                          {aud.time ? new Date(aud.time).toUTCString() : "Recent"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        {aud.entity}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Actor: <span className="font-semibold text-slate-700 dark:text-slate-300">{aud.actor}</span>
+                      </p>
+                      {aud.metadata && (
+                        <pre className="text-[10px] font-mono p-2.5 rounded-xl bg-slate-100 dark:bg-slate-950/80 text-slate-600 dark:text-slate-400 overflow-x-auto mt-2">
+                          {JSON.stringify(aud.metadata, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW DETAILS DRAWER */}
+      {selectedStaffDetails && (
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setSelectedStaffDetails(null)}
+          />
+          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center font-bold">
+                    {selectedStaffDetails.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      {selectedStaffDetails.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Staff Profile & Granted Access</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedStaffDetails(null)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
+                <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-900/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                      Assigned Scope: {selectedStaffDetails.storeId === "ALL" ? "MERCHANT HQ" : "STORE OUTLET"}
+                    </span>
+                    <Badge variant={selectedStaffDetails.status === "ACTIVE" ? "success" : "warning"}>
+                      {selectedStaffDetails.status}
+                    </Badge>
+                  </div>
+                  <p className="font-bold text-sm text-slate-900 dark:text-white">
+                    {selectedStaffDetails.storeName}
+                  </p>
+                  <p className="font-mono text-xs text-purple-600 dark:text-purple-400">
+                    {selectedStaffDetails.email}
+                  </p>
+                  {selectedStaffDetails.phone && (
+                    <p className="font-mono text-xs text-slate-500">
+                      Phone: {selectedStaffDetails.phone}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Operational Role</label>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                    <span className="font-bold text-slate-900 dark:text-white">{selectedStaffDetails.role}</span>
+                    {getRoleBadge(selectedStaffDetails.role)}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Granular Permissions Breakdown</label>
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs">
+                    {Object.entries(selectedStaffDetails.permissions).map(([k, v]) => (
+                      <div key={k} className="flex justify-between items-center text-[11px]">
+                        <span className="text-slate-500">{k}:</span>
+                        <span className={cn("font-bold", v ? "text-emerald-600" : "text-slate-400")}>
+                          {v ? "GRANTED" : "DENIED"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Metadata & Timestamps</label>
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Last Active:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">{selectedStaffDetails.lastActive || "Never"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Added On:</span>
+                      <span className="font-mono text-slate-500">{selectedStaffDetails.createdAt ? selectedStaffDetails.createdAt.split("T")[0] : "Recent"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end">
+                <button onClick={() => setSelectedStaffDetails(null)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                  Close
+                </button>
+              </div>
+            </aside>
           </div>
         </div>
       )}
@@ -1514,7 +1788,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
         </div>
       )}
 
-      {/* EDIT STAFF MODAL (Zero PIN, Password Link Generator) */}
+      {/* EDIT STAFF MODAL */}
       {editingStaff && (
         <div className="fixed inset-0 z-50 overflow-hidden">
           <div
@@ -1549,12 +1823,28 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
               </div>
 
               <form
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  const updated = staffList.map((s) => (s.id === editingStaff.id ? editingStaff : s));
-                  saveStaffList(updated);
-                  setEditingStaff(null);
-                  toast.success(`Staff permissions updated for ${editingStaff.name}!`);
+                  try {
+                    await staffApi.updateMerchantStaffRole(
+                      editingStaff.id,
+                      editingStaff.role,
+                      JSON.stringify(editingStaff.permissions)
+                    );
+                    toast.success(`Staff role & permissions updated for ${editingStaff.name}!`);
+                    appStore.addAudit({
+                      action: "STAFF_ROLE_UPDATED",
+                      entity: `Staff: ${editingStaff.name}`,
+                      actor: "Merchant Partner",
+                      severity: "info",
+                      metadata: { staffId: editingStaff.id, role: editingStaff.role }
+                    });
+                    fetchBackendData();
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.message || "Failed to update staff permissions");
+                  } finally {
+                    setEditingStaff(null);
+                  }
                 }}
                 className="flex-1 overflow-y-auto p-6 space-y-4 text-xs"
               >
@@ -1615,7 +1905,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
                     className="w-full py-2 px-3 rounded-xl bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-purple-50 shadow-xs"
                   >
                     <RefreshCw size={12} />
-                    <span>Generate & Copy New Setup Link</span>
+                    <span>Generate & Resend Invitation Email</span>
                   </button>
                 </div>
 

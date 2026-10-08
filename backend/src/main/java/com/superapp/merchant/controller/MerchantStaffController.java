@@ -139,6 +139,16 @@ public class MerchantStaffController {
         return ResponseEntity.ok(ApiResponse.success("Staff role and permissions updated successfully", updated));
     }
 
+    @PostMapping("/staff/{staffId}/resend-invite")
+    @Operation(summary = "Resend activation / welcome email invitation to staff member")
+    public ResponseEntity<ApiResponse<StaffDTO.Response>> resendStaffInvite(
+            @PathVariable UUID staffId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = userDetails != null ? UUID.fromString(userDetails.getUsername()) : null;
+        StaffDTO.Response response = userService.resendStaffInvite(staffId, currentUserId);
+        return ResponseEntity.ok(ApiResponse.success("Activation invitation email dispatched successfully", response));
+    }
+
     @DeleteMapping("/staff/{staffId}")
     @Operation(summary = "Remove staff member assignment")
     public ResponseEntity<ApiResponse<Void>> removeStaffMember(@PathVariable UUID staffId) {
