@@ -82,6 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const storeNav: NavItem[] = [
     { id: "StoreDashboard", label: "Branch Overview", icon: LayoutDashboard },
+    { id: "OfferStudio", label: "Store Deals & Offers", icon: TicketPercent, requiredPermissions: ["canManageOffers"] },
     { id: "StoreStaff", label: "In-Store Staff & Roles", icon: UserCheck },
     { id: "CounterQR", label: "Counter QR Standee", icon: QrCode },
     { id: "LiveBilling", label: "Live Redemptions", icon: Receipt },
@@ -139,8 +140,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   }, [store.currentUser, pendingMerchantsCount, pendingStoresCount, pendingOffersCount]);
 
+  const filteredStoreNav = React.useMemo(() => {
+    const user = store.currentUser;
+    if (user?.status === "SUSPENDED") return [];
+    const perms = user?.permissions || {};
+    // If no permission object defined, show full storeNav by default
+    if (!user?.permissions || Object.keys(user.permissions).length === 0) return storeNav;
+    return storeNav.filter((item) => {
+      if (!item.requiredPermissions || item.requiredPermissions.length === 0) return true;
+      return item.requiredPermissions.some((key) => perms[key] === true);
+    });
+  }, [store.currentUser]);
+
   const items: NavItem[] =
-    role === "store" ? storeNav : role === "merchant" ? merchantNav : filteredAdminNav;
+    role === "store" ? filteredStoreNav : role === "merchant" ? merchantNav : filteredAdminNav;
 
   return (
     <>

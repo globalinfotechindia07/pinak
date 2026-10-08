@@ -5,24 +5,78 @@ import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { toast } from "sonner";
 import { useAppStore } from "../../hooks/useAppStore";
 
+import apiClient from "../../api/client";
+
 interface LiveBillingFeedProps {
   transactions: Transaction[];
   offers: Offer[];
+  scopedStoreId?: string;
+  isStorePortal?: boolean;
   onRecordTransaction: (data: Partial<Transaction>) => void;
 }
 
 export const LiveBillingFeed: React.FC<LiveBillingFeedProps> = ({
   transactions,
   offers,
+  scopedStoreId,
+  isStorePortal = false,
   onRecordTransaction
 }) => {
   const store = useAppStore();
   const currentMerchantId = store.currentUser?.merchantId || store.currentUser?.id;
   const currentMerchantName = store.currentUser?.name || "Merchant Partner";
+  const activeStore = store.stores.find((s) => s.id === (scopedStoreId || store.activeStoreId)) || store.stores[0];
+
+  const [liveTxs, setLiveTxs] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch live backend transactions scoped to storeId
+  useEffect(() => {
+    const fetchTxs = async () => {
+      setLoading(true);
+      try {
+        const query = (store.role === "store" || isStorePortal) && activeStore?.id
+          ? `?storeId=${activeStore.id}`
+          : "";
+        const res = await apiClient.get(`/merchant/transactions${query}`);
+        if (res.data?.data) {
+          const list = Array.isArray(res.data.data) ? res.data.data : res.data.data.content || [];
+          if (list.length > 0) {
+            setLiveTxs(list.map((t: any) => ({
+              id: t.id,
+              customerName: t.customerName || t.userName || "Customer",
+              customerPhone: t.customerPhone || t.userPhone || "",
+              merchantId: t.merchantId || currentMerchantId || "",
+              merchantName: t.merchantName || currentMerchantName,
+              storeName: t.storeName || activeStore?.branchName || "Store Outlet",
+              billAmount: Number(t.billAmount || t.amount || 0),
+              discountAmount: Number(t.discountAmount || 0),
+              payableAmount: Number(t.payableAmount || t.netAmount || 0),
+              status: t.status || "SUCCESS",
+              settlementStatus: t.settlementStatus || "SETTLED",
+              createdAt: t.createdAt || new Date().toISOString(),
+              referenceId: t.referenceId || "OFFER-REDEEM"
+            })));
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load live store transactions:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTxs();
+  }, [scopedStoreId, activeStore?.id, isStorePortal]);
 
   const [isSimulateOpen, setIsSimulateOpen] = useState(false);
-  const isMyMerchant = (id?: string) => !currentMerchantId || !id || id === currentMerchantId || id === store.currentUser?.merchantId || id === "m-1";
-  const myTransactions = store.role === "merchant" ? transactions : transactions.filter((t) => isMyMerchant(t.merchantId));
+  const [voucherCode, setVoucherCode] = useState("");
+  const [isVerifyingVoucher, setIsVerifyingVoucher] = useState(false);
+
+  const displayTransactions = liveTxs.length > 0 
+    ? liveTxs 
+    : (store.role === "store" || isStorePortal) && activeStore?.id
+    ? transactions.filter((t) => t.storeName?.toLowerCase().includes(activeStore.branchName?.toLowerCase() || ""))
+    : transactions;
 
   const [customerName, setCustomerName] = useState("Customer");
   const [billAmount, setBillAmount] = useState(1500);
@@ -158,9 +212,9 @@ export const LiveBillingFeed: React.FC<LiveBillingFeedProps> = ({
       {/* Advanced Table */}
       <AdvancedTable
         title="Live Counter Redemptions Stream"
-        subtitle={`${myTransactions.length} successful in-store transactions verified`}
+        subtitle={`${displayTransactions.length} successful in-store transactions verified`}
         columns={columns}
-        data={myTransactions}
+        data={displayTransactions}
         keyExtractor={(t) => t.id}
         searchPlaceholder="Search customer, phone, store, or UTR..."
         searchFilter={(t, q) =>

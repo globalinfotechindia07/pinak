@@ -27,7 +27,7 @@ export const CounterQRModal: React.FC<CounterQRModalProps> = ({
     toast.success("Print dialog opened for counter standee!");
   };
 
-  const dynamicUpiUrl = `upi://pay?pa=${upiVpa}&am=${payableAmount}.00&tn=PinakBill&tr=dyn_${Date.now()}`;
+  const dynamicUpiUrl = `upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=${encodeURIComponent(businessName)}&am=${payableAmount}.00&cu=INR&tn=PinakBill&tr=dyn_${Date.now()}`;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">

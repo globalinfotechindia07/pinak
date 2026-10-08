@@ -33,6 +33,7 @@ export const MERCHANT_TAB_PATHS: Record<string, string> = {
 // Store Tab -> URL Path
 export const STORE_TAB_PATHS: Record<string, string> = {
   StoreDashboard: "/store/dashboard",
+  OfferStudio: "/store/offers",
   StoreStaff: "/store/staff",
   CounterQR: "/store/counter-qr",
   LiveBilling: "/store/billing",
@@ -151,6 +152,13 @@ export function resolveTabFromPath(
   // Store routes
   if (clean === "/store" || clean === "/store/dashboard" || clean === "/store/overview") {
     return { role: "store", tab: "StoreDashboard", isKnown: true };
+  }
+  if (
+    clean === "/store/offers" ||
+    clean === "/store/offerstudio" ||
+    clean === "/store/offer-studio"
+  ) {
+    return { role: "store", tab: "OfferStudio", isKnown: true };
   }
   if (clean === "/store/staff" || clean === "/store/storestaff") {
     return { role: "store", tab: "StoreStaff", isKnown: true };

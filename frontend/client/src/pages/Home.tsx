@@ -1140,6 +1140,15 @@ export default function Home() {
                     />
                   )}
 
+                  {currentTab === "OfferStudio" && (
+                    <OfferStudio
+                      offers={store.offers}
+                      stores={[activeStore]}
+                      onAddOffer={handleAddOffer}
+                      onOpenQR={() => setIsQROpen(true)}
+                    />
+                  )}
+
                   {currentTab === "StoreStaff" && (
                     <StoreStaffManager
                       stores={store.stores}
@@ -1152,6 +1161,8 @@ export default function Home() {
                     <LiveBillingFeed
                       transactions={store.transactions}
                       offers={store.offers}
+                      scopedStoreId={activeStore.id}
+                      isStorePortal={true}
                       onRecordTransaction={store.recordTransaction}
                     />
                   )}
@@ -1164,7 +1175,7 @@ export default function Home() {
                             {activeStore.branchName} Branch Terminal
                           </h2>
                           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                            Physical counter location and contact configurations for this branch.
+                            Physical counter location, operating timings, and contact configurations for this branch.
                           </p>
                         </div>
                       </div>
