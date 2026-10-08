@@ -80,6 +80,9 @@ public record MerchantResponse(
                 kycStatus != null ? kycStatus.name() : null,
                 createdAt,
                 updatedAt
+        );
+    }
+
     // 15-arg backward-compatible constructor for existing security tests
     public MerchantResponse(String id, String ownerUserId, String businessName, String categoryId,
                             String categoryName, String phone, String email, String website,

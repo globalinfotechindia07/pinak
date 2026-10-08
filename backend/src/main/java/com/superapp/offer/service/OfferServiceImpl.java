@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,6 +50,18 @@ public class OfferServiceImpl implements OfferService {
     private final com.superapp.common.audit.AuditLogRepository auditLogRepository;
     private final CacheManager cacheManager;
 
+    public OfferServiceImpl(
+            OfferRepository offerRepository,
+            MerchantRepository merchantRepository,
+            StoreRepository storeRepository,
+            OfferValidator offerValidator,
+            OfferMapper offerMapper,
+            AuditService auditService,
+            CacheManager cacheManager) {
+        this(offerRepository, merchantRepository, storeRepository, offerValidator, offerMapper, auditService, null, cacheManager);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
     public OfferServiceImpl(
             OfferRepository offerRepository,
             MerchantRepository merchantRepository,

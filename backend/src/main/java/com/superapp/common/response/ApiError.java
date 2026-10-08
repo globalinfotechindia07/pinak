@@ -17,6 +17,7 @@ public enum ApiError {
     TOKEN_REUSE_DETECTED,
     UNAUTHORIZED,
     FORBIDDEN,
+    ACCESS_DENIED,
     REFRESH_TOKEN_INVALID,
 
     // Registration / User / Merchant / Store / Category / Location
