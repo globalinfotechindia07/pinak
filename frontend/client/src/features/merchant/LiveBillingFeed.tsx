@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Receipt, Plus, Sparkles, CheckCircle2, Clock, WalletCards, ArrowUpRight, Zap, X, ArrowRight, User } from "lucide-react";
 import { Transaction, Offer } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
@@ -26,6 +26,8 @@ export const LiveBillingFeed: React.FC<LiveBillingFeedProps> = ({
   const currentMerchantId = store.currentUser?.merchantId || store.currentUser?.id;
   const currentMerchantName = store.currentUser?.name || "Merchant Partner";
   const activeStore = store.stores.find((s) => s.id === (scopedStoreId || store.activeStoreId)) || store.stores[0];
+
+  const isMyMerchant = (id?: string) => !currentMerchantId || !id || id === currentMerchantId || id === store.currentUser?.merchantId || id === "m-1";
 
   const [liveTxs, setLiveTxs] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);

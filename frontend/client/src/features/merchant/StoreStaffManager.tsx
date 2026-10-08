@@ -704,8 +704,9 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
   };
 
   // Filter staff-related audit logs
-  const staffAudits = appStore.auditLogs.filter(
-    (a) =>
+  const allAudits: any[] = typeof (appStore as any).getAuditLogs === "function" ? (appStore as any).getAuditLogs() : ((appStore as any).auditLogs || []);
+  const staffAudits = allAudits.filter(
+    (a: any) =>
       a.action?.startsWith("STAFF_") ||
       a.entity?.toLowerCase().includes("staff") ||
       a.entity?.toLowerCase().includes("role")
@@ -1252,7 +1253,7 @@ export const StoreStaffManager: React.FC<StoreStaffManagerProps> = ({
               </div>
             ) : (
               <div className="space-y-4 relative before:absolute before:inset-y-0 before:left-3 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-                {staffAudits.map((aud) => (
+                {staffAudits.map((aud: any) => (
                   <div key={aud.id} className="relative pl-7 text-xs space-y-1">
                     <div
                       className={cn(

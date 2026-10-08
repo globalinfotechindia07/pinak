@@ -49,7 +49,7 @@ export const StoreBranchDashboard: React.FC<StoreBranchDashboardProps> = ({
     try {
       const [staffRes, offersRes, txRes] = await Promise.all([
         staffApi.getMerchantStaff("STORE", currentStore.id).catch(() => []),
-        offerApi.getMerchantOffers(currentStore.id).catch(() => []),
+        offerApi.getStoreOffers(currentStore.id).catch(() => []),
         apiClient.get(`/merchant/transactions?storeId=${currentStore.id}`).catch(() => null)
       ]);
 
@@ -79,6 +79,9 @@ export const StoreBranchDashboard: React.FC<StoreBranchDashboardProps> = ({
       if (rawTxs.length > 0) {
         const mappedTxs: Transaction[] = rawTxs.map((t: any) => ({
           id: t.id || `tx-${Math.random()}`,
+          paymentIntentId: t.paymentIntentId || `pi-${t.id}`,
+          referenceType: (t.referenceType || "OFFER") as any,
+          referenceId: t.referenceId || t.voucherCode || "DEAL-OFFER",
           customerName: t.customerName || t.userName || "Branch Customer",
           customerPhone: t.customerPhone || t.userPhone || "",
           merchantId: t.merchantId || currentStore.merchantId || "",
@@ -87,10 +90,14 @@ export const StoreBranchDashboard: React.FC<StoreBranchDashboardProps> = ({
           billAmount: Number(t.billAmount || t.amount || 0),
           discountAmount: Number(t.discountAmount || 0),
           payableAmount: Number(t.payableAmount || t.netAmount || 0),
+          payeeVpa: t.payeeVpa || "merchant@upi",
+          upiIntentUrl: t.upiIntentUrl || "",
+          utr: t.utr || t.transactionReference || `utr-${Date.now()}`,
+          signatureValid: true,
           status: t.status || "SUCCESS",
           settlementStatus: t.settlementStatus || "SETTLED",
-          createdAt: t.createdAt || new Date().toISOString(),
-          referenceId: t.referenceId || t.voucherCode || "DEAL-OFFER"
+          pointsEarned: Number(t.pointsEarned || 0),
+          timestamp: t.timestamp || t.createdAt || new Date().toISOString()
         }));
         setLiveTransactions(mappedTxs);
       } else {
@@ -381,7 +388,7 @@ export const StoreBranchDashboard: React.FC<StoreBranchDashboardProps> = ({
                   <div>
                     <p className="font-bold text-slate-900 dark:text-white">{t.customerName}</p>
                     <p className="text-[11px] text-slate-400 font-mono">
-                      Ref: {t.referenceId || "COUNTER-SCAN"} · {new Date(t.createdAt).toLocaleTimeString()}
+                      Ref: {t.referenceId || "COUNTER-SCAN"} · {new Date(t.timestamp || Date.now()).toLocaleTimeString()}
                     </p>
                   </div>
                 </div>

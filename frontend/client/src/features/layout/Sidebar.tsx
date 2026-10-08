@@ -62,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     label: string;
     icon: any;
     count?: number;
-    requiredPermissions?: (keyof AdminPermissions)[];
+    requiredPermissions?: (keyof AdminPermissions | string)[];
   }
 
   const adminNav: NavItem[] = [
