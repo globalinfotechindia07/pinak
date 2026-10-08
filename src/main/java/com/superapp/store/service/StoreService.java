@@ -20,6 +20,10 @@ public interface StoreService {
 
     StoreResponse updateMerchantStore(UUID storeId, MerchantUpdateStoreRequest request, UUID currentUserId);
 
+    void deleteMerchantStore(UUID storeId, UUID currentUserId);
+
+    void resendStoreManagerInvite(UUID storeId, UUID currentUserId);
+
     StoreApprovalActionResponse submitStoreForApproval(UUID storeId, UUID currentUserId);
 
     // Admin store operations

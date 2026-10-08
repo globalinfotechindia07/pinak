@@ -77,6 +77,26 @@ public class MerchantStoreController {
         return ResponseEntity.ok(ApiResponse.success("Store updated successfully", response));
     }
 
+    @DeleteMapping("/{storeId}")
+    @Operation(summary = "Delete a store branch belonging to the authenticated merchant", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<Void>> deleteStore(
+            @PathVariable UUID storeId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+        storeService.deleteMerchantStore(storeId, currentUserId);
+        return ResponseEntity.ok(ApiResponse.success("Store outlet deactivated and deleted successfully", null));
+    }
+
+    @PostMapping("/{storeId}/resend-invite")
+    @Operation(summary = "Resend activation / welcome invite link to store branch manager", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<Void>> resendInvite(
+            @PathVariable UUID storeId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+        storeService.resendStoreManagerInvite(storeId, currentUserId);
+        return ResponseEntity.ok(ApiResponse.success("Manager activation link resent successfully", null));
+    }
+
     @PostMapping("/{storeId}/submit")
     @Operation(summary = "Submit a store branch for admin verification and approval", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<StoreApprovalActionResponse>> submitForApproval(

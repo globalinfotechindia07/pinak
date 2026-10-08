@@ -88,6 +88,11 @@ public class StoreServiceImpl implements StoreService {
                 request.longitude(),
                 request.phone() != null ? request.phone().trim() : null
         );
+        store.setOpeningTime(request.openingTime());
+        store.setClosingTime(request.closingTime());
+        store.setOperatingDays(request.operatingDays());
+        store.setManagerName(request.managerName());
+        store.setManagerEmail(request.managerEmail());
         store.setCreatedBy(currentUserId.toString());
         store.setUpdatedBy(currentUserId.toString());
 
@@ -161,6 +166,11 @@ public class StoreServiceImpl implements StoreService {
         store.setLongitude(request.longitude());
         store.setLocation(Store.formatWkt(request.longitude(), request.latitude()));
         store.setPhone(request.phone() != null ? request.phone().trim() : null);
+        store.setOpeningTime(request.openingTime());
+        store.setClosingTime(request.closingTime());
+        store.setOperatingDays(request.operatingDays());
+        store.setManagerName(request.managerName());
+        store.setManagerEmail(request.managerEmail());
         store.setUpdatedBy(currentUserId.toString());
 
         if (locationChanged) {
@@ -181,6 +191,39 @@ public class StoreServiceImpl implements StoreService {
         }
 
         return storeMapper.toResponse(updated, merchant.getBusinessName(), getCityName(updated.getCityId()));
+    }
+
+    @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "discovery_stores", allEntries = true),
+            @CacheEvict(value = "discovery_nearby", allEntries = true)
+    })
+    public void deleteMerchantStore(UUID storeId, UUID currentUserId) {
+        Merchant merchant = getAuthenticatedMerchant(currentUserId);
+        Store store = getOwnedStore(storeId, merchant.getId());
+
+        storeRepository.delete(store);
+        log.info("Deleted store id={} by merchant owner={}", storeId, currentUserId);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.STORE_DELETED, currentUserId, null, null, MDC.get("requestId"),
+                    "{\"storeId\":\"" + storeId + "\",\"merchantId\":\"" + merchant.getId() + "\"}");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void resendStoreManagerInvite(UUID storeId, UUID currentUserId) {
+        Merchant merchant = getAuthenticatedMerchant(currentUserId);
+        Store store = getOwnedStore(storeId, merchant.getId());
+
+        log.info("Resent invitation link to store manager email='{}' for store id={}", store.getManagerEmail(), storeId);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.STORE_INVITE_RESENT, currentUserId, null, null, MDC.get("requestId"),
+                    "{\"storeId\":\"" + storeId + "\",\"managerEmail\":\"" + store.getManagerEmail() + "\"}");
+        }
     }
 
     @Override

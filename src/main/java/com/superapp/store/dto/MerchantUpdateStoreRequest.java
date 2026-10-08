@@ -40,6 +40,12 @@ public record MerchantUpdateStoreRequest(
         BigDecimal longitude,
 
         @Pattern(regexp = "^[+]?[0-9]{7,20}$", message = "Invalid phone number format")
-        String phone
+        String phone,
+
+        String openingTime,
+        String closingTime,
+        String operatingDays,
+        String managerName,
+        String managerEmail
 ) {
 }

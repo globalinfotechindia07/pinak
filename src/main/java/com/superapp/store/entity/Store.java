@@ -61,6 +61,21 @@ public class Store {
     @Column(name = "phone", length = 20)
     private String phone;
 
+    @Column(name = "opening_time", length = 20)
+    private String openingTime;
+
+    @Column(name = "closing_time", length = 20)
+    private String closingTime;
+
+    @Column(name = "operating_days", length = 100)
+    private String operatingDays;
+
+    @Column(name = "manager_name", length = 255)
+    private String managerName;
+
+    @Column(name = "manager_email", length = 255)
+    private String managerEmail;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
     private StoreStatus status = StoreStatus.ACTIVE;
@@ -284,6 +299,46 @@ public class Store {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getOpeningTime() {
+        return openingTime;
+    }
+
+    public void setOpeningTime(String openingTime) {
+        this.openingTime = openingTime;
+    }
+
+    public String getClosingTime() {
+        return closingTime;
+    }
+
+    public void setClosingTime(String closingTime) {
+        this.closingTime = closingTime;
+    }
+
+    public String getOperatingDays() {
+        return operatingDays;
+    }
+
+    public void setOperatingDays(String operatingDays) {
+        this.operatingDays = operatingDays;
+    }
+
+    public String getManagerName() {
+        return managerName;
+    }
+
+    public void setManagerName(String managerName) {
+        this.managerName = managerName;
+    }
+
+    public String getManagerEmail() {
+        return managerEmail;
+    }
+
+    public void setManagerEmail(String managerEmail) {
+        this.managerEmail = managerEmail;
     }
 
     public StoreStatus getStatus() {
