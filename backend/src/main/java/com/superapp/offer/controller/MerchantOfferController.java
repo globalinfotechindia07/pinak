@@ -89,4 +89,25 @@ public class MerchantOfferController {
         OfferApprovalResponse response = offerService.submitOfferForApproval(offerId, currentUserId);
         return ResponseEntity.ok(ApiResponse.success("Offer submitted for approval", response));
     }
+
+    @PatchMapping("/{offerId}/status")
+    @Operation(summary = "Toggle status of an offer (ACTIVE or PAUSED)")
+    public ResponseEntity<ApiResponse<MerchantOfferResponse>> toggleOfferStatus(
+            @PathVariable UUID offerId,
+            @RequestParam OfferStatus status,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+        MerchantOfferResponse response = offerService.toggleMerchantOfferStatus(offerId, status, currentUserId);
+        return ResponseEntity.ok(ApiResponse.success("Offer status updated successfully", response));
+    }
+
+    @DeleteMapping("/{offerId}")
+    @Operation(summary = "Delete an existing offer")
+    public ResponseEntity<ApiResponse<Void>> deleteOffer(
+            @PathVariable UUID offerId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+        offerService.deleteMerchantOffer(offerId, currentUserId);
+        return ResponseEntity.ok(ApiResponse.success("Offer deleted successfully", null));
+    }
 }

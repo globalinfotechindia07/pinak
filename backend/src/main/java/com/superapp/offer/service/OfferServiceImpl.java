@@ -233,6 +233,63 @@ public class OfferServiceImpl implements OfferService {
 
     @Override
     @Transactional
+    
+    @Override
+    @Transactional
+    public MerchantOfferResponse toggleMerchantOfferStatus(UUID offerId, OfferStatus status, UUID currentUserId) {
+        Merchant merchant = getAuthenticatedMerchant(currentUserId);
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offer not found", ApiError.OFFER_NOT_FOUND));
+
+        if (!offer.getMerchantId().equals(merchant.getId())) {
+            throw new AppException("You do not have permission to access this offer", ApiError.OFFER_ACCESS_DENIED, 403);
+        }
+
+        if (status == OfferStatus.PAUSED) {
+            offer.setStatus(OfferStatus.PAUSED);
+            log.info("Merchant {} paused offer id={}", currentUserId, offerId);
+            if (auditService != null) {
+                auditService.record(AuditEventType.OFFER_PAUSED, currentUserId, null, null, MDC.get("requestId"), "Paused offer id=" + offerId);
+            }
+        } else if (status == OfferStatus.ACTIVE) {
+            offer.setStatus(OfferStatus.ACTIVE);
+            log.info("Merchant {} resumed offer id={}", currentUserId, offerId);
+            if (auditService != null) {
+                auditService.record(AuditEventType.OFFER_RESUMED, currentUserId, null, null, MDC.get("requestId"), "Resumed offer id=" + offerId);
+            }
+        } else {
+            offer.setStatus(status);
+        }
+
+        offer.setUpdatedBy(currentUserId.toString());
+        Offer saved = offerRepository.save(offer);
+        evictOfferCaches(saved);
+        return offerMapper.toMerchantResponse(saved, getStoreName(saved.getStoreId()));
+    }
+
+    @Override
+    @Transactional
+    public void deleteMerchantOffer(UUID offerId, UUID currentUserId) {
+        Merchant merchant = getAuthenticatedMerchant(currentUserId);
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offer not found", ApiError.OFFER_NOT_FOUND));
+
+        if (!offer.getMerchantId().equals(merchant.getId())) {
+            throw new AppException("You do not have permission to access this offer", ApiError.OFFER_ACCESS_DENIED, 403);
+        }
+
+        offerRepository.delete(offer);
+        log.info("Merchant {} deleted offer id={}", currentUserId, offerId);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.OFFER_DELETED, currentUserId, null, null, MDC.get("requestId"), "Deleted offer id=" + offerId);
+        }
+
+        evictOfferCaches(offer);
+    }
+
+    @Override
+    @Transactional
     public OfferApprovalResponse submitOfferForApproval(UUID offerId, UUID currentUserId) {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
         Offer offer = offerRepository.findById(offerId)

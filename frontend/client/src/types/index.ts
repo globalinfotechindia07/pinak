@@ -4,7 +4,7 @@ export type KycStatus = "SUBMITTED" | "PENDING_REVIEW" | "APPROVED" | "REJECTED"
 
 export type StoreStatus = "ACTIVE" | "PENDING_APPROVAL" | "INACTIVE";
 
-export type OfferStatus = "CREATED" | "PENDING_APPROVAL" | "ACTIVE" | "EXPIRED" | "REJECTED" | "PAUSED";
+export type OfferStatus = "CREATED" | "PENDING_APPROVAL" | "ACTIVE" | "EXPIRED" | "REJECTED" | "PAUSED" | "DRAFT" | "SUBMITTED" | "DEACTIVATED";
 
 export type OfferType = "FLAT_PCT" | "FLAT_AMT" | "BOGO";
 

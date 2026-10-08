@@ -27,6 +27,10 @@ public interface OfferService {
 
     MerchantOfferResponse updateMerchantOffer(UUID offerId, UpdateOfferRequest request, UUID currentUserId);
 
+    MerchantOfferResponse toggleMerchantOfferStatus(UUID offerId, OfferStatus status, UUID currentUserId);
+
+    void deleteMerchantOffer(UUID offerId, UUID currentUserId);
+
     OfferApprovalResponse submitOfferForApproval(UUID offerId, UUID currentUserId);
 
     // Customer Operations

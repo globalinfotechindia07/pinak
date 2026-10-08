@@ -77,13 +77,23 @@ public class MerchantServiceImpl implements MerchantService {
         this.staffMemberRepository = staffMemberRepository;
     }
 
-    // Overloaded constructor for backward compatibility with existing unit tests
+    // Overloaded constructors for backward compatibility with existing unit tests
     public MerchantServiceImpl(
             MerchantRepository merchantRepository,
             CategoryRepository categoryRepository,
             UserRepository userRepository) {
-        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null,
-                null);
+        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null, null);
+    }
+
+    public MerchantServiceImpl(
+            MerchantRepository merchantRepository,
+            CategoryRepository categoryRepository,
+            UserRepository userRepository,
+            MerchantKycRepository merchantKycRepository,
+            AuditService auditService,
+            MerchantMapper merchantMapper,
+            PasswordEncoder passwordEncoder) {
+        this(merchantRepository, categoryRepository, userRepository, merchantKycRepository, auditService, merchantMapper, passwordEncoder, null, null);
     }
 
     @Override

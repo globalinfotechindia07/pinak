@@ -10,20 +10,33 @@ export interface OfferDTO {
   categoryId?: string;
   categoryName?: string;
   title: string;
+  tagline?: string;
   description?: string;
   type: string;
   value: number;
   minTransactionAmount?: number;
+  minBillAmount?: number;
   maxDiscountAmount?: number;
+  maxDiscount?: number;
   validFrom: string;
   validTo: string;
   usageLimit?: number;
+  maxTotalRedemptions?: number;
   perCustomerLimit?: number;
+  perUserLimit?: number;
   currentUsageCount?: number;
-  status: "ACTIVE" | "INACTIVE" | "EXPIRED" | "SUSPENDED" | "PAUSED";
-  approvalStatus: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+  redemptions?: number;
+  status: "ACTIVE" | "INACTIVE" | "EXPIRED" | "SUSPENDED" | "PAUSED" | "CREATED" | "PENDING_APPROVAL" | "REJECTED" | "DRAFT";
+  approvalStatus: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "DRAFT";
   rejectionReason?: string;
+  termsAndConditions?: string;
+  terms?: string;
+  applicableStoreIds?: string[];
+  activeDays?: string[];
+  happyHoursStart?: string;
+  happyHoursEnd?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateOfferPayload {
@@ -35,11 +48,18 @@ export interface CreateOfferPayload {
   type: string;
   value: number;
   minTransactionAmount?: number;
+  minBillAmount?: number;
   maxDiscountAmount?: number;
+  maxDiscount?: number;
   validFrom: string;
   validTo: string;
   usageLimit?: number;
   perCustomerLimit?: number;
+  applicableStoreIds?: string[];
+  activeDays?: string[];
+  happyHoursStart?: string;
+  happyHoursEnd?: string;
+  termsAndConditions?: string;
 }
 
 export const offerApi = {
@@ -53,7 +73,7 @@ export const offerApi = {
   },
 
   // Merchant: List offers belonging to authenticated merchant
-  getMyOffers: async (params?: PaginationParams & { storeId?: string; status?: string }): Promise<OfferDTO[]> => {
+  getMyOffers: async (params?: PaginationParams & { storeId?: string; status?: string; approvalStatus?: string }): Promise<OfferDTO[]> => {
     const res = await apiClient.get<ApiResponse<OfferDTO[] | PaginatedResponse<OfferDTO>>>("/merchant/offers", { params });
     const data = res.data?.data;
     if (Array.isArray(data)) return data;
@@ -65,6 +85,28 @@ export const offerApi = {
   createOffer: async (payload: CreateOfferPayload): Promise<OfferDTO> => {
     const res = await apiClient.post<ApiResponse<OfferDTO>>("/merchant/offers", payload);
     return res.data?.data || (res.data as unknown as OfferDTO);
+  },
+
+  // Merchant: Update an existing offer
+  updateOffer: async (id: string, payload: Partial<CreateOfferPayload>): Promise<OfferDTO> => {
+    const res = await apiClient.put<ApiResponse<OfferDTO>>(`/merchant/offers/${id}`, payload);
+    return res.data?.data || (res.data as unknown as OfferDTO);
+  },
+
+  // Merchant: Delete an offer
+  deleteOffer: async (id: string): Promise<void> => {
+    await apiClient.delete(`/merchant/offers/${id}`);
+  },
+
+  // Merchant: Toggle status (ACTIVE / PAUSED)
+  toggleOfferStatus: async (id: string, status: string): Promise<OfferDTO> => {
+    const res = await apiClient.patch<ApiResponse<OfferDTO>>(`/merchant/offers/${id}/status`, null, { params: { status } });
+    return res.data?.data || (res.data as unknown as OfferDTO);
+  },
+
+  // Merchant: Submit offer for approval
+  submitOffer: async (id: string): Promise<void> => {
+    await apiClient.post(`/merchant/offers/${id}/submit`);
   },
 
   // Admin: Approve offer

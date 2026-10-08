@@ -30,7 +30,7 @@ public class AdminSettlementController {
     @GetMapping("/overview")
     public ResponseEntity<ApiResponse<PlatformSettlementOverviewResponse>> getOverview() {
         PlatformSettlementOverviewResponse overview = payoutService.getPlatformSettlementOverview();
-        return ResponseEntity.ok(ApiResponse.success(overview, "Platform settlement overview retrieved successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Platform settlement overview retrieved successfully", overview));
     }
 
     @GetMapping("/payouts")
@@ -38,7 +38,7 @@ public class AdminSettlementController {
             @RequestParam(name = "status", required = false) PayoutStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
         Page<PayoutRequestResponse> page = payoutService.getAllPayoutsForAdmin(status, pageable);
-        return ResponseEntity.ok(ApiResponse.success(page, "Global payout queue retrieved successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Global payout queue retrieved successfully", page));
     }
 
     @PostMapping("/payouts/{id}/hold")
@@ -49,7 +49,7 @@ public class AdminSettlementController {
         String reason = body != null ? body.get("reason") : "Fraud audit hold by Super Admin";
         UUID adminId = extractAdminId(principal);
         PayoutRequestResponse response = payoutService.adminHoldPayout(payoutId, reason, adminId);
-        return ResponseEntity.ok(ApiResponse.success(response, "Payout hold placed successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Payout hold placed successfully", response));
     }
 
     @PostMapping("/payouts/{id}/release")
@@ -58,7 +58,7 @@ public class AdminSettlementController {
             Principal principal) {
         UUID adminId = extractAdminId(principal);
         PayoutRequestResponse response = payoutService.adminReleasePayout(payoutId, adminId);
-        return ResponseEntity.ok(ApiResponse.success(response, "Payout hold released successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Payout hold released successfully", response));
     }
 
     @PostMapping("/payouts/{id}/retry")
@@ -67,7 +67,7 @@ public class AdminSettlementController {
             Principal principal) {
         UUID adminId = extractAdminId(principal);
         PayoutRequestResponse response = payoutService.adminRetryPayout(payoutId, adminId);
-        return ResponseEntity.ok(ApiResponse.success(response, "Payout retry dispatched successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Payout retry dispatched successfully", response));
     }
 
     private UUID extractAdminId(Principal principal) {

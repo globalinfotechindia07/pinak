@@ -65,6 +65,9 @@ public enum AuditEventType {
     OFFER_REJECTED,
     OFFER_EXPIRED,
     OFFER_DEACTIVATED,
+    OFFER_DELETED,
+    OFFER_PAUSED,
+    OFFER_RESUMED,
 
     // Master Data (Category & Location)
     CATEGORY_CREATED,
@@ -106,6 +109,11 @@ public enum AuditEventType {
     PAYMENT_CANCELLED,
     TRANSACTION_ACCESSED,
     TRANSACTION_SEARCHED,
+
+    // Payout & Settlement lifecycle
+    MERCHANT_PAYOUT_REQUESTED,
+    PAYOUT_SETTLED,
+    PAYOUT_HELD,
 
     // Webhook lifecycle
     WEBHOOK_RECEIVED,

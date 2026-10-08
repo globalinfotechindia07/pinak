@@ -124,7 +124,7 @@ export function setupInterceptors(axiosInstance: AxiosInstance): void {
         isRefreshing = true;
 
         try {
-          const baseURL = axiosInstance.defaults.baseURL || "http://localhost:8080/api/v1";
+          const baseURL = axiosInstance.defaults.baseURL || "/api/v1";
           const csrfToken = getCsrfTokenFromCookie();
 
           // Call refresh endpoint with credentials (transmits HttpOnly refresh_token cookie)

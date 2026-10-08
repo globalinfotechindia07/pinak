@@ -25,6 +25,8 @@ export interface OfferCampaignFormDrawerProps {
   stores?: Store[];
   merchantId?: string;
   merchantName?: string;
+  initialData?: Offer | null;
+  isEdit?: boolean;
   onClose: () => void;
   onSave: (draft: Partial<Offer>) => void;
 }
@@ -36,6 +38,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   stores = [],
   merchantId: propMerchantId = "",
   merchantName: propMerchantName = "",
+  initialData = null,
+  isEdit = false,
   onClose,
   onSave
 }) => {
@@ -47,36 +51,38 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   const merchantName = propMerchantName || selectedMerchant?.businessName || "Partner Brand";
 
   // Form Fields State
-  const [title, setTitle] = useState("");
-  const [tagline, setTagline] = useState("");
-  const [type, setType] = useState<"FLAT_PCT" | "FLAT_AMT" | "BOGO">("FLAT_PCT");
-  const [value, setValue] = useState(20);
-  const [maxDiscount, setMaxDiscount] = useState<number | undefined>(200);
-  const [minBillAmount, setMinBillAmount] = useState(500);
-  const [perUserLimit, setPerUserLimit] = useState<number | undefined>(1);
-  const [maxTotalRedemptions, setMaxTotalRedemptions] = useState<number | undefined>(500);
+  const [title, setTitle] = useState(initialData?.title || "");
+  const [tagline, setTagline] = useState(initialData?.tagline || "");
+  const [type, setType] = useState<"FLAT_PCT" | "FLAT_AMT" | "BOGO">(initialData?.type || "FLAT_PCT");
+  const [value, setValue] = useState(initialData?.value ?? 20);
+  const [maxDiscount, setMaxDiscount] = useState<number | undefined>(initialData?.maxDiscount ?? 200);
+  const [minBillAmount, setMinBillAmount] = useState(initialData?.minBillAmount ?? 500);
+  const [perUserLimit, setPerUserLimit] = useState<number | undefined>(initialData?.perUserLimit ?? 1);
+  const [maxTotalRedemptions, setMaxTotalRedemptions] = useState<number | undefined>(initialData?.maxTotalRedemptions ?? 500);
   
   // Store Scope
-  const [storeScope, setStoreScope] = useState<"ALL" | "SPECIFIC">("ALL");
-  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
+  const [storeScope, setStoreScope] = useState<"ALL" | "SPECIFIC">(
+    initialData?.applicableStoreIds && initialData.applicableStoreIds.length > 0 ? "SPECIFIC" : "ALL"
+  );
+  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>(initialData?.applicableStoreIds || (initialData?.storeId ? [initialData.storeId] : []));
 
   // Dates & Schedule
-  const [validFrom, setValidFrom] = useState(new Date().toISOString().split("T")[0]);
+  const [validFrom, setValidFrom] = useState(initialData?.validFrom ? initialData.validFrom.split("T")[0] : new Date().toISOString().split("T")[0]);
   const [validTo, setValidTo] = useState(
-    new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]
+    initialData?.validTo ? initialData.validTo.split("T")[0] : new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]
   );
-  const [activeDays, setActiveDays] = useState<string[]>([
+  const [activeDays, setActiveDays] = useState<string[]>(initialData?.activeDays || [
     "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
   ]);
-  const [startTime, setStartTime] = useState("12:00");
-  const [endTime, setEndTime] = useState("22:00");
-  const [enableHappyHours, setEnableHappyHours] = useState(false);
+  const [startTime, setStartTime] = useState(initialData?.startTime || "12:00");
+  const [endTime, setEndTime] = useState(initialData?.endTime || "22:00");
+  const [enableHappyHours, setEnableHappyHours] = useState(!!initialData?.startTime);
 
   // Redemption Method & Discovery
-  const [redemptionMethod, setRedemptionMethod] = useState<"AUTO_APPLIED" | "PROMO_CODE">("AUTO_APPLIED");
-  const [promoCode, setPromoCode] = useState("PINAK50");
-  const [imageUrl, setImageUrl] = useState("");
-  const [terms, setTerms] = useState("Valid on all dine-in and takeaway orders above minimum bill amount.");
+  const [redemptionMethod, setRedemptionMethod] = useState<"AUTO_APPLIED" | "PROMO_CODE">(initialData?.redemptionMethod || "AUTO_APPLIED");
+  const [promoCode, setPromoCode] = useState(initialData?.promoCode || "PINAK50");
+  const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || "");
+  const [terms, setTerms] = useState(initialData?.terms || "Valid on all dine-in and takeaway orders above minimum bill amount.");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 

@@ -36,7 +36,7 @@ public class MerchantWalletController {
             Principal principal) {
         UUID effectiveMerchantId = merchantId != null ? merchantId : extractUserOrDemoMerchantId(principal);
         WalletSummaryResponse summary = walletService.getWalletSummaryByMerchantId(effectiveMerchantId);
-        return ResponseEntity.ok(ApiResponse.success(summary, "Wallet summary retrieved successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Wallet summary retrieved successfully", summary));
     }
 
     @GetMapping("/ledger")
@@ -47,7 +47,7 @@ public class MerchantWalletController {
             Principal principal) {
         UUID effectiveMerchantId = merchantId != null ? merchantId : extractUserOrDemoMerchantId(principal);
         Page<WalletLedgerResponse> page = walletService.getWalletLedger(effectiveMerchantId, storeId, pageable);
-        return ResponseEntity.ok(ApiResponse.success(page, "Wallet ledger retrieved successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Wallet ledger retrieved successfully", page));
     }
 
     @PostMapping("/payout")
@@ -59,7 +59,7 @@ public class MerchantWalletController {
         UUID userId = extractUserId(principal);
         PayoutRequestResponse response = payoutService.requestPayout(effectiveMerchantId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Bank payout requested successfully"));
+                .body(ApiResponse.success("Bank payout requested successfully", response));
     }
 
     @GetMapping("/payouts")
@@ -69,7 +69,7 @@ public class MerchantWalletController {
             Principal principal) {
         UUID effectiveMerchantId = merchantId != null ? merchantId : extractUserOrDemoMerchantId(principal);
         Page<PayoutRequestResponse> page = payoutService.getMerchantPayouts(effectiveMerchantId, pageable);
-        return ResponseEntity.ok(ApiResponse.success(page, "Payout history retrieved successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Payout history retrieved successfully", page));
     }
 
     @PostMapping("/bank-accounts")
@@ -80,7 +80,7 @@ public class MerchantWalletController {
         UUID effectiveMerchantId = merchantId != null ? merchantId : extractUserOrDemoMerchantId(principal);
         BankAccountResponse response = walletService.addBankAccount(effectiveMerchantId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Bank account added and verified successfully"));
+                .body(ApiResponse.success("Bank account added and verified successfully", response));
     }
 
     @GetMapping("/bank-accounts")
@@ -89,7 +89,7 @@ public class MerchantWalletController {
             Principal principal) {
         UUID effectiveMerchantId = merchantId != null ? merchantId : extractUserOrDemoMerchantId(principal);
         List<BankAccountResponse> list = walletService.getBankAccounts(effectiveMerchantId);
-        return ResponseEntity.ok(ApiResponse.success(list, "Bank accounts retrieved successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Bank accounts retrieved successfully", list));
     }
 
     private UUID extractUserOrDemoMerchantId(Principal principal) {
