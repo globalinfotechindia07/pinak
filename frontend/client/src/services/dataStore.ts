@@ -8,7 +8,14 @@ import {
   RewardRule,
   AuditEvent,
   NotificationItem,
-  UserRole
+  UserRole,
+  MerchantWallet,
+  WalletLedgerEntry,
+  MerchantBankAccount,
+  MerchantPayoutRequest,
+  PayoutStatus,
+  StoreRevenueSummary,
+  PlatformSettlementOverview
 } from "../types";
 
 const STORAGE_KEYS = {
@@ -28,6 +35,10 @@ const STORAGE_KEYS = {
   ACTIVE_STORE: "pinak_active_store",
   CITIES: "pinak_cities_live",
   DISCOVERY_CURATION: "pinak_discovery_curation_live",
+  WALLETS: "pinak_wallets_live",
+  LEDGER: "pinak_ledger_live",
+  BANK_ACCOUNTS: "pinak_bank_accounts_live",
+  PAYOUTS: "pinak_payouts_live",
 };
 
 // Clean out any legacy mock storage keys with dummy seed records
@@ -906,6 +917,334 @@ export const appStore = {
     setStored(STORAGE_KEYS.DISCOVERY_CURATION, config);
   },
 
+  // Merchant Wallet & double-entry ledger methods
+  getMerchantWallet(merchantId: string = "m-1"): MerchantWallet {
+    const wallets = getStored<MerchantWallet[]>(STORAGE_KEYS.WALLETS, []);
+    let wallet = wallets.find(w => w.merchantId === merchantId);
+    if (!wallet) {
+      wallet = {
+        id: `wal-${merchantId}`,
+        merchantId,
+        currency: "INR",
+        availableBalance: 185400.0,
+        pendingBalance: 12500.0,
+        totalWithdrawn: 420000.0,
+        lifetimeVolume: 617900.0,
+        status: "ACTIVE",
+        updatedAt: new Date().toISOString()
+      };
+      setStored(STORAGE_KEYS.WALLETS, [wallet, ...wallets]);
+    }
+    return wallet;
+  },
+
+  getMerchantLedger(merchantId: string = "m-1", storeId?: string): WalletLedgerEntry[] {
+    const entries = getStored<WalletLedgerEntry[]>(STORAGE_KEYS.LEDGER, [
+      {
+        id: "led-101",
+        walletId: `wal-${merchantId}`,
+        storeId: "st-1",
+        storeName: "Dharampeth Flagship",
+        entryType: "CREDIT",
+        amount: 2450.0,
+        feeDeducted: 122.5,
+        netAmount: 2327.5,
+        runningBalance: 185400.0,
+        description: "Counter Bill UPI Settlement - Order #PINAK-8912",
+        sourceReference: "TX_UPI_982137",
+        createdAt: new Date(Date.now() - 3600000 * 2).toISOString()
+      },
+      {
+        id: "led-102",
+        walletId: `wal-${merchantId}`,
+        storeId: "st-2",
+        storeName: "Civil Lines Executive",
+        entryType: "CREDIT",
+        amount: 1800.0,
+        feeDeducted: 90.0,
+        netAmount: 1710.0,
+        runningBalance: 183072.5,
+        description: "Flash Offer Redemption - Flat 20% OFF",
+        sourceReference: "TX_OFFER_55123",
+        createdAt: new Date(Date.now() - 3600000 * 5).toISOString()
+      },
+      {
+        id: "led-103",
+        walletId: `wal-${merchantId}`,
+        entryType: "HOLD",
+        amount: 50000.0,
+        feeDeducted: 5.0,
+        netAmount: 49995.0,
+        runningBalance: 181362.5,
+        description: "Instant Bank Payout Request - HDFC Bank **8891",
+        sourceReference: "PAYOUT_REQ_9812",
+        createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
+      },
+      {
+        id: "led-104",
+        walletId: `wal-${merchantId}`,
+        entryType: "DEBIT",
+        amount: 50000.0,
+        feeDeducted: 5.0,
+        netAmount: 49995.0,
+        runningBalance: 131362.5,
+        description: "Bank Transfer Settled - UTR: AXIS2026100799812",
+        sourceReference: "UTR_AXIS2026100799812",
+        createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
+      }
+    ]);
+
+    if (storeId && storeId !== "ALL") {
+      return entries.filter(e => e.storeId === storeId);
+    }
+    return entries;
+  },
+
+  getMerchantBankAccounts(merchantId: string = "m-1"): MerchantBankAccount[] {
+    return getStored<MerchantBankAccount[]>(STORAGE_KEYS.BANK_ACCOUNTS, [
+      {
+        id: "bank-101",
+        merchantId,
+        accountHolderName: "Silver Spoon Hospitality Pvt Ltd",
+        bankName: "HDFC Bank",
+        accountNumberLast4: "8891",
+        ifscCode: "HDFC0001234",
+        upiVpa: "silverspoon@hdfcbank",
+        isPrimary: true,
+        verificationStatus: "VERIFIED",
+        pennyDropReference: "PENNY_REF_981237",
+        createdAt: "2026-01-15T10:00:00Z"
+      },
+      {
+        id: "bank-102",
+        merchantId,
+        accountHolderName: "Silver Spoon Operations",
+        bankName: "ICICI Bank",
+        accountNumberLast4: "4021",
+        ifscCode: "ICIC0005521",
+        upiVpa: "silverspoon.ops@icici",
+        isPrimary: false,
+        verificationStatus: "VERIFIED",
+        pennyDropReference: "PENNY_REF_551299",
+        createdAt: "2026-03-10T14:30:00Z"
+      }
+    ]);
+  },
+
+  addMerchantBankAccount(account: Omit<MerchantBankAccount, "id" | "createdAt">): MerchantBankAccount {
+    const list = this.getMerchantBankAccounts(account.merchantId);
+    const newAcc: MerchantBankAccount = {
+      ...account,
+      id: `bank-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [newAcc, ...list];
+    setStored(STORAGE_KEYS.BANK_ACCOUNTS, updated);
+    this.addAudit({
+      action: "BANK_ACCOUNT_ADDED",
+      entity: `Merchant Bank Account (${account.bankName} **${account.accountNumberLast4})`,
+      actor: "Merchant Owner",
+      severity: "info",
+      metadata: { bankId: newAcc.id, bankName: account.bankName, ifsc: account.ifscCode }
+    });
+    return newAcc;
+  },
+
+  getMerchantPayouts(merchantId?: string): MerchantPayoutRequest[] {
+    const payouts = getStored<MerchantPayoutRequest[]>(STORAGE_KEYS.PAYOUTS, [
+      {
+        id: "pout-101",
+        merchantId: merchantId || "m-1",
+        merchantName: "Silver Spoon Hospitality",
+        walletId: "wal-m-1",
+        bankAccountId: "bank-101",
+        bankName: "HDFC Bank",
+        accountNumberLast4: "8891",
+        accountHolderName: "Silver Spoon Hospitality Pvt Ltd",
+        amount: 50000.0,
+        payoutFee: 5.0,
+        netPayout: 49995.0,
+        currency: "INR",
+        mode: "IMPS",
+        status: "SUCCESS",
+        provider: "RAZORPAYX",
+        providerPayoutId: "pout_9821378123",
+        bankUtr: "AXIS2026100799812",
+        idempotencyKey: "idem-key-9812",
+        requestedBy: "usr-merchant-owner",
+        processedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+        createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
+      },
+      {
+        id: "pout-102",
+        merchantId: merchantId || "m-1",
+        merchantName: "Silver Spoon Hospitality",
+        walletId: "wal-m-1",
+        bankAccountId: "bank-101",
+        bankName: "HDFC Bank",
+        accountNumberLast4: "8891",
+        accountHolderName: "Silver Spoon Hospitality Pvt Ltd",
+        amount: 25000.0,
+        payoutFee: 5.0,
+        netPayout: 24995.0,
+        currency: "INR",
+        mode: "IMPS",
+        status: "PROCESSING",
+        provider: "RAZORPAYX",
+        providerPayoutId: "pout_5512991002",
+        bankUtr: "Pending RBI Clearing",
+        idempotencyKey: `idem-key-${Date.now()}`,
+        requestedBy: "usr-merchant-owner",
+        createdAt: new Date(Date.now() - 3600000 * 2).toISOString()
+      }
+    ]);
+
+    if (merchantId) {
+      return payouts.filter(p => p.merchantId === merchantId);
+    }
+    return payouts;
+  },
+
+  requestMerchantPayout(merchantId: string, amount: number, bankAccountId: string, mode: "IMPS" | "NEFT" | "RTGS" | "UPI" = "IMPS"): MerchantPayoutRequest {
+    const wallet = this.getMerchantWallet(merchantId);
+    if (wallet.availableBalance < amount) {
+      throw new Error("Insufficient available wallet balance for payout request");
+    }
+
+    const banks = this.getMerchantBankAccounts(merchantId);
+    const bank = banks.find(b => b.id === bankAccountId) || banks[0];
+
+    const fee = 5.0;
+    const netPayout = amount - fee;
+
+    // Deduct available, add to pending
+    const wallets = getStored<MerchantWallet[]>(STORAGE_KEYS.WALLETS, []);
+    const updatedWallets = wallets.map(w => {
+      if (w.merchantId === merchantId) {
+        return {
+          ...w,
+          availableBalance: w.availableBalance - amount,
+          pendingBalance: w.pendingBalance + amount,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return w;
+    });
+    setStored(STORAGE_KEYS.WALLETS, updatedWallets);
+
+    const newPayout: MerchantPayoutRequest = {
+      id: `pout-${Date.now()}`,
+      merchantId,
+      merchantName: "Silver Spoon Hospitality",
+      walletId: wallet.id,
+      bankAccountId: bank.id,
+      bankName: bank.bankName,
+      accountNumberLast4: bank.accountNumberLast4,
+      accountHolderName: bank.accountHolderName,
+      amount,
+      payoutFee: fee,
+      netPayout,
+      currency: "INR",
+      mode,
+      status: "PROCESSING",
+      provider: "RAZORPAYX",
+      providerPayoutId: `pout_${Date.now()}`,
+      bankUtr: `AXIS2026100${Math.floor(100000 + Math.random() * 900000)}`,
+      idempotencyKey: `idem-${Date.now()}`,
+      requestedBy: "usr-merchant-owner",
+      createdAt: new Date().toISOString()
+    };
+
+    const payouts = this.getMerchantPayouts();
+    setStored(STORAGE_KEYS.PAYOUTS, [newPayout, ...payouts]);
+
+    // Record immutable HOLD ledger entry
+    const ledger = this.getMerchantLedger(merchantId);
+    const newLedgerEntry: WalletLedgerEntry = {
+      id: `led-${Date.now()}`,
+      walletId: wallet.id,
+      entryType: "HOLD",
+      amount,
+      feeDeducted: fee,
+      netAmount: netPayout,
+      runningBalance: wallet.availableBalance - amount,
+      description: `Instant Bank Payout Request - ${bank.bankName} (**${bank.accountNumberLast4})`,
+      sourceReference: `PAYOUT_REQ_${newPayout.id.slice(-6)}`,
+      createdAt: new Date().toISOString()
+    };
+    setStored(STORAGE_KEYS.LEDGER, [newLedgerEntry, ...ledger]);
+
+    this.addAudit({
+      action: "MERCHANT_PAYOUT_REQUESTED",
+      entity: `Bank Payout ₹${amount.toLocaleString()} (${bank.bankName} **${bank.accountNumberLast4})`,
+      actor: "Merchant Owner",
+      severity: "info",
+      metadata: { payoutId: newPayout.id, amount, mode, utr: newPayout.bankUtr }
+    });
+
+    emitChange();
+    return newPayout;
+  },
+
+  adminActionOnPayout(payoutId: string, action: "HOLD" | "RELEASE" | "RETRY"): MerchantPayoutRequest {
+    const payouts = this.getMerchantPayouts();
+    let target: MerchantPayoutRequest | undefined;
+    const updated = payouts.map(p => {
+      if (p.id === payoutId) {
+        let status: PayoutStatus = p.status;
+        if (action === "HOLD") status = "HELD";
+        if (action === "RELEASE" || action === "RETRY") status = "PROCESSING";
+        target = { ...p, status };
+        return target;
+      }
+      return p;
+    });
+    setStored(STORAGE_KEYS.PAYOUTS, updated);
+
+    if (target) {
+      this.addAudit({
+        action: `PAYOUT_${action}`,
+        entity: `Payout Request ${payoutId} (₹${target.amount.toLocaleString()})`,
+        actor: "Super Admin",
+        severity: action === "HOLD" ? "warning" : "info",
+        metadata: { payoutId, action, status: target.status }
+      });
+    }
+
+    emitChange();
+    return target!;
+  },
+
+  getStoreRevenueBreakdown(merchantId: string = "m-1"): StoreRevenueSummary[] {
+    const stores = this.getStores().filter(s => s.merchantId === merchantId || s.merchantId === "m-1");
+    return stores.map(st => ({
+      storeId: st.id,
+      storeName: st.storeName,
+      totalSalesCount: Math.floor(Math.random() * 40) + 15,
+      grossVolume: st.id === "st-1" ? 120000.0 : 85000.0,
+      netEarnings: st.id === "st-1" ? 114000.0 : 80750.0,
+      pendingClearing: 0.0
+    }));
+  },
+
+  getPlatformSettlementOverview(): PlatformSettlementOverview {
+    const wallets = getStored<MerchantWallet[]>(STORAGE_KEYS.WALLETS, []);
+    const payouts = this.getMerchantPayouts();
+
+    const gmv = wallets.reduce((acc, w) => acc + (w.lifetimeVolume || 617900), 4850000.0);
+    const escrow = wallets.reduce((acc, w) => acc + (w.availableBalance || 185400), 1240000.0);
+
+    return {
+      totalPlatformGmv: gmv,
+      totalEscrowBalance: escrow,
+      netCommissionEarned: gmv * 0.025,
+      totalMerchantWallets: Math.max(wallets.length, 42),
+      pendingPayoutCount: payouts.filter(p => p.status === "PROCESSING" || p.status === "INITIATED").length,
+      pendingPayoutVolume: payouts.filter(p => p.status === "PROCESSING" || p.status === "INITIATED").reduce((acc, p) => acc + p.amount, 0),
+      failedPayoutCount: payouts.filter(p => p.status === "FAILED" || p.status === "HELD").length
+    };
+  },
+
   resetToDefaults() {
     Object.values(STORAGE_KEYS).forEach(k => {
       try {
@@ -915,3 +1254,5 @@ export const appStore = {
     emitChange();
   }
 };
+
+export const dataStore = appStore;

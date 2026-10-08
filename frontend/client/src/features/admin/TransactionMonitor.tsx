@@ -18,19 +18,36 @@ import {
   Layers,
   Sparkles
 } from "lucide-react";
-import { Transaction } from "../../types";
+import { Transaction, MerchantPayoutRequest } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
+import { dataStore } from "../../services/dataStore";
 
 interface TransactionMonitorProps {
   transactions: Transaction[];
 }
 
 export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transactions }) => {
+  const [activeTab, setActiveTab] = useState<"intents" | "payout_queue">("intents");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+
+  // Settlement Overview and Payouts State
+  const [payouts, setPayouts] = useState(() => dataStore.getMerchantPayouts());
+  const [overview, setOverview] = useState(() => dataStore.getPlatformSettlementOverview());
+
+  const refreshPayouts = () => {
+    setPayouts(dataStore.getMerchantPayouts());
+    setOverview(dataStore.getPlatformSettlementOverview());
+  };
+
+  const handleAdminPayoutAction = (payoutId: string, action: "HOLD" | "RELEASE" | "RETRY") => {
+    dataStore.adminActionOnPayout(payoutId, action);
+    toast.success(`Action ${action} executed on Payout ID ${payoutId}`);
+    refreshPayouts();
+  };
 
   const displayedTransactions = statusFilter === "ALL"
     ? transactions
@@ -142,35 +159,197 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transact
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-bold font-['Manrope'] text-slate-900 dark:text-white">
-              UPI Intent & Settlement Monitor
+              Platform GMV & Merchant Settlement Console
             </h2>
             <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-              Zero Platform Pooling
+              Double-Entry RBI Escrow
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Real-time ledger of bank-to-bank UPI transfers, PSP webhook HMAC signatures, and direct merchant settlements.
+            Monitor system-wide GMV, platform escrow balance, net commissions, global merchant wallets, and payout dispatches.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab("intents")}
+            className={cn(
+              "px-3 py-2 rounded-xl text-xs font-bold transition-colors border",
+              activeTab === "intents"
+                ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                : "border-slate-200 dark:border-slate-800 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+            )}
+          >
+            Live UPI Intent Stream
+          </button>
+          <button
+            onClick={() => setActiveTab("payout_queue")}
+            className={cn(
+              "px-3 py-2 rounded-xl text-xs font-bold transition-colors border",
+              activeTab === "payout_queue"
+                ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                : "border-slate-200 dark:border-slate-800 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+            )}
+          >
+            Global Payout Queue ({overview.pendingPayoutCount})
+          </button>
         </div>
       </div>
 
-      {/* Status Filter Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
-        {["ALL", "SUCCESS", "PENDING", "FAILED"].map((st) => (
-          <button
-            key={st}
-            onClick={() => setStatusFilter(st)}
-            className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors border ${
-              statusFilter === st
-                ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800 font-bold"
-                : "border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-            }`}
-          >
-            {st === "ALL" ? "All Statuses" : st}
-          </button>
-        ))}
+      {/* Platform Executive KPI Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Total Platform GMV</span>
+            <div className="p-2 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
+              <Activity size={16} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+              ₹{overview.totalPlatformGmv.toLocaleString("en-IN")}
+            </span>
+            <span className="text-[11px] text-slate-400 block mt-0.5">Across {overview.totalMerchantWallets} Merchant Wallets</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Total Escrow Balance</span>
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+              <ShieldCheck size={16} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+              ₹{overview.totalEscrowBalance.toLocaleString("en-IN")}
+            </span>
+            <span className="text-[11px] text-emerald-600 font-semibold block mt-0.5">Held in RBI Escrow Account</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Net Commission Earned</span>
+            <div className="p-2 rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400">
+              <Sparkles size={16} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-2xl font-extrabold text-pink-600 dark:text-pink-400 font-mono">
+              ₹{overview.netCommissionEarned.toLocaleString("en-IN")}
+            </span>
+            <span className="text-[11px] text-slate-400 block mt-0.5">Platform Revenue Share</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Pending Payout Queue</span>
+            <div className="p-2 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+              <Clock size={16} />
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+              ₹{overview.pendingPayoutVolume.toLocaleString("en-IN")}
+            </span>
+            <span className="text-[11px] text-amber-600 font-semibold block mt-0.5">{overview.pendingPayoutCount} Payouts Awaiting Clearing</span>
+          </div>
+        </div>
       </div>
+
+      {activeTab === "payout_queue" && (
+        <div className="bg-white dark:bg-[#121626] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden space-y-4 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Global Merchant Bank Payout Queue</h3>
+              <p className="text-xs text-slate-400">Review pending bank transfers, place fraud holds, or trigger manual retries.</p>
+            </div>
+            <button
+              onClick={refreshPayouts}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300"
+            >
+              Refresh Queue
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 text-slate-400 uppercase font-bold text-[10px]">
+                <tr>
+                  <th className="px-4 py-3">Payout ID & Date</th>
+                  <th className="px-4 py-3">Merchant Brand</th>
+                  <th className="px-4 py-3">Destination Bank Account</th>
+                  <th className="px-4 py-3">Transfer Amount</th>
+                  <th className="px-4 py-3">Bank UTR</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Admin Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                {payouts.map((p) => (
+                  <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/40">
+                    <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">{p.id}</td>
+                    <td className="px-4 py-3 font-semibold text-purple-600 dark:text-purple-400">{p.merchantName || "Silver Spoon Hospitality"}</td>
+                    <td className="px-4 py-3 font-mono">{p.bankName} (**{p.accountNumberLast4})</td>
+                    <td className="px-4 py-3 font-mono font-extrabold text-slate-900 dark:text-white">₹{p.amount.toLocaleString()}</td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{p.bankUtr || "Pending"}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={p.status === "SUCCESS" ? "success" : p.status === "HELD" || p.status === "FAILED" ? "destructive" : "warning"}>
+                        {p.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right space-x-1">
+                      {p.status !== "HELD" ? (
+                        <button
+                          onClick={() => handleAdminPayoutAction(p.id, "HOLD")}
+                          className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-[11px] font-bold"
+                        >
+                          Fraud Hold
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAdminPayoutAction(p.id, "RELEASE")}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold"
+                        >
+                          Release Hold
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleAdminPayoutAction(p.id, "RETRY")}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-[11px] font-bold"
+                      >
+                        Retry
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "intents" && (
+        <>
+          {/* Status Filter Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
+            {["ALL", "SUCCESS", "PENDING", "FAILED"].map((st) => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors border ${
+                  statusFilter === st
+                    ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800 font-bold"
+                    : "border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                {st === "ALL" ? "All Statuses" : st}
+              </button>
+            ))}
+          </div>
 
       {/* Advanced Table */}
       <AdvancedTable
@@ -204,6 +383,8 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transact
           }
         ]}
       />
+      </>
+      )}
 
       {/* Right Slide-over Audit Inspector Drawer */}
       {selectedTx && (

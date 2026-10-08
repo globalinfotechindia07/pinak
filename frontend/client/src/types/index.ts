@@ -271,5 +271,93 @@ export interface AdminTeamMember {
   createdAt: string;
   inviteUrl?: string;
 }
+export interface MerchantWallet {
+  id: string;
+  merchantId: string;
+  currency: string;
+  availableBalance: number;
+  pendingBalance: number;
+  totalWithdrawn: number;
+  lifetimeVolume: number;
+  status: "ACTIVE" | "FROZEN" | "SUSPENDED";
+  updatedAt: string;
+}
 
+export type LedgerEntryType = "CREDIT" | "DEBIT" | "HOLD" | "RELEASE" | "REVERSAL";
 
+export interface WalletLedgerEntry {
+  id: string;
+  walletId: string;
+  storeId?: string;
+  storeName?: string;
+  transactionId?: string;
+  payoutId?: string;
+  entryType: LedgerEntryType;
+  amount: number;
+  feeDeducted: number;
+  netAmount: number;
+  runningBalance: number;
+  description: string;
+  sourceReference: string;
+  createdAt: string;
+}
+
+export interface MerchantBankAccount {
+  id: string;
+  merchantId: string;
+  accountHolderName: string;
+  bankName: string;
+  accountNumberLast4: string;
+  ifscCode: string;
+  upiVpa?: string;
+  isPrimary: boolean;
+  verificationStatus: "PENDING" | "VERIFIED" | "REJECTED";
+  pennyDropReference?: string;
+  createdAt: string;
+}
+
+export type PayoutStatus = "INITIATED" | "PROCESSING" | "SUCCESS" | "FAILED" | "REVERSED" | "HELD";
+
+export interface MerchantPayoutRequest {
+  id: string;
+  merchantId: string;
+  merchantName?: string;
+  walletId: string;
+  bankAccountId: string;
+  bankName?: string;
+  accountNumberLast4?: string;
+  accountHolderName?: string;
+  amount: number;
+  payoutFee: number;
+  netPayout: number;
+  currency: string;
+  mode: "IMPS" | "NEFT" | "RTGS" | "UPI";
+  status: PayoutStatus;
+  provider: "RAZORPAYX" | "CASHFREE" | "DECENTRO" | "ICICI";
+  providerPayoutId?: string;
+  bankUtr?: string;
+  idempotencyKey: string;
+  failureReason?: string;
+  requestedBy: string;
+  processedAt?: string;
+  createdAt: string;
+}
+
+export interface StoreRevenueSummary {
+  storeId: string;
+  storeName: string;
+  totalSalesCount: number;
+  grossVolume: number;
+  netEarnings: number;
+  pendingClearing: number;
+}
+
+export interface PlatformSettlementOverview {
+  totalPlatformGmv: number;
+  totalEscrowBalance: number;
+  netCommissionEarned: number;
+  totalMerchantWallets: number;
+  pendingPayoutCount: number;
+  pendingPayoutVolume: number;
+  failedPayoutCount: number;
+}
