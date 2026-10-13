@@ -82,6 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const storeNav: NavItem[] = [
     { id: "StoreDashboard", label: "Branch Overview", icon: LayoutDashboard },
+    { id: "StoreWallet", label: "Branch Wallet & Settlements", icon: WalletCards },
     { id: "OfferStudio", label: "Store Deals & Offers", icon: TicketPercent, requiredPermissions: ["canManageOffers"] },
     { id: "StoreStaff", label: "In-Store Staff & Roles", icon: UserCheck },
     { id: "CounterQR", label: "Counter QR Standee", icon: QrCode },
@@ -91,6 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const merchantNav: NavItem[] = [
     { id: "MerchantDashboard", label: "Console Overview", icon: LayoutDashboard },
+    { id: "MerchantWallet", label: "Wallet & Settlements", icon: WalletCards },
     { id: "BranchStores", label: "Branch Stores", icon: Store },
     { id: "StoreStaff", label: "Staff & Custom Roles", icon: UserCheck },
     { id: "OfferStudio", label: "Offer Studio", icon: TicketPercent },
@@ -99,8 +101,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "CustomerLoyalty", label: "Customer Loyalty", icon: Users },
     { id: "GrowthPlaybooks", label: "Growth Automations", icon: Zap },
     { id: "Messaging", label: "Messaging Campaigns", icon: Send },
-    { id: "MerchantProfile", label: "Store Profile & Payout", icon: Building2 },
+    { id: "MerchantProfile", label: "Store Profile", icon: Building2 },
   ];
+
 
   const userInitials = React.useMemo(() => {
     const raw = store.currentUser?.name?.trim();

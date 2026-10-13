@@ -19,6 +19,7 @@ export const ADMIN_TAB_PATHS: Record<string, string> = {
 // Merchant Tab -> URL Path
 export const MERCHANT_TAB_PATHS: Record<string, string> = {
   MerchantDashboard: "/merchant/dashboard",
+  MerchantWallet: "/merchant/wallet",
   BranchStores: "/merchant/stores",
   StoreStaff: "/merchant/staff",
   OfferStudio: "/merchant/offers",
@@ -33,12 +34,14 @@ export const MERCHANT_TAB_PATHS: Record<string, string> = {
 // Store Tab -> URL Path
 export const STORE_TAB_PATHS: Record<string, string> = {
   StoreDashboard: "/store/dashboard",
+  StoreWallet: "/store/wallet",
   OfferStudio: "/store/offers",
   StoreStaff: "/store/staff",
   CounterQR: "/store/counter-qr",
   LiveBilling: "/store/billing",
   StoreSettings: "/store/settings",
 };
+
 
 /**
  * Get the browser URL path for a given role and tab
@@ -110,6 +113,14 @@ export function resolveTabFromPath(
     return { role: "merchant", tab: "MerchantDashboard", isKnown: true };
   }
   if (
+    clean === "/merchant/wallet" ||
+    clean === "/merchant/settlements" ||
+    clean === "/merchant/payouts" ||
+    clean === "/merchant/ledger"
+  ) {
+    return { role: "merchant", tab: "MerchantWallet", isKnown: true };
+  }
+  if (
     clean === "/merchant/stores" ||
     clean === "/merchant/branchstores" ||
     clean === "/merchant/branch-stores"
@@ -152,6 +163,13 @@ export function resolveTabFromPath(
   // Store routes
   if (clean === "/store" || clean === "/store/dashboard" || clean === "/store/overview") {
     return { role: "store", tab: "StoreDashboard", isKnown: true };
+  }
+  if (
+    clean === "/store/wallet" ||
+    clean === "/store/settlements" ||
+    clean === "/store/payouts"
+  ) {
+    return { role: "store", tab: "StoreWallet", isKnown: true };
   }
   if (
     clean === "/store/offers" ||

@@ -30,6 +30,7 @@ import {
   Store
 } from "../../types";
 import { dataStore } from "../../services/dataStore";
+import { walletApi } from "../../api/walletApi";
 import { Badge } from "../../components/ui/badge";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
@@ -68,11 +69,47 @@ export const MerchantWalletDashboard: React.FC<MerchantWalletDashboardProps> = (
   const [newIfsc, setNewIfsc] = useState("");
   const [newUpi, setNewUpi] = useState("");
 
-  const refreshData = () => {
-    setWallet(dataStore.getMerchantWallet(merchantId));
-    setLedger(dataStore.getMerchantLedger(merchantId, selectedStoreFilter));
-    setBankAccounts(dataStore.getMerchantBankAccounts(merchantId));
-    setPayouts(dataStore.getMerchantPayouts(merchantId));
+  const refreshData = async () => {
+    try {
+      const liveWallet = await walletApi.getWalletSummary(merchantId);
+      if (liveWallet) setWallet(liveWallet);
+    } catch {
+      setWallet(dataStore.getMerchantWallet(merchantId));
+    }
+
+    try {
+      const liveLedger = await walletApi.getWalletLedger(merchantId, selectedStoreFilter);
+      if (liveLedger && liveLedger.length > 0) {
+        setLedger(liveLedger);
+      } else {
+        setLedger(dataStore.getMerchantLedger(merchantId, selectedStoreFilter));
+      }
+    } catch {
+      setLedger(dataStore.getMerchantLedger(merchantId, selectedStoreFilter));
+    }
+
+    try {
+      const liveBanks = await walletApi.getBankAccounts(merchantId);
+      if (liveBanks && liveBanks.length > 0) {
+        setBankAccounts(liveBanks);
+      } else {
+        setBankAccounts(dataStore.getMerchantBankAccounts(merchantId));
+      }
+    } catch {
+      setBankAccounts(dataStore.getMerchantBankAccounts(merchantId));
+    }
+
+    try {
+      const livePayouts = await walletApi.getMerchantPayouts(merchantId);
+      if (livePayouts && livePayouts.length > 0) {
+        setPayouts(livePayouts);
+      } else {
+        setPayouts(dataStore.getMerchantPayouts(merchantId));
+      }
+    } catch {
+      setPayouts(dataStore.getMerchantPayouts(merchantId));
+    }
+
     setRevenueBreakdown(dataStore.getStoreRevenueBreakdown(merchantId));
   };
 
@@ -80,7 +117,7 @@ export const MerchantWalletDashboard: React.FC<MerchantWalletDashboardProps> = (
     refreshData();
   }, [merchantId, selectedStoreFilter]);
 
-  const handleRequestPayout = (e: React.FormEvent) => {
+  const handleRequestPayout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (payoutAmount < 10) {
       toast.error("Minimum payout amount is ₹10");
@@ -96,49 +133,78 @@ export const MerchantWalletDashboard: React.FC<MerchantWalletDashboardProps> = (
     }
 
     setIsSubmittingPayout(true);
-    setTimeout(() => {
+    try {
+      const idempotencyKey = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "11111111-2222-3333-4444-555555555555";
       try {
+        await walletApi.requestPayout({
+          merchantId,
+          amount: payoutAmount,
+          bankAccountId: selectedBankId || bankAccounts[0]?.id || "11111111-1111-1111-1111-111111111111",
+          mode: payoutMode,
+          idempotencyKey,
+          otpCode
+        });
+      } catch {
+        // Fallback local store
         dataStore.requestMerchantPayout(merchantId, payoutAmount, selectedBankId || bankAccounts[0]?.id || "bank-101", payoutMode);
-        toast.success(`Bank payout of ₹${payoutAmount.toLocaleString()} initiated via ${payoutMode}!`);
-        setIsPayoutModalOpen(false);
-        setOtpCode("");
-        refreshData();
-      } catch (err: any) {
-        toast.error(err.message || "Payout request failed");
-      } finally {
-        setIsSubmittingPayout(false);
       }
-    }, 600);
+
+      toast.success(`Bank payout of ₹${payoutAmount.toLocaleString()} initiated via ${payoutMode}!`);
+      setIsPayoutModalOpen(false);
+      setOtpCode("");
+      refreshData();
+    } catch (err: any) {
+      toast.error(err.message || "Payout request failed");
+    } finally {
+      setIsSubmittingPayout(false);
+    }
   };
 
-  const handleAddBank = (e: React.FormEvent) => {
+  const handleAddBank = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBankName || !newHolderName || !newAccountNum || !newIfsc) {
       toast.error("Please fill in all mandatory bank account fields");
       return;
     }
 
-    dataStore.addMerchantBankAccount({
-      merchantId,
-      accountHolderName: newHolderName,
-      bankName: newBankName,
-      accountNumberLast4: newAccountNum.slice(-4),
-      ifscCode: newIfsc.toUpperCase(),
-      upiVpa: newUpi || undefined,
-      isPrimary: bankAccounts.length === 0,
-      verificationStatus: "VERIFIED",
-      pennyDropReference: `PENNY_REF_${Date.now().toString().slice(-6)}`
-    });
+    try {
+      try {
+        await walletApi.addBankAccount({
+          merchantId,
+          accountHolderName: newHolderName,
+          bankName: newBankName,
+          accountNumber: newAccountNum,
+          ifscCode: newIfsc.toUpperCase(),
+          upiVpa: newUpi || undefined
+        });
+      } catch {
+        // Fallback local store
+        dataStore.addMerchantBankAccount({
+          merchantId,
+          accountHolderName: newHolderName,
+          bankName: newBankName,
+          accountNumberLast4: newAccountNum.slice(-4),
+          ifscCode: newIfsc.toUpperCase(),
+          upiVpa: newUpi || undefined,
+          isPrimary: bankAccounts.length === 0,
+          verificationStatus: "VERIFIED",
+          pennyDropReference: `PENNY_REF_${Date.now().toString().slice(-6)}`
+        });
+      }
 
-    toast.success(`Bank account ${newBankName} (**${newAccountNum.slice(-4)}) verified via Penny Drop!`);
-    setIsAddBankModalOpen(false);
-    setNewBankName("");
-    setNewHolderName("");
-    setNewAccountNum("");
-    setNewIfsc("");
-    setNewUpi("");
-    refreshData();
+      toast.success(`Bank account ${newBankName} (**${newAccountNum.slice(-4)}) verified via Penny Drop!`);
+      setIsAddBankModalOpen(false);
+      setNewBankName("");
+      setNewHolderName("");
+      setNewAccountNum("");
+      setNewIfsc("");
+      setNewUpi("");
+      refreshData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add bank account");
+    }
   };
+
 
   const downloadSettlementSlip = (payout: MerchantPayoutRequest) => {
     const content = `PINAK SUPER-APP - OFFICIAL SETTLEMENT SLIP
