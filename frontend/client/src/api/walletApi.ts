@@ -1,3 +1,4 @@
+import apiClient from "./client";
 import {
   MerchantWallet,
   WalletLedgerEntry,
@@ -6,18 +7,17 @@ import {
   StoreRevenueSummary,
   PlatformSettlementOverview
 } from "../types";
+import { ApiResponse, PaginatedResponse } from "../types/api/common";
 
 export const walletApi = {
   async getWalletSummary(merchantId?: string): Promise<MerchantWallet> {
     try {
-      const query = merchantId ? `?merchantId=${merchantId}` : "";
-      const res = await fetch(`/api/v1/merchant/wallet/summary${query}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data) return json.data;
-      }
+      const res = await apiClient.get<ApiResponse<MerchantWallet>>("/merchant/wallet/summary", {
+        params: merchantId ? { merchantId } : undefined
+      });
+      if (res.data?.data) return res.data.data;
     } catch {
-      // Fallback local mock state
+      // Fallback
     }
     return {
       id: "wal-101",
@@ -34,14 +34,14 @@ export const walletApi = {
 
   async getWalletLedger(merchantId?: string, storeId?: string): Promise<WalletLedgerEntry[]> {
     try {
-      const params = new URLSearchParams();
-      if (merchantId) params.append("merchantId", merchantId);
-      if (storeId) params.append("storeId", storeId);
-      const res = await fetch(`/api/v1/merchant/wallet/ledger?${params.toString()}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data && json.data.content) return json.data.content;
-      }
+      const res = await apiClient.get<ApiResponse<PaginatedResponse<WalletLedgerEntry>>>("/merchant/wallet/ledger", {
+        params: {
+          ...(merchantId && { merchantId }),
+          ...(storeId && storeId !== "ALL" && { storeId })
+        }
+      });
+      if (res.data?.data?.content) return res.data.data.content;
+      if (Array.isArray(res.data?.data)) return res.data.data as any;
     } catch {
       // Fallback
     }
@@ -50,12 +50,37 @@ export const walletApi = {
 
   async getBankAccounts(merchantId?: string): Promise<MerchantBankAccount[]> {
     try {
-      const query = merchantId ? `?merchantId=${merchantId}` : "";
-      const res = await fetch(`/api/v1/merchant/wallet/bank-accounts${query}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data) return json.data;
-      }
+      const res = await apiClient.get<ApiResponse<MerchantBankAccount[]>>("/merchant/wallet/bank-accounts", {
+        params: merchantId ? { merchantId } : undefined
+      });
+      if (res.data?.data) return res.data.data;
+    } catch {
+      // Fallback
+    }
+    return [];
+  },
+
+  async addBankAccount(payload: {
+    merchantId?: string;
+    accountHolderName: string;
+    bankName: string;
+    accountNumber: string;
+    ifscCode: string;
+    upiVpa?: string;
+  }): Promise<MerchantBankAccount> {
+    const res = await apiClient.post<ApiResponse<MerchantBankAccount>>("/merchant/wallet/bank-accounts", payload, {
+      params: payload.merchantId ? { merchantId: payload.merchantId } : undefined
+    });
+    return res.data?.data;
+  },
+
+  async getMerchantPayouts(merchantId?: string): Promise<MerchantPayoutRequest[]> {
+    try {
+      const res = await apiClient.get<ApiResponse<PaginatedResponse<MerchantPayoutRequest>>>("/merchant/wallet/payouts", {
+        params: merchantId ? { merchantId } : undefined
+      });
+      if (res.data?.data?.content) return res.data.data.content;
+      if (Array.isArray(res.data?.data)) return res.data.data as any;
     } catch {
       // Fallback
     }
@@ -68,27 +93,25 @@ export const walletApi = {
     bankAccountId: string;
     mode: "IMPS" | "NEFT" | "RTGS" | "UPI";
     idempotencyKey: string;
+    otpCode?: string;
   }): Promise<MerchantPayoutRequest> {
-    const res = await fetch(`/api/v1/merchant/wallet/payout${payload.merchantId ? `?merchantId=${payload.merchantId}` : ""}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || "Payout request failed");
-    }
-    const json = await res.json();
-    return json.data;
+    const res = await apiClient.post<ApiResponse<MerchantPayoutRequest>>(
+      "/merchant/wallet/payout",
+      payload,
+      {
+        params: payload.merchantId ? { merchantId: payload.merchantId } : undefined,
+        headers: {
+          "X-Idempotency-Key": payload.idempotencyKey
+        }
+      }
+    );
+    return res.data?.data;
   },
 
   async getPlatformSettlementOverview(): Promise<PlatformSettlementOverview> {
     try {
-      const res = await fetch("/api/v1/admin/settlements/overview");
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data) return json.data;
-      }
+      const res = await apiClient.get<ApiResponse<PlatformSettlementOverview>>("/admin/settlements/overview");
+      if (res.data?.data) return res.data.data;
     } catch {
       // Fallback
     }
@@ -103,3 +126,4 @@ export const walletApi = {
     };
   }
 };
+

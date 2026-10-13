@@ -36,6 +36,8 @@ import { MerchantProfile } from "../features/merchant/MerchantProfile";
 import { CounterQRModal } from "../features/merchant/CounterQRModal";
 import { StoreStaffManager } from "../features/merchant/StoreStaffManager";
 import { StoreBranchDashboard } from "../features/store/StoreBranchDashboard";
+import { MerchantWalletDashboard } from "../features/merchant/MerchantWalletDashboard";
+
 
 import { useTheme } from "../contexts/ThemeContext";
 import { toast } from "sonner";
@@ -1083,6 +1085,13 @@ export default function Home() {
                     />
                   )}
 
+                  {currentTab === "MerchantWallet" && (
+                    <MerchantWalletDashboard
+                      merchantId={store.currentUser?.merchantId || store.currentUser?.id || "m-1"}
+                      stores={store.stores}
+                    />
+                  )}
+
                   {currentTab === "BranchStores" && (
                     <BranchStores
                       stores={store.stores}
@@ -1140,7 +1149,15 @@ export default function Home() {
                     />
                   )}
 
+                  {currentTab === "StoreWallet" && (
+                    <MerchantWalletDashboard
+                      merchantId={activeStore.merchantId || "m-1"}
+                      stores={[activeStore]}
+                    />
+                  )}
+
                   {currentTab === "OfferStudio" && (
+
                     <OfferStudio
                       offers={store.offers}
                       stores={[activeStore]}

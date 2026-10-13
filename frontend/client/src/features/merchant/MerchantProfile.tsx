@@ -16,9 +16,11 @@ import {
   AlertCircle,
   X,
   Plus,
-  Edit2
+  Edit2,
+  WalletCards
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
 import { merchantApi } from "../../api/merchantApi";
@@ -40,7 +42,9 @@ interface SettlementRecord {
 
 export const MerchantProfile: React.FC = () => {
   const store = useAppStore();
+  const [, setLocation] = useLocation();
   const currentMerchant = store.merchants.find(m => m.id === store.currentUser?.id) || store.merchants[0];
+
 
   // Brand details
   const [businessName, setBusinessName] = useState(store.currentUser?.name || currentMerchant?.businessName || "Merchant Partner");
@@ -318,6 +322,14 @@ export const MerchantProfile: React.FC = () => {
 
         <div className="flex items-center gap-2.5">
           <button
+            onClick={() => setLocation("/merchant/wallet")}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-850 transition-colors shadow-xs"
+          >
+            <WalletCards size={14} className="text-purple-600 dark:text-purple-400" />
+            <span>Open Wallet & Payouts</span>
+          </button>
+
+          <button
             onClick={() => {
               setTempUpi(bankUpiId);
               setTempAcc(bankAccountNum);
@@ -340,6 +352,7 @@ export const MerchantProfile: React.FC = () => {
           </button>
         </div>
       </div>
+
 
       {/* Grid: Brand Info & Direct Settlement */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -529,7 +542,25 @@ export const MerchantProfile: React.FC = () => {
         </div>
       </div>
 
-      {/* Settlement History Table */}
+      {/* Settlement History Table & Full Wallet Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-amber-500/10 border border-purple-200/80 dark:border-purple-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <WalletCards size={16} className="text-purple-600 dark:text-purple-400" />
+            <span>Dedicated Double-Entry Settlement Wallet & Instant Dispatches</span>
+          </h4>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+            View live available vs pending balances, store-wise revenue attribution, and trigger instant IMPS/UPI bank payouts.
+          </p>
+        </div>
+        <button
+          onClick={() => setLocation("/merchant/wallet")}
+          className="btn-gradient shrink-0 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs hover:opacity-95 transition-opacity"
+        >
+          Open Wallet Console →
+        </button>
+      </div>
+
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
@@ -541,6 +572,7 @@ export const MerchantProfile: React.FC = () => {
             </p>
           </div>
         </div>
+
 
         <AdvancedTable
           data={settlements}
