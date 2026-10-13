@@ -58,6 +58,51 @@ public class User {
     @Column(name = "profile_completed", nullable = false)
     private boolean profileCompleted = false;
 
+    @Column(name = "birthday")
+    private java.time.LocalDate birthday;
+
+    @Column(name = "primary_city", length = 100)
+    private String primaryCity;
+
+    @Column(name = "state", length = 100)
+    private String state;
+
+    @Column(name = "district", length = 100)
+    private String district;
+
+    @Column(name = "pincode", length = 20)
+    private String pincode;
+
+    @Column(name = "address", length = 500)
+    private String address;
+
+    @Column(name = "gender", length = 20)
+    private String gender;
+
+    @Column(name = "primary_zone", length = 255)
+    private String primaryZone;
+
+    @Column(name = "referral_code", length = 50)
+    private String referralCode;
+
+    @Column(name = "referred_by_code", length = 50)
+    private String referredByCode;
+
+    @Column(name = "whatsapp_alerts_enabled")
+    private boolean whatsappAlertsEnabled = true;
+
+    @Column(name = "soundbox_stay_signed_in")
+    private boolean soundboxStaySignedIn = false;
+
+    @Column(name = "category_preferences", length = 1000)
+    private String categoryPreferences;
+
+    @Column(name = "precise_location_granted")
+    private boolean preciseLocationGranted = false;
+
+    @Column(name = "flash_alerts_granted")
+    private boolean flashAlertsGranted = false;
+
     @Column(name = "profile_picture_url", length = 1024)
     private String profilePictureUrl;
 
@@ -151,6 +196,51 @@ public class User {
 
     public boolean isProfileCompleted() { return profileCompleted; }
     public void setProfileCompleted(boolean profileCompleted) { this.profileCompleted = profileCompleted; }
+
+    public java.time.LocalDate getBirthday() { return birthday; }
+    public void setBirthday(java.time.LocalDate birthday) { this.birthday = birthday; }
+
+    public String getPrimaryCity() { return primaryCity; }
+    public void setPrimaryCity(String primaryCity) { this.primaryCity = primaryCity; }
+
+    public String getPrimaryZone() { return primaryZone; }
+    public void setPrimaryZone(String primaryZone) { this.primaryZone = primaryZone; }
+
+    public String getReferralCode() { return referralCode; }
+    public void setReferralCode(String referralCode) { this.referralCode = referralCode; }
+
+    public String getReferredByCode() { return referredByCode; }
+    public void setReferredByCode(String referredByCode) { this.referredByCode = referredByCode; }
+
+    public boolean isWhatsappAlertsEnabled() { return whatsappAlertsEnabled; }
+    public void setWhatsappAlertsEnabled(boolean whatsappAlertsEnabled) { this.whatsappAlertsEnabled = whatsappAlertsEnabled; }
+
+    public boolean isSoundboxStaySignedIn() { return soundboxStaySignedIn; }
+    public void setSoundboxStaySignedIn(boolean soundboxStaySignedIn) { this.soundboxStaySignedIn = soundboxStaySignedIn; }
+
+    public String getCategoryPreferences() { return categoryPreferences; }
+    public void setCategoryPreferences(String categoryPreferences) { this.categoryPreferences = categoryPreferences; }
+
+    public boolean isPreciseLocationGranted() { return preciseLocationGranted; }
+    public void setPreciseLocationGranted(boolean preciseLocationGranted) { this.preciseLocationGranted = preciseLocationGranted; }
+
+    public boolean isFlashAlertsGranted() { return flashAlertsGranted; }
+    public void setFlashAlertsGranted(boolean flashAlertsGranted) { this.flashAlertsGranted = flashAlertsGranted; }
+
+    public String getState() { return state; }
+    public void setState(String state) { this.state = state; }
+
+    public String getDistrict() { return district; }
+    public void setDistrict(String district) { this.district = district; }
+
+    public String getPincode() { return pincode; }
+    public void setPincode(String pincode) { this.pincode = pincode; }
+
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
 
     public String getProfilePictureUrl() { return profilePictureUrl; }
     public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }

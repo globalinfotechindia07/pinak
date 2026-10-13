@@ -1,0 +1,735 @@
+{
+  "info": {
+    "_postman_id": "bae0a4a6-6316-488f-bc29-9502c427e392",
+    "name": "PINAK — Super-App API Collection",
+    "description": "# PINAK Super-App Master API Collection\n\nWelcome to the official API specification and Postman workspace for the **PINAK Discount, Loyalty & Merchant Super-App**.\n\n---\n\n## 🌐 Environments & Base URLs\n\n| Environment | Base URL | Description |\n| :--- | :--- | :--- |\n| **Local Development** | `http://localhost:8080` | Local Spring Boot backend running on developer workstation. |\n| **Staging / Docker** | `http://localhost:8081` | Containerized staging environment with managed PostgreSQL. |\n| **Production** | `https://pinak-server.onrender.com` | Live cloud deployment. |\n\n---\n\n## 📱 Mobile Architecture & Security Design\n\n1. **Passwordless Phone-First Authentication**: Customers register and log in solely using their mobile phone number. No passwords are stored or required for end consumers.\n2. **Database-Driven OTP Ledger (`mobile_otps`)**: All OTP challenges are generated as cryptographically secure 6-digit codes and persisted in PostgreSQL `mobile_otps`. Mock OTP bypasses are strictly disabled in production-grade flows.\n3. **Anti-Spam & Cooldown Rate Limits**: Strict 60-second cooldown per phone number enforced directly in the database (`cooldown_until`). Duplicate requests within 60s return `429 Too Many Requests`.\n4. **Anti-Brute-Force Lockout**: The database tracks verification `attempts`. If an incorrect code is entered 5 times (`MAX_OTP_ATTEMPTS = 5`), the challenge is marked consumed and invalidated, returning `401 Unauthorized`.\n5. **Timing-Safe Cryptographic Byte Comparison**: OTP codes are verified using constant-time byte comparison (`MessageDigest.isEqual`) to eliminate timing-attack vulnerabilities.\n6. **Smart Gateway Routing (Dual-Token Architecture)**:\n   - **Returning Members** (`isNewUser: false`): Immediately issued customer Bearer JWT `token` + `refreshToken`, routed to `HOME_DASHBOARD`.\n   - **New Signups** (`isNewUser: true`): Issued a restricted `onboardingToken`, routed to `PROFILE_SETUP_SCREEN_08` to complete mandatory details and claim the ₹100 welcome reward coupon.\n\n---\n\n## 🗄️ PostgreSQL Database Inspection\nTo inspect the generated OTPs directly in PostgreSQL:\n```sql\n-- View latest mobile OTP challenges\nSELECT id, phone, otp_code, session_id, channel, expires_at, cooldown_until, attempts, is_consumed, is_verified, created_at\nFROM mobile_otps\nORDER BY created_at DESC\nLIMIT 5;\n```\n\n---\n\n## 🚦 Standard ApiResponse Envelope\nEvery endpoint uniformly wraps responses in this envelope:\n```json\n{\n  \"success\": true,\n  \"message\": \"Human-readable success description\",\n  \"data\": { ... },\n  \"requestId\": \"d41d8cd98f00b204e9800998ecf8427e\"\n}\n```\nError envelope:\n```json\n{\n  \"success\": false,\n  \"message\": \"Error description\",\n  \"errorCode\": \"VALIDATION_FAILED | INVALID_CREDENTIALS | RATE_LIMIT_EXCEEDED\",\n  \"error\": {\n    \"code\": \"ERROR_CODE\",\n    \"details\": null\n  },\n  \"requestId\": \"d41d8cd98f00b204e9800998ecf8427e\"\n}\n```",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "44755189",
+    "_collection_link": "https://go.postman.co/collection/44755189-bae0a4a6-6316-488f-bc29-9502c427e392?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "📱 Mobile Application",
+      "description": "# 📱 Mobile Application Subsystem (Screens 05–15)\n\nThis high-level directory contains all consumer-facing APIs for the **PINAK Mobile Super-App**, spanning the complete customer lifecycle from onboarding to in-store checkout and loyalty redemption.\n\n---\n\n### 🗺️ Screen & Feature Map\n\n| Phase | Screen IDs | Name & Description |\n| :--- | :--- | :--- |\n| **Phase 1: Auth & Onboarding** | **Screens 05–08** | **Mobile Auth**: Passwordless 6-digit OTP verification, E.164 phone normalization, SIM binding status, smart gateway router, and compulsory Profile Setup (Name, City, Zone, Birthday, Referral Code, ₹100 Welcome Bonus). |\n| **Phase 2: Discovery & Loyalty** | **Screens 09–11** | **Home & Radar Discovery**: Location/Push permissions consent, dynamic personalized Home Feed, Daily Login Streak Rewards, and Radar Merchant Geofencing. |\n| **Phase 3: Merchant & Checkout** | **Screens 12–14** | **Store & QR Pay**: Store profile & menu, interactive Bill Discount Calculator, Soundbox-integrated QR Scan & Pay, and instant digital payment receipts. |\n| **Phase 4: Rewards Vault** | **Screen 15** | **Rewards Vault**: Mystery Scratch Cards, merchant discount vouchers, and referral reward earnings. |\n\n---\n\n### 🔒 Security Principles for Mobile\n- **Zero Hardcoded/Mock OTPs**: All verification challenges are backed exclusively by PostgreSQL `mobile_otps` table.\n- **Dual Token Scopes**: Strict separation between guest `onboardingToken` and customer `accessToken`.\n- **Rate Limiting**: Cooldown enforcement per phone number (`429 Too Many Requests`).",
+      "item": [
+        {
+          "name": "🔐 Mobile Authentication & Onboarding",
+          "description": "# 🔐 Mobile Authentication & Onboarding Module\n\nImplements the end-to-end passwordless mobile login and customer onboarding pipeline for Screens 05, 07, and 08.\n\n---\n\n### 🔄 Complete Lifecycle Sequence\n\n```mermaid\nsequenceDiagram\n    autonumber\n    actor App as PINAK Mobile App\n    participant API as MobileAuthController\n    participant Service as MobileAuthServiceImpl\n    participant DB as PostgreSQL (mobile_otps & users)\n    participant SMS as SMS/WhatsApp Gateway\n\n    App->>API: POST /api/v1/mobile/auth/send-otp { phone: \"9876543210\", channel: \"SMS\" }\n    API->>Service: sendOtp(request)\n    Service->>DB: Check cooldown (cooldown_until > NOW())\n    alt Cooldown Active (< 60s)\n        Service-->>App: 429 Too Many Requests (Please wait 60s)\n    else Cooldown Cleared\n        Service->>DB: Invalidate previous unconsumed OTPs for phone\n        Service->>Service: Generate secure 6-digit OTP & session ID\n        Service->>DB: INSERT INTO mobile_otps (phone, otp_code, session_id, expires_at, cooldown_until)\n        Service->>SMS: Deliver OTP via SMS/WhatsApp gateway (logged in dev)\n        Service-->>App: 200 OK { sessionId, phone, channel, resendAvailableInSeconds: 60 }\n    end\n\n    Note over App,DB: Customer inputs 6-digit OTP code from SMS or PostgreSQL\n\n    App->>API: POST /api/v1/mobile/auth/verify-otp { phone, otp, sessionId }\n    API->>Service: verifyOtp(request)\n    Service->>DB: Query unconsumed OTP from mobile_otps\n    alt Wrong OTP Code entered\n        Service->>DB: UPDATE mobile_otps SET attempts = attempts + 1\n        Service-->>App: 401 Unauthorized (Invalid OTP code)\n    else 5 Failed Attempts Exceeded\n        Service->>DB: UPDATE mobile_otps SET is_consumed = TRUE\n        Service-->>App: 401 Unauthorized (Too many failed attempts. Locked out.)\n    else OTP Valid & Not Expired\n        Service->>DB: UPDATE mobile_otps SET is_verified = TRUE, is_consumed = TRUE\n        alt New Member (Profile Incomplete)\n            Service-->>App: 200 OK { isNewUser: true, onboardingToken, nextScreen: \"PROFILE_SETUP_SCREEN_08\" }\n        else Returning Member (Profile Completed)\n            Service-->>App: 200 OK { isNewUser: false, token, refreshToken, nextScreen: \"HOME_DASHBOARD\" }\n        end\n    end\n```\n\n---\n\n### 🧪 How to Test with PostgreSQL OTP Ledger\n1. Run **`01. Send Mobile OTP`** with your test phone number.\n2. In PostgreSQL, run:\n   ```sql\n   SELECT phone, otp_code, session_id, expires_at, is_consumed \n   FROM mobile_otps \n   WHERE is_consumed = false \n   ORDER BY created_at DESC \n   LIMIT 1;\n   ```\n3. Copy the 6-digit `otp_code` into the Postman collection variable `{{otpCode}}` (or edit the `verify-otp` body directly).\n4. Run **`03. Verify OTP & Smart Gateway`**.",
+          "item": [
+            {
+              "name": "01. Send Mobile OTP (Screen 05)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response envelope conforms to ApiResponse format', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.message).to.be.a('string');",
+                      "    pm.expect(jsonData.data).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test('Response contains valid OTP challenge session', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.data.sessionId).to.be.a('string').and.not.empty;",
+                      "    pm.expect(jsonData.data.phone).to.be.a('string').and.not.empty;",
+                      "    pm.expect(jsonData.data.channel).to.be.oneOf(['SMS', 'WHATSAPP']);",
+                      "    pm.expect(jsonData.data.resendAvailableInSeconds).to.eql(60);",
+                      "    pm.expect(jsonData.data.simBindingVerified).to.be.true;",
+                      "});",
+                      "",
+                      "pm.test('Response time is within acceptable SLA (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.sessionId) {",
+                      "        pm.collectionVariables.set('sessionId', jsonData.data.sessionId);",
+                      "        console.log('✅ [POSTMAN] Auto-saved sessionId: ' + jsonData.data.sessionId);",
+                      "    }",
+                      "    if (jsonData.data.phone) {",
+                      "        pm.collectionVariables.set('phone', jsonData.data.phone);",
+                      "        console.log('✅ [POSTMAN] Normalized phone: ' + jsonData.data.phone);",
+                      "    }",
+                      "    if (jsonData.data.otp) {",
+                      "        pm.collectionVariables.set('otpCode', jsonData.data.otp);",
+                      "        console.log('🔑 [POSTMAN] Auto-captured Dev OTP: ' + jsonData.data.otp);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"channel\": \"SMS\",\n  \"whatsappAlertsEnabled\": true,\n  \"soundboxStaySignedIn\": false,\n  \"referralCode\": \"FRIEND100\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/auth/send-otp",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "mobile", "auth", "send-otp"]
+                },
+                "description": "### Send 6-Digit Mobile OTP (Screen 05)\n\nInitiates customer authentication by triggering a 6-digit OTP challenge. Normalizes the mobile number into standard E.164 (`+91XXXXXXXXXX`), applies anti-spam rate limiting, invalidates any previously issued unconsumed codes, and inserts a fresh challenge row into PostgreSQL `mobile_otps`.\n\n---\n\n### 📥 Request Body Parameters\n\n| Parameter | Type | Required | Description | Example |\n| :--- | :--- | :--- | :--- | :--- |\n| `phone` | `string` | **Yes** | 10-digit Indian phone (`9876543210`) or E.164 (`+919876543210`). Must start with 6, 7, 8, or 9. | `\"9876543210\"` |\n| `channel` | `string` | No | Delivery method: `\"SMS\"` (default) or `\"WHATSAPP\"`. | `\"SMS\"` |\n| `whatsappAlertsEnabled` | `boolean` | No | User opt-in checkbox for promotional and order updates via WhatsApp. | `true` |\n| `soundboxStaySignedIn` | `boolean` | No | Merchant POS flag for keeping soundbox credentials pinned. | `false` |\n| `referralCode` | `string` | No | Referral code entered by consumer (e.g. `\"FRIEND100\"`). Previews ₹100 reward. | `\"FRIEND100\"` |\n\n---\n\n### 🛡️ Business & Security Rules\n1. **Database Ledger (`mobile_otps`)**: Generates a cryptographically random 6-digit code via `SecureRandom` and records it directly in PostgreSQL with `expires_at = NOW() + 5 minutes` and `cooldown_until = NOW() + 60 seconds`.\n2. **Cooldown Enforcement**: Rejects duplicate calls within 60 seconds with `429 Too Many Requests`.\n3. **Sanitization**: Rejects non-Indian phone formats, non-numeric characters, and invalid telecom circles.\n4. **Database State Clean-up**: Automatically marks all previous unconsumed OTP rows for this phone as consumed (`is_consumed = TRUE`)."
+              },
+              "response": [
+                {
+                  "name": "200 OK — OTP Successfully Generated & Stored in DB",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"phone\": \"9876543210\",\n  \"channel\": \"SMS\",\n  \"whatsappAlertsEnabled\": true,\n  \"soundboxStaySignedIn\": false,\n  \"referralCode\": \"FRIEND100\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/mobile/auth/send-otp",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["api", "v1", "mobile", "auth", "send-otp"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"OTP sent successfully\",\n  \"data\": {\n    \"sessionId\": \"otp_sess_a81d4e2b09c1\",\n    \"phone\": \"+919876543210\",\n    \"channel\": \"SMS\",\n    \"resendAvailableInSeconds\": 60,\n    \"simBindingVerified\": true,\n    \"otp\": \"481920\"\n  },\n  \"requestId\": \"a81d4e2b-09c1-4ef5-8321-9502c427e392\"\n}"
+                },
+                {
+                  "name": "429 Too Many Requests — Cooldown Active (< 60s)",
+                  "status": "Too Many Requests",
+                  "code": 429,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Please wait 60 seconds before requesting another OTP.\",\n  \"errorCode\": \"RATE_LIMIT_EXCEEDED\",\n  \"error\": {\n    \"code\": \"RATE_LIMIT_EXCEEDED\",\n    \"details\": null\n  },\n  \"requestId\": \"c21f98e0-12ab-4ef5-9102-123456789abc\"\n}"
+                },
+                {
+                  "name": "400 Bad Request — Invalid Indian Mobile Number",
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Invalid Indian mobile number. Mobile numbers must begin with 6, 7, 8, or 9.\",\n  \"errorCode\": \"VALIDATION_FAILED\",\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"details\": null\n  },\n  \"requestId\": \"e56b78c9-34df-4ef5-8899-abcdef012345\"\n}"
+                },
+                {
+                  "name": "400 Bad Request — Missing Phone Field",
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Phone number is required.\",\n  \"errorCode\": \"VALIDATION_FAILED\",\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"details\": null\n  },\n  \"requestId\": \"f12a34b5-67cd-4ef5-0123-456789abcdef\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "02. Resend Mobile OTP (Screen 07)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Resend produces fresh session ID', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.data.sessionId).to.be.a('string');",
+                      "    pm.expect(jsonData.data.resendAvailableInSeconds).to.eql(60);",
+                      "    pm.collectionVariables.set('sessionId', jsonData.data.sessionId);",
+                      "    if (jsonData.data.otp) {",
+                      "        pm.collectionVariables.set('otpCode', jsonData.data.otp);",
+                      "        console.log('🔑 [POSTMAN] Auto-captured Resend Dev OTP: ' + jsonData.data.otp);",
+                      "    }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"channel\": \"SMS\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/auth/resend-otp",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "mobile", "auth", "resend-otp"]
+                },
+                "description": "### Resend Mobile OTP (Screen 07)\n\nDispatches a new OTP challenge once the 60-second cooldown timer expires.\n\n---\n\n### 🛡️ Enforcement & Lifecycle\n- **If called within 60 seconds**: The PostgreSQL database check halts the request and returns `429 Too Many Requests`.\n- **If called after 60 seconds**: Marks previous OTPs as consumed, inserts a new OTP challenge in `mobile_otps`, issues a new `sessionId`, resets the 60-second cooldown, and dispatches the new code."
+              },
+              "response": [
+                {
+                  "name": "200 OK — Fresh OTP Generated After Cooldown",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"OTP sent successfully\",\n  \"data\": {\n    \"sessionId\": \"otp_sess_f78a9c2b34de\",\n    \"phone\": \"+919876543210\",\n    \"channel\": \"SMS\",\n    \"resendAvailableInSeconds\": 60,\n    \"simBindingVerified\": true\n  },\n  \"requestId\": \"f78a9c2b-34de-4ef5-9012-3456789abcde\"\n}"
+                },
+                {
+                  "name": "429 Too Many Requests — Cooldown Active",
+                  "status": "Too Many Requests",
+                  "code": 429,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Please wait 60 seconds before requesting another OTP.\",\n  \"errorCode\": \"RATE_LIMIT_EXCEEDED\",\n  \"error\": {\n    \"code\": \"RATE_LIMIT_EXCEEDED\",\n    \"details\": null\n  },\n  \"requestId\": \"99a8b7c6-d5e4-4ef5-1122-334455667788\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "03. Verify OTP & Smart Gateway (Screen 07)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response envelope is valid', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.data).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test('Smart Gateway routing is well-formed', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.data).to.have.property('isNewUser');",
+                      "    pm.expect(jsonData.data).to.have.property('nextScreen');",
+                      "    pm.expect(jsonData.data.nextScreen).to.be.oneOf(['PROFILE_SETUP_SCREEN_08', 'HOME_DASHBOARD']);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.onboardingToken) {",
+                      "        pm.collectionVariables.set('onboardingToken', jsonData.data.onboardingToken);",
+                      "        console.log('✅ [POSTMAN] New Member detected! Saved onboardingToken: ' + jsonData.data.onboardingToken);",
+                      "    }",
+                      "    if (jsonData.data.token) {",
+                      "        pm.collectionVariables.set('accessToken', jsonData.data.token);",
+                      "        console.log('✅ [POSTMAN] Returning Member detected! Saved accessToken: ' + jsonData.data.token);",
+                      "    }",
+                      "    if (jsonData.data.refreshToken) {",
+                      "        pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+                      "        console.log('✅ [POSTMAN] Saved refreshToken: ' + jsonData.data.refreshToken);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"otp\": \"{{otpCode}}\",\n  \"sessionId\": \"{{sessionId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/auth/verify-otp",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "mobile", "auth", "verify-otp"]
+                },
+                "description": "### Smart OTP Verification & Gateway Router (Screen 07)\n\nVerifies the customer's 6-digit OTP code against the active record in the PostgreSQL `mobile_otps` table.\n\n---\n\n### 📥 Request Body Parameters\n\n| Parameter | Type | Required | Description | Example |\n| :--- | :--- | :--- | :--- | :--- |\n| `phone` | `string` | **Yes** | Phone number normalized to E.164. | `\"9876543210\"` |\n| `otp` | `string` | **Yes** | 6-digit OTP code stored in `mobile_otps`. | `\"721904\"` |\n| `sessionId` | `string` | No | Optional challenge session ID for audit tracing. | `\"otp_sess_a81d4e2b09c1\"` |\n\n---\n\n### 🛡️ Five-Stage Security Check\n1. **Database Match**: Queries `mobile_otps` where `phone = ? AND is_consumed = FALSE ORDER BY created_at DESC LIMIT 1`.\n2. **Expiry Verification**: Rejects if `expires_at < NOW()` (5-minute TTL).\n3. **Brute-Force Counter**: If wrong code entered, increments `attempts = attempts + 1`. If `attempts >= 5`, permanently locks and consumes the code.\n4. **Timing-Safe Comparison**: Byte-level constant-time `MessageDigest.isEqual` protects against side-channel attacks.\n5. **Atomicity**: Sets `is_verified = TRUE` and `is_consumed = TRUE` in PostgreSQL.\n\n---\n\n### 🔀 Smart Gateway Responses:\n- **First-Time Signups (`isNewUser: true`)**:\n  - Issues a scoped `onboardingToken` for profile setup.\n  - Returns ₹100 Welcome Bonus preview (`WELCOME100`).\n  - Routes to `nextScreen: \"PROFILE_SETUP_SCREEN_08\"`.\n\n- **Returning Members (`isNewUser: false`)**:\n  - Issues customer Bearer JWT `token` and `refreshToken`.\n  - Creates a registered session in `user_sessions`.\n  - Routes to `nextScreen: \"HOME_DASHBOARD\"`."
+              },
+              "response": [
+                {
+                  "name": "200 OK — First-Time Signup (Routes to Profile Setup)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"OTP verified successfully\",\n  \"data\": {\n    \"isNewUser\": true,\n    \"referralEligible\": true,\n    \"token\": null,\n    \"refreshToken\": null,\n    \"onboardingToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3ZjA5YzYyMS0wYTJiLTRjZDMtODllZi01Njc4OWFiY2RlZjAiLCJyb2xlIjoiQ1VTVE9NRVIifQ.signature...\",\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Member 3210\",\n      \"mobile\": \"+919876543210\",\n      \"role\": \"CUSTOMER\"\n    },\n    \"welcomeBonus\": {\n      \"claimed\": true,\n      \"amount\": 100.0,\n      \"unlockedCouponCode\": \"WELCOME100\",\n      \"description\": \"Flat ₹100 discount coupon unlocks on profile completion\"\n    },\n    \"nextScreen\": \"PROFILE_SETUP_SCREEN_08\"\n  },\n  \"requestId\": \"d41d8cd9-8f00-4b20-4e98-00998ecf8427\"\n}"
+                },
+                {
+                  "name": "200 OK — Returning Member (Routes to Home Dashboard)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"OTP verified successfully\",\n  \"data\": {\n    \"isNewUser\": false,\n    \"referralEligible\": false,\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3ZjA5YzYyMS0wYTJiLTRjZDMtODllZi01Njc4OWFiY2RlZjAiLCJyb2xlIjoiQ1VTVE9NRVIifQ.signature...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refreshToken...\",\n    \"onboardingToken\": null,\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Rahul Sharma\",\n      \"mobile\": \"+919876543210\",\n      \"role\": \"CUSTOMER\"\n    },\n    \"welcomeBonus\": null,\n    \"nextScreen\": \"HOME_DASHBOARD\"\n  },\n  \"requestId\": \"a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c4d\"\n}"
+                },
+                {
+                  "name": "401 Unauthorized — Invalid OTP Code",
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Invalid OTP code.\",\n  \"errorCode\": \"INVALID_CREDENTIALS\",\n  \"error\": {\n    \"code\": \"INVALID_CREDENTIALS\",\n    \"details\": null\n  },\n  \"requestId\": \"e56b78c9-34df-4ef5-8899-abcdef012345\"\n}"
+                },
+                {
+                  "name": "401 Unauthorized — OTP Expired (> 5 mins)",
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"OTP code has expired. Please request a new one.\",\n  \"errorCode\": \"INVALID_CREDENTIALS\",\n  \"error\": {\n    \"code\": \"INVALID_CREDENTIALS\",\n    \"details\": null\n  },\n  \"requestId\": \"778899aa-bbcc-4dde-eff0-112233445566\"\n}"
+                },
+                {
+                  "name": "401 Unauthorized — Max 5 Attempts Exceeded (Lockout)",
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Too many failed attempts. Please request a new OTP.\",\n  \"errorCode\": \"INVALID_CREDENTIALS\",\n  \"error\": {\n    \"code\": \"INVALID_CREDENTIALS\",\n    \"details\": null\n  },\n  \"requestId\": \"33445566-7788-499a-aabb-ccddeeff0011\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "04. Complete Profile Setup (Screen 08)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Full customer session tokens returned', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.data.token).to.be.a('string');",
+                      "    pm.expect(jsonData.data.refreshToken).to.be.a('string');",
+                      "    pm.collectionVariables.set('accessToken', jsonData.data.token);",
+                      "    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+                      "});",
+                      "",
+                      "pm.test('Welcome bonus unlocked and confirmed', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.data.welcomeBonusUnlocked).to.be.true;",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fullName\": \"Rahul Sharma\",\n  \"email\": \"rahul.sharma@example.com\",\n  \"city\": \"Ahmedabad\",\n  \"state\": \"Gujarat\",\n  \"district\": \"Ahmedabad\",\n  \"pincode\": \"380015\",\n  \"gender\": \"MALE\",\n  \"address\": \"101, Galaxy Heights, S.G. Highway\",\n  \"birthday\": \"1998-05-15\",\n  \"referralCode\": \"FRIEND100\",\n  \"categoryPreferences\": [\n    \"11111111-1111-1111-1111-111111111101\",\n    \"11111111-1111-1111-1111-111111111104\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/auth/complete-setup",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "mobile", "auth", "complete-setup"]
+                },
+                "description": "### Compulsory Customer Profile Setup (Screen 08)\n\nFinalizes a newly registered customer's account profile using their scoped `onboardingToken`.\n\n---\n\n### 📥 Request Body Parameters\n\n| Parameter | Type | Required | Description | Example |\n| :--- | :--- | :--- | :--- | :--- |\n| `fullName` | `string` | **Yes** | Customer's full name. | `\"Rahul Sharma\"` |\n| `email` | `string` | No | Customer's email address. | `\"rahul.sharma@example.com\"` |\n| `city` | `string` | **Yes** | Primary operational city (from `/api/v1/discovery/cities`). | `\"Ahmedabad\"` |\n| `state` | `string` | No | State of residence (from `/api/v1/discovery/states`). | `\"Gujarat\"` |\n| `district` | `string` | No | District of residence. | `\"Ahmedabad\"` |\n| `pincode` | `string` | No | Postal PIN code. | `\"380015\"` |\n| `gender` | `string` | No | Gender (`MALE`, `FEMALE`, `OTHER`). | `\"MALE\"` |\n| `address` | `string` | No | Street address / residential location. | `\"101, Galaxy Heights, S.G. Highway\"` |\n| `birthday` | `string` | No | Date of birth (`YYYY-MM-DD`) for birthday rewards. | `\"1998-05-15\"` |\n| `referralCode` | `string` | No | Referral code of the friend who invited them. | `\"FRIEND100\"` |\n| `categoryPreferences` | `array` | No | Active categories from `/api/v1/discovery/categories` (supports UUIDs, slugs, or names). | `[\"11111111-1111-1111-1111-111111111101\"]` |\n\n---\n\n### 🎁 Post-Setup Operations\n1. Updates `users` table: sets `profile_completed = TRUE`, `full_name`, `email`, `primary_city`, `state`, `district`, `pincode`, `address`, `gender`, `birthday`.\n2. Generates user's permanent referral code (e.g. `PINAK8899`).\n3. Credits the ₹100 welcome reward coupon (`WELCOME100`) to the customer's wallet.\n4. Upgrades auth level: invalidates `onboardingToken` and issues permanent customer JWT `token` + `refreshToken`."
+              },
+              "response": [
+                {
+                  "name": "200 OK — Profile Completed & Welcome Reward Credited",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Profile setup completed successfully\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Rahul Sharma\",\n      \"email\": \"rahul.sharma@example.com\",\n      \"mobile\": \"+919876543210\",\n      \"city\": \"Ahmedabad\",\n      \"state\": \"Gujarat\",\n      \"district\": \"Ahmedabad\",\n      \"pincode\": \"380015\",\n      \"address\": \"101, Galaxy Heights, S.G. Highway\",\n      \"gender\": \"MALE\",\n      \"birthday\": \"1998-05-15\",\n      \"referralCode\": \"PINAK8899\",\n      \"role\": \"CUSTOMER\",\n      \"profileCompleted\": true\n    },\n    \"welcomeBonusUnlocked\": true,\n    \"rewardCoupon\": {\n      \"code\": \"WELCOME100\",\n      \"title\": \"Flat ₹100 Off First Order\",\n      \"discountAmount\": 100.0,\n      \"description\": \"Welcome to PINAK! ₹100 discount applied to your rewards wallet\"\n    },\n    \"nextScreen\": \"PERMISSIONS_CONSENT_SCREEN_09\"\n  }\n}"
+                },
+                {
+                  "name": "401 Unauthorized — Invalid or Missing Onboarding Token",
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Invalid or expired onboarding token. Please authenticate with OTP again.\",\n  \"errorCode\": \"UNAUTHORIZED\",\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"details\": null\n  },\n  \"requestId\": \"setup-unauthorized-uuid\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "🏷️ Mobile Categories (Screen 08 Preferences)",
+          "description": "Fetches active platform categories from the backend for mobile user preference selection (Screen 08).",
+          "item": [
+            {
+              "name": "01. Get Categories List (Screen 08)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/categories",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "mobile", "categories"]
+                },
+                "description": "Fetches active platform categories configured in the backend so the mobile user can select their category preferences during profile setup (Screen 08)."
+              },
+              "response": [
+                {
+                  "name": "200 OK — Active Categories List",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Categories retrieved successfully\",\n  \"data\": [\n    {\n      \"id\": \"11111111-1111-1111-1111-111111111101\",\n      \"name\": \"Food & Dining\",\n      \"slug\": \"food-and-dining\",\n      \"status\": \"ACTIVE\",\n      \"displayOrder\": 1\n    },\n    {\n      \"id\": \"11111111-1111-1111-1111-111111111104\",\n      \"name\": \"Retail & Shopping\",\n      \"slug\": \"retail-and-shopping\",\n      \"status\": \"ACTIVE\",\n      \"displayOrder\": 4\n    }\n  ]\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "📍 Master India Locations (Screen 08 Address Fields)",
+          "description": "# 📍 Master India Locations Hierarchy\n\nDirectly serves the master India administrative divisions sourced from `indiaLocations.ts` and `IndiaAddressFields.tsx`:\n- **States** (`getAllStates()`)\n- **Districts** (`getDistrictsForState(state)`)\n- **Cities** (`getCitiesForDistrictOrState(state, district)`)\n- **Operating Cities** (`/api/v1/discovery/cities`)\n\nSupports seamless cascaded address selection: State ➔ District ➔ City ➔ Pincode ➔ Address.",
+          "item": [
+            {
+              "name": "01. Get All States of India (getAllStates)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/locations/states",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "mobile", "locations", "states"]
+                },
+                "description": "Returns sorted list of all 22+ Indian States and Union Territories from master dataset (equivalent to `getAllStates()`). Also accessible via `/api/v1/discovery/states`."
+              },
+              "response": [
+                {
+                  "name": "200 OK — States List",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"States fetched successfully\",\n  \"data\": [\n    \"Andhra Pradesh\",\n    \"Assam\",\n    \"Bihar\",\n    \"Chandigarh\",\n    \"Chhattisgarh\",\n    \"Delhi (NCT)\",\n    \"Goa\",\n    \"Gujarat\",\n    \"Haryana\",\n    \"Jharkhand\",\n    \"Karnataka\",\n    \"Kerala\",\n    \"Madhya Pradesh\",\n    \"Maharashtra\",\n    \"Odisha\",\n    \"Punjab\",\n    \"Rajasthan\",\n    \"Tamil Nadu\",\n    \"Telangana\",\n    \"Uttar Pradesh\",\n    \"Uttarakhand\",\n    \"West Bengal\"\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "02. Get Districts for State (getDistrictsForState)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/locations/districts?state=Gujarat",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "mobile", "locations", "districts"],
+                  "query": [
+                    {
+                      "key": "state",
+                      "value": "Gujarat",
+                      "description": "Target State name (e.g. Gujarat, Maharashtra, Delhi)"
+                    }
+                  ]
+                },
+                "description": "Returns all administrative districts for the chosen state (equivalent to `getDistrictsForState(state)`). Supports smart contains matching (e.g. 'Delhi' matches 'Delhi (NCT)')."
+              },
+              "response": [
+                {
+                  "name": "200 OK — Districts List for Gujarat",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Districts fetched successfully\",\n  \"data\": [\n    \"Ahmedabad\",\n    \"Amreli\",\n    \"Anand\",\n    \"Aravalli\",\n    \"Banaskantha\",\n    \"Bharuch\",\n    \"Bhavnagar\",\n    \"Botad\",\n    \"Chhota Udaipur\",\n    \"Dahod\",\n    \"Dang\",\n    \"Devbhoomi Dwarka\",\n    \"Gandhinagar\",\n    \"Gir Somnath\",\n    \"Jamnagar\",\n    \"Junagadh\",\n    \"Kheda\",\n    \"Kutch\",\n    \"Mahisagar\",\n    \"Mehsana\",\n    \"Morbi\",\n    \"Narmada\",\n    \"Navsari\",\n    \"Panchmahal\",\n    \"Patan\",\n    \"Porbandar\",\n    \"Rajkot\",\n    \"Sabarkantha\",\n    \"Surat\",\n    \"Surendranagar\",\n    \"Tapi\",\n    \"Vadodara\",\n    \"Valsad\"\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "03. Get Cities for District & State (getCitiesForDistrictOrState)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/locations/cities/names?state=Gujarat&district=Ahmedabad",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "mobile", "locations", "cities", "names"],
+                  "query": [
+                    {
+                      "key": "state",
+                      "value": "Gujarat",
+                      "description": "Target State name"
+                    },
+                    {
+                      "key": "district",
+                      "value": "Ahmedabad",
+                      "description": "Target District name"
+                    }
+                  ]
+                },
+                "description": "Returns major cities and towns for the chosen district and state (equivalent to `getCitiesForDistrictOrState(state, district)`). If district is omitted, returns all major cities across all districts in the state."
+              },
+              "response": [
+                {
+                  "name": "200 OK — Cities List for Ahmedabad District",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Cities fetched successfully\",\n  \"data\": [\n    \"Ahmedabad\",\n    \"Bavla\",\n    \"Dhandhuka\",\n    \"Dholera\",\n    \"Dholka\",\n    \"Mandal\",\n    \"Sanand\",\n    \"Viramgam\"\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "04. Lookup Location by 6-digit Pincode (Smart Auto-Fill)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/locations/pincode/380015",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "mobile", "locations", "pincode", "380015"]
+                },
+                "description": "Instant 0ms lookup for 6-digit Indian PIN codes (e.g. 380015 -> Gujarat, Ahmedabad). Returns auto-fill state, district, city, plus pre-filtered availableDistricts and availableCities for Screen 08 dropdowns."
+              },
+              "response": [
+                {
+                  "name": "200 OK — Auto-Filled Location for PIN 380015",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Pincode details fetched successfully\",\n  \"data\": {\n    \"pincode\": \"380015\",\n    \"state\": \"Gujarat\",\n    \"district\": \"Ahmedabad\",\n    \"city\": \"Ahmedabad\",\n    \"availableDistricts\": [\n      \"Ahmedabad\",\n      \"Amreli\",\n      \"Anand\",\n      \"Surat\",\n      \"Vadodara\"\n    ],\n    \"availableCities\": [\n      \"Ahmedabad\",\n      \"Bavla\",\n      \"Dholka\",\n      \"Sanand\",\n      \"Viramgam\"\n    ]\n  }\n}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "Base URL of PINAK Backend API server (e.g. http://localhost:8080 or https://pinak-server.onrender.com)"
+    },
+    {
+      "key": "phone",
+      "value": "9876543210",
+      "type": "string",
+      "description": "Customer 10-digit mobile phone number (automatically normalized to E.164 +919876543210)"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured OTP challenge session ID from send-otp or resend-otp"
+    },
+    {
+      "key": "otpCode",
+      "value": "",
+      "type": "string",
+      "description": "6-digit OTP code retrieved from PostgreSQL mobile_otps table (SELECT otp_code FROM mobile_otps ORDER BY created_at DESC LIMIT 1) or dev console"
+    },
+    {
+      "key": "onboardingToken",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured scoped onboarding JWT for first-time signups, used to complete Screen 08 Profile Setup"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured permanent customer Bearer JWT access token for fully onboarded members"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured long-lived refresh token for token renewal"
+    }
+  ]
+}

@@ -26,6 +26,10 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     boolean existsByMobile(String mobile);
 
+    Optional<User> findByReferralCode(String referralCode);
+
+    boolean existsByReferralCode(String referralCode);
+
     Optional<User> findByIdAndStatus(UUID id, UserStatus status);
 
     Optional<User> findByEmailAndStatus(String email, UserStatus status);

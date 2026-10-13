@@ -11,6 +11,16 @@ public interface CityService {
     // Discovery (Public)
     List<CityResponse> getDiscoveryCities();
 
+    List<CityResponse> getDiscoveryCities(String state);
+
+    List<String> getDiscoveryStates();
+
+    List<String> getDistrictsForState(String state);
+
+    List<String> getCitiesForDistrictOrState(String state, String district);
+
+    PincodeLookupResponse lookupPincode(String pincode);
+
     CityResponse getDiscoveryCityById(String cityId);
 
     // Admin Operations
@@ -25,4 +35,17 @@ public interface CityService {
     CityResponse updateCityStatusAdmin(String cityId, com.superapp.store.enums.CityStatus status, String adminUserId);
 
     void deactivateCityAdmin(String cityId, String adminUserId);
+
+    record DistrictData(String name, List<String> cities) {}
+
+    record StateData(String state, String code, List<DistrictData> districts) {}
+
+    record PincodeLookupResponse(
+            String pincode,
+            String state,
+            String district,
+            String city,
+            List<String> availableDistricts,
+            List<String> availableCities
+    ) {}
 }

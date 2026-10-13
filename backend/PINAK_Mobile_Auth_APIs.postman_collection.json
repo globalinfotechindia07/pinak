@@ -1,0 +1,471 @@
+{
+  "info": {
+    "_postman_id": "b8a9c0d1-e2f3-4a5b-6c7d-8e9f0a1b2c3d",
+    "name": "PINAK Mobile App — Auth & OTP Collection",
+    "description": "# PINAK Mobile App — Authentication & OTP Collection\n\nProduction-grade Postman collection for the **PINAK Mobile Super-App Authentication Subsystem** (Screens 05–08).\n\n### 🔐 Database OTP Architecture\n- **Table**: PostgreSQL `mobile_otps` (Flyway Migration `V8__add_pinak_mobile_onboarding_fields.sql`).\n- **No Mock OTPs**: Codes are generated randomly and securely, recorded in the database, delivered via SMS/WhatsApp, and verified using constant-time `MessageDigest.isEqual`.\n- **Cooldown & Brute-Force**: 60-second cooldown rate limit per phone; maximum 5 failed attempts before challenge lockout.\n\n### 🗄️ Querying Active OTP from PostgreSQL:\n```sql\nSELECT phone, otp_code, session_id, expires_at, attempts, is_consumed \nFROM mobile_otps \nWHERE phone = '+919876543210' \nORDER BY created_at DESC \nLIMIT 1;\n```",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "Base URL of PINAK Backend API server"
+    },
+    {
+      "key": "testPhone",
+      "value": "+919876543210",
+      "type": "string",
+      "description": "Customer mobile phone number in E.164 format"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured OTP challenge session ID"
+    },
+    {
+      "key": "otpCode",
+      "value": "",
+      "type": "string",
+      "description": "6-digit OTP code retrieved from PostgreSQL mobile_otps table"
+    },
+    {
+      "key": "onboardingToken",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured scoped onboarding JWT for first-time signups"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured permanent customer Bearer JWT access token"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured refresh token"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Send Mobile OTP (Screen 05)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "var jsonData = pm.response.json();",
+              "if (jsonData && jsonData.data) {",
+              "    if (jsonData.data.sessionId) {",
+              "        pm.collectionVariables.set('sessionId', jsonData.data.sessionId);",
+              "        console.log('✅ Auto-saved sessionId: ' + jsonData.data.sessionId);",
+              "    }",
+              "    if (jsonData.data.phone) {",
+              "        pm.collectionVariables.set('testPhone', jsonData.data.phone);",
+              "    }",
+              "    console.log('ℹ️ Check PostgreSQL table mobile_otps for the 6-digit OTP code.');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"channel\": \"SMS\",\n  \"whatsappAlertsEnabled\": true,\n  \"soundboxStaySignedIn\": false,\n  \"referralCode\": \"FRIEND100\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mobile/auth/send-otp",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "mobile", "auth", "send-otp"]
+        },
+        "description": "Triggers 6-digit OTP delivery to the customer's phone and records the challenge in PostgreSQL `mobile_otps` table."
+      },
+      "response": [
+        {
+          "name": "200 OK — OTP Generated & Stored in DB",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"OTP sent successfully\",\n  \"data\": {\n    \"sessionId\": \"otp_sess_a81d4e2b09c1\",\n    \"phone\": \"+919876543210\",\n    \"channel\": \"SMS\",\n    \"resendAvailableInSeconds\": 60,\n    \"simBindingVerified\": true\n  }\n}"
+        },
+        {
+          "name": "429 Too Many Requests — Cooldown Active",
+          "status": "Too Many Requests",
+          "code": 429,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Please wait 60 seconds before requesting another OTP.\",\n  \"errorCode\": \"RATE_LIMIT_EXCEEDED\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Resend Mobile OTP (Screen 07)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "var jsonData = pm.response.json();",
+              "if (jsonData && jsonData.data && jsonData.data.sessionId) {",
+              "    pm.collectionVariables.set('sessionId', jsonData.data.sessionId);",
+              "    console.log('✅ Refreshed sessionId: ' + jsonData.data.sessionId);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"channel\": \"SMS\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mobile/auth/resend-otp",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "mobile", "auth", "resend-otp"]
+        },
+        "description": "Resends a new 6-digit OTP code once the 60-second cooldown expires."
+      },
+      "response": [
+        {
+          "name": "200 OK — Fresh OTP Sent",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"OTP sent successfully\",\n  \"data\": {\n    \"sessionId\": \"otp_sess_c92e1f4a56b7\",\n    \"phone\": \"+919876543210\",\n    \"channel\": \"SMS\",\n    \"resendAvailableInSeconds\": 60,\n    \"simBindingVerified\": true\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Verify OTP & Smart Gateway (Screen 07)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "var jsonData = pm.response.json();",
+              "if (jsonData && jsonData.data) {",
+              "    if (jsonData.data.onboardingToken) {",
+              "        pm.collectionVariables.set('onboardingToken', jsonData.data.onboardingToken);",
+              "        console.log('✅ Captured onboardingToken: ' + jsonData.data.onboardingToken);",
+              "    }",
+              "    if (jsonData.data.token) {",
+              "        pm.collectionVariables.set('accessToken', jsonData.data.token);",
+              "        console.log('✅ Captured accessToken: ' + jsonData.data.token);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"otp\": \"{{otpCode}}\",\n  \"sessionId\": \"{{sessionId}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mobile/auth/verify-otp",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "mobile", "auth", "verify-otp"]
+        },
+        "description": "Validates the 6-digit OTP code directly from PostgreSQL `mobile_otps` table and routes returning members to Home Dashboard or new signups to Screen 08 Profile Setup."
+      },
+      "response": [
+        {
+          "name": "200 OK — First-Time Signup (Routes to Setup)",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"OTP verified successfully\",\n  \"data\": {\n    \"isNewUser\": true,\n    \"referralEligible\": true,\n    \"token\": null,\n    \"refreshToken\": null,\n    \"onboardingToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Member 3210\",\n      \"mobile\": \"+919876543210\",\n      \"role\": \"CUSTOMER\"\n    },\n    \"welcomeBonus\": {\n      \"claimed\": true,\n      \"amount\": 100.0,\n      \"unlockedCouponCode\": \"WELCOME100\",\n      \"description\": \"Flat ₹100 discount coupon unlocks on profile completion\"\n    },\n    \"nextScreen\": \"PROFILE_SETUP_SCREEN_08\"\n  }\n}"
+        },
+        {
+          "name": "200 OK — Returning Member (Routes to Home)",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"OTP verified successfully\",\n  \"data\": {\n    \"isNewUser\": false,\n    \"referralEligible\": false,\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"onboardingToken\": null,\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Rahul Sharma\",\n      \"mobile\": \"+919876543210\",\n      \"role\": \"CUSTOMER\"\n    },\n    \"welcomeBonus\": null,\n    \"nextScreen\": \"HOME_DASHBOARD\"\n  }\n}"
+        },
+        {
+          "name": "401 Unauthorized — Invalid OTP Code",
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Invalid OTP code.\",\n  \"errorCode\": \"INVALID_CREDENTIALS\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Verify OTP (Invalid Code Test)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 401 Unauthorized', function () {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"otp\": \"000000\",\n  \"sessionId\": \"{{sessionId}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mobile/auth/verify-otp",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "mobile", "auth", "verify-otp"]
+        },
+        "description": "Tests rejection of wrong OTP code (returns 401 Unauthorized)."
+      },
+      "response": [
+        {
+          "name": "401 Unauthorized — Wrong Code",
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Invalid OTP code.\",\n  \"errorCode\": \"INVALID_CREDENTIALS\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Discovery — Get States & Cities Dropdown",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "var jsonData = pm.response.json();",
+              "pm.expect(jsonData.success).to.eql(true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/discovery/states",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "discovery", "states"]
+        },
+        "description": "Returns distinct list of states for profile setup dropdown. Cities can be fetched via `GET /api/v1/discovery/cities?state=Gujarat`."
+      }
+    },
+    {
+      "name": "6. Discovery — Get Categories (Admin / Merchant Backed)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "var jsonData = pm.response.json();",
+              "pm.expect(jsonData.success).to.eql(true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/discovery/categories",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "discovery", "categories"]
+        },
+        "description": "Returns active categories configured by Admin/Merchant to allow users to select category preferences."
+      }
+    },
+    {
+      "name": "7. Complete Profile Setup (Screen 08)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "var jsonData = pm.response.json();",
+              "if (jsonData && jsonData.data) {",
+              "    if (jsonData.data.token) {",
+              "        pm.collectionVariables.set('accessToken', jsonData.data.token);",
+              "        console.log('✅ Captured permanent customer accessToken: ' + jsonData.data.token);",
+              "    }",
+              "    if (jsonData.data.refreshToken) {",
+              "        pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+              "    }",
+              "    pm.expect(jsonData.data.welcomeBonusUnlocked).to.eql(true);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{onboardingToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Rahul Sharma\",\n  \"email\": \"rahul.sharma@example.com\",\n  \"city\": \"Ahmedabad\",\n  \"state\": \"Gujarat\",\n  \"district\": \"Ahmedabad\",\n  \"pincode\": \"380015\",\n  \"gender\": \"MALE\",\n  \"address\": \"101, Galaxy Heights, S.G. Highway\",\n  \"birthday\": \"1998-05-15\",\n  \"referralCode\": \"FRIEND100\",\n  \"categoryPreferences\": [\n    \"11111111-1111-1111-1111-111111111101\",\n    \"11111111-1111-1111-1111-111111111104\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mobile/auth/complete-setup",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "mobile", "auth", "complete-setup"]
+        },
+        "description": "Finalizes customer profile using scoped onboarding token. Enriches name, email, city, state, district, pincode, gender, address, birthday, referralCode, and categoryPreferences. Unlocks ₹100 welcome coupon and returns permanent tokens."
+      },
+      "response": [
+        {
+          "name": "200 OK — Profile Completed",
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Profile setup completed successfully\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Rahul Sharma\",\n      \"email\": \"rahul.sharma@example.com\",\n      \"mobile\": \"+919876543210\",\n      \"city\": \"Ahmedabad\",\n      \"state\": \"Gujarat\",\n      \"district\": \"Ahmedabad\",\n      \"pincode\": \"380015\",\n      \"address\": \"101, Galaxy Heights, S.G. Highway\",\n      \"gender\": \"MALE\",\n      \"birthday\": \"1998-05-15\",\n      \"referralCode\": \"PINAK8899\",\n      \"role\": \"CUSTOMER\",\n      \"profileCompleted\": true\n    },\n    \"welcomeBonusUnlocked\": true,\n    \"rewardCoupon\": {\n      \"code\": \"WELCOME100\",\n      \"title\": \"Flat ₹100 Off First Order\",\n      \"discountAmount\": 100.0,\n      \"description\": \"Welcome to PINAK! ₹100 discount applied to your rewards wallet\"\n    },\n    \"nextScreen\": \"PERMISSIONS_CONSENT_SCREEN_09\"\n  }\n}"
+        }
+      ]
+    }
+  ]
+}

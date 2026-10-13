@@ -138,8 +138,7 @@ class MerchantServiceTest {
 
         assertThatThrownBy(() -> merchantService.createMerchant(request, ownerId, true))
                 .isInstanceOf(AppException.class)
-                .hasMessageContaining("Role Conflict")
-                .hasMessageContaining("belongs to an internal platform administrator");
+                .hasMessageContaining("associated with an administrator account");
     }
 
     @Test

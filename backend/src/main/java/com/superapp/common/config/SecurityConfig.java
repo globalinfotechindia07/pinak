@@ -58,7 +58,8 @@ public class SecurityConfig {
 
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
-                // Public auth endpoints
+                // Public mobile onboarding & discovery endpoints
+                .requestMatchers("/api/v1/mobile/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf", "/api/v1/auth/invite/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
                         "/api/v1/auth/register",

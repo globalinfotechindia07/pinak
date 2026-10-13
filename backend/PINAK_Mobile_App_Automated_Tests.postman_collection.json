@@ -1,0 +1,2034 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "PINAK Mobile App \u2014 Complete Workflows & Automated Test Suite (Screens 05-15)",
+    "description": "Exhaustive end-to-end Postman API collection for PINAK Mobile Application. Designed for 1-click execution via Postman Collection Runner or Newman CLI. Automatically passes tokens, session IDs, transaction numbers, and merchant codes dynamically across sequential user journeys.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "testPhone",
+      "value": "+919875554321",
+      "type": "string"
+    },
+    {
+      "key": "mockOtp",
+      "value": "482915",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "onboardingToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mobileToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "storeId",
+      "value": "00000000-0000-0000-0000-000000000101",
+      "type": "string"
+    },
+    {
+      "key": "dealId",
+      "value": "deal-30-off",
+      "type": "string"
+    },
+    {
+      "key": "txnId",
+      "value": "TXN-SCAN-1727710000000",
+      "type": "string"
+    },
+    {
+      "key": "scratchCardId",
+      "value": "SC-88776655",
+      "type": "string"
+    },
+    {
+      "key": "cardId",
+      "value": "VC-55443322",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Auth & Onboarding (Screens 05-08)",
+      "item": [
+        {
+          "name": "1. Check Mobile Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/auth/check-mobile?phone={{testPhone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "auth",
+                "check-mobile"
+              ],
+              "query": [
+                {
+                  "key": "phone",
+                  "value": "{{testPhone}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.expect(jsonData.data.nextStep).to.be.a('string');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Trigger 6-Digit OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/auth/send-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"channel\": \"SMS\",\n  \"whatsappAlertsEnabled\": true,\n  \"soundboxStaySignedIn\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data.sessionId) pm.collectionVariables.set('sessionId', jsonData.data.sessionId);",
+                  "if (jsonData.data.mockOtp) pm.collectionVariables.set('mockOtp', jsonData.data.mockOtp);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Validate Referral Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/auth/validate-referral?phone={{testPhone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "auth",
+                "validate-referral"
+              ],
+              "query": [
+                {
+                  "key": "phone",
+                  "value": "{{testPhone}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"referralCode\": \"FRIEND100\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Smart Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/auth/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"otp\": \"{{mockOtp}}\",\n  \"sessionId\": \"{{sessionId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data.onboardingToken) pm.collectionVariables.set('onboardingToken', jsonData.data.onboardingToken);",
+                  "if (jsonData.data.token) pm.collectionVariables.set('mobileToken', jsonData.data.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Fetch Setup Screen Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/profile/setup-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "profile",
+                "setup-config"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Complete Profile Setup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/profile/complete-setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "profile",
+                "complete-setup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Rahul Sharma\",\n  \"email\": \"rahul.sharma@example.com\",\n  \"city\": \"Bangalore\",\n  \"state\": \"Karnataka\",\n  \"district\": \"Bangalore Urban\",\n  \"pincode\": \"560038\",\n  \"gender\": \"MALE\",\n  \"address\": \"101, Galaxy Heights, Indiranagar\",\n  \"birthday\": \"1998-08-24\",\n  \"referralCode\": \"FRIEND100\",\n  \"categoryPreferences\": [\n    \"11111111-1111-1111-1111-111111111101\",\n    \"11111111-1111-1111-1111-111111111104\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data.token) pm.collectionVariables.set('mobileToken', jsonData.data.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Location & Geo-Radar Permissions (Screen 09)",
+      "item": [
+        {
+          "name": "7. Fetch Location Onboarding Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/location/onboarding-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "location",
+                "onboarding-config"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Resolve Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/location/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "location",
+                "resolve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 12.9716,\n  \"longitude\": 77.6412\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Get Geo-Radar Preview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/location/radar-preview?lat=12.9716&lng=77.6412",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "location",
+                "radar-preview"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.6412"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Update Permissions Consent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/location/update-permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "location",
+                "update-permissions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preciseLocationGranted\": true,\n  \"flashAlertsGranted\": true,\n  \"latitude\": 12.9716,\n  \"longitude\": 77.6412\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03. Home Feed & Daily Streak Check-in (Screen 10)",
+      "item": [
+        {
+          "name": "11. Fetch Home Feed Payload",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/home-feed?lat=12.9716&lng=77.6412",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "home-feed"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.6412"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Claim Daily Streak Check-in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/profile/rewards/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "profile",
+                "rewards",
+                "check-in"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Search & Category Discovery Hub",
+      "item": [
+        {
+          "name": "13. Search Overlay Payload",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/search/overlay?q=cafe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "search",
+                "overlay"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "cafe"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Global Search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/search/global?query=coffee&lat=12.9716&lng=77.6412",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "search",
+                "global"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "coffee"
+                },
+                {
+                  "key": "lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.6412"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Get Search History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/search/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "search",
+                "history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. Save Search History Query",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/search/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "search",
+                "history"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Artisan Bakery\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. Fetch Trending Collections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/search/trending-collections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "search",
+                "trending-collections"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Fetch Discovery Vibes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/search/vibes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "search",
+                "vibes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "19. Fetch Categories Hub",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/categories/hub",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "categories",
+                "hub"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "20. Fetch Categories Tree",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/categories/tree",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "categories",
+                "tree"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05. Merchant Discovery Listing & Map Radar (Screen 11)",
+      "item": [
+        {
+          "name": "21. Store Discovery Listing Feed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/stores/listing?q=cafe&lat=12.9716&lng=77.6412&radius=5000&viewMode=LIST&sort=nearest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "stores",
+                "listing"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "cafe"
+                },
+                {
+                  "key": "lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.6412"
+                },
+                {
+                  "key": "radius",
+                  "value": "5000"
+                },
+                {
+                  "key": "viewMode",
+                  "value": "LIST"
+                },
+                {
+                  "key": "sort",
+                  "value": "nearest"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "22. Interactive Map Radar Pins",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/stores/radar-map?lat=12.9716&lng=77.6412",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "stores",
+                "radar-map"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.6412"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "23. Claim Store Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/stores/00000000-0000-0000-0000-000000000101/claim-offer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "stores",
+                "00000000-0000-0000-0000-000000000101",
+                "claim-offer"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "24. Toggle Store Bookmark",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/stores/00000000-0000-0000-0000-000000000101/bookmark",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "stores",
+                "00000000-0000-0000-0000-000000000101",
+                "bookmark"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06. Deal Details & Live Dynamic Calculator (Screen 12)",
+      "item": [
+        {
+          "name": "25. Fetch Deal Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/deals/deal-30-off/details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "deals",
+                "deal-30-off",
+                "details"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "26. Calculate Dynamic Bill Discount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/deals/calculate-bill",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "deals",
+                "calculate-bill"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"dealId\": \"{{dealId}}\",\n  \"billAmount\": 1200,\n  \"redeemCoins\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "27. Initiate UPI Payment Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/deals/initiate-checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "deals",
+                "initiate-checkout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"dealId\": \"{{dealId}}\",\n  \"billAmount\": 1200,\n  \"redeemCoins\": true,\n  \"paymentMethod\": \"UPI\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.txnRefNumber) pm.collectionVariables.set('txnId', jsonData.data.txnRefNumber);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07. Scan & Pay Merchant QR Checkout (Screen 13)",
+      "item": [
+        {
+          "name": "28. Resolve Scanned QR Payload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/scan/resolve-qr",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "scan",
+                "resolve-qr"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrPayload\": \"upi://pay?pa=brewbites@okaxis&pn=Brew%20&%20Bites%20Cafe\",\n  \"latitude\": 12.9716,\n  \"longitude\": 77.6412\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "29. Calculate In-Store Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/scan/calculate-pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "scan",
+                "calculate-pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantVpa\": \"brewbites@okaxis\",\n  \"storeId\": \"{{storeId}}\",\n  \"billTotal\": 850.0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "30. Initiate Multi-App UPI Pay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/scan/initiate-upi-pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "scan",
+                "initiate-upi-pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantVpa\": \"brewbites@okaxis\",\n  \"storeId\": \"{{storeId}}\",\n  \"billTotal\": 850.0,\n  \"finalPayableAmount\": 595.0,\n  \"selectedUpiApp\": \"GPAY\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.transactionId) pm.collectionVariables.set('txnId', jsonData.data.transactionId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08. Payment Success & Mystery Scratch Card (Screen 14)",
+      "item": [
+        {
+          "name": "31. Fetch Payment Success Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/payment/success/{{txnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "payment",
+                "success",
+                "{{txnId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.mysteryScratchCard && jsonData.data.mysteryScratchCard.scratchCardId) {",
+                  "    pm.collectionVariables.set('scratchCardId', jsonData.data.mysteryScratchCard.scratchCardId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "32. Reveal Mystery Merchant Scratch Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/payment/scratch-card/{{scratchCardId}}/reveal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "payment",
+                "scratch-card",
+                "{{scratchCardId}}",
+                "reveal"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "33. Submit Merchant Rating",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/payment/rate-merchant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "payment",
+                "rate-merchant"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"transactionId\": \"{{txnId}}\",\n  \"rating\": 5,\n  \"feedbackText\": \"Great ambience and excellent coffee!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "34. Fetch Digital PDF Invoice Metadata",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/payment/{{txnId}}/invoice",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "payment",
+                "{{txnId}}",
+                "invoice"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09. Rewards Vault, Scratch Stash & Spin Wheel (Screen 15)",
+      "item": [
+        {
+          "name": "35. Fetch Rewards Vault Feed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/rewards/vault",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "rewards",
+                "vault"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.scratchVault && jsonData.data.scratchVault.cards && jsonData.data.scratchVault.cards.length > 0) {",
+                  "    pm.collectionVariables.set('cardId', jsonData.data.scratchVault.cards[0].cardId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "36. Scratch Vault Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/rewards/scratch-vault/{{cardId}}/scratch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "rewards",
+                "scratch-vault",
+                "{{cardId}}",
+                "scratch"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "37. Spin Lucky Pinak Wheel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/rewards/spin-wheel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "rewards",
+                "spin-wheel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "38. Redeem Coin Voucher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/rewards/vouchers/redeem",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "rewards",
+                "vouchers",
+                "redeem"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"voucherId\": \"vouch-starbucks-100\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "39. Download Coin Ledger Statement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/rewards/statement/download",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "rewards",
+                "statement",
+                "download"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Profile & Active Sessions Management",
+      "item": [
+        {
+          "name": "40. Fetch Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "profile"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "41. Update User Profile Info",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Rahul Sharma\",\n  \"email\": \"rahul.sharma@example.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "42. Fetch Active Login Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobileToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/profile/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "profile",
+                "sessions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response structure is valid', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
