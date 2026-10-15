@@ -45,7 +45,7 @@ public interface MerchantRepository extends JpaRepository<Merchant, UUID> {
             SELECT m FROM Merchant m
             WHERE m.status = com.superapp.merchant.enums.MerchantStatus.ACTIVE
             AND m.approvalStatus = com.superapp.merchant.entity.ApprovalStatus.APPROVED
-            AND (m.isFeatured = TRUE OR m.kycStatus = com.superapp.merchant.enums.KycStatus.VERIFIED)
+            AND (m.isFeatured = TRUE OR m.kycStatus = com.superapp.merchant.entity.KycStatus.VERIFIED)
             ORDER BY m.createdAt DESC
             """)
     Page<Merchant> findFeaturedMerchants(Pageable pageable);
