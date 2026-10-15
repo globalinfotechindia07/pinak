@@ -1,11 +1,13 @@
 package com.superapp.mobile.service;
 
+import com.superapp.category.dto.CategoryResponse;
+import com.superapp.category.entity.CategoryStatus;
+import com.superapp.category.service.CategoryService;
 import com.superapp.common.security.JwtService;
-import com.superapp.mobile.dto.*;
+import com.superapp.mobile.dto.MobileDtos.*;
 import com.superapp.store.entity.Store;
 import com.superapp.store.enums.StoreStatus;
 import com.superapp.store.repository.StoreRepository;
-import com.superapp.user.entity.User;
 import com.superapp.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,26 +21,35 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class MobileLocationConsentServiceImpl implements MobileLocationConsentService {
+public class MobileAppServiceImpl implements MobileAppService {
 
-    private static final Logger log = LoggerFactory.getLogger(MobileLocationConsentServiceImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(MobileAppServiceImpl.class);
 
     private static final double DEFAULT_LAT = 12.9716;
     private static final double DEFAULT_LNG = 77.6412;
     private static final double RADAR_RADIUS_METERS = 10000.0; // 10 km
 
+    private final CategoryService categoryService;
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
     private final JwtService jwtService;
 
-    public MobileLocationConsentServiceImpl(
+    public MobileAppServiceImpl(
+            CategoryService categoryService,
             StoreRepository storeRepository,
             UserRepository userRepository,
             JwtService jwtService
     ) {
+        this.categoryService = categoryService;
         this.storeRepository = storeRepository;
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> getMobileCategories() {
+        return categoryService.getDiscoveryCategories(CategoryStatus.ACTIVE);
     }
 
     @Override
@@ -48,7 +59,6 @@ public class MobileLocationConsentServiceImpl implements MobileLocationConsentSe
         double lng = (longitude != null && longitude != 0.0) ? longitude : DEFAULT_LNG;
 
         String detectedZone = resolveZoneName(lat, lng);
-
         List<NearbyStoreCardDto> nearbyCards = new ArrayList<>();
 
         try {
@@ -71,7 +81,7 @@ public class MobileLocationConsentServiceImpl implements MobileLocationConsentSe
             log.warn("Database spatial query fallback for radar preview: {}", ex.getMessage());
         }
 
-        // Ensure showcase cards always exist for UI preview even if local dev database has few stores
+        // Showcase fallback cards if few stores exist in local development
         if (nearbyCards.isEmpty()) {
             nearbyCards.add(new NearbyStoreCardDto(
                     UUID.fromString("00000000-0000-0000-0000-000000000201"),
@@ -127,7 +137,6 @@ public class MobileLocationConsentServiceImpl implements MobileLocationConsentSe
             zone = resolveZoneName(request.latitude(), request.longitude());
         }
 
-        // If user is authenticated, persist permissions and coordinates
         if (authHeader != null && !authHeader.isBlank()) {
             try {
                 String rawToken = authHeader.startsWith("Bearer ")
@@ -174,19 +183,15 @@ public class MobileLocationConsentServiceImpl implements MobileLocationConsentSe
 
     private String resolveZoneName(Double lat, Double lng) {
         if (lat == null || lng == null) return "Indiranagar, Bangalore";
-        // Bangalore region
         if (lat >= 12.8 && lat <= 13.2 && lng >= 77.4 && lng <= 77.8) {
             return "Indiranagar, Bangalore";
         }
-        // Ahmedabad region
         if (lat >= 22.8 && lat <= 23.3 && lng >= 72.4 && lng <= 72.8) {
             return "S.G. Highway, Ahmedabad";
         }
-        // Mumbai region
         if (lat >= 18.8 && lat <= 19.3 && lng >= 72.7 && lng <= 73.1) {
             return "Bandra West, Mumbai";
         }
-        // Delhi NCR region
         if (lat >= 28.4 && lat <= 28.9 && lng >= 76.9 && lng <= 77.4) {
             return "Connaught Place, New Delhi";
         }

@@ -1,12 +1,7 @@
 package com.superapp.mobile.controller;
 
 import com.superapp.common.response.ApiResponse;
-import com.superapp.mobile.dto.MobileProfileSetupRequest;
-import com.superapp.mobile.dto.MobileProfileSetupResponse;
-import com.superapp.mobile.dto.MobileSendOtpRequest;
-import com.superapp.mobile.dto.MobileSendOtpResponse;
-import com.superapp.mobile.dto.MobileVerifyOtpRequest;
-import com.superapp.mobile.dto.MobileVerifyOtpResponse;
+import com.superapp.mobile.dto.MobileDtos.*;
 import com.superapp.mobile.service.MobileAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
