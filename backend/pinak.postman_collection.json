@@ -1863,6 +1863,194 @@
               "response": []
             }
           ]
+        },
+        {
+          "name": "B. Search, Scan & Banners (APIs 04-06)",
+          "description": "Global search suggestions across stores/categories/offers, promotional hero carousel banners, and category chips.",
+          "item": [
+            {
+              "name": "04. Search Suggestions (/search/suggestions)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Suggestions returned successfully from PostgreSQL', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.data.query).to.eql('grill');",
+                      "    pm.expect(jsonData.data.suggestions).to.be.an('array');",
+                      "    if (jsonData.data.suggestions.length > 0) {",
+                      "        var first = jsonData.data.suggestions[0];",
+                      "        pm.expect(first.type).to.be.oneOf(['MERCHANT', 'CATEGORY', 'OFFER', 'PRODUCT']);",
+                      "        pm.expect(first.title).to.be.a('string');",
+                      "    }",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/search/suggestions?q=grill&latitude=12.9716&longitude=77.6412&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "search",
+                    "suggestions"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "grill",
+                      "description": "Search query"
+                    },
+                    {
+                      "key": "latitude",
+                      "value": "12.9716",
+                      "description": "User latitude for geo distance"
+                    },
+                    {
+                      "key": "longitude",
+                      "value": "77.6412",
+                      "description": "User longitude for geo distance"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "description": "Max items to return"
+                    }
+                  ]
+                },
+                "description": "Searches real PostgreSQL database across stores, categories, and offers with live geo-distance calculation."
+              }
+            },
+            {
+              "name": "05. Discover Promotional Banners (/banners)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Active banners returned from PostgreSQL home_banners table', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.data.banners).to.be.an('array');",
+                      "    pm.expect(jsonData.data.banners.length).to.be.above(0);",
+                      "    var b = jsonData.data.banners[0];",
+                      "    pm.expect(b.bannerId).to.be.a('string');",
+                      "    pm.expect(b.title).to.be.a('string');",
+                      "    pm.expect(b.backgroundColor).to.be.a('string');",
+                      "    pm.expect(b.ctaText).to.be.a('string');",
+                      "    pm.expect(b.actionType).to.be.a('string');",
+                      "    pm.expect(b.deeplink).to.be.a('string');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/banners?placement=DISCOVER",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "banners"
+                  ],
+                  "query": [
+                    {
+                      "key": "placement",
+                      "value": "DISCOVER",
+                      "description": "Placement context"
+                    }
+                  ]
+                },
+                "description": "Fetches real promotional carousel banners from PostgreSQL home_banners table with action links, colors, and countdowns."
+              }
+            },
+            {
+              "name": "06. All Categories Taxonomy (/categories)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Categories list conforms to Discover contract', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.data.categories).to.be.an('array');",
+                      "    pm.expect(jsonData.data.categories.length).to.be.above(0);",
+                      "    var cat = jsonData.data.categories[0];",
+                      "    pm.expect(cat.categoryId).to.be.a('string');",
+                      "    pm.expect(cat.name).to.be.a('string');",
+                      "    pm.expect(cat.slug).to.be.a('string');",
+                      "    pm.expect(cat.iconUrl).to.be.a('string');",
+                      "    pm.expect(cat.iconName).to.be.a('string');",
+                      "    pm.expect(cat.color).to.be.a('string');",
+                      "    pm.expect(cat.isActive).to.be.true;",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories"
+                  ]
+                },
+                "description": "Returns active commerce categories with categoryId, slug, iconUrl, iconName, theme color, and active state from PostgreSQL."
+              }
+            }
+          ]
         }
       ]
     }

@@ -153,4 +153,15 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
     long countByStatus(StoreStatus status);
 
     boolean existsByCityIdAndStatus(String cityId, StoreStatus status);
+
+    @Query("""
+            SELECT s FROM Store s
+            WHERE s.approvalStatus = com.superapp.merchant.entity.ApprovalStatus.APPROVED
+            AND s.status = com.superapp.store.enums.StoreStatus.ACTIVE
+            AND (LOWER(s.storeName) LIKE LOWER(CONCAT('%', :q, '%'))
+                 OR LOWER(s.cuisineOrCategory) LIKE LOWER(CONCAT('%', :q, '%'))
+                 OR LOWER(s.address) LIKE LOWER(CONCAT('%', :q, '%')))
+            ORDER BY s.rating DESC, s.storeName ASC
+            """)
+    List<Store> searchActiveStores(@Param("q") String q, Pageable pageable);
 }

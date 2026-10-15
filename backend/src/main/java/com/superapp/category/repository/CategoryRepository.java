@@ -33,4 +33,13 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
     List<Category> findByStatusOrderByDisplayOrderAsc(CategoryStatus status);
 
     List<Category> findAllByOrderByDisplayOrderAsc();
+
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT c FROM Category c
+            WHERE c.status = com.superapp.category.entity.CategoryStatus.ACTIVE
+            AND (LOWER(c.name) LIKE LOWER(CONCAT('%', :q, '%'))
+                 OR LOWER(c.slug) LIKE LOWER(CONCAT('%', :q, '%')))
+            ORDER BY c.displayOrder ASC
+            """)
+    List<Category> searchActiveCategories(@org.springframework.data.repository.query.Param("q") String q, org.springframework.data.domain.Pageable pageable);
 }

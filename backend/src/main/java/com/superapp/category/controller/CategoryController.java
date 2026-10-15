@@ -38,10 +38,22 @@ public class CategoryController {
     }
 
     @GetMapping
-    @Operation(summary = "Get all categories")
-    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getAllCategories() {
+    @Operation(summary = "Get all categories", description = "Returns active category taxonomy formatted for mobile discover and web")
+    public ResponseEntity<ApiResponse<com.superapp.category.dto.CategoryListResponse>> getAllCategories(
+            @RequestParam(required = false) UUID parentId,
+            @RequestParam(required = false, defaultValue = "false") boolean includeInactive) {
         List<CategoryResponse> categories = categoryService.getAllCategories();
-        return ResponseEntity.ok(ApiResponse.success("Categories retrieved successfully", categories));
+        if (parentId != null) {
+            categories = categories.stream()
+                    .filter(c -> parentId.equals(c.parentId()))
+                    .toList();
+        }
+        if (!includeInactive) {
+            categories = categories.stream()
+                    .filter(c -> Boolean.TRUE.equals(c.isActive()))
+                    .toList();
+        }
+        return ResponseEntity.ok(ApiResponse.success("Categories retrieved successfully", new com.superapp.category.dto.CategoryListResponse(categories)));
     }
 
     @GetMapping("/{id}")
