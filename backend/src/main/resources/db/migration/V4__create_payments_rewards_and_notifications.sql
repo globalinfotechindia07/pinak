@@ -60,16 +60,19 @@ CREATE INDEX IF NOT EXISTS idx_transactions_payment ON transactions(payment_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
 CREATE INDEX IF NOT EXISTS idx_transactions_created ON transactions(created_at);
 
--- 3. Consumer Reward Wallets (reward_accounts)
+-- 3. Consumer Reward Wallets (reward_accounts with pending balance, currency & optimistic locking)
 CREATE TABLE IF NOT EXISTS reward_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     points_balance BIGINT NOT NULL DEFAULT 0,
     available_balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    pending_balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     lifetime_earned NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     lifetime_redeemed NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    currency VARCHAR(10) NOT NULL DEFAULT 'INR',
     tier VARCHAR(32) NOT NULL DEFAULT 'SILVER',
     status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -99,35 +102,33 @@ CREATE TABLE IF NOT EXISTS reward_ledger_entries (
     entry_type VARCHAR(32) NOT NULL,
     amount NUMERIC(12, 2) NOT NULL,
     running_balance NUMERIC(12, 2) NOT NULL,
-    source_event VARCHAR(64) NOT NULL,
-    reference_id VARCHAR(128),
+    reference_type VARCHAR(64) NOT NULL,
+    reference_id VARCHAR(128) NOT NULL,
+    description VARCHAR(255),
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_reward_ledger_account ON reward_ledger_entries(account_id);
-CREATE INDEX IF NOT EXISTS idx_reward_ledger_created ON reward_ledger_entries(created_at);
+CREATE INDEX IF NOT EXISTS idx_reward_ledger_reference ON reward_ledger_entries(reference_type, reference_id);
 
 -- 6. Notifications Table
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(64) NOT NULL,
     title VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
+    body TEXT NOT NULL,
+    type VARCHAR(64) NOT NULL,
+    reference_type VARCHAR(64),
+    reference_id VARCHAR(128),
     channel VARCHAR(32) NOT NULL DEFAULT 'IN_APP',
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
-    action_url VARCHAR(512),
-    reference_type VARCHAR(32),
-    reference_id VARCHAR(64),
     read_at TIMESTAMP WITHOUT TIME ZONE,
+    sent_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
-CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
-CREATE INDEX IF NOT EXISTS idx_notifications_ref ON notifications(reference_type, reference_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
 
 -- 7. Notification Preferences Table
 CREATE TABLE IF NOT EXISTS notification_preferences (
@@ -136,24 +137,25 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
     email_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     sms_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     push_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    promotional_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    whatsapp_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    marketing_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     transactional_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_notification_pref_user ON notification_preferences(user_id);
-
--- 8. Webhook Events Table
+-- 8. Webhook Events Table (Auditing Inbound Webhooks)
 CREATE TABLE IF NOT EXISTS webhook_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    provider VARCHAR(64) NOT NULL,
-    provider_event_id VARCHAR(128) NOT NULL,
-    event_type VARCHAR(64),
-    payment_id UUID REFERENCES payments(id) ON DELETE SET NULL,
-    payload TEXT,
-    status VARCHAR(32) NOT NULL DEFAULT 'PROCESSED',
-    processed_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    gateway VARCHAR(64) NOT NULL,
+    event_type VARCHAR(128) NOT NULL,
+    event_id VARCHAR(128) NOT NULL,
+    payload TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'RECEIVED',
+    processed_at TIMESTAMP WITHOUT TIME ZONE,
+    error_message TEXT,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_webhook_events_provider ON webhook_events(provider, provider_event_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_gateway_event ON webhook_events(gateway, event_id);
 CREATE INDEX IF NOT EXISTS idx_webhook_events_status ON webhook_events(status);

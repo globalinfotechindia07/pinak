@@ -1,9 +1,9 @@
 -- ==============================================================================
--- V1: Core Identity, Authentication, and Audit Infrastructure
--- Tables: users, user_sessions, refresh_tokens, password_reset_tokens, audit_logs
+-- V1: Core Identity, Authentication, Mobile OTPs, and Audit Infrastructure
+-- Tables: users, user_sessions, refresh_tokens, password_reset_tokens, mobile_otps, audit_logs
 -- ==============================================================================
 
--- 1. Users Table (Unified Human Identity)
+-- 1. Users Table (Unified Human Identity with All Profile & Preferences Fields)
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -18,6 +18,23 @@ CREATE TABLE IF NOT EXISTS users (
     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
     mobile_verified BOOLEAN NOT NULL DEFAULT FALSE,
     profile_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    birthday DATE,
+    primary_city VARCHAR(100),
+    state VARCHAR(100),
+    district VARCHAR(100),
+    pincode VARCHAR(20),
+    address VARCHAR(500),
+    gender VARCHAR(20),
+    primary_zone VARCHAR(255),
+    referral_code VARCHAR(50),
+    referred_by_code VARCHAR(50),
+    whatsapp_alerts_enabled BOOLEAN DEFAULT TRUE,
+    soundbox_stay_signed_in BOOLEAN DEFAULT FALSE,
+    category_preferences VARCHAR(1000),
+    precise_location_granted BOOLEAN DEFAULT FALSE,
+    flash_alerts_granted BOOLEAN DEFAULT FALSE,
+    last_known_latitude NUMERIC(10, 7),
+    last_known_longitude NUMERIC(10, 7),
     profile_picture_url VARCHAR(1024),
     created_by VARCHAR(100),
     updated_by VARCHAR(100),
@@ -30,6 +47,9 @@ CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
 CREATE INDEX IF NOT EXISTS idx_users_mobile ON users(mobile);
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_pincode ON users(pincode);
+CREATE INDEX IF NOT EXISTS idx_users_city ON users(primary_city);
+CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
 
 -- 2. User Sessions Table
 CREATE TABLE IF NOT EXISTS user_sessions (
@@ -83,7 +103,28 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token_hash ON password_reset_tokens(token_hash);
 
--- 5. Audit Logs Table
+-- 5. Mobile OTPs Table (DB-backed secure OTP storage)
+CREATE TABLE IF NOT EXISTS mobile_otps (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone VARCHAR(20) NOT NULL,
+    otp_code VARCHAR(10) NOT NULL,
+    session_id VARCHAR(50) NOT NULL,
+    channel VARCHAR(20) NOT NULL DEFAULT 'SMS',
+    attempts INT NOT NULL DEFAULT 0,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    is_consumed BOOLEAN NOT NULL DEFAULT FALSE,
+    expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    cooldown_until TIMESTAMP WITHOUT TIME ZONE,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_mobile_otps_phone_active ON mobile_otps(phone, is_consumed, expires_at);
+CREATE INDEX IF NOT EXISTS idx_mobile_otps_session ON mobile_otps(session_id);
+CREATE INDEX IF NOT EXISTS idx_mobile_otps_cooldown ON mobile_otps(phone, cooldown_until);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_mobile_otps_phone ON mobile_otps(phone);
+
+-- 6. Audit Logs Table
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_type VARCHAR(100) NOT NULL,
@@ -100,26 +141,3 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
-
--- 6. Seed Default Super Admin
--- Default Seed Password: Admin@123456 ($2a$12$KqaMkGio6.pUuUQOw286yOvwDRebk84pAMGkGwMdfwA0yLYngFaBS)
-INSERT INTO users (id, email, password, first_name, last_name, name, role, status, email_verified, mobile_verified, profile_completed, phone, mobile, profile_picture_url)
-VALUES
-(
-    'd0000000-0000-0000-0000-000000000001',
-    'riya.admin@pinak.app',
-    '$2a$12$KqaMkGio6.pUuUQOw286yOvwDRebk84pAMGkGwMdfwA0yLYngFaBS',
-    'Riya',
-    'Shah',
-    'Riya Shah',
-    'SUPER_ADMIN',
-    'ACTIVE',
-    TRUE,
-    TRUE,
-    TRUE,
-    '+919820000001',
-    '+919820000001',
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400'
-)
-ON CONFLICT (email) DO NOTHING;
-

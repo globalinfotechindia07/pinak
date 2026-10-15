@@ -1,5 +1,5 @@
 -- ==============================================================================
--- V2: Commerce Taxonomy, Geography, Merchants, and Stores
+-- V2: Commerce Taxonomy, Geography, Merchants, KYC, and Store Branches
 -- Tables: categories, cities, merchants, merchant_kyc, stores
 -- ==============================================================================
 
@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS merchants (
     status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
     approval_status VARCHAR(32) NOT NULL DEFAULT 'PENDING_APPROVAL',
     kyc_status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    is_featured BOOLEAN NOT NULL DEFAULT FALSE,
     rejection_reason TEXT,
     suspension_reason TEXT,
     created_by VARCHAR(100),
@@ -72,6 +73,7 @@ CREATE INDEX IF NOT EXISTS idx_merchants_owner ON merchants(owner_user_id);
 CREATE INDEX IF NOT EXISTS idx_merchants_category ON merchants(category_id);
 CREATE INDEX IF NOT EXISTS idx_merchants_status ON merchants(status);
 CREATE INDEX IF NOT EXISTS idx_merchants_approval ON merchants(approval_status);
+CREATE INDEX IF NOT EXISTS idx_merchants_featured ON merchants(is_featured);
 
 -- 4. Merchant KYC Table
 CREATE TABLE IF NOT EXISTS merchant_kyc (
@@ -92,7 +94,7 @@ CREATE TABLE IF NOT EXISTS merchant_kyc (
 CREATE INDEX IF NOT EXISTS idx_merchant_kyc_merchant ON merchant_kyc(merchant_id);
 CREATE INDEX IF NOT EXISTS idx_merchant_kyc_status ON merchant_kyc(verification_status);
 
--- 5. Stores Table (Physical Branch Outlets Owning Geographic Location)
+-- 5. Stores Table (Physical Branch Outlets Owning Geographic Location & Showcase Presentation)
 CREATE TABLE IF NOT EXISTS stores (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
@@ -109,16 +111,19 @@ CREATE TABLE IF NOT EXISTS stores (
     location_type VARCHAR(20) NOT NULL DEFAULT 'POINT',
     location VARCHAR(255),
     phone VARCHAR(20),
-    contact_phone VARCHAR(20),
-    contact_email VARCHAR(255),
-    opening_time VARCHAR(10),
-    closing_time VARCHAR(10),
-    operating_days VARCHAR(100),
     status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
-    approval_status VARCHAR(32) NOT NULL DEFAULT 'APPROVED',
-    rejection_reason TEXT,
+    approval_status VARCHAR(32) NOT NULL DEFAULT 'PENDING_APPROVAL',
+    rejection_reason VARCHAR(1000),
     suspension_reason VARCHAR(1000),
     approved_at TIMESTAMP WITHOUT TIME ZONE,
+    image_url VARCHAR(1024),
+    rating NUMERIC(2, 1) DEFAULT 4.8,
+    review_count_text VARCHAR(50) DEFAULT '(1.2k)',
+    cuisine_or_category VARCHAR(100),
+    opening_offer VARCHAR(255),
+    category_icon VARCHAR(64) DEFAULT 'storefront',
+    theme_color VARCHAR(32) DEFAULT 'PRIMARY',
+    price_range VARCHAR(16) DEFAULT '₹₹',
     created_by VARCHAR(100),
     updated_by VARCHAR(100),
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -126,31 +131,7 @@ CREATE TABLE IF NOT EXISTS stores (
 );
 
 CREATE INDEX IF NOT EXISTS idx_stores_merchant ON stores(merchant_id);
-CREATE INDEX IF NOT EXISTS idx_stores_status ON stores(status);
-CREATE INDEX IF NOT EXISTS idx_stores_coordinates ON stores(latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_stores_city ON stores(city_id);
-
--- ==============================================================================
--- 6. Seed Categories Master Data
--- ==============================================================================
-INSERT INTO categories (id, name, slug, parent_id, status, display_order)
-VALUES 
-    ('11111111-1111-1111-1111-111111111101', 'Food & Dining', 'food-and-dining', NULL, 'ACTIVE', 1),
-    ('11111111-1111-1111-1111-111111111102', 'Health & Fitness', 'health-and-fitness', NULL, 'ACTIVE', 2),
-    ('11111111-1111-1111-1111-111111111103', 'Services & Salons', 'services-and-salons', NULL, 'ACTIVE', 3),
-    ('11111111-1111-1111-1111-111111111104', 'Retail & Shopping', 'retail-and-shopping', NULL, 'ACTIVE', 4),
-    ('11111111-1111-1111-1111-111111111111', 'Restaurants', 'restaurants', '11111111-1111-1111-1111-111111111101', 'ACTIVE', 1),
-    ('11111111-1111-1111-1111-111111111112', 'Cafes & Bakeries', 'cafes-and-bakeries', '11111111-1111-1111-1111-111111111101', 'ACTIVE', 2),
-    ('11111111-1111-1111-1111-111111111121', 'Gyms & Training', 'gyms-and-training', '11111111-1111-1111-1111-111111111102', 'ACTIVE', 1),
-    ('11111111-1111-1111-1111-111111111131', 'Salon & Spa', 'salon-and-spa', '11111111-1111-1111-1111-111111111103', 'ACTIVE', 1)
-ON CONFLICT (id) DO NOTHING;
-
--- Seed Cities
-INSERT INTO cities (id, name, slug, state, country, status)
-VALUES
-    ('nagpur', 'Nagpur', 'nagpur', 'Maharashtra', 'India', 'ACTIVE'),
-    ('mumbai', 'Mumbai', 'mumbai', 'Maharashtra', 'India', 'ACTIVE'),
-    ('pune', 'Pune', 'pune', 'Maharashtra', 'India', 'ACTIVE')
-ON CONFLICT (id) DO NOTHING;
-
-
+CREATE INDEX IF NOT EXISTS idx_stores_status ON stores(status);
+CREATE INDEX IF NOT EXISTS idx_stores_approval ON stores(approval_status);
+CREATE INDEX IF NOT EXISTS idx_stores_lat_lng_active ON stores(latitude, longitude) WHERE status = 'ACTIVE' AND approval_status = 'APPROVED';

@@ -1,9 +1,9 @@
 -- ==============================================================================
--- V3: Offers, Deal Discovery, and In-Store Redemptions
+-- V3: Offers, Service Promotions, Flash Deals, and In-Store Redemptions
 -- Tables: offers, offer_redemptions, redemptions
 -- ==============================================================================
 
--- 1. Offers Table (Commercial Deals & Campaigns)
+-- 1. Offers Table (Commercial Deals, Service Deals & Flash Campaigns)
 CREATE TABLE IF NOT EXISTS offers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
@@ -26,6 +26,17 @@ CREATE TABLE IF NOT EXISTS offers (
     rejection_reason TEXT,
     approved_at TIMESTAMP WITH TIME ZONE,
     approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    bonus_coins INT DEFAULT 100,
+    badge_text VARCHAR(100),
+    recommendation_reason VARCHAR(100),
+    estimated_savings NUMERIC(10, 2) DEFAULT 180.00,
+    image_url VARCHAR(1024),
+    offer_scope VARCHAR(32) DEFAULT 'SERVICE',
+    is_flash BOOLEAN DEFAULT FALSE,
+    remaining_quantity INT DEFAULT 50,
+    cta_text VARCHAR(64) DEFAULT 'Book & Pay',
+    original_mrp NUMERIC(10, 2),
+    flash_selling_price NUMERIC(10, 2),
     created_by VARCHAR(64),
     updated_by VARCHAR(64),
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -38,6 +49,8 @@ CREATE INDEX IF NOT EXISTS idx_offers_category ON offers(category_id);
 CREATE INDEX IF NOT EXISTS idx_offers_status ON offers(status);
 CREATE INDEX IF NOT EXISTS idx_offers_approval ON offers(approval_status);
 CREATE INDEX IF NOT EXISTS idx_offers_validity ON offers(valid_from, valid_to);
+CREATE INDEX IF NOT EXISTS idx_offers_flash ON offers(is_flash);
+CREATE INDEX IF NOT EXISTS idx_offers_scope ON offers(offer_scope);
 
 -- 2. Offer Redemptions Table (Audit record of discount redemption per user)
 CREATE TABLE IF NOT EXISTS offer_redemptions (
@@ -76,5 +89,3 @@ CREATE INDEX IF NOT EXISTS idx_redemptions_offer ON redemptions(offer_id);
 CREATE INDEX IF NOT EXISTS idx_redemptions_store ON redemptions(store_id);
 CREATE INDEX IF NOT EXISTS idx_redemptions_voucher ON redemptions(voucher_code);
 CREATE INDEX IF NOT EXISTS idx_redemptions_status ON redemptions(status);
-
-
