@@ -78,4 +78,48 @@ public interface OfferRepository extends JpaRepository<Offer, UUID>, JpaSpecific
     long countByApprovalStatus(com.superapp.offer.enums.OfferApprovalStatus approvalStatus);
 
     long countByStatus(com.superapp.offer.enums.OfferStatus status);
+
+    @Query("""
+            SELECT o FROM Offer o
+            WHERE o.status = 'ACTIVE'
+            AND o.approvalStatus = 'APPROVED'
+            AND :now BETWEEN o.validFrom AND o.validTo
+            AND (o.offerScope = 'SERVICE' OR o.offerScope IS NULL)
+            AND (:categoryId IS NULL OR o.categoryId = :categoryId)
+            ORDER BY o.value DESC, o.createdAt DESC
+            """)
+    Page<Offer> findActiveServiceOffers(
+            @Param("categoryId") UUID categoryId,
+            @Param("now") Instant now,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT o FROM Offer o
+            WHERE o.status = 'ACTIVE'
+            AND o.approvalStatus = 'APPROVED'
+            AND :now BETWEEN o.validFrom AND o.validTo
+            AND (o.offerScope = 'SERVICE' OR o.offerScope IS NULL)
+            AND o.storeId IN :storeIds
+            ORDER BY o.value DESC
+            """)
+    List<Offer> findActiveServiceOffersByStoreIds(
+            @Param("storeIds") List<UUID> storeIds,
+            @Param("now") Instant now
+    );
+
+    @Query("""
+            SELECT o FROM Offer o
+            WHERE o.status = 'ACTIVE'
+            AND o.approvalStatus = 'APPROVED'
+            AND :now BETWEEN o.validFrom AND o.validTo
+            AND o.isFlash = true
+            AND (:categoryId IS NULL OR o.categoryId = :categoryId)
+            ORDER BY o.validTo ASC
+            """)
+    Page<Offer> findActiveFlashDeals(
+            @Param("categoryId") UUID categoryId,
+            @Param("now") Instant now,
+            Pageable pageable
+    );
 }

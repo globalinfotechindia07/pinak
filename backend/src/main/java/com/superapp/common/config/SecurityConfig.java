@@ -89,8 +89,8 @@ public class SecurityConfig {
                 // Public payment webhook
                 .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook", "/api/v1/payments/webhooks/**").permitAll()
 
-                // Public categories lookup, public discovery endpoints, public offer details, banners, and search suggestions
-                .requestMatchers(HttpMethod.GET, "/api/v1/categories/**", "/api/v1/discovery/**", "/api/v1/offers/**", "/api/v1/banners/**", "/api/v1/search/**").permitAll()
+                // Public categories lookup, public discovery endpoints, public offer details, banners, search suggestions, and product deals
+                .requestMatchers(HttpMethod.GET, "/api/v1/categories/**", "/api/v1/discovery/**", "/api/v1/offers/**", "/api/v1/banners/**", "/api/v1/search/**", "/api/v1/products/**").permitAll()
 
                 // Health check (custom endpoint + Spring Boot Actuator health probe)
                 .requestMatchers(HttpMethod.GET, "/api/v1/health", "/actuator/health", "/actuator/health/**").permitAll()

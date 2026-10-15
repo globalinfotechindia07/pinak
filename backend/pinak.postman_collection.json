@@ -1275,6 +1275,218 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "C. Service Offers & Deals (APIs 07, 08, 15)",
+              "item": [
+                {
+                  "name": "07 - Nearby Service Offers (Car Wash, Salon, Dining)",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/v1/offers/nearby?type=SERVICE&latitude=12.9716&longitude=77.6412&radiusKm=5&limit=10",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "offers",
+                        "nearby"
+                      ],
+                      "query": [
+                        {
+                          "key": "type",
+                          "value": "SERVICE",
+                          "description": "Filter by offer type"
+                        },
+                        {
+                          "key": "latitude",
+                          "value": "12.9716",
+                          "description": "User latitude"
+                        },
+                        {
+                          "key": "longitude",
+                          "value": "77.6412",
+                          "description": "User longitude"
+                        },
+                        {
+                          "key": "radiusKm",
+                          "value": "5",
+                          "description": "Radius in km"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Page size"
+                        }
+                      ]
+                    },
+                    "description": "Retrieves nearby verified service offers from local merchants (dining, salons, wellness, car service) with branch distance, coin rewards, and action CTAs."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Service offers payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.offers).to.be.an('array');",
+                          "    if (json.data.offers.length > 0) {",
+                          "        var offer = json.data.offers[0];",
+                          "        pm.expect(offer).to.have.property('offerId');",
+                          "        pm.expect(offer).to.have.property('title');",
+                          "        pm.expect(offer).to.have.property('merchant');",
+                          "        pm.expect(offer).to.have.property('branch');",
+                          "    }",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "08 - Nearby Product Deals & In-Store Specials",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/v1/products/deals/nearby?latitude=12.9716&longitude=77.6412&radiusKm=5&limit=10",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "products",
+                        "deals",
+                        "nearby"
+                      ],
+                      "query": [
+                        {
+                          "key": "latitude",
+                          "value": "12.9716",
+                          "description": "User latitude"
+                        },
+                        {
+                          "key": "longitude",
+                          "value": "77.6412",
+                          "description": "User longitude"
+                        },
+                        {
+                          "key": "radiusKm",
+                          "value": "5",
+                          "description": "Radius in km"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Page size"
+                        }
+                      ]
+                    },
+                    "description": "Fetches live discounted products and groceries available at nearby partner merchant stores with selling price, MRP, discount %, and real-time stock availability."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Product deals payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.products).to.be.an('array');",
+                          "    if (json.data.products.length > 0) {",
+                          "        var prod = json.data.products[0];",
+                          "        pm.expect(prod).to.have.property('productId');",
+                          "        pm.expect(prod).to.have.property('name');",
+                          "        pm.expect(prod).to.have.property('price');",
+                          "        pm.expect(prod.price).to.have.property('sellingPrice');",
+                          "    }",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "15 - Active Flash Deals (Limited-Time Urgency)",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/api/v1/offers/flash?limit=10",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "offers",
+                        "flash"
+                      ],
+                      "query": [
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Page size"
+                        }
+                      ]
+                    },
+                    "description": "Retrieves active flash deals with countdown timer timestamps (startsAt, endsAt), deep discounts, and remaining real-time stock quantity for urgency."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Flash deals payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.deals).to.be.an('array');",
+                          "    if (json.data.deals.length > 0) {",
+                          "        var deal = json.data.deals[0];",
+                          "        pm.expect(deal).to.have.property('offerId');",
+                          "        pm.expect(deal).to.have.property('title');",
+                          "        pm.expect(deal).to.have.property('price');",
+                          "        pm.expect(deal).to.have.property('endsAt');",
+                          "    }",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }

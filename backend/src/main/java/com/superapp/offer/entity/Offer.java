@@ -90,6 +90,27 @@ public class Offer {
     @Column(name = "estimated_savings", precision = 10, scale = 2)
     private BigDecimal estimatedSavings = new BigDecimal("180.00");
 
+    @Column(name = "image_url", length = 1024)
+    private String imageUrl;
+
+    @Column(name = "offer_scope", length = 32)
+    private String offerScope = "SERVICE";
+
+    @Column(name = "is_flash")
+    private Boolean isFlash = false;
+
+    @Column(name = "remaining_quantity")
+    private Integer remainingQuantity = 50;
+
+    @Column(name = "cta_text", length = 64)
+    private String ctaText = "Book & Pay";
+
+    @Column(name = "original_mrp", precision = 10, scale = 2)
+    private BigDecimal originalMrp;
+
+    @Column(name = "flash_selling_price", precision = 10, scale = 2)
+    private BigDecimal flashSellingPrice;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -346,6 +367,27 @@ public class Offer {
 
     public BigDecimal getEstimatedSavings() { return estimatedSavings; }
     public void setEstimatedSavings(BigDecimal estimatedSavings) { this.estimatedSavings = estimatedSavings; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getOfferScope() { return offerScope; }
+    public void setOfferScope(String offerScope) { this.offerScope = offerScope; }
+
+    public Boolean getIsFlash() { return isFlash; }
+    public void setIsFlash(Boolean isFlash) { this.isFlash = isFlash; }
+
+    public Integer getRemainingQuantity() { return remainingQuantity; }
+    public void setRemainingQuantity(Integer remainingQuantity) { this.remainingQuantity = remainingQuantity; }
+
+    public String getCtaText() { return ctaText; }
+    public void setCtaText(String ctaText) { this.ctaText = ctaText; }
+
+    public BigDecimal getOriginalMrp() { return originalMrp; }
+    public void setOriginalMrp(BigDecimal originalMrp) { this.originalMrp = originalMrp; }
+
+    public BigDecimal getFlashSellingPrice() { return flashSellingPrice; }
+    public void setFlashSellingPrice(BigDecimal flashSellingPrice) { this.flashSellingPrice = flashSellingPrice; }
 
     @Override
     public boolean equals(Object o) {

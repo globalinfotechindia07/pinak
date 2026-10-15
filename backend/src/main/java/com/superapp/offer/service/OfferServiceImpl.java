@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -586,5 +587,136 @@ public class OfferServiceImpl implements OfferService {
         } catch (Exception e) {
             log.warn("Cache write failed for key '{}' in cache '{}': {}", key, cacheName, e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NearbyServiceOffersResponse getNearbyServiceOffers(
+            Double latitude, Double longitude, Double radiusKm, UUID categoryId, Integer limit, String cursor) {
+
+        int limitVal = (limit != null && limit > 0 && limit <= 50) ? limit : 10;
+        Instant now = Instant.now();
+        List<Offer> offers = new ArrayList<>();
+
+        if (latitude != null && longitude != null) {
+            double radiusMeters = (radiusKm != null && radiusKm > 0 ? radiusKm : 5.0) * 1000.0;
+            Page<Store> nearbyStores = storeRepository.findNearbyApprovedStores(
+                    latitude, longitude, radiusMeters, org.springframework.data.domain.PageRequest.of(0, 50));
+            List<UUID> storeIds = nearbyStores.getContent().stream().map(Store::getId).toList();
+            if (!storeIds.isEmpty()) {
+                offers = offerRepository.findActiveServiceOffersByStoreIds(storeIds, now);
+            }
+        }
+
+        if (offers.isEmpty()) {
+            Page<Offer> page = offerRepository.findActiveServiceOffers(
+                    categoryId, now, org.springframework.data.domain.PageRequest.of(0, limitVal));
+            offers = page.getContent();
+        } else if (offers.size() > limitVal) {
+            offers = offers.subList(0, limitVal);
+        }
+
+        List<NearbyServiceOfferItemDto> dtos = new ArrayList<>();
+        for (Offer o : offers) {
+            Store store = o.getStoreId() != null ? storeRepository.findById(o.getStoreId()).orElse(null) : null;
+            Merchant merchant = o.getMerchantId() != null ? merchantRepository.findById(o.getMerchantId()).orElse(null) : null;
+
+            Integer distanceMeters = null;
+            if (latitude != null && longitude != null && store != null && store.getLatitude() != null && store.getLongitude() != null) {
+                double dist = calculateHaversineDistance(
+                        latitude, longitude,
+                        store.getLatitude().doubleValue(), store.getLongitude().doubleValue()
+                );
+                distanceMeters = (int) Math.round(dist);
+            }
+
+            NearbyServiceOfferItemDto.MerchantSummaryDto merchantSummary = new NearbyServiceOfferItemDto.MerchantSummaryDto(
+                    o.getMerchantId() != null ? o.getMerchantId().toString() : null,
+                    merchant != null ? merchant.getBusinessName() : (store != null ? store.getStoreName() : "Partner Store"),
+                    store != null ? store.getImageUrl() : null,
+                    merchant != null && merchant.getKycStatus() != null && "VERIFIED".equalsIgnoreCase(merchant.getKycStatus().name())
+            );
+
+            NearbyServiceOfferItemDto.BranchSummaryDto branchSummary = new NearbyServiceOfferItemDto.BranchSummaryDto(
+                    o.getStoreId() != null ? o.getStoreId().toString() : null,
+                    store != null ? store.getStoreName() : "Main Branch",
+                    distanceMeters
+            );
+
+            String imgUrl = o.getImageUrl() != null ? o.getImageUrl() : (store != null ? store.getImageUrl() : null);
+            Integer coins = o.getBonusCoins() != null ? o.getBonusCoins() : 100;
+            NearbyServiceOfferItemDto.RewardSummaryDto rewardSummary = new NearbyServiceOfferItemDto.RewardSummaryDto(
+                    coins, "+" + coins + " Coins"
+            );
+
+            dtos.add(new NearbyServiceOfferItemDto(
+                    o.getId() != null ? o.getId().toString() : null,
+                    o.getTitle(),
+                    o.getDescription(),
+                    o.getType() != null ? o.getType().name() : "PERCENTAGE_DISCOUNT",
+                    o.getValue(),
+                    o.getMaxDiscountAmount(),
+                    o.getMinTransactionAmount(),
+                    merchantSummary,
+                    branchSummary,
+                    imgUrl,
+                    o.getValidTo(),
+                    rewardSummary,
+                    o.getCtaText() != null ? o.getCtaText() : "Book & Pay",
+                    "CHECK_REQUIRED"
+            ));
+        }
+
+        return new NearbyServiceOffersResponse(dtos, DiscoverPaginationDto.of(limitVal, false));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FlashDealsResponse getActiveFlashDeals(
+            Double latitude, Double longitude, UUID categoryId, Integer limit, String cursor) {
+
+        int limitVal = (limit != null && limit > 0 && limit <= 50) ? limit : 10;
+        Instant now = Instant.now();
+        Page<Offer> page = offerRepository.findActiveFlashDeals(
+                categoryId, now, org.springframework.data.domain.PageRequest.of(0, limitVal));
+
+        List<FlashDealItemDto> dtos = new ArrayList<>();
+        for (Offer o : page.getContent()) {
+            java.math.BigDecimal sellingPrice = o.getFlashSellingPrice() != null ? o.getFlashSellingPrice() : o.getValue();
+            java.math.BigDecimal mrp = o.getOriginalMrp() != null ? o.getOriginalMrp() : (sellingPrice.multiply(new java.math.BigDecimal("1.5")));
+
+            FlashDealItemDto.PriceDetailsDto priceDetails = new FlashDealItemDto.PriceDetailsDto(
+                    "INR",
+                    sellingPrice,
+                    mrp
+            );
+
+            dtos.add(new FlashDealItemDto(
+                    o.getId() != null ? o.getId().toString() : null,
+                    o.getTitle(),
+                    o.getImageUrl(),
+                    o.getBadgeText() != null ? o.getBadgeText() : "FLASH DEAL",
+                    o.getType() != null ? o.getType().name() : "PERCENTAGE_DISCOUNT",
+                    priceDetails,
+                    o.getValidFrom(),
+                    o.getValidTo(),
+                    o.getRemainingQuantity() != null ? o.getRemainingQuantity() : 25,
+                    o.getStoreId() != null ? o.getStoreId().toString() : null,
+                    "CHECK_REQUIRED"
+            ));
+        }
+
+        return new FlashDealsResponse(dtos, DiscoverPaginationDto.of(limitVal, page.hasNext()));
+    }
+
+    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        final double R = 6371000;
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
 }

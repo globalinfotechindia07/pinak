@@ -49,4 +49,9 @@ public interface OfferService {
     OfferApprovalResponse rejectOffer(UUID offerId, RejectOfferRequest request, UUID adminUserId);
 
     OfferApprovalResponse suspendOffer(UUID offerId, String reason, UUID adminUserId);
+
+    // Discover Operations (Public / Customer)
+    NearbyServiceOffersResponse getNearbyServiceOffers(Double latitude, Double longitude, Double radiusKm, UUID categoryId, Integer limit, String cursor);
+
+    FlashDealsResponse getActiveFlashDeals(Double latitude, Double longitude, UUID categoryId, Integer limit, String cursor);
 }
