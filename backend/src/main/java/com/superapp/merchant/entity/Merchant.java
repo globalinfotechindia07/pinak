@@ -81,6 +81,9 @@ public class Merchant {
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    @Column(name = "is_featured")
+    private Boolean isFeatured = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -318,6 +321,14 @@ public class Merchant {
 
     public boolean isSuspended() {
         return MerchantStatus.SUSPENDED.equals(this.status);
+    }
+
+    public Boolean getIsFeatured() {
+        return isFeatured != null && isFeatured;
+    }
+
+    public void setIsFeatured(Boolean featured) {
+        this.isFeatured = featured;
     }
 
     @Override

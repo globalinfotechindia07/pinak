@@ -40,4 +40,21 @@ public interface MerchantRepository extends JpaRepository<Merchant, UUID> {
     long countByApprovalStatus(ApprovalStatus approvalStatus);
 
     long countByStatus(MerchantStatus status);
+
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT m FROM Merchant m
+            WHERE m.status = com.superapp.merchant.enums.MerchantStatus.ACTIVE
+            AND m.approvalStatus = com.superapp.merchant.entity.ApprovalStatus.APPROVED
+            AND (m.isFeatured = TRUE OR m.kycStatus = com.superapp.merchant.enums.KycStatus.VERIFIED)
+            ORDER BY m.createdAt DESC
+            """)
+    Page<Merchant> findFeaturedMerchants(Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT m FROM Merchant m
+            WHERE m.status = com.superapp.merchant.enums.MerchantStatus.ACTIVE
+            AND m.approvalStatus = com.superapp.merchant.entity.ApprovalStatus.APPROVED
+            ORDER BY m.createdAt DESC
+            """)
+    Page<Merchant> findNewlyAddedMerchants(Pageable pageable);
 }

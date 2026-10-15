@@ -97,8 +97,11 @@ public class SecurityConfig {
                         "/api/v1/offers/**",
                         "/api/v1/products/**",
                         "/api/v1/stores/**",
-                        "/api/v1/discovery/**",
-                        "/api/v1/users/me",
+                        "/api/v1/merchants/**",
+                        "/api/v1/collections/**",
+                        "/api/v1/discover/**",
+                        "/api/v1/recommendations/**",
+                        "/api/v1/users/me/**",
                         "/api/v1/rewards/**",
                         "/api/v1/notifications/**"
                 ).authenticated()

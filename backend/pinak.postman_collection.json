@@ -1577,6 +1577,614 @@
                   ]
                 }
               ]
+            },
+            {
+              "name": "D. Popular & Featured Merchants (APIs 09, 10, 11)",
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{accessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "item": [
+                {
+                  "name": "09 - Popular Near You",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/merchants/nearby?latitude=12.9716&longitude=77.6412&radiusKm=10&sort=POPULAR&limit=10",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "merchants",
+                        "nearby"
+                      ],
+                      "query": [
+                        {
+                          "key": "latitude",
+                          "value": "12.9716",
+                          "description": "User latitude"
+                        },
+                        {
+                          "key": "longitude",
+                          "value": "77.6412",
+                          "description": "User longitude"
+                        },
+                        {
+                          "key": "radiusKm",
+                          "value": "10",
+                          "description": "Search radius in km"
+                        },
+                        {
+                          "key": "sort",
+                          "value": "POPULAR",
+                          "description": "Sort order (POPULAR, DISTANCE)"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Page size"
+                        }
+                      ]
+                    },
+                    "description": "Retrieves popular nearby stores sorted by high customer ratings and transaction density with category tag, branch distance, active opening offer, and verification status."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Popular merchants payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.merchants).to.be.an('array');",
+                          "    if (json.data.merchants.length > 0) {",
+                          "        var m = json.data.merchants[0];",
+                          "        pm.expect(m).to.have.property('merchantId');",
+                          "        pm.expect(m).to.have.property('name');",
+                          "        pm.expect(m).to.have.property('rating');",
+                          "        pm.expect(m).to.have.property('branch');",
+                          "    }",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "10 - Featured Stores for All Your Needs",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/merchants/featured?latitude=12.9716&longitude=77.6412&limit=10",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "merchants",
+                        "featured"
+                      ],
+                      "query": [
+                        {
+                          "key": "latitude",
+                          "value": "12.9716",
+                          "description": "User latitude"
+                        },
+                        {
+                          "key": "longitude",
+                          "value": "77.6412",
+                          "description": "User longitude"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Page size"
+                        }
+                      ]
+                    },
+                    "description": "Retrieves featured spotlight stores curated by merchandising with special partner badges, ratings, and best offers."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Featured merchants payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.merchants).to.be.an('array');",
+                          "    if (json.data.merchants.length > 0) {",
+                          "        var m = json.data.merchants[0];",
+                          "        pm.expect(m).to.have.property('merchantId');",
+                          "        pm.expect(m).to.have.property('featuredLabel');",
+                          "    }",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "11 - Newly Added Stores",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/merchants/newly-added?latitude=12.9716&longitude=77.6412&limit=10",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "merchants",
+                        "newly-added"
+                      ],
+                      "query": [
+                        {
+                          "key": "latitude",
+                          "value": "12.9716",
+                          "description": "User latitude"
+                        },
+                        {
+                          "key": "longitude",
+                          "value": "77.6412",
+                          "description": "User longitude"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Page size"
+                        }
+                      ]
+                    },
+                    "description": "Fetches recently onboarded stores with joinedAt timestamp, newUntil grace period (14 days), and introductory welcome offers."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Newly added stores payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.merchants).to.be.an('array');",
+                          "    if (json.data.merchants.length > 0) {",
+                          "        var m = json.data.merchants[0];",
+                          "        pm.expect(m).to.have.property('joinedAt');",
+                          "        pm.expect(m).to.have.property('newUntil');",
+                          "    }",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "E. Curated Collections & Benefits (APIs 12, 16)",
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{accessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "item": [
+                {
+                  "name": "12 - Popular Collections",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/collections/popular?limit=10",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "collections",
+                        "popular"
+                      ],
+                      "query": [
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Page size"
+                        }
+                      ]
+                    },
+                    "description": "Fetches thematic curated collections (Daily Essentials, Top Cafes, Salon & Spa, Bike Care) with promotional badges and category deep-links."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Popular collections payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.collections).to.be.an('array');",
+                          "    if (json.data.collections.length > 0) {",
+                          "        var col = json.data.collections[0];",
+                          "        pm.expect(col).to.have.property('collectionId');",
+                          "        pm.expect(col).to.have.property('title');",
+                          "        pm.expect(col).to.have.property('coverImageUrl');",
+                          "    }",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "16 - Discover Platform Benefits (Why Shop on PINAK?)",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/discover/benefits",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "discover",
+                        "benefits"
+                      ]
+                    },
+                    "description": "Returns platform value proposition badges (Verified Stores, Earn PINAK Coins, Exclusive Deals, Instant QR Pay) to build customer trust."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Benefits payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.benefits).to.be.an('array');",
+                          "    if (json.data.benefits.length > 0) {",
+                          "        var b = json.data.benefits[0];",
+                          "        pm.expect(b).to.have.property('benefitId');",
+                          "        pm.expect(b).to.have.property('title');",
+                          "        pm.expect(b).to.have.property('iconName');",
+                          "    }",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "F. Personalization & History (APIs 13, 14)",
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{accessToken}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "item": [
+                {
+                  "name": "13a - Get Recently Viewed Items",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/users/me/recently-viewed?limit=10",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "users",
+                        "me",
+                        "recently-viewed"
+                      ],
+                      "query": [
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Page size"
+                        }
+                      ]
+                    },
+                    "description": "Retrieves items recently viewed by the authenticated customer. If the user has no history, gracefully returns popular active items from the database."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Recently viewed payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.items).to.be.an('array');",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "13b - Record Recently Viewed Item",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"itemType\": \"PRODUCT\",\n  \"itemId\": \"d0000000-0000-0000-0000-000000000001\",\n  \"branchId\": \"b0000000-0000-0000-0000-000000000010\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/users/me/recently-viewed",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "users",
+                        "me",
+                        "recently-viewed"
+                      ]
+                    },
+                    "description": "Records an impression / detail click for a product or merchant into PostgreSQL user_recently_viewed ledger."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Record interaction success\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "14 - Recommended for You",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/recommendations?latitude=12.9716&longitude=77.6412&limit=10",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "recommendations"
+                      ],
+                      "query": [
+                        {
+                          "key": "latitude",
+                          "value": "12.9716",
+                          "description": "User latitude"
+                        },
+                        {
+                          "key": "longitude",
+                          "value": "77.6412",
+                          "description": "User longitude"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Page size"
+                        }
+                      ]
+                    },
+                    "description": "Returns personalized store/deal recommendations based on the customer's browsing history or nearby store density with clear recommendation reasons."
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "pm.test(\"Recommendations payload structure\", function () {",
+                          "    var json = pm.response.json();",
+                          "    pm.expect(json.success).to.eql(true);",
+                          "    pm.expect(json.data.items).to.be.an('array');",
+                          "    if (json.data.items.length > 0) {",
+                          "        var item = json.data.items[0];",
+                          "        pm.expect(item).to.have.property('itemId');",
+                          "        pm.expect(item).to.have.property('recommendationReason');",
+                          "    }",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ]
+                }
+              ]
             }
           ],
           "auth": {
