@@ -925,1130 +925,356 @@
           ]
         },
         {
-          "name": "🏠 Home Feed & Discover (Screen 10)",
-          "description": "# 🏠 Home Feed & Discover Module (Screen 10)\n\nModular, composable APIs powering the PINAK Mobile Home Screen (Header, Search, Banners, Categories, Best Offers, Popular, Recommended, Newly Added, All Nearby Places).",
+          "name": "🌟 Discover Screen (Screen 10)",
+          "description": "Complete production-grade Discover Screen API Suite matching the UI mockup specification (Oct 2026).",
           "item": [
             {
-              "name": "01. Section 1 & 2 — Home Header & Search",
-              "event": [
+              "name": "A. Header & User Summary (APIs 01-03)",
+              "description": "Header profile info, live PINAK coins wallet balance, and unread notification counter.",
+              "item": [
                 {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Header response contains user precinct and live reward balance', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data.precinctName).to.be.a('string');",
-                      "    pm.expect(jsonData.data.cityState).to.be.a('string');",
-                      "    pm.expect(jsonData.data.coinBalance).to.be.a('number');",
-                      "    pm.expect(jsonData.data.rupeeValue).to.be.a('string');",
-                      "    pm.expect(jsonData.data.searchPlaceholder).to.be.a('string');",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token obtained from Screen 07 Verify OTP"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/home/header?lat=12.9716&lng=77.6412",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "mobile",
-                    "home",
-                    "header"
-                  ],
-                  "query": [
+                  "name": "01. Get Current User Profile (/users/me)",
+                  "event": [
                     {
-                      "key": "lat",
-                      "value": "12.9716",
-                      "description": "User current GPS latitude"
-                    },
-                    {
-                      "key": "lng",
-                      "value": "77.6412",
-                      "description": "User current GPS longitude"
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status code is 200 OK', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test('Profile returns userId and fullName for header avatar', function () {",
+                          "    var jsonData = pm.response.json();",
+                          "    pm.expect(jsonData.success).to.be.true;",
+                          "    pm.expect(jsonData.data.userId).to.be.a('string');",
+                          "    pm.expect(jsonData.data.fullName).to.be.a('string');",
+                          "    pm.expect(jsonData.data.accountStatus).to.be.a('string');",
+                          "});"
+                        ]
+                      }
                     }
-                  ]
-                },
-                "description": "Returns Section 1 & 2: Active precinct address, live wallet balance (coins & rupee value), unread notification badge count, and search query suggestions."
-              },
-              "response": []
-            },
-            {
-              "name": "02. Section 3 — Promotional Hero Banners",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Returns list of hero banners', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data).to.be.an('array');",
-                      "    pm.expect(jsonData.data.length).to.be.at.least(1);",
-                      "    var banner = jsonData.data[0];",
-                      "    pm.expect(banner.title).to.be.a('string');",
-                      "    pm.expect(banner.ctaText).to.be.a('string');",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token obtained from Screen 07 Verify OTP"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/home/banners",
-                  "host": [
-                    "{{baseUrl}}"
                   ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "mobile",
-                    "home",
-                    "banners"
-                  ]
-                },
-                "description": "Returns Section 3: Promotional hero carousel banners with promotional tags, gradient colors, deep-link targets, and CTAs."
-              },
-              "response": []
-            },
-            {
-              "name": "03. Section 4 — Explore Categories Grid",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Returns list of category chips with counts', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data).to.be.an('array');",
-                      "    pm.expect(jsonData.data.length).to.be.at.least(1);",
-                      "    var chip = jsonData.data[0];",
-                      "    pm.expect(chip.name).to.be.a('string');",
-                      "    pm.expect(chip.icon).to.be.a('string');",
-                      "    pm.expect(chip.storeCount).to.be.a('number');",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token obtained from Screen 07 Verify OTP"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/home/categories?lat=12.9716&lng=77.6412",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "mobile",
-                    "home",
-                    "categories"
-                  ],
-                  "query": [
-                    {
-                      "key": "lat",
-                      "value": "12.9716",
-                      "description": "User current GPS latitude"
-                    },
-                    {
-                      "key": "lng",
-                      "value": "77.6412",
-                      "description": "User current GPS longitude"
-                    }
-                  ]
-                },
-                "description": "Returns Section 4: Quick category exploration chips (Food & Dining, Fashion & Retail, Fitness, Electronics, etc.) with active merchant counts in the precinct."
-              },
-              "response": []
-            },
-            {
-              "name": "04. Section 5 — Best Offers Nearby",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Response conforms to ApiResponse envelope', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data).to.be.an('object');",
-                      "});",
-                      "",
-                      "pm.test('Contains Section 5 header and offers list', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.data.title).to.eql('Best Offers Nearby');",
-                      "    pm.expect(jsonData.data.totalOffersCount).to.be.above(0);",
-                      "    pm.expect(jsonData.data.offers).to.be.an('array').and.not.empty;",
-                      "",
-                      "    var firstOffer = jsonData.data.offers[0];",
-                      "    pm.expect(firstOffer.merchantName).to.be.a('string');",
-                      "    pm.expect(firstOffer.discountHeadline).to.be.a('string');",
-                      "    pm.expect(firstOffer.distanceText).to.be.a('string');",
-                      "    pm.expect(firstOffer.actionButtonText).to.be.oneOf(['Lock & Pay', 'Claim Offer']);",
-                      "});"
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{accessToken}}",
+                        "description": "Customer Bearer access token"
+                      }
                     ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/users/me",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "users",
+                        "me"
+                      ]
+                    },
+                    "description": "Returns profile name, avatar and account status for the Discover screen top header."
                   },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token obtained from Screen 07 Verify OTP"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/home/best-offers?lat=12.9716&lng=77.6412&radius=5000&limit=10",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "mobile",
-                    "home",
-                    "best-offers"
-                  ],
-                  "query": [
-                    {
-                      "key": "lat",
-                      "value": "12.9716",
-                      "description": "User latitude (defaults to Indiranagar, Bangalore 12.9716)"
-                    },
-                    {
-                      "key": "lng",
-                      "value": "77.6412",
-                      "description": "User longitude (defaults to Indiranagar, Bangalore 77.6412)"
-                    },
-                    {
-                      "key": "radius",
-                      "value": "5000",
-                      "description": "Search radius in meters (default 5000 / 5 km)"
-                    },
-                    {
-                      "key": "limit",
-                      "value": "10",
-                      "description": "Max offers to return"
-                    }
-                  ]
+                  "response": []
                 },
-                "description": "Returns Section 5 Best Offers Nearby horizontal scroller cards with merchant name, proximity distance, urgency pills ('45m left', 'Till Sun'), discount headline ('FLAT 40% OFF'), and action buttons ('Lock & Pay', 'Claim Offer')."
-              },
-              "response": [
                 {
-                  "name": "200 OK — Section 5 Best Offers Nearby List",
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
+                  "name": "02. Get PINAK Coin Balance (/rewards/balance)",
+                  "event": [
                     {
-                      "key": "Content-Type",
-                      "value": "application/json"
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status code is 200 OK', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test('Returns available coins and display value', function () {",
+                          "    var jsonData = pm.response.json();",
+                          "    pm.expect(jsonData.success).to.be.true;",
+                          "    pm.expect(jsonData.data.availableCoins).to.be.a('number');",
+                          "    pm.expect(jsonData.data.currency).to.eql('PINAK_COIN');",
+                          "    pm.expect(jsonData.data.displayValue).to.be.a('string');",
+                          "});"
+                        ]
+                      }
                     }
                   ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Best offers nearby fetched successfully\",\n  \"data\": {\n    \"title\": \"Best Offers Nearby\",\n    \"subtitle\": \"Highest discounts & verified partner savings around you\",\n    \"totalOffersCount\": 28,\n    \"viewAllText\": \"View All (28)\",\n    \"offers\": [\n      {\n        \"offerId\": \"00000000-0000-0000-0000-000000000301\",\n        \"storeId\": \"00000000-0000-0000-0000-000000000201\",\n        \"merchantName\": \"The Smokehouse Grill\",\n        \"locality\": \"Indiranagar\",\n        \"distanceText\": \"Indiranagar • 400m\",\n        \"distanceMeters\": 400,\n        \"urgencyTag\": \"45m left\",\n        \"urgencyType\": \"EXPIRING_SOON\",\n        \"discountHeadline\": \"FLAT 40% OFF\",\n        \"discountSubtext\": \"Up to ₹500 • On bills above ₹1,000\",\n        \"bonusCoinsText\": \"+150 Coins\",\n        \"bonusCoins\": 150,\n        \"preBookingOpen\": false,\n        \"actionButtonText\": \"Lock & Pay\",\n        \"actionType\": \"LOCK_AND_PAY\",\n        \"allStoresValid\": false\n      },\n      {\n        \"offerId\": \"00000000-0000-0000-0000-000000000302\",\n        \"storeId\": \"00000000-0000-0000-0000-000000000202\",\n        \"merchantName\": \"Toni & Guy Salon\",\n        \"locality\": \"12th Main\",\n        \"distanceText\": \"12th Main • 650m\",\n        \"distanceMeters\": 650,\n        \"urgencyTag\": \"Till Sun\",\n        \"urgencyType\": \"WEEKEND\",\n        \"discountHeadline\": \"BUY 1 GET 1 FREE\",\n        \"discountSubtext\": \"On all hair styling, cuts & blowouts\",\n        \"bonusCoinsText\": null,\n        \"bonusCoins\": 0,\n        \"preBookingOpen\": true,\n        \"actionButtonText\": \"Claim Offer\",\n        \"actionType\": \"CLAIM_OFFER\",\n        \"allStoresValid\": false\n      },\n      {\n        \"offerId\": \"00000000-0000-0000-0000-000000000303\",\n        \"storeId\": \"00000000-0000-0000-0000-000000000203\",\n        \"merchantName\": \"Third Wave Coffee\",\n        \"locality\": \"80ft Rd\",\n        \"distanceText\": \"80ft Rd • 300m\",\n        \"distanceMeters\": 300,\n        \"urgencyTag\": \"Instant\",\n        \"urgencyType\": \"INSTANT\",\n        \"discountHeadline\": \"FLAT ₹150 CASHBACK\",\n        \"discountSubtext\": \"+ 2X Coins on PINAK UPI scan\",\n        \"bonusCoinsText\": \"+100 Coins\",\n        \"bonusCoins\": 100,\n        \"preBookingOpen\": false,\n        \"actionButtonText\": \"Claim Offer\",\n        \"actionType\": \"CLAIM_OFFER\",\n        \"allStoresValid\": true\n      }\n    ]\n  }\n}"
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{accessToken}}",
+                        "description": "Customer Bearer access token"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/rewards/balance",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "rewards",
+                        "balance"
+                      ]
+                    },
+                    "description": "Returns live spendable PINAK coin balance (e.g. 480 Coins) and rupee equivalent (₹48) for Discover header."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "03. Get Unread Notification Count (/notifications/unread-count)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status code is 200 OK', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test('Returns unread notification badge count', function () {",
+                          "    var jsonData = pm.response.json();",
+                          "    pm.expect(jsonData.success).to.be.true;",
+                          "    pm.expect(jsonData.data.unreadCount).to.be.a('number');",
+                          "});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{accessToken}}",
+                        "description": "Customer Bearer access token"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/notifications/unread-count",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "notifications",
+                        "unread-count"
+                      ]
+                    },
+                    "description": "Returns unread count for red notification badge overlay on the top header bell icon."
+                  },
+                  "response": []
                 }
               ]
             },
             {
-              "name": "05. Section 6 — Popular Near You",
-              "event": [
+              "name": "B. Search, Scan & Banners (APIs 04-06)",
+              "description": "Global search suggestions across stores/categories/offers, promotional hero carousel banners, and category chips.",
+              "item": [
                 {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Response conforms to ApiResponse envelope', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data).to.be.an('object');",
-                      "});",
-                      "",
-                      "pm.test('Contains Section 6 header and verified merchants list', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.data.title).to.eql('Popular Near You');",
-                      "    pm.expect(jsonData.data.distanceFilterLabel).to.eql('< 2 km');",
-                      "    pm.expect(jsonData.data.merchants).to.be.an('array').and.not.empty;",
-                      "",
-                      "    var firstMerchant = jsonData.data.merchants[0];",
-                      "    pm.expect(firstMerchant.storeName).to.be.a('string');",
-                      "    pm.expect(firstMerchant.isVerified).to.be.true;",
-                      "    pm.expect(firstMerchant.rating).to.be.above(0);",
-                      "    pm.expect(firstMerchant.operatingStatusText).to.include('OPEN NOW');",
-                      "    pm.expect(firstMerchant.badgeHighlightText).to.be.a('string');",
-                      "});"
+                  "name": "04. Search Suggestions (/search/suggestions)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status code is 200 OK', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test('Suggestions returned successfully from PostgreSQL', function () {",
+                          "    var jsonData = pm.response.json();",
+                          "    pm.expect(jsonData.success).to.be.true;",
+                          "    pm.expect(jsonData.data.query).to.eql('grill');",
+                          "    pm.expect(jsonData.data.suggestions).to.be.an('array');",
+                          "    if (jsonData.data.suggestions.length > 0) {",
+                          "        var first = jsonData.data.suggestions[0];",
+                          "        pm.expect(first.type).to.be.oneOf(['MERCHANT', 'CATEGORY', 'OFFER', 'PRODUCT']);",
+                          "        pm.expect(first.title).to.be.a('string');",
+                          "    }",
+                          "});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
                     ],
-                    "type": "text/javascript"
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/search/suggestions?q=grill&latitude=12.9716&longitude=77.6412&limit=10",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "search",
+                        "suggestions"
+                      ],
+                      "query": [
+                        {
+                          "key": "q",
+                          "value": "grill",
+                          "description": "Search query"
+                        },
+                        {
+                          "key": "latitude",
+                          "value": "12.9716",
+                          "description": "User latitude for geo distance"
+                        },
+                        {
+                          "key": "longitude",
+                          "value": "77.6412",
+                          "description": "User longitude for geo distance"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "10",
+                          "description": "Max items to return"
+                        }
+                      ]
+                    },
+                    "description": "Searches real PostgreSQL database across stores, categories, and offers with live geo-distance calculation."
                   }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token obtained from Screen 07 Verify OTP"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/home/popular-merchants?lat=12.9716&lng=77.6412&radius=2000&limit=10",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "mobile",
-                    "home",
-                    "popular-merchants"
-                  ],
-                  "query": [
-                    {
-                      "key": "lat",
-                      "value": "12.9716",
-                      "description": "User latitude"
-                    },
-                    {
-                      "key": "lng",
-                      "value": "77.6412",
-                      "description": "User longitude"
-                    },
-                    {
-                      "key": "radius",
-                      "value": "2000",
-                      "description": "Search radius in meters (default 2000 / 2 km)"
-                    },
-                    {
-                      "key": "limit",
-                      "value": "10",
-                      "description": "Max merchants to return"
-                    }
-                  ]
                 },
-                "description": "Returns Section 6 Popular Near You top-rated verified merchant places within 2 km (e.g. Toscano Trattoria 4.8★, Cult.Fit Pro 4.9★, Glen's Bakehouse 4.7★) with opening status and instant discount pills."
-              },
-              "response": [
                 {
-                  "name": "200 OK — Section 6 Popular Merchants List",
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
+                  "name": "05. Discover Promotional Banners (/banners)",
+                  "event": [
                     {
-                      "key": "Content-Type",
-                      "value": "application/json"
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status code is 200 OK', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test('Active banners returned from PostgreSQL home_banners table', function () {",
+                          "    var jsonData = pm.response.json();",
+                          "    pm.expect(jsonData.success).to.be.true;",
+                          "    pm.expect(jsonData.data.banners).to.be.an('array');",
+                          "    pm.expect(jsonData.data.banners.length).to.be.above(0);",
+                          "    var b = jsonData.data.banners[0];",
+                          "    pm.expect(b.bannerId).to.be.a('string');",
+                          "    pm.expect(b.title).to.be.a('string');",
+                          "    pm.expect(b.backgroundColor).to.be.a('string');",
+                          "    pm.expect(b.ctaText).to.be.a('string');",
+                          "    pm.expect(b.actionType).to.be.a('string');",
+                          "    pm.expect(b.deeplink).to.be.a('string');",
+                          "});"
+                        ]
+                      }
                     }
                   ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Popular merchants fetched successfully\",\n  \"data\": {\n    \"title\": \"Popular Near You\",\n    \"subtitle\": \"Top-rated spots trending in your precinct\",\n    \"distanceFilterLabel\": \"< 2 km\",\n    \"merchants\": [\n      {\n        \"storeId\": \"00000000-0000-0000-0000-000000000401\",\n        \"merchantId\": \"00000000-0000-0000-0000-000000000201\",\n        \"storeName\": \"Toscano Trattoria\",\n        \"imageUrl\": \"https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&q=80\",\n        \"isVerified\": true,\n        \"rating\": 4.8,\n        \"reviewCountText\": \"(1.4k)\",\n        \"cuisineOrCategory\": \"Italian & Wine\",\n        \"distanceText\": \"600m\",\n        \"distanceMeters\": 600,\n        \"operatingStatusText\": \"OPEN NOW (Closes 11 PM)\",\n        \"isOpen\": true,\n        \"badgeHighlightText\": \"15% Instant Off\",\n        \"badgeTheme\": \"SECONDARY\"\n      },\n      {\n        \"storeId\": \"00000000-0000-0000-0000-000000000402\",\n        \"merchantId\": \"00000000-0000-0000-0000-000000000202\",\n        \"storeName\": \"Cult.Fit Pro\",\n        \"imageUrl\": \"https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&q=80\",\n        \"isVerified\": true,\n        \"rating\": 4.9,\n        \"reviewCountText\": \"(2.1k)\",\n        \"cuisineOrCategory\": \"Fitness & Boxing\",\n        \"distanceText\": \"850m\",\n        \"distanceMeters\": 850,\n        \"operatingStatusText\": \"OPEN NOW\",\n        \"isOpen\": true,\n        \"badgeHighlightText\": \"3-Day Pass + 25% Off\",\n        \"badgeTheme\": \"PRIMARY\"\n      },\n      {\n        \"storeId\": \"00000000-0000-0000-0000-000000000403\",\n        \"merchantId\": \"00000000-0000-0000-0000-000000000203\",\n        \"storeName\": \"Glen's Bakehouse\",\n        \"imageUrl\": \"https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&q=80\",\n        \"isVerified\": true,\n        \"rating\": 4.7,\n        \"reviewCountText\": \"(3.8k)\",\n        \"cuisineOrCategory\": \"Bakery & Desserts\",\n        \"distanceText\": \"1.1km\",\n        \"distanceMeters\": 1100,\n        \"operatingStatusText\": \"OPEN NOW\",\n        \"isOpen\": true,\n        \"badgeHighlightText\": \"Flat ₹100 Off on ₹500+\",\n        \"badgeTheme\": \"TERTIARY\"\n      }\n    ]\n  }\n}"
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/banners?placement=DISCOVER",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "banners"
+                      ],
+                      "query": [
+                        {
+                          "key": "placement",
+                          "value": "DISCOVER",
+                          "description": "Placement context"
+                        }
+                      ]
+                    },
+                    "description": "Fetches real promotional carousel banners from PostgreSQL home_banners table with action links, colors, and countdowns."
+                  }
+                },
+                {
+                  "name": "06. All Categories Taxonomy (/categories)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status code is 200 OK', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "});",
+                          "",
+                          "pm.test('Categories list conforms to Discover contract', function () {",
+                          "    var jsonData = pm.response.json();",
+                          "    pm.expect(jsonData.success).to.be.true;",
+                          "    pm.expect(jsonData.data.categories).to.be.an('array');",
+                          "    pm.expect(jsonData.data.categories.length).to.be.above(0);",
+                          "    var cat = jsonData.data.categories[0];",
+                          "    pm.expect(cat.categoryId).to.be.a('string');",
+                          "    pm.expect(cat.name).to.be.a('string');",
+                          "    pm.expect(cat.slug).to.be.a('string');",
+                          "    pm.expect(cat.iconUrl).to.be.a('string');",
+                          "    pm.expect(cat.iconName).to.be.a('string');",
+                          "    pm.expect(cat.color).to.be.a('string');",
+                          "    pm.expect(cat.isActive).to.be.true;",
+                          "});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories"
+                      ]
+                    },
+                    "description": "Returns active commerce categories with categoryId, slug, iconUrl, iconName, theme color, and active state from PostgreSQL."
+                  }
                 }
               ]
-            },
-            {
-              "name": "06. Section 7 — Recommended for You",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Response conforms to ApiResponse envelope', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data).to.be.an('object');",
-                      "});",
-                      "",
-                      "pm.test('Contains Section 7 recommendations in 2-column format', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.data.title).to.eql('Recommended for You');",
-                      "    pm.expect(jsonData.data.recommendationIcon).to.eql('auto_awesome');",
-                      "    pm.expect(jsonData.data.recommendations).to.be.an('array').and.not.empty;",
-                      "",
-                      "    var firstRec = jsonData.data.recommendations[0];",
-                      "    pm.expect(firstRec.storeName).to.be.a('string');",
-                      "    pm.expect(firstRec.recommendationReasonBadge).to.be.a('string');",
-                      "    pm.expect(firstRec.rating).to.be.above(0);",
-                      "    pm.expect(firstRec.distanceAndCategoryText).to.be.a('string');",
-                      "    pm.expect(firstRec.estimatedSavingsText).to.include('Save ~₹');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Optional: Personalizes picks based on user's category preferences & history"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/home/recommended?lat=12.9716&lng=77.6412&limit=4",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "mobile",
-                    "home",
-                    "recommended"
-                  ],
-                  "query": [
-                    {
-                      "key": "lat",
-                      "value": "12.9716",
-                      "description": "User latitude"
-                    },
-                    {
-                      "key": "lng",
-                      "value": "77.6412",
-                      "description": "User longitude"
-                    },
-                    {
-                      "key": "limit",
-                      "value": "4",
-                      "description": "Max recommendation cards to return"
-                    }
-                  ]
-                },
-                "description": "Returns Section 7 Recommended for You personalized 2-column cards (e.g. Truffles Burgers 'Save ~₹180', Bodycraft Spa 'Save ~₹600') based on past visits, popularity, and savings."
-              },
-              "response": [
-                {
-                  "name": "200 OK — Section 7 Recommended Places List",
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Recommended places fetched successfully\",\n  \"data\": {\n    \"title\": \"Recommended for You\",\n    \"subtitle\": \"Personalized picks based on your visits, favorite offers & popularity\",\n    \"recommendationIcon\": \"auto_awesome\",\n    \"recommendations\": [\n      {\n        \"storeId\": \"00000000-0000-0000-0000-000000000501\",\n        \"merchantId\": \"00000000-0000-0000-0000-000000000201\",\n        \"offerId\": \"00000000-0000-0000-0000-000000000304\",\n        \"storeName\": \"Truffles Burgers\",\n        \"imageUrl\": \"https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80\",\n        \"recommendationReasonBadge\": \"Based on dining visits\",\n        \"rating\": 4.7,\n        \"distanceAndCategoryText\": \"800m • Burgers & Shakes\",\n        \"distanceMeters\": 800,\n        \"perkHighlightText\": \"+100 Coins on ₹400 bill\",\n        \"estimatedSavingsText\": \"Save ~₹180\",\n        \"estimatedSavingsAmount\": 180.0\n      },\n      {\n        \"storeId\": \"00000000-0000-0000-0000-000000000502\",\n        \"merchantId\": \"00000000-0000-0000-0000-000000000202\",\n        \"offerId\": \"00000000-0000-0000-0000-000000000305\",\n        \"storeName\": \"Bodycraft Spa\",\n        \"imageUrl\": \"https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=500&q=80\",\n        \"recommendationReasonBadge\": \"Trending in Indiranagar\",\n        \"rating\": 4.8,\n        \"distanceAndCategoryText\": \"1.2km • Salon & Wellness\",\n        \"distanceMeters\": 1200,\n        \"perkHighlightText\": \"Flat 30% Off Mon-Thu\",\n        \"estimatedSavingsText\": \"Save ~₹600\",\n        \"estimatedSavingsAmount\": 600.0\n      }\n    ]\n  }\n}"
-                }
-              ]
-            },
-            {
-              "name": "07. Section 8 — Newly Added Stores",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Response conforms to ApiResponse envelope', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data).to.be.an('object');",
-                      "});",
-                      "",
-                      "pm.test('Contains Section 8 header and newly onboarded stores', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.data.sectionTitle).to.eql('Newly Added Stores');",
-                      "    pm.expect(jsonData.data.sectionBadge).to.eql('Just Onboarded');",
-                      "    pm.expect(jsonData.data.stores).to.be.an('array').and.not.empty;",
-                      "",
-                      "    var firstStore = jsonData.data.stores[0];",
-                      "    pm.expect(firstStore.storeName).to.be.a('string');",
-                      "    pm.expect(firstStore.categoryIcon).to.be.a('string');",
-                      "    pm.expect(firstStore.themeColor).to.be.a('string');",
-                      "    pm.expect(firstStore.addedTimeAgo).to.be.a('string');",
-                      "    pm.expect(firstStore.openingOffer).to.be.a('string');",
-                      "    pm.expect(firstStore.locationTag).to.be.a('string');",
-                      "    pm.expect(firstStore.distanceLabel).to.be.a('string');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token obtained from Screen 07 Verify OTP"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/home/newly-added?lat=12.9716&lng=77.6412&limit=10",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "mobile",
-                    "home",
-                    "newly-added"
-                  ],
-                  "query": [
-                    {
-                      "key": "lat",
-                      "value": "12.9716",
-                      "description": "User latitude"
-                    },
-                    {
-                      "key": "lng",
-                      "value": "77.6412",
-                      "description": "User longitude"
-                    },
-                    {
-                      "key": "limit",
-                      "value": "10",
-                      "description": "Max newly added stores to return"
-                    }
-                  ]
-                },
-                "description": "Returns Section 8 Newly Added Stores (Just Onboarded) with grand opening offers and bonus coins (e.g. Blue Tokai 'Free Cookie with Beverage', Go Native '20% Cashback', Superkicks '300 PINAK Coins') matching the mobile screen specification."
-              },
-              "response": [
-                {
-                  "name": "200 OK — Section 8 Newly Added Stores List",
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Newly added stores fetched successfully\",\n  \"data\": {\n    \"sectionTitle\": \"Newly Added Stores\",\n    \"sectionBadge\": \"Just Onboarded\",\n    \"stores\": [\n      {\n        \"storeId\": \"00000000-0000-0000-0000-000000000601\",\n        \"merchantId\": \"00000000-0000-0000-0000-000000000209\",\n        \"storeName\": \"Blue Tokai Coffee Roasters\",\n        \"categoryIcon\": \"storefront\",\n        \"themeColor\": \"PRIMARY\",\n        \"addedTimeAgo\": \"Added 2d ago\",\n        \"openingOffer\": \"Grand Opening Offer: Free Cookie with Beverage\",\n        \"locationTag\": \"100ft Rd, Indiranagar • New Outlet\",\n        \"distanceMeters\": 600,\n        \"distanceLabel\": \"600m\",\n        \"action\": \"VIEW_STORE\"\n      },\n      {\n        \"storeId\": \"00000000-0000-0000-0000-000000000602\",\n        \"merchantId\": \"00000000-0000-0000-0000-000000000210\",\n        \"storeName\": \"Go Native Artisan Store & Cafe\",\n        \"categoryIcon\": \"eco\",\n        \"themeColor\": \"SECONDARY\",\n        \"addedTimeAgo\": \"Added yesterday\",\n        \"openingOffer\": \"Introductory 20% Cashback on Sustainable Goods\",\n        \"locationTag\": \"14th Main Rd • Sustainable Retail\",\n        \"distanceMeters\": 850,\n        \"distanceLabel\": \"850m\",\n        \"action\": \"VIEW_STORE\"\n      },\n      {\n        \"storeId\": \"00000000-0000-0000-0000-000000000603\",\n        \"merchantId\": \"00000000-0000-0000-0000-000000000211\",\n        \"storeName\": \"Superkicks Footwear\",\n        \"categoryIcon\": \"skateboarding\",\n        \"themeColor\": \"TERTIARY\",\n        \"addedTimeAgo\": \"Just added\",\n        \"openingOffer\": \"Welcome Bonus: 300 PINAK Coins on first purchase\",\n        \"locationTag\": \"12th Main Rd • Premium Streetwear\",\n        \"distanceMeters\": 500,\n        \"distanceLabel\": \"500m\",\n        \"action\": \"VIEW_STORE\"\n      }\n    ]\n  }\n}"
-                }
-              ]
-            },
-            {
-              "name": "08. Section 9 — All Nearby Places",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Response conforms to ApiResponse envelope', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data).to.be.an('object');",
-                      "});",
-                      "",
-                      "pm.test('Contains Section 9 header, pagination and places feed', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.data.sectionTitle).to.eql('All Nearby Places');",
-                      "    pm.expect(jsonData.data.totalPlacesCount).to.be.a('number');",
-                      "    pm.expect(jsonData.data.places).to.be.an('array');",
-                      "",
-                      "    if (jsonData.data.places.length > 0) {",
-                      "        var firstPlace = jsonData.data.places[0];",
-                      "        pm.expect(firstPlace.storeName).to.be.a('string');",
-                      "        pm.expect(firstPlace.rating).to.be.above(0);",
-                      "        pm.expect(firstPlace.cuisineOrCategory).to.be.a('string');",
-                      "        pm.expect(firstPlace.distanceText).to.be.a('string');",
-                      "        pm.expect(firstPlace.actionLabel).to.eql('Pay & Save');",
-                      "    }",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token obtained from Screen 07 Verify OTP"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/home/all-places?lat=12.9716&lng=77.6412&radius=10000&filter=NEAREST&page=0&size=10",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "mobile",
-                    "home",
-                    "all-places"
-                  ],
-                  "query": [
-                    {
-                      "key": "lat",
-                      "value": "12.9716",
-                      "description": "User latitude"
-                    },
-                    {
-                      "key": "lng",
-                      "value": "77.6412",
-                      "description": "User longitude"
-                    },
-                    {
-                      "key": "radius",
-                      "value": "10000",
-                      "description": "Radius in meters (default 10,000 / 10 km)"
-                    },
-                    {
-                      "key": "filter",
-                      "value": "NEAREST",
-                      "description": "Sort/Filter tab: NEAREST | RATING_4_PLUS | MAX_DISCOUNT | OPEN_NOW"
-                    },
-                    {
-                      "key": "page",
-                      "value": "0",
-                      "description": "Page index (0-based)"
-                    },
-                    {
-                      "key": "size",
-                      "value": "10",
-                      "description": "Page size"
-                    }
-                  ]
-                },
-                "description": "Returns Section 9 All Nearby Places paginated list with real database spatial distance calculation, sort filters (Nearest, Rating 4.0+, Max Discount, Open Now) and 'Pay & Save' actions directly from PostgreSQL."
-              },
-              "response": [
-                {
-                  "name": "200 OK — Section 9 All Nearby Places Feed",
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"All nearby places fetched successfully\",\n  \"data\": {\n    \"sectionTitle\": \"All Nearby Places\",\n    \"sectionSubtitle\": \"13 Places in Indiranagar\",\n    \"totalPlacesCount\": 13,\n    \"currentPage\": 0,\n    \"pageSize\": 10,\n    \"totalPages\": 2,\n    \"hasNext\": true,\n    \"activeSortFilter\": \"NEAREST\",\n    \"places\": [\n      {\n        \"storeId\": \"b0000000-0000-0000-0000-000000000012\",\n        \"merchantId\": \"a0000000-0000-0000-0000-000000000012\",\n        \"storeName\": \"Brik Oven Pizzeria\",\n        \"imageUrl\": \"https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80\",\n        \"isVerified\": true,\n        \"cuisineOrCategory\": \"Italian, Neapolitan Pizza • ₹₹\",\n        \"priceRange\": \"₹₹\",\n        \"rating\": 4.6,\n        \"reviewCountText\": \"(3.1k)\",\n        \"distanceMeters\": 130,\n        \"distanceText\": \"130m\",\n        \"activeOffer\": \"Flat 15% OFF + 100 Coins\",\n        \"actionLabel\": \"Pay & Save\",\n        \"action\": \"PAY_AND_SAVE\"\n      },\n      {\n        \"storeId\": \"b0000000-0000-0000-0000-000000000013\",\n        \"merchantId\": \"a0000000-0000-0000-0000-000000000013\",\n        \"storeName\": \"Social Indiranagar\",\n        \"imageUrl\": \"https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&q=80\",\n        \"isVerified\": true,\n        \"cuisineOrCategory\": \"Pub & Workspace • ₹₹₹\",\n        \"priceRange\": \"₹₹₹\",\n        \"rating\": 4.5,\n        \"reviewCountText\": \"(4.9k)\",\n        \"distanceMeters\": 540,\n        \"distanceText\": \"540m\",\n        \"activeOffer\": \"20% Cashback\",\n        \"actionLabel\": \"Pay & Save\",\n        \"action\": \"PAY_AND_SAVE\"\n      }\n    ]\n  }\n}"
-                }
-              ]
-            },
-            {
-              "name": "09. Master Composite — Complete Home Feed",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Composite feed contains all sections', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data.header).to.be.an('object');",
-                      "    pm.expect(jsonData.data.banners).to.be.an('array');",
-                      "    pm.expect(jsonData.data.categories).to.be.an('array');",
-                      "    pm.expect(jsonData.data.bestOffers).to.be.an('object');",
-                      "    pm.expect(jsonData.data.popularMerchants).to.be.an('object');",
-                      "    pm.expect(jsonData.data.recommended).to.be.an('object');",
-                      "    pm.expect(jsonData.data.newlyAdded).to.be.an('object');",
-                      "    pm.expect(jsonData.data.nearbyPlaces).to.be.an('object');",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token obtained from Screen 07 Verify OTP"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/home/feed?lat=12.9716&lng=77.6412",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "mobile",
-                    "home",
-                    "feed"
-                  ],
-                  "query": [
-                    {
-                      "key": "lat",
-                      "value": "12.9716",
-                      "description": "User current GPS latitude"
-                    },
-                    {
-                      "key": "lng",
-                      "value": "77.6412",
-                      "description": "User current GPS longitude"
-                    }
-                  ]
-                },
-                "description": "High-performance master composite endpoint returning all 9 sections in a single unified JSON payload for rapid app initialization and seamless rendering."
-              },
-              "response": []
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "🌟 Discover Screen V1.0 API Suite",
-      "description": "Complete production-grade Discover Screen API Suite matching the UI mockup specification (Oct 2026).",
-      "item": [
-        {
-          "name": "A. Header & User Summary (APIs 01-03)",
-          "description": "Header profile info, live PINAK coins wallet balance, and unread notification counter.",
-          "item": [
-            {
-              "name": "01. Get Current User Profile (/users/me)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Profile returns userId and fullName for header avatar', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data.userId).to.be.a('string');",
-                      "    pm.expect(jsonData.data.fullName).to.be.a('string');",
-                      "    pm.expect(jsonData.data.accountStatus).to.be.a('string');",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/users/me",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "me"
-                  ]
-                },
-                "description": "Returns profile name, avatar and account status for the Discover screen top header."
-              },
-              "response": []
-            },
-            {
-              "name": "02. Get PINAK Coin Balance (/rewards/balance)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Returns available coins and display value', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data.availableCoins).to.be.a('number');",
-                      "    pm.expect(jsonData.data.currency).to.eql('PINAK_COIN');",
-                      "    pm.expect(jsonData.data.displayValue).to.be.a('string');",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/rewards/balance",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "rewards",
-                    "balance"
-                  ]
-                },
-                "description": "Returns live spendable PINAK coin balance (e.g. 480 Coins) and rupee equivalent (₹48) for Discover header."
-              },
-              "response": []
-            },
-            {
-              "name": "03. Get Unread Notification Count (/notifications/unread-count)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Returns unread notification badge count', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data.unreadCount).to.be.a('number');",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "description": "Customer Bearer access token"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/notifications/unread-count",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "unread-count"
-                  ]
-                },
-                "description": "Returns unread count for red notification badge overlay on the top header bell icon."
-              },
-              "response": []
-            }
-          ]
-        },
-        {
-          "name": "B. Search, Scan & Banners (APIs 04-06)",
-          "description": "Global search suggestions across stores/categories/offers, promotional hero carousel banners, and category chips.",
-          "item": [
-            {
-              "name": "04. Search Suggestions (/search/suggestions)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Suggestions returned successfully from PostgreSQL', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data.query).to.eql('grill');",
-                      "    pm.expect(jsonData.data.suggestions).to.be.an('array');",
-                      "    if (jsonData.data.suggestions.length > 0) {",
-                      "        var first = jsonData.data.suggestions[0];",
-                      "        pm.expect(first.type).to.be.oneOf(['MERCHANT', 'CATEGORY', 'OFFER', 'PRODUCT']);",
-                      "        pm.expect(first.title).to.be.a('string');",
-                      "    }",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/search/suggestions?q=grill&latitude=12.9716&longitude=77.6412&limit=10",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "search",
-                    "suggestions"
-                  ],
-                  "query": [
-                    {
-                      "key": "q",
-                      "value": "grill",
-                      "description": "Search query"
-                    },
-                    {
-                      "key": "latitude",
-                      "value": "12.9716",
-                      "description": "User latitude for geo distance"
-                    },
-                    {
-                      "key": "longitude",
-                      "value": "77.6412",
-                      "description": "User longitude for geo distance"
-                    },
-                    {
-                      "key": "limit",
-                      "value": "10",
-                      "description": "Max items to return"
-                    }
-                  ]
-                },
-                "description": "Searches real PostgreSQL database across stores, categories, and offers with live geo-distance calculation."
-              }
-            },
-            {
-              "name": "05. Discover Promotional Banners (/banners)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Active banners returned from PostgreSQL home_banners table', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data.banners).to.be.an('array');",
-                      "    pm.expect(jsonData.data.banners.length).to.be.above(0);",
-                      "    var b = jsonData.data.banners[0];",
-                      "    pm.expect(b.bannerId).to.be.a('string');",
-                      "    pm.expect(b.title).to.be.a('string');",
-                      "    pm.expect(b.backgroundColor).to.be.a('string');",
-                      "    pm.expect(b.ctaText).to.be.a('string');",
-                      "    pm.expect(b.actionType).to.be.a('string');",
-                      "    pm.expect(b.deeplink).to.be.a('string');",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/banners?placement=DISCOVER",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "banners"
-                  ],
-                  "query": [
-                    {
-                      "key": "placement",
-                      "value": "DISCOVER",
-                      "description": "Placement context"
-                    }
-                  ]
-                },
-                "description": "Fetches real promotional carousel banners from PostgreSQL home_banners table with action links, colors, and countdowns."
-              }
-            },
-            {
-              "name": "06. All Categories Taxonomy (/categories)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test('Categories list conforms to Discover contract', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data.categories).to.be.an('array');",
-                      "    pm.expect(jsonData.data.categories.length).to.be.above(0);",
-                      "    var cat = jsonData.data.categories[0];",
-                      "    pm.expect(cat.categoryId).to.be.a('string');",
-                      "    pm.expect(cat.name).to.be.a('string');",
-                      "    pm.expect(cat.slug).to.be.a('string');",
-                      "    pm.expect(cat.iconUrl).to.be.a('string');",
-                      "    pm.expect(cat.iconName).to.be.a('string');",
-                      "    pm.expect(cat.color).to.be.a('string');",
-                      "    pm.expect(cat.isActive).to.be.true;",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/categories",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "categories"
-                  ]
-                },
-                "description": "Returns active commerce categories with categoryId, slug, iconUrl, iconName, theme color, and active state from PostgreSQL."
-              }
             }
           ]
         }
