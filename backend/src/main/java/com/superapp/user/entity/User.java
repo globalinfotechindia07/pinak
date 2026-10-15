@@ -103,6 +103,12 @@ public class User {
     @Column(name = "flash_alerts_granted")
     private boolean flashAlertsGranted = false;
 
+    @Column(name = "last_known_latitude")
+    private Double lastKnownLatitude;
+
+    @Column(name = "last_known_longitude")
+    private Double lastKnownLongitude;
+
     @Column(name = "profile_picture_url", length = 1024)
     private String profilePictureUrl;
 
@@ -226,6 +232,12 @@ public class User {
 
     public boolean isFlashAlertsGranted() { return flashAlertsGranted; }
     public void setFlashAlertsGranted(boolean flashAlertsGranted) { this.flashAlertsGranted = flashAlertsGranted; }
+
+    public Double getLastKnownLatitude() { return lastKnownLatitude; }
+    public void setLastKnownLatitude(Double lastKnownLatitude) { this.lastKnownLatitude = lastKnownLatitude; }
+
+    public Double getLastKnownLongitude() { return lastKnownLongitude; }
+    public void setLastKnownLongitude(Double lastKnownLongitude) { this.lastKnownLongitude = lastKnownLongitude; }
 
     public String getState() { return state; }
     public void setState(String state) { this.state = state; }

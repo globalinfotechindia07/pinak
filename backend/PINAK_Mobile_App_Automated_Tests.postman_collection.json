@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "name": "PINAK Mobile App \u2014 Complete Workflows & Automated Test Suite (Screens 05-15)",
+    "name": "PINAK Mobile App — Complete Workflows & Automated Test Suite (Screens 05-15)",
     "description": "Exhaustive end-to-end Postman API collection for PINAK Mobile Application. Designed for 1-click execution via Postman Collection Runner or Newman CLI. Automatically passes tokens, session IDs, transaction numbers, and merchant codes dynamically across sequential user journeys.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -558,7 +558,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/mobile/home-feed?lat=12.9716&lng=77.6412",
+              "raw": "{{baseUrl}}/api/v1/mobile/home/feed?lat=12.9716&lng=77.6412",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -566,7 +566,8 @@
                 "api",
                 "v1",
                 "mobile",
-                "home-feed"
+                "home",
+                "feed"
               ],
               "query": [
                 {

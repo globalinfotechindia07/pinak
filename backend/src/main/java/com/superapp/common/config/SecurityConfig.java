@@ -58,8 +58,18 @@ public class SecurityConfig {
 
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
-                // Public mobile onboarding & discovery endpoints
-                .requestMatchers("/api/v1/mobile/**").permitAll()
+                // Public mobile onboarding & authentication endpoints
+                .requestMatchers(
+                        "/api/v1/mobile/auth/**",
+                        "/api/v1/mobile/categories",
+                        "/api/v1/mobile/locations/**",
+                        "/api/v1/mobile/location/radar-preview"
+                ).permitAll()
+
+                // Private mobile endpoints — strictly requires logged-in JWT authentication
+                .requestMatchers("/api/v1/mobile/home/**").authenticated()
+                .requestMatchers("/api/v1/mobile/location/update-permissions").authenticated()
+                .requestMatchers("/api/v1/mobile/profile/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf", "/api/v1/auth/invite/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
                         "/api/v1/auth/register",

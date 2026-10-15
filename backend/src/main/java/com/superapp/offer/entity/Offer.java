@@ -78,6 +78,18 @@ public class Offer {
     @Column(name = "approved_by")
     private UUID approvedBy;
 
+    @Column(name = "bonus_coins")
+    private Integer bonusCoins = 100;
+
+    @Column(name = "badge_text", length = 100)
+    private String badgeText;
+
+    @Column(name = "recommendation_reason", length = 100)
+    private String recommendationReason;
+
+    @Column(name = "estimated_savings", precision = 10, scale = 2)
+    private BigDecimal estimatedSavings = new BigDecimal("180.00");
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -322,6 +334,18 @@ public class Offer {
     public void setUpdatedBy(String updatedBy) {
         this.updatedBy = updatedBy;
     }
+
+    public Integer getBonusCoins() { return bonusCoins; }
+    public void setBonusCoins(Integer bonusCoins) { this.bonusCoins = bonusCoins; }
+
+    public String getBadgeText() { return badgeText; }
+    public void setBadgeText(String badgeText) { this.badgeText = badgeText; }
+
+    public String getRecommendationReason() { return recommendationReason; }
+    public void setRecommendationReason(String recommendationReason) { this.recommendationReason = recommendationReason; }
+
+    public BigDecimal getEstimatedSavings() { return estimatedSavings; }
+    public void setEstimatedSavings(BigDecimal estimatedSavings) { this.estimatedSavings = estimatedSavings; }
 
     @Override
     public boolean equals(Object o) {

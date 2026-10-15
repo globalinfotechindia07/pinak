@@ -36,6 +36,14 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
 
     @Query("""
             SELECT s FROM Store s
+            WHERE s.approvalStatus = com.superapp.merchant.entity.ApprovalStatus.APPROVED
+            AND s.status = com.superapp.store.enums.StoreStatus.ACTIVE
+            ORDER BY s.createdAt DESC
+            """)
+    Page<Store> findNewlyAddedApprovedStores(Pageable pageable);
+
+    @Query("""
+            SELECT s FROM Store s
             WHERE (:status IS NULL OR s.status = :status)
             AND (:approvalStatus IS NULL OR s.approvalStatus = :approvalStatus)
             AND (:cityId IS NULL OR s.cityId = :cityId)
@@ -91,6 +99,52 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
             @Param("lat") double latitude,
             @Param("lng") double longitude,
             @Param("radiusMeters") double radiusMeters,
+            Pageable pageable
+    );
+
+    @Query(value = """
+            SELECT s.* FROM stores s
+            WHERE s.approval_status = 'APPROVED' AND s.status = 'ACTIVE'
+            AND s.rating >= :minRating
+            AND (
+                6371000 * acos(
+                    LEAST(1.0, GREATEST(-1.0,
+                        cos(radians(:lat)) * cos(radians(s.latitude)) *
+                        cos(radians(s.longitude) - radians(:lng)) +
+                        sin(radians(:lat)) * sin(radians(s.latitude))
+                    ))
+                )
+            ) <= :radiusMeters
+            ORDER BY s.rating DESC, (
+                6371000 * acos(
+                    LEAST(1.0, GREATEST(-1.0,
+                        cos(radians(:lat)) * cos(radians(s.latitude)) *
+                        cos(radians(s.longitude) - radians(:lng)) +
+                        sin(radians(:lat)) * sin(radians(s.latitude))
+                    ))
+                )
+            ) ASC
+            """,
+            countQuery = """
+            SELECT count(*) FROM stores s
+            WHERE s.approval_status = 'APPROVED' AND s.status = 'ACTIVE'
+            AND s.rating >= :minRating
+            AND (
+                6371000 * acos(
+                    LEAST(1.0, GREATEST(-1.0,
+                        cos(radians(:lat)) * cos(radians(s.latitude)) *
+                        cos(radians(s.longitude) - radians(:lng)) +
+                        sin(radians(:lat)) * sin(radians(s.latitude))
+                    ))
+                )
+            ) <= :radiusMeters
+            """,
+            nativeQuery = true)
+    Page<Store> findNearbyApprovedStoresWithMinRating(
+            @Param("lat") double latitude,
+            @Param("lng") double longitude,
+            @Param("radiusMeters") double radiusMeters,
+            @Param("minRating") double minRating,
             Pageable pageable
     );
 

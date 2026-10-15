@@ -78,6 +78,30 @@ public class Store {
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    @Column(name = "image_url", length = 1024)
+    private String imageUrl;
+
+    @Column(name = "rating", precision = 2, scale = 1)
+    private BigDecimal rating = new BigDecimal("4.8");
+
+    @Column(name = "review_count_text", length = 50)
+    private String reviewCountText = "(1.2k)";
+
+    @Column(name = "cuisine_or_category", length = 100)
+    private String cuisineOrCategory;
+
+    @Column(name = "opening_offer", length = 255)
+    private String openingOffer;
+
+    @Column(name = "category_icon", length = 64)
+    private String categoryIcon = "storefront";
+
+    @Column(name = "theme_color", length = 32)
+    private String themeColor = "PRIMARY";
+
+    @Column(name = "price_range", length = 16)
+    private String priceRange = "₹₹";
+
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
@@ -357,6 +381,30 @@ public class Store {
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public BigDecimal getRating() { return rating; }
+    public void setRating(BigDecimal rating) { this.rating = rating; }
+
+    public String getReviewCountText() { return reviewCountText; }
+    public void setReviewCountText(String reviewCountText) { this.reviewCountText = reviewCountText; }
+
+    public String getCuisineOrCategory() { return cuisineOrCategory; }
+    public void setCuisineOrCategory(String cuisineOrCategory) { this.cuisineOrCategory = cuisineOrCategory; }
+
+    public String getOpeningOffer() { return openingOffer; }
+    public void setOpeningOffer(String openingOffer) { this.openingOffer = openingOffer; }
+
+    public String getCategoryIcon() { return categoryIcon; }
+    public void setCategoryIcon(String categoryIcon) { this.categoryIcon = categoryIcon; }
+
+    public String getThemeColor() { return themeColor; }
+    public void setThemeColor(String themeColor) { this.themeColor = themeColor; }
+
+    public String getPriceRange() { return priceRange; }
+    public void setPriceRange(String priceRange) { this.priceRange = priceRange; }
 
     public boolean isApproved() {
         return ApprovalStatus.APPROVED.equals(this.approvalStatus);
