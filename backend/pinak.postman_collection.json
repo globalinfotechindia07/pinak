@@ -926,1277 +926,683 @@
         },
         {
           "name": "🌟 Discover Screen (Screen 10)",
-          "description": "Complete production-grade Discover Screen API Suite matching the UI mockup specification (Oct 2026).",
+          "description": "Production-ready, 100% database-backed APIs strictly aligned with PINAK Deals Discovery App (Screen 10) HTML UI. Arranged in exact visual top-to-bottom order.",
           "item": [
             {
-              "name": "A. Header & User Summary (APIs 01-03)",
-              "description": "Header profile info, live PINAK coins wallet balance, and unread notification counter.",
-              "item": [
-                {
-                  "name": "01. Get Current User Profile (/users/me)",
-                  "event": [
+              "name": "01. Header - User Profile & Delivery Location (/users/me)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
                     {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.test('Status code is 200 OK', function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test('Profile returns userId and fullName for header avatar', function () {",
-                          "    var jsonData = pm.response.json();",
-                          "    pm.expect(jsonData.success).to.be.true;",
-                          "    pm.expect(jsonData.data.userId).to.be.a('string');",
-                          "    pm.expect(jsonData.data.fullName).to.be.a('string');",
-                          "    pm.expect(jsonData.data.accountStatus).to.be.a('string');",
-                          "});"
-                        ]
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{accessToken}}",
-                        "description": "Customer Bearer access token"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/users/me",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "users",
-                        "me"
-                      ]
-                    },
-                    "description": "Returns profile name, avatar and account status for the Discover screen top header.",
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  },
-                  "response": []
-                },
-                {
-                  "name": "02. Get PINAK Coin Balance (/rewards/balance)",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.test('Status code is 200 OK', function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test('Returns available coins and display value', function () {",
-                          "    var jsonData = pm.response.json();",
-                          "    pm.expect(jsonData.success).to.be.true;",
-                          "    pm.expect(jsonData.data.availableCoins).to.be.a('number');",
-                          "    pm.expect(jsonData.data.currency).to.eql('PINAK_COIN');",
-                          "    pm.expect(jsonData.data.displayValue).to.be.a('string');",
-                          "});"
-                        ]
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{accessToken}}",
-                        "description": "Customer Bearer access token"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/rewards/balance",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "rewards",
-                        "balance"
-                      ]
-                    },
-                    "description": "Returns live spendable PINAK coin balance (e.g. 480 Coins) and rupee equivalent (₹48) for Discover header.",
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  },
-                  "response": []
-                },
-                {
-                  "name": "03. Get Unread Notification Count (/notifications/unread-count)",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.test('Status code is 200 OK', function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test('Returns unread notification badge count', function () {",
-                          "    var jsonData = pm.response.json();",
-                          "    pm.expect(jsonData.success).to.be.true;",
-                          "    pm.expect(jsonData.data.unreadCount).to.be.a('number');",
-                          "});"
-                        ]
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{accessToken}}",
-                        "description": "Customer Bearer access token"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/notifications/unread-count",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "notifications",
-                        "unread-count"
-                      ]
-                    },
-                    "description": "Returns unread count for red notification badge overlay on the top header bell icon.",
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  },
-                  "response": []
-                }
-              ]
-            },
-            {
-              "name": "B. Search, Scan & Banners (APIs 04-06)",
-              "description": "Global search suggestions across stores/categories/offers, promotional hero carousel banners, and category chips.",
-              "item": [
-                {
-                  "name": "04. Search Suggestions (/search/suggestions)",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.test('Status code is 200 OK', function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test('Suggestions returned successfully from PostgreSQL', function () {",
-                          "    var jsonData = pm.response.json();",
-                          "    pm.expect(jsonData.success).to.be.true;",
-                          "    pm.expect(jsonData.data.query).to.eql('grill');",
-                          "    pm.expect(jsonData.data.suggestions).to.be.an('array');",
-                          "    if (jsonData.data.suggestions.length > 0) {",
-                          "        var first = jsonData.data.suggestions[0];",
-                          "        pm.expect(first.type).to.be.oneOf(['MERCHANT', 'CATEGORY', 'OFFER', 'PRODUCT']);",
-                          "        pm.expect(first.title).to.be.a('string');",
-                          "    }",
-                          "});"
-                        ]
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/search/suggestions?q=grill&latitude=12.9716&longitude=77.6412&limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "search",
-                        "suggestions"
-                      ],
-                      "query": [
-                        {
-                          "key": "q",
-                          "value": "grill",
-                          "description": "Search query"
-                        },
-                        {
-                          "key": "latitude",
-                          "value": "12.9716",
-                          "description": "User latitude for geo distance"
-                        },
-                        {
-                          "key": "longitude",
-                          "value": "77.6412",
-                          "description": "User longitude for geo distance"
-                        },
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Max items to return"
-                        }
-                      ]
-                    },
-                    "description": "Searches real PostgreSQL database across stores, categories, and offers with live geo-distance calculation.",
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  }
-                },
-                {
-                  "name": "05. Discover Promotional Banners (/banners)",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.test('Status code is 200 OK', function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test('Active banners returned from PostgreSQL home_banners table', function () {",
-                          "    var jsonData = pm.response.json();",
-                          "    pm.expect(jsonData.success).to.be.true;",
-                          "    pm.expect(jsonData.data.banners).to.be.an('array');",
-                          "    pm.expect(jsonData.data.banners.length).to.be.above(0);",
-                          "    var b = jsonData.data.banners[0];",
-                          "    pm.expect(b.bannerId).to.be.a('string');",
-                          "    pm.expect(b.title).to.be.a('string');",
-                          "    pm.expect(b.backgroundColor).to.be.a('string');",
-                          "    pm.expect(b.ctaText).to.be.a('string');",
-                          "    pm.expect(b.actionType).to.be.a('string');",
-                          "    pm.expect(b.deeplink).to.be.a('string');",
-                          "});"
-                        ]
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/banners?placement=DISCOVER",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "banners"
-                      ],
-                      "query": [
-                        {
-                          "key": "placement",
-                          "value": "DISCOVER",
-                          "description": "Placement context"
-                        }
-                      ]
-                    },
-                    "description": "Fetches real promotional carousel banners from PostgreSQL home_banners table with action links, colors, and countdowns.",
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  }
-                },
-                {
-                  "name": "06. All Categories Taxonomy (/categories)",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.test('Status code is 200 OK', function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "",
-                          "pm.test('Categories list conforms to Discover contract', function () {",
-                          "    var jsonData = pm.response.json();",
-                          "    pm.expect(jsonData.success).to.be.true;",
-                          "    pm.expect(jsonData.data.categories).to.be.an('array');",
-                          "    pm.expect(jsonData.data.categories.length).to.be.above(0);",
-                          "    var cat = jsonData.data.categories[0];",
-                          "    pm.expect(cat.categoryId).to.be.a('string');",
-                          "    pm.expect(cat.name).to.be.a('string');",
-                          "    pm.expect(cat.slug).to.be.a('string');",
-                          "    pm.expect(cat.iconUrl).to.be.a('string');",
-                          "    pm.expect(cat.iconName).to.be.a('string');",
-                          "    pm.expect(cat.color).to.be.a('string');",
-                          "    pm.expect(cat.isActive).to.be.true;",
-                          "});"
-                        ]
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/categories",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "categories"
-                      ]
-                    },
-                    "description": "Returns active commerce categories with categoryId, slug, iconUrl, iconName, theme color, and active state from PostgreSQL.",
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              "name": "C. Service Offers & Deals (APIs 07, 08, 15)",
-              "item": [
-                {
-                  "name": "07 - Nearby Service Offers (Car Wash, Salon, Dining)",
-                  "request": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/offers/nearby?type=SERVICE&latitude=12.9716&longitude=77.6412&radiusKm=5&limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "offers",
-                        "nearby"
-                      ],
-                      "query": [
-                        {
-                          "key": "type",
-                          "value": "SERVICE",
-                          "description": "Filter by offer type"
-                        },
-                        {
-                          "key": "latitude",
-                          "value": "12.9716",
-                          "description": "User latitude"
-                        },
-                        {
-                          "key": "longitude",
-                          "value": "77.6412",
-                          "description": "User longitude"
-                        },
-                        {
-                          "key": "radiusKm",
-                          "value": "5",
-                          "description": "Radius in km"
-                        },
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Page size"
-                        }
-                      ]
-                    },
-                    "description": "Retrieves nearby verified service offers from local merchants (dining, salons, wellness, car service) with branch distance, coin rewards, and action CTAs.",
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Service offers payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.offers).to.be.an('array');",
-                          "    if (json.data.offers.length > 0) {",
-                          "        var offer = json.data.offers[0];",
-                          "        pm.expect(offer).to.have.property('offerId');",
-                          "        pm.expect(offer).to.have.property('title');",
-                          "        pm.expect(offer).to.have.property('merchant');",
-                          "        pm.expect(offer).to.have.property('branch');",
-                          "    }",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
                     }
                   ]
                 },
-                {
-                  "name": "08 - Nearby Product Deals & In-Store Specials",
-                  "request": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/products/deals/nearby?latitude=12.9716&longitude=77.6412&radiusKm=5&limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "products",
-                        "deals",
-                        "nearby"
-                      ],
-                      "query": [
-                        {
-                          "key": "latitude",
-                          "value": "12.9716",
-                          "description": "User latitude"
-                        },
-                        {
-                          "key": "longitude",
-                          "value": "77.6412",
-                          "description": "User longitude"
-                        },
-                        {
-                          "key": "radiusKm",
-                          "value": "5",
-                          "description": "Radius in km"
-                        },
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Page size"
-                        }
-                      ]
-                    },
-                    "description": "Fetches live discounted products and groceries available at nearby partner merchant stores with selling price, MRP, discount %, and real-time stock availability.",
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Product deals payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.products).to.be.an('array');",
-                          "    if (json.data.products.length > 0) {",
-                          "        var prod = json.data.products[0];",
-                          "        pm.expect(prod).to.have.property('productId');",
-                          "        pm.expect(prod).to.have.property('name');",
-                          "        pm.expect(prod).to.have.property('price');",
-                          "        pm.expect(prod.price).to.have.property('sellingPrice');",
-                          "    }",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "15 - Active Flash Deals (Limited-Time Urgency)",
-                  "request": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/offers/flash?limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "offers",
-                        "flash"
-                      ],
-                      "query": [
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Page size"
-                        }
-                      ]
-                    },
-                    "description": "Retrieves active flash deals with countdown timer timestamps (startsAt, endsAt), deep discounts, and remaining real-time stock quantity for urgency.",
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Flash deals payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.deals).to.be.an('array');",
-                          "    if (json.data.deals.length > 0) {",
-                          "        var deal = json.data.deals[0];",
-                          "        pm.expect(deal).to.have.property('offerId');",
-                          "        pm.expect(deal).to.have.property('title');",
-                          "        pm.expect(deal).to.have.property('price');",
-                          "        pm.expect(deal).to.have.property('endsAt');",
-                          "    }",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "name": "D. Popular & Featured Merchants (APIs 09, 10, 11)",
-              "auth": {
-                "type": "bearer",
-                "bearer": [
+                "method": "GET",
+                "header": [
                   {
-                    "key": "token",
-                    "value": "{{accessToken}}",
-                    "type": "string"
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
                   }
-                ]
-              },
-              "item": [
-                {
-                  "name": "09 - Popular Near You",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/merchants/nearby?latitude=12.9716&longitude=77.6412&radiusKm=10&sort=POPULAR&limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "merchants",
-                        "nearby"
-                      ],
-                      "query": [
-                        {
-                          "key": "latitude",
-                          "value": "12.9716",
-                          "description": "User latitude"
-                        },
-                        {
-                          "key": "longitude",
-                          "value": "77.6412",
-                          "description": "User longitude"
-                        },
-                        {
-                          "key": "radiusKm",
-                          "value": "10",
-                          "description": "Search radius in km"
-                        },
-                        {
-                          "key": "sort",
-                          "value": "POPULAR",
-                          "description": "Sort order (POPULAR, DISTANCE)"
-                        },
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Page size"
-                        }
-                      ]
-                    },
-                    "description": "Retrieves popular nearby stores sorted by high customer ratings and transaction density with category tag, branch distance, active opening offer, and verification status."
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Popular merchants payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.merchants).to.be.an('array');",
-                          "    if (json.data.merchants.length > 0) {",
-                          "        var m = json.data.merchants[0];",
-                          "        pm.expect(m).to.have.property('merchantId');",
-                          "        pm.expect(m).to.have.property('name');",
-                          "        pm.expect(m).to.have.property('rating');",
-                          "        pm.expect(m).to.have.property('branch');",
-                          "    }",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me"
                   ]
                 },
-                {
-                  "name": "10 - Featured Stores for All Your Needs",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/merchants/featured?latitude=12.9716&longitude=77.6412&limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "merchants",
-                        "featured"
-                      ],
-                      "query": [
-                        {
-                          "key": "latitude",
-                          "value": "12.9716",
-                          "description": "User latitude"
-                        },
-                        {
-                          "key": "longitude",
-                          "value": "77.6412",
-                          "description": "User longitude"
-                        },
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Page size"
-                        }
-                      ]
-                    },
-                    "description": "Retrieves featured spotlight stores curated by merchandising with special partner badges, ratings, and best offers."
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Featured merchants payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.merchants).to.be.an('array');",
-                          "    if (json.data.merchants.length > 0) {",
-                          "        var m = json.data.merchants[0];",
-                          "        pm.expect(m).to.have.property('merchantId');",
-                          "        pm.expect(m).to.have.property('featuredLabel');",
-                          "    }",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "11 - Newly Added Stores",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/merchants/newly-added?latitude=12.9716&longitude=77.6412&limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "merchants",
-                        "newly-added"
-                      ],
-                      "query": [
-                        {
-                          "key": "latitude",
-                          "value": "12.9716",
-                          "description": "User latitude"
-                        },
-                        {
-                          "key": "longitude",
-                          "value": "77.6412",
-                          "description": "User longitude"
-                        },
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Page size"
-                        }
-                      ]
-                    },
-                    "description": "Fetches recently onboarded stores with joinedAt timestamp, newUntil grace period (14 days), and introductory welcome offers."
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Newly added stores payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.merchants).to.be.an('array');",
-                          "    if (json.data.merchants.length > 0) {",
-                          "        var m = json.data.merchants[0];",
-                          "        pm.expect(m).to.have.property('joinedAt');",
-                          "        pm.expect(m).to.have.property('newUntil');",
-                          "    }",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "name": "E. Curated Collections & Benefits (APIs 12, 16)",
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{accessToken}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "item": [
-                {
-                  "name": "12 - Popular Collections",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/collections/popular?limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "collections",
-                        "popular"
-                      ],
-                      "query": [
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Page size"
-                        }
-                      ]
-                    },
-                    "description": "Fetches thematic curated collections (Daily Essentials, Top Cafes, Salon & Spa, Bike Care) with promotional badges and category deep-links."
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Popular collections payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.collections).to.be.an('array');",
-                          "    if (json.data.collections.length > 0) {",
-                          "        var col = json.data.collections[0];",
-                          "        pm.expect(col).to.have.property('collectionId');",
-                          "        pm.expect(col).to.have.property('title');",
-                          "        pm.expect(col).to.have.property('coverImageUrl');",
-                          "    }",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "16 - Discover Platform Benefits (Why Shop on PINAK?)",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/discover/benefits",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "discover",
-                        "benefits"
-                      ]
-                    },
-                    "description": "Returns platform value proposition badges (Verified Stores, Earn PINAK Coins, Exclusive Deals, Instant QR Pay) to build customer trust."
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Benefits payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.benefits).to.be.an('array');",
-                          "    if (json.data.benefits.length > 0) {",
-                          "        var b = json.data.benefits[0];",
-                          "        pm.expect(b).to.have.property('benefitId');",
-                          "        pm.expect(b).to.have.property('title');",
-                          "        pm.expect(b).to.have.property('iconName');",
-                          "    }",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "name": "F. Personalization & History (APIs 13, 14)",
-              "auth": {
-                "type": "bearer",
-                "bearer": [
-                  {
-                    "key": "token",
-                    "value": "{{accessToken}}",
-                    "type": "string"
-                  }
-                ]
-              },
-              "item": [
-                {
-                  "name": "13a - Get Recently Viewed Items",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/users/me/recently-viewed?limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "users",
-                        "me",
-                        "recently-viewed"
-                      ],
-                      "query": [
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Page size"
-                        }
-                      ]
-                    },
-                    "description": "Retrieves items recently viewed by the authenticated customer. If the user has no history, gracefully returns popular active items from the database."
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Recently viewed payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.items).to.be.an('array');",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "13b - Record Recently Viewed Item",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"itemType\": \"PRODUCT\",\n  \"itemId\": \"d0000000-0000-0000-0000-000000000001\",\n  \"branchId\": \"b0000000-0000-0000-0000-000000000010\"\n}",
-                      "options": {
-                        "raw": {
-                          "language": "json"
-                        }
-                      }
-                    },
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/users/me/recently-viewed",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "users",
-                        "me",
-                        "recently-viewed"
-                      ]
-                    },
-                    "description": "Records an impression / detail click for a product or merchant into PostgreSQL user_recently_viewed ledger."
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Record interaction success\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "14 - Recommended for You",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/recommendations?latitude=12.9716&longitude=77.6412&limit=10",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "recommendations"
-                      ],
-                      "query": [
-                        {
-                          "key": "latitude",
-                          "value": "12.9716",
-                          "description": "User latitude"
-                        },
-                        {
-                          "key": "longitude",
-                          "value": "77.6412",
-                          "description": "User longitude"
-                        },
-                        {
-                          "key": "limit",
-                          "value": "10",
-                          "description": "Page size"
-                        }
-                      ]
-                    },
-                    "description": "Returns personalized store/deal recommendations based on the customer's browsing history or nearby store density with clear recommendation reasons."
-                  },
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Status code is 200\", function () {",
-                          "    pm.response.to.have.status(200);",
-                          "});",
-                          "pm.test(\"Recommendations payload structure\", function () {",
-                          "    var json = pm.response.json();",
-                          "    pm.expect(json.success).to.eql(true);",
-                          "    pm.expect(json.data.items).to.be.an('array');",
-                          "    if (json.data.items.length > 0) {",
-                          "        var item = json.data.items[0];",
-                          "        pm.expect(item).to.have.property('itemId');",
-                          "        pm.expect(item).to.have.property('recommendationReason');",
-                          "    }",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          ],
-          "auth": {
-            "type": "bearer",
-            "bearer": [
-              {
-                "key": "token",
-                "value": "{{accessToken}}",
-                "type": "string"
+                "description": "Matches Header: Customer profile avatar, user name, and active delivery address (\"100ft Rd, Indiranagar, Bengaluru, Karnataka\")."
               }
-            ]
-          }
+            },
+            {
+              "name": "02. Header - PINAK Gold Coins Balance (/rewards/balance)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/rewards/balance",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "rewards",
+                    "balance"
+                  ]
+                },
+                "description": "Matches Header: Customer real-time reward coin balance (\"480 Coins | ₹48\") displayed in the top gold coin widget pill."
+              }
+            },
+            {
+              "name": "03. Header - Unread Notification Bell Count (/notifications/unread-count)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/unread-count",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "unread-count"
+                  ]
+                },
+                "description": "Matches Header: Count of unread user notifications displayed on the notification bell badge (count: 2)."
+              }
+            },
+            {
+              "name": "04. Search & Scan - Search Suggestions (/search/suggestions)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/search/suggestions?q=grill&latitude=12.9784&longitude=77.6408&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "search",
+                    "suggestions"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "grill",
+                      "description": "Search keyword"
+                    },
+                    {
+                      "key": "latitude",
+                      "value": "12.9784",
+                      "description": "Customer latitude (Indiranagar)"
+                    },
+                    {
+                      "key": "longitude",
+                      "value": "77.6408",
+                      "description": "Customer longitude (Indiranagar)"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Matches Search Bar: Typeahead suggestions for products, verified stores, services, and live offers."
+              }
+            },
+            {
+              "name": "05. Hero Promo Banner - Discover Banners (/banners?placement=DISCOVER)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/banners?placement=DISCOVER",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "banners"
+                  ],
+                  "query": [
+                    {
+                      "key": "placement",
+                      "value": "DISCOVER",
+                      "description": "Placement tag for Discover Screen"
+                    }
+                  ]
+                },
+                "description": "Matches Hero Promo: \"Weekend Super Fest - Flat 50% Cashback + 200 Extra Coins on dining, groceries, salons, electronics & more\"."
+              }
+            },
+            {
+              "name": "06. Explore Categories - 9 Verified Categories Rail (/categories)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories"
+                  ]
+                },
+                "description": "Matches Categories Rail: Dining 🍔, Cafes ☕, Supermarket 🛒, Kirana 🏪, Fashion 👕, Electronics 💻, Hardware 🔧, Salons ✂️, Gyms 🏋️."
+              }
+            },
+            {
+              "name": "07. Top Service Offers Near You (/offers/nearby?type=SERVICE)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/offers/nearby?type=SERVICE&latitude=12.9784&longitude=77.6408&radiusKm=5.0&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "offers",
+                    "nearby"
+                  ],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "SERVICE",
+                      "description": "Filter by service deals"
+                    },
+                    {
+                      "key": "latitude",
+                      "value": "12.9784",
+                      "description": "Customer latitude"
+                    },
+                    {
+                      "key": "longitude",
+                      "value": "77.6408",
+                      "description": "Customer longitude"
+                    },
+                    {
+                      "key": "radiusKm",
+                      "value": "5.0",
+                      "description": "Search radius in km"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Matches Top Service Offers: The Smokehouse Grill (40% OFF), Toni & Guy Salon (BUY 1 GET 1 FREE), Third Wave Coffee (FLAT ₹150 CASHBACK)."
+              }
+            },
+            {
+              "name": "08. Top Product Deals Near You (/products/deals/nearby)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/products/deals/nearby?latitude=12.9784&longitude=77.6408&radiusKm=5.0&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "products",
+                    "deals",
+                    "nearby"
+                  ],
+                  "query": [
+                    {
+                      "key": "latitude",
+                      "value": "12.9784",
+                      "description": "Customer latitude"
+                    },
+                    {
+                      "key": "longitude",
+                      "value": "77.6408",
+                      "description": "Customer longitude"
+                    },
+                    {
+                      "key": "radiusKm",
+                      "value": "5.0",
+                      "description": "Search radius in km"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Matches Top Product Deals: Amul Fresh Milk (20% OFF ₹52), India Gate Basmati Rice (10% OFF ₹540), Maggi 2-Min Noodles (Buy 2 Get 1 ₹28), Dettol Handwash (30% OFF ₹98), Stanley Hammer (15% OFF ₹340)."
+              }
+            },
+            {
+              "name": "09. Featured Stores for All Your Needs (/merchants/featured)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchants/featured?latitude=12.9784&longitude=77.6408&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchants",
+                    "featured"
+                  ],
+                  "query": [
+                    {
+                      "key": "latitude",
+                      "value": "12.9784",
+                      "description": "Customer latitude"
+                    },
+                    {
+                      "key": "longitude",
+                      "value": "77.6408",
+                      "description": "Customer longitude"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Matches Featured Stores: BigBasket (10% OFF), Reliance Fresh (Flat ₹100 Off), Sharma Kirana Store (Free Delivery), More Supermarket (Up to 20% OFF)."
+              }
+            },
+            {
+              "name": "10. Popular Collections - Handpicked Selections (/collections/popular)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/collections/popular?limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "collections",
+                    "popular"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Matches Popular Collections: Daily Essentials (Up to 30% OFF), Electronics (Up to 40% OFF), Home Improvement (Up to 35% OFF), Beauty & Personal Care (Up to 50% OFF), Fashion Essentials (Up to 60% OFF)."
+              }
+            },
+            {
+              "name": "11. Recently Viewed Items - User History Rail (/users/me/recently-viewed)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me/recently-viewed?limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me",
+                    "recently-viewed"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Matches Recently Viewed: Amul Fresh Milk (₹52), India 2-Min Noodles (₹28), Dettol Handwash (₹98), Stanley Hammer (₹340), India Gate Rice (₹540)."
+              }
+            },
+            {
+              "name": "12. Record Recently Viewed Item - User Interaction (/users/me/recently-viewed)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"itemType\": \"PRODUCT\",\n  \"itemId\": \"00000000-0000-0000-0000-000000000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me/recently-viewed",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me",
+                    "recently-viewed"
+                  ]
+                },
+                "description": "Triggered when customer clicks/taps any item card to log it into recent views ledger."
+              }
+            },
+            {
+              "name": "13. Recommended for You - Personalization Rail (/recommendations)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/recommendations?latitude=12.9784&longitude=77.6408&limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "recommendations"
+                  ],
+                  "query": [
+                    {
+                      "key": "latitude",
+                      "value": "12.9784",
+                      "description": "Customer latitude"
+                    },
+                    {
+                      "key": "longitude",
+                      "value": "77.6408",
+                      "description": "Customer longitude"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Matches Recommended for You: Truffles Burgers (Flat 25% OFF), Cult.Fit Pro (3-Day Pass + 25% Off), Bodycraft Spa (Flat 30% Off), Third Wave Coffee (Flat ₹150 Cashback)."
+              }
+            },
+            {
+              "name": "14. Flash Deals Ending Soon - Limited Time Urgency Grid (/offers/flash)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/offers/flash?limit=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "offers",
+                    "flash"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Matches Flash Deals Grid with Countdown Timer: India Gate Rice 5kg (45% OFF ₹540), boAt Headphones (40% OFF ₹1,199), Prestige Cookware (50% OFF ₹999), Campus Sneakers (35% OFF ₹1,299)."
+              }
+            },
+            {
+              "name": "15. Why Shop on PINAK? - Platform Benefits (/discover/benefits)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/discover/benefits",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "discover",
+                    "benefits"
+                  ]
+                },
+                "description": "Matches Trust Badges: Verified Stores (Only trusted partners), Earn PINAK Coins (On every purchase), Exclusive Offers (Local deals & discounts), Fast & Easy Payments (UPI, Cards & Wallets)."
+              }
+            }
+          ]
         }
       ]
     }
