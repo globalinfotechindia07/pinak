@@ -89,15 +89,14 @@ public class RewardServiceImpl implements RewardService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public RewardBalanceResponse getRewardBalance(UUID customerId) {
         Optional<RewardBalanceResponse> cached = rewardCacheService.getAccount(customerId);
         if (cached.isPresent()) {
             return cached.get();
         }
 
-        RewardAccount account = rewardAccountRepository.findByCustomerId(customerId)
-                .orElseGet(() -> new RewardAccount(customerId));
+        RewardAccount account = getOrCreateAccount(customerId);
 
         RewardBalanceResponse response = rewardMapper.toBalanceResponse(account);
         rewardCacheService.putAccount(customerId, response);

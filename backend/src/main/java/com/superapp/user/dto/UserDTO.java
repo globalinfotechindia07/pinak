@@ -23,40 +23,66 @@ public class UserDTO {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Response(
             String id,
+            String userId,
             String phone,
             String email,
             String firstName,
             String lastName,
+            String fullName,
             String role,
             String status,
+            String accountStatus,
             boolean profileCompleted,
             String name,
             String mobile,
             Boolean emailVerified,
             Boolean mobileVerified,
             String profilePictureUrl,
+            String profileImageUrl,
             Instant createdAt,
             Instant updatedAt
     ) {
         public static Response from(User user) {
             if (user == null) return null;
+            String userIdStr = user.getId() != null ? user.getId().toString() : null;
+            String fullNameStr = user.getName() != null && !user.getName().isBlank()
+                    ? user.getName()
+                    : ((user.getFirstName() != null ? user.getFirstName() : "") +
+                       (user.getLastName() != null && !user.getLastName().isBlank() ? " " + user.getLastName() : "")).trim();
+            String picUrl = user.getProfilePictureUrl();
+            String statusStr = user.getStatus() != null ? user.getStatus().name() : "ACTIVE";
+
             return new Response(
-                    user.getId() != null ? user.getId().toString() : null,
+                    userIdStr,
+                    userIdStr,
                     user.getPhone(),
                     user.getEmail(),
                     user.getFirstName(),
                     user.getLastName(),
+                    fullNameStr.isBlank() ? null : fullNameStr,
                     user.getRole() != null ? user.getRole().name() : null,
-                    user.getStatus() != null ? user.getStatus().name() : null,
+                    statusStr,
+                    statusStr,
                     user.isProfileCompleted(),
                     user.getName(),
                     user.getMobile(),
                     user.isEmailVerified(),
                     user.isMobileVerified(),
-                    user.getProfilePictureUrl(),
+                    picUrl,
+                    picUrl,
                     user.getCreatedAt(),
                     user.getUpdatedAt()
             );
+        }
+
+        public Response(String id, String phone, String email, String firstName, String lastName,
+                        String role, String status, boolean profileCompleted,
+                        String name, String mobile, Boolean emailVerified, Boolean mobileVerified,
+                        String profilePictureUrl, Instant createdAt, Instant updatedAt) {
+            this(id, id, phone, email, firstName, lastName,
+                    name != null && !name.isBlank() ? name : ((firstName != null ? firstName : "") + (lastName != null && !lastName.isBlank() ? " " + lastName : "")).trim(),
+                    role, status, status, profileCompleted,
+                    name, mobile, emailVerified, mobileVerified, profilePictureUrl, profilePictureUrl, createdAt, updatedAt);
         }
 
         public Response(String id, String name, String firstName, String lastName,

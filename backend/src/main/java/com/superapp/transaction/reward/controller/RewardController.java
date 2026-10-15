@@ -33,9 +33,9 @@ public class RewardController {
         this.rewardService = rewardService;
     }
 
-    @GetMapping
+    @GetMapping({"", "/balance"})
     @Operation(summary = "Get authenticated customer reward balance", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("hasRole('CUSTOMER') or hasRole('USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<RewardBalanceResponse>> getRewardBalance(
             @AuthenticationPrincipal UserDetails userDetails) {
 

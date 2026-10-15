@@ -1699,6 +1699,172 @@
           ]
         }
       ]
+    },
+    {
+      "name": "🌟 Discover Screen V1.0 API Suite",
+      "description": "Complete production-grade Discover Screen API Suite matching the UI mockup specification (Oct 2026).",
+      "item": [
+        {
+          "name": "A. Header & User Summary (APIs 01-03)",
+          "description": "Header profile info, live PINAK coins wallet balance, and unread notification counter.",
+          "item": [
+            {
+              "name": "01. Get Current User Profile (/users/me)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Profile returns userId and fullName for header avatar', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.data.userId).to.be.a('string');",
+                      "    pm.expect(jsonData.data.fullName).to.be.a('string');",
+                      "    pm.expect(jsonData.data.accountStatus).to.be.a('string');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Customer Bearer access token"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "me"
+                  ]
+                },
+                "description": "Returns profile name, avatar and account status for the Discover screen top header."
+              },
+              "response": []
+            },
+            {
+              "name": "02. Get PINAK Coin Balance (/rewards/balance)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Returns available coins and display value', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.data.availableCoins).to.be.a('number');",
+                      "    pm.expect(jsonData.data.currency).to.eql('PINAK_COIN');",
+                      "    pm.expect(jsonData.data.displayValue).to.be.a('string');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Customer Bearer access token"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/rewards/balance",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "rewards",
+                    "balance"
+                  ]
+                },
+                "description": "Returns live spendable PINAK coin balance (e.g. 480 Coins) and rupee equivalent (₹48) for Discover header."
+              },
+              "response": []
+            },
+            {
+              "name": "03. Get Unread Notification Count (/notifications/unread-count)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Returns unread notification badge count', function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.success).to.be.true;",
+                      "    pm.expect(jsonData.data.unreadCount).to.be.a('number');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Customer Bearer access token"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/unread-count",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notifications",
+                    "unread-count"
+                  ]
+                },
+                "description": "Returns unread count for red notification badge overlay on the top header bell icon."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
