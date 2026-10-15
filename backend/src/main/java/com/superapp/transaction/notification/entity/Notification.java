@@ -32,7 +32,7 @@ public class Notification {
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(name = "message", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "body", nullable = false, columnDefinition = "TEXT")
     private String message;
 
     @Column(name = "reference_type", length = 32)
