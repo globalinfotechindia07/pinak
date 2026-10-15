@@ -980,7 +980,17 @@
                         "me"
                       ]
                     },
-                    "description": "Returns profile name, avatar and account status for the Discover screen top header."
+                    "description": "Returns profile name, avatar and account status for the Discover screen top header.",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
                   },
                   "response": []
                 },
@@ -1032,7 +1042,17 @@
                         "balance"
                       ]
                     },
-                    "description": "Returns live spendable PINAK coin balance (e.g. 480 Coins) and rupee equivalent (₹48) for Discover header."
+                    "description": "Returns live spendable PINAK coin balance (e.g. 480 Coins) and rupee equivalent (₹48) for Discover header.",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
                   },
                   "response": []
                 },
@@ -1082,7 +1102,17 @@
                         "unread-count"
                       ]
                     },
-                    "description": "Returns unread count for red notification badge overlay on the top header bell icon."
+                    "description": "Returns unread count for red notification badge overlay on the top header bell icon.",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
                   },
                   "response": []
                 }
@@ -1161,7 +1191,17 @@
                         }
                       ]
                     },
-                    "description": "Searches real PostgreSQL database across stores, categories, and offers with live geo-distance calculation."
+                    "description": "Searches real PostgreSQL database across stores, categories, and offers with live geo-distance calculation.",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
                   }
                 },
                 {
@@ -1219,7 +1259,17 @@
                         }
                       ]
                     },
-                    "description": "Fetches real promotional carousel banners from PostgreSQL home_banners table with action links, colors, and countdowns."
+                    "description": "Fetches real promotional carousel banners from PostgreSQL home_banners table with action links, colors, and countdowns.",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
                   }
                 },
                 {
@@ -1271,7 +1321,17 @@
                         "categories"
                       ]
                     },
-                    "description": "Returns active commerce categories with categoryId, slug, iconUrl, iconName, theme color, and active state from PostgreSQL."
+                    "description": "Returns active commerce categories with categoryId, slug, iconUrl, iconName, theme color, and active state from PostgreSQL.",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
                   }
                 }
               ]
@@ -1290,9 +1350,9 @@
                       }
                     ],
                     "url": {
-                      "raw": "{{base_url}}/api/v1/offers/nearby?type=SERVICE&latitude=12.9716&longitude=77.6412&radiusKm=5&limit=10",
+                      "raw": "{{baseUrl}}/api/v1/offers/nearby?type=SERVICE&latitude=12.9716&longitude=77.6412&radiusKm=5&limit=10",
                       "host": [
-                        "{{base_url}}"
+                        "{{baseUrl}}"
                       ],
                       "path": [
                         "api",
@@ -1328,7 +1388,17 @@
                         }
                       ]
                     },
-                    "description": "Retrieves nearby verified service offers from local merchants (dining, salons, wellness, car service) with branch distance, coin rewards, and action CTAs."
+                    "description": "Retrieves nearby verified service offers from local merchants (dining, salons, wellness, car service) with branch distance, coin rewards, and action CTAs.",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
                   },
                   "event": [
                     {
@@ -1367,9 +1437,9 @@
                       }
                     ],
                     "url": {
-                      "raw": "{{base_url}}/api/v1/products/deals/nearby?latitude=12.9716&longitude=77.6412&radiusKm=5&limit=10",
+                      "raw": "{{baseUrl}}/api/v1/products/deals/nearby?latitude=12.9716&longitude=77.6412&radiusKm=5&limit=10",
                       "host": [
-                        "{{base_url}}"
+                        "{{baseUrl}}"
                       ],
                       "path": [
                         "api",
@@ -1401,7 +1471,17 @@
                         }
                       ]
                     },
-                    "description": "Fetches live discounted products and groceries available at nearby partner merchant stores with selling price, MRP, discount %, and real-time stock availability."
+                    "description": "Fetches live discounted products and groceries available at nearby partner merchant stores with selling price, MRP, discount %, and real-time stock availability.",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
                   },
                   "event": [
                     {
@@ -1440,9 +1520,9 @@
                       }
                     ],
                     "url": {
-                      "raw": "{{base_url}}/api/v1/offers/flash?limit=10",
+                      "raw": "{{baseUrl}}/api/v1/offers/flash?limit=10",
                       "host": [
-                        "{{base_url}}"
+                        "{{baseUrl}}"
                       ],
                       "path": [
                         "api",
@@ -1458,7 +1538,17 @@
                         }
                       ]
                     },
-                    "description": "Retrieves active flash deals with countdown timer timestamps (startsAt, endsAt), deep discounts, and remaining real-time stock quantity for urgency."
+                    "description": "Retrieves active flash deals with countdown timer timestamps (startsAt, endsAt), deep discounts, and remaining real-time stock quantity for urgency.",
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{accessToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
                   },
                   "event": [
                     {
@@ -1488,7 +1578,17 @@
                 }
               ]
             }
-          ]
+          ],
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{accessToken}}",
+                "type": "string"
+              }
+            ]
+          }
         }
       ]
     }
