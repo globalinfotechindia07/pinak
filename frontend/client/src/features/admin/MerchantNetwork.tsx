@@ -3584,10 +3584,16 @@ function EditMerchantDrawer({
         setIsPincodeLoading(true);
         const res = await cityApi.lookupPincode(clean);
         if (res && res.state) {
-          handleStateChange(res.state);
-          if (res.district) handleDistrictChange(res.district);
-          if (res.city) setFormData((prev) => ({ ...prev, city: res.city }));
-          toast.success(`PIN ${clean} verified: ${res.city || res.district}, ${res.state}`);
+          setIsCustomEditDistrict(Boolean(res.isDistrictCustom));
+          setIsCustomEditCity(Boolean(res.isCityCustom));
+          setFormData((prev) => ({
+            ...prev,
+            pincode: clean,
+            state: res.state,
+            district: res.district,
+            city: res.city,
+          }));
+          toast.success(`PIN ${clean} verified via India Post: ${res.city || res.district}, ${res.state}`);
         }
       } catch (err) {
         console.warn("Pincode lookup failed:", err);
