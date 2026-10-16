@@ -83,6 +83,8 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
         setIsLookingUpPincode(true);
         const res = await cityApi.lookupPincode(clean);
         if (res && res.state) {
+          setIsCustomDistrict(Boolean(res.isDistrictCustom));
+          setIsCustomCity(Boolean(res.isCityCustom));
           onStateChange(res.state);
           if (res.district) onDistrictChange(res.district);
           if (res.city) onCityChange(res.city);

@@ -14378,3 +14378,38 @@ export const matchIndiaLocation = (raw: {
 
   return { matchedState, matchedDistrict, matchedCity };
 };
+
+export const normalizeIndiaLocation = (rawState?: string, rawDistrict?: string, rawCity?: string) => {
+  const matched = matchIndiaLocation({ state: rawState, district: rawDistrict, city: rawCity });
+  const state = matched.matchedState || rawState || "";
+  const availableDistricts = getDistrictsForState(state);
+
+  let district = matched.matchedDistrict || rawDistrict || "";
+  if (!district && availableDistricts.length > 0) {
+    district = availableDistricts[0];
+  }
+
+  const isDistrictCustom = Boolean(
+    district && !availableDistricts.some((d) => d.toLowerCase() === district.toLowerCase())
+  );
+
+  const availableCities = getCitiesForDistrictOrState(state, district);
+  let city = matched.matchedCity || rawCity || "";
+  if (!city && availableCities.length > 0) {
+    city = availableCities[0];
+  }
+
+  const isCityCustom = Boolean(
+    city && !availableCities.some((c) => c.toLowerCase() === city.toLowerCase())
+  );
+
+  return {
+    state,
+    district,
+    city,
+    isDistrictCustom,
+    isCityCustom,
+    availableDistricts,
+    availableCities,
+  };
+};

@@ -1566,12 +1566,32 @@ function AddMerchantDrawer({
         setIsPincodeLoading(true);
         const res = await cityApi.lookupPincode(clean);
         if (res && res.state) {
-          handleHqStateChange(res.state);
-          if (res.district) handleHqDistrictChange(res.district);
-          if (res.city) handleHqCityChange(res.city);
+          setIsCustomHqDistrict(Boolean(res.isDistrictCustom));
+          setIsCustomHqCity(Boolean(res.isCityCustom));
+          setFormData((prev) => ({
+            ...prev,
+            state: res.state,
+            district: res.district,
+            city: res.city,
+            branchState: prev.branchState === prev.state || !prev.branchState ? res.state : prev.branchState,
+            branchDistrict: prev.branchDistrict === prev.district || !prev.branchDistrict ? res.district : prev.branchDistrict,
+            branchCity: prev.branchCity === prev.city || !prev.branchCity ? res.city : prev.branchCity,
+            branchPincode: prev.branchPincode || clean,
+          }));
+
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.state;
+            delete next.district;
+            delete next.city;
+            return next;
+          });
+
           setPincodeSuccessMsg(`Auto-detected: ${res.city || res.district}, ${res.state}`);
           setTimeout(() => setPincodeSuccessMsg(null), 4000);
           toast.success(`PIN ${clean} verified: ${res.city || res.district}, ${res.state}`);
+        } else {
+          toast.error(`PIN code ${clean} not found. Please select or type your location manually.`);
         }
       } catch (err) {
         console.warn("Pincode lookup failed:", err);
