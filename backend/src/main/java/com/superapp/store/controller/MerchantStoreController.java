@@ -86,4 +86,24 @@ public class MerchantStoreController {
         StoreApprovalActionResponse response = storeService.submitStoreForApproval(storeId, currentUserId);
         return ResponseEntity.ok(ApiResponse.success("Store submitted for approval", response));
     }
+
+    @DeleteMapping("/{storeId}")
+    @Operation(summary = "Delete or archive a store branch belonging to the authenticated merchant", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<Void>> deleteStore(
+            @PathVariable UUID storeId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+        storeService.deleteStore(storeId, currentUserId, false);
+        return ResponseEntity.ok(ApiResponse.success("Store deleted successfully", null));
+    }
+
+    @PostMapping("/{storeId}/resend-invite")
+    @Operation(summary = "Resend manager activation / welcome email for the store branch", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<Void>> resendInvite(
+            @PathVariable UUID storeId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = UUID.fromString(userDetails.getUsername());
+        storeService.resendStoreInvite(storeId, currentUserId);
+        return ResponseEntity.ok(ApiResponse.success("Store manager invite email dispatched successfully", null));
+    }
 }

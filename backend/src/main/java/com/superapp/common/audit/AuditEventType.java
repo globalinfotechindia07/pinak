@@ -56,6 +56,8 @@ public enum AuditEventType {
     STORE_SUSPENDED,
     STORE_REACTIVATED,
     STORE_LOCATION_CHANGED,
+    STORE_DELETED,
+    STORE_INVITE_RESENT,
 
     // Offer lifecycle
     OFFER_CREATED,

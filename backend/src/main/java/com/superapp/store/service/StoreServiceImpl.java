@@ -88,6 +88,15 @@ public class StoreServiceImpl implements StoreService {
                 request.longitude(),
                 request.phone() != null ? request.phone().trim() : null
         );
+        if (request.openingTime() != null && !request.openingTime().isBlank()) {
+            store.setOpeningTime(request.openingTime().trim());
+        }
+        if (request.closingTime() != null && !request.closingTime().isBlank()) {
+            store.setClosingTime(request.closingTime().trim());
+        }
+        if (request.operatingDays() != null && !request.operatingDays().isBlank()) {
+            store.setOperatingDays(request.operatingDays().trim());
+        }
         store.setCreatedBy(currentUserId.toString());
         store.setUpdatedBy(currentUserId.toString());
 
@@ -161,6 +170,15 @@ public class StoreServiceImpl implements StoreService {
         store.setLongitude(request.longitude());
         store.setLocation(Store.formatWkt(request.longitude(), request.latitude()));
         store.setPhone(request.phone() != null ? request.phone().trim() : null);
+        if (request.openingTime() != null && !request.openingTime().isBlank()) {
+            store.setOpeningTime(request.openingTime().trim());
+        }
+        if (request.closingTime() != null && !request.closingTime().isBlank()) {
+            store.setClosingTime(request.closingTime().trim());
+        }
+        if (request.operatingDays() != null && !request.operatingDays().isBlank()) {
+            store.setOperatingDays(request.operatingDays().trim());
+        }
         store.setUpdatedBy(currentUserId.toString());
 
         if (locationChanged) {
@@ -480,6 +498,32 @@ public class StoreServiceImpl implements StoreService {
 
         storeRepository.delete(store);
         log.info("Deleted store id={} by user={}", id, currentUserId);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.STORE_DELETED, currentUserId, null, null, MDC.get("requestId"),
+                    "{\"storeId\":\"" + id + "\",\"merchantId\":\"" + merchant.getId() + "\"}");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void resendStoreInvite(UUID storeId, UUID currentUserId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
+
+        Merchant merchant = merchantRepository.findById(store.getMerchantId())
+                .orElseThrow(() -> new ResourceNotFoundException("Merchant", "id", store.getMerchantId()));
+
+        if (!merchant.getOwnerUserId().equals(currentUserId)) {
+            throw new AppException("You are not authorized to resend invites for this store", ApiError.FORBIDDEN, 403);
+        }
+
+        log.info("Dispatched store manager activation invite for store id={} by user={}", storeId, currentUserId);
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.STORE_INVITE_RESENT, currentUserId, null, null, MDC.get("requestId"),
+                    "{\"storeId\":\"" + storeId + "\",\"branchName\":\"" + store.getStoreName() + "\"}");
+        }
     }
 
     @Override

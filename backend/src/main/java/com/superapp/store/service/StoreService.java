@@ -22,6 +22,8 @@ public interface StoreService {
 
     StoreApprovalActionResponse submitStoreForApproval(UUID storeId, UUID currentUserId);
 
+    void resendStoreInvite(UUID storeId, UUID currentUserId);
+
     // Admin store operations
     Page<StoreResponse> getAllStoresAdmin(Pageable pageable, StoreStatus status, ApprovalStatus approvalStatus, String cityId);
 

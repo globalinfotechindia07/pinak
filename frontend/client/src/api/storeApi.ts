@@ -109,8 +109,17 @@ export const storeApi = {
     return Array.isArray(res.data) ? res.data : (res.data?.data || []);
   },
 
-  // Delete Store Branch
+  // Delete Store Branch (supports merchant self-service and admin)
   deleteStore: async (id: string): Promise<void> => {
-    await apiClient.delete(`/stores/${id}`);
+    try {
+      await apiClient.delete(`/merchant/stores/${id}`);
+    } catch {
+      await apiClient.delete(`/stores/${id}`);
+    }
+  },
+
+  // Resend Store Manager Activation / Password Setup Email
+  resendStoreInvite: async (id: string): Promise<void> => {
+    await apiClient.post(`/merchant/stores/${id}/resend-invite`);
   },
 };

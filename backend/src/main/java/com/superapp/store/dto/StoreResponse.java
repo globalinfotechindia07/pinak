@@ -26,6 +26,9 @@ public record StoreResponse(
         BigDecimal latitude,
         BigDecimal longitude,
         String phone,
+        String openingTime,
+        String closingTime,
+        String operatingDays,
         String status,
         String approvalStatus,
         String rejectionReason,
@@ -66,6 +69,9 @@ public record StoreResponse(
                 store.getLatitude(),
                 store.getLongitude(),
                 store.getPhone(),
+                store.getOpeningTime(),
+                store.getClosingTime(),
+                store.getOperatingDays(),
                 store.getStatus() != null ? store.getStatus().name() : null,
                 store.getApprovalStatus() != null ? store.getApprovalStatus().name() : null,
                 store.getRejectionReason(),
@@ -74,6 +80,42 @@ public record StoreResponse(
                 store.getApprovedAt(),
                 store.getCreatedAt(),
                 store.getUpdatedAt()
+        );
+    }
+
+    // 24-parameter backward-compatible constructor for existing tests
+    public StoreResponse(
+            String id,
+            String merchantId,
+            String merchantName,
+            String name,
+            String storeName,
+            String description,
+            String addressLine1,
+            String addressLine2,
+            String address,
+            String cityId,
+            String cityName,
+            String state,
+            String pincode,
+            BigDecimal latitude,
+            BigDecimal longitude,
+            String phone,
+            String status,
+            String approvalStatus,
+            String rejectionReason,
+            String suspensionReason,
+            Double distanceMeters,
+            Instant approvedAt,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this(
+                id, merchantId, merchantName, name, storeName, description,
+                addressLine1, addressLine2, address, cityId, cityName, state, pincode,
+                latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)",
+                status, approvalStatus, rejectionReason, suspensionReason,
+                distanceMeters, approvedAt, createdAt, updatedAt
         );
     }
 
@@ -99,6 +141,9 @@ public record StoreResponse(
                 latitude,
                 longitude,
                 null,
+                "10:00",
+                "22:00",
+                "Daily (Mon - Sun)",
                 status != null ? status.name() : "ACTIVE",
                 status != null ? status.name() : "PENDING_APPROVAL",
                 null,

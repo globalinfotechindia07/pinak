@@ -99,6 +99,15 @@ public class Store {
     @Column(name = "theme_color", length = 32)
     private String themeColor = "PRIMARY";
 
+    @Column(name = "opening_time", length = 10)
+    private String openingTime = "10:00";
+
+    @Column(name = "closing_time", length = 10)
+    private String closingTime = "22:00";
+
+    @Column(name = "operating_days", length = 50)
+    private String operatingDays = "Daily (Mon - Sun)";
+
     @Column(name = "price_range", length = 16)
     private String priceRange = "₹₹";
 
@@ -405,6 +414,15 @@ public class Store {
 
     public String getPriceRange() { return priceRange; }
     public void setPriceRange(String priceRange) { this.priceRange = priceRange; }
+
+    public String getOpeningTime() { return openingTime; }
+    public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
+
+    public String getClosingTime() { return closingTime; }
+    public void setClosingTime(String closingTime) { this.closingTime = closingTime; }
+
+    public String getOperatingDays() { return operatingDays; }
+    public void setOperatingDays(String operatingDays) { this.operatingDays = operatingDays; }
 
     public boolean isApproved() {
         return ApprovalStatus.APPROVED.equals(this.approvalStatus);

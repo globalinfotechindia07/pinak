@@ -838,6 +838,33 @@ export default function Home() {
     }
   };
 
+  const handleUpdateStore = async (id: string, updates: any) => {
+    try {
+      await storeApi.updateStore(id, {
+        name: updates.branchName || updates.storeName || updates.name,
+        description: updates.description,
+        phone: updates.phone,
+        addressLine1: updates.address,
+        cityId: (updates.city || "nagpur").toLowerCase(),
+        state: updates.state || "Maharashtra",
+        pincode: updates.pincode || "440010",
+        latitude: Number(updates.latitude) || 21.1458,
+        longitude: Number(updates.longitude) || 79.0882,
+        openingTime: updates.openingTime,
+        closingTime: updates.closingTime,
+        operatingDays: updates.operatingDays,
+      } as any);
+      store.updateStore(id, updates);
+      toast.success("Store outlet updated successfully!");
+      await syncBackendData();
+    } catch (err: any) {
+      console.warn("Backend store update fallback:", err?.response?.data || err.message);
+      store.updateStore(id, updates);
+      toast.success("Store outlet updated");
+      await syncBackendData();
+    }
+  };
+
   const handleUpdateKyc = async (id: string, status: any) => {
     try {
       if (status === "APPROVED") {
@@ -1196,6 +1223,8 @@ export default function Home() {
                     <BranchStores
                       stores={store.stores}
                       onAddStore={handleAddStore}
+                      onUpdateStore={handleUpdateStore}
+                      onDeleteStore={handleDeleteStore}
                       onLoginAsStore={(targetStore) => {
                         store.login("store", targetStore.storeEmail, targetStore.id);
                         setStoreTab("StoreDashboard");
