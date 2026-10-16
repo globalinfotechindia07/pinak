@@ -1,11 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   getAllStates,
   getDistrictsForState,
   getCitiesForDistrictOrState
 } from "../data/indiaLocations";
-import { MapPin, Building, Globe2, AlertCircle } from "lucide-react";
+import { MapPin, Building, Globe2, AlertCircle, Check, Sparkles } from "lucide-react";
 import { cn } from "../lib/utils";
+import { cityApi } from "../api/cityApi";
 
 export interface IndiaAddressFieldsProps {
   state: string;
@@ -36,7 +37,12 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
   onAddressChange,
   className = ""
 }) => {
-  // All pre-configured Indian states
+  const [isCustomDistrict, setIsCustomDistrict] = useState(false);
+  const [isCustomCity, setIsCustomCity] = useState(false);
+  const [isLookingUpPincode, setIsLookingUpPincode] = useState(false);
+  const [pincodeSuccess, setPincodeSuccess] = useState<string | null>(null);
+
+  // All pre-configured Indian states (all 36 States/UTs)
   const states = useMemo(() => getAllStates(), []);
 
   // Districts for currently selected state
@@ -65,6 +71,29 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
     const citiesForDistrict = getCitiesForDistrictOrState(state, newDistrict);
     if (citiesForDistrict.length > 0 && !citiesForDistrict.includes(city)) {
       onCityChange(citiesForDistrict[0]);
+    }
+  };
+
+  const handlePincodeInput = async (val: string) => {
+    const clean = val.replace(/\D/g, "").slice(0, 6);
+    onPincodeChange(clean);
+
+    if (clean.length === 6) {
+      try {
+        setIsLookingUpPincode(true);
+        const res = await cityApi.lookupPincode(clean);
+        if (res && res.state) {
+          onStateChange(res.state);
+          if (res.district) onDistrictChange(res.district);
+          if (res.city) onCityChange(res.city);
+          setPincodeSuccess(`Auto-filled: ${res.city || res.district}, ${res.state}`);
+          setTimeout(() => setPincodeSuccess(null), 4000);
+        }
+      } catch (err) {
+        console.warn("Pincode lookup error:", err);
+      } finally {
+        setIsLookingUpPincode(false);
+      }
     }
   };
 
@@ -134,14 +163,42 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
 
         {/* District */}
         <div>
-          <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-xs">
-            District *
-          </label>
-          <div className="relative">
-            {availableDistricts.length > 0 ? (
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+              District *
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsCustomDistrict(!isCustomDistrict)}
+              className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold hover:underline"
+            >
+              {isCustomDistrict ? "← Choose from list" : "Type custom district"}
+            </button>
+          </div>
+          {isCustomDistrict ? (
+            <input
+              type="text"
+              value={district}
+              onChange={(e) => onDistrictChange(e.target.value)}
+              placeholder="District Name"
+              className={cn(
+                "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold focus:outline-hidden",
+                errors.district
+                  ? "border-rose-500 ring-1 ring-rose-500/20"
+                  : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
+              )}
+            />
+          ) : (
+            <div className="relative">
               <select
                 value={district}
-                onChange={(e) => handleDistrictSelect(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value === "__CUSTOM__") {
+                    setIsCustomDistrict(true);
+                  } else {
+                    handleDistrictSelect(e.target.value);
+                  }
+                }}
                 className={cn(
                   "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white appearance-none cursor-pointer focus:outline-hidden transition-all",
                   errors.district
@@ -155,22 +212,13 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
                     {dst}
                   </option>
                 ))}
+                <option value="__CUSTOM__">+ Other (Type custom district...)</option>
               </select>
-            ) : (
-              <input
-                type="text"
-                value={district}
-                onChange={(e) => onDistrictChange(e.target.value)}
-                placeholder="District Name"
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-              />
-            )}
-            {availableDistricts.length > 0 && (
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 text-xs">
                 ▼
               </div>
-            )}
-          </div>
+            </div>
+          )}
           {errors.district && (
             <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
               <AlertCircle size={12} className="shrink-0" />
@@ -184,14 +232,42 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
       <div className="grid grid-cols-2 gap-3">
         {/* City / Locality Dropdown with Search & Custom Input Support */}
         <div>
-          <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-xs">
-            City / Locality *
-          </label>
-          <div className="relative">
-            {availableCities.length > 0 ? (
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+              City / Locality *
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsCustomCity(!isCustomCity)}
+              className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold hover:underline"
+            >
+              {isCustomCity ? "← Choose from list" : "Type custom city"}
+            </button>
+          </div>
+          {isCustomCity ? (
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => onCityChange(e.target.value)}
+              placeholder="e.g. Nagpur / Ramdaspeth"
+              className={cn(
+                "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden transition-all",
+                errors.city
+                  ? "border-rose-500 ring-1 ring-rose-500/20"
+                  : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
+              )}
+            />
+          ) : (
+            <div className="relative">
               <select
                 value={city}
-                onChange={(e) => onCityChange(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value === "__CUSTOM__") {
+                    setIsCustomCity(true);
+                  } else {
+                    onCityChange(e.target.value);
+                  }
+                }}
                 className={cn(
                   "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white appearance-none cursor-pointer focus:outline-hidden transition-all",
                   errors.city
@@ -205,35 +281,13 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
                     {ct}
                   </option>
                 ))}
+                <option value="__CUSTOM__">+ Other (Type custom city...)</option>
               </select>
-            ) : (
-              <input
-                type="text"
-                list="india-city-suggestions"
-                value={city}
-                onChange={(e) => onCityChange(e.target.value)}
-                placeholder="e.g. Nagpur"
-                className={cn(
-                  "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden transition-all",
-                  errors.city
-                    ? "border-rose-500 ring-1 ring-rose-500/20"
-                    : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                )}
-              />
-            )}
-            {availableCities.length > 0 && (
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 text-xs">
                 ▼
               </div>
-            )}
-            <datalist id="india-city-suggestions">
-              {availableCities.map((ct) => (
-                <option key={ct} value={ct}>
-                  {ct} ({district || state})
-                </option>
-              ))}
-            </datalist>
-          </div>
+            </div>
+          )}
           {errors.city && (
             <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
               <AlertCircle size={12} className="shrink-0" />
@@ -244,14 +298,19 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
 
         {/* Pincode */}
         <div>
-          <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-xs">
-            PIN Code *
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+              PIN Code *
+            </label>
+            {isLookingUpPincode && (
+              <span className="text-[10px] text-purple-600 animate-pulse font-semibold">Detecting...</span>
+            )}
+          </div>
           <input
             type="text"
             maxLength={6}
             value={pincode}
-            onChange={(e) => onPincodeChange(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) => handlePincodeInput(e.target.value)}
             placeholder="440010"
             className={cn(
               "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-hidden transition-all",
@@ -260,11 +319,17 @@ export const IndiaAddressFields: React.FC<IndiaAddressFieldsProps> = ({
                 : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
             )}
           />
-          {errors.pincode && (
+          {errors.pincode ? (
             <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
               <AlertCircle size={12} className="shrink-0" />
               <span>{errors.pincode}</span>
             </p>
+          ) : pincodeSuccess ? (
+            <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+              <Check size={11} /> {pincodeSuccess}
+            </p>
+          ) : (
+            <p className="text-[10px] text-slate-400 mt-0.5">Auto-fills State & District</p>
           )}
         </div>
       </div>

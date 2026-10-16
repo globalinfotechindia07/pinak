@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/api/v1/discovery", "/api/v1/mobile/locations"})
+@RequestMapping({"/api/v1/discovery", "/api/v1/mobile/locations", "/api/v1/locations"})
 @Tag(name = "Customer Discovery — Cities & States", description = "Public city and state lookup endpoints for discovery, registration, and filtering")
 public class CityDiscoveryController {
 

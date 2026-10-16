@@ -62,6 +62,7 @@ import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { useAppStore } from "../../hooks/useAppStore";
 import { merchantApi } from "../../api/merchantApi";
 import { storeApi } from "../../api/storeApi";
+import { cityApi } from "../../api/cityApi";
 
 export const lookupIfscBank = (ifsc: string): string => {
   const code = (ifsc || "").toUpperCase().trim();
@@ -1551,6 +1552,35 @@ function AddMerchantDrawer({
   const hqDistricts = useMemo(() => getDistrictsForState(formData.state), [formData.state]);
   const hqCities = useMemo(() => getCitiesForDistrictOrState(formData.state, formData.district), [formData.state, formData.district]);
 
+  const [isCustomHqDistrict, setIsCustomHqDistrict] = useState(false);
+  const [isCustomHqCity, setIsCustomHqCity] = useState(false);
+  const [hqPincodeSearch, setHqPincodeSearch] = useState("");
+  const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+  const [pincodeSuccessMsg, setPincodeSuccessMsg] = useState<string | null>(null);
+
+  const handleHqPincodeChange = async (pin: string) => {
+    setHqPincodeSearch(pin);
+    const clean = pin.replace(/\D/g, "").slice(0, 6);
+    if (clean.length === 6) {
+      try {
+        setIsPincodeLoading(true);
+        const res = await cityApi.lookupPincode(clean);
+        if (res && res.state) {
+          handleHqStateChange(res.state);
+          if (res.district) handleHqDistrictChange(res.district);
+          if (res.city) handleHqCityChange(res.city);
+          setPincodeSuccessMsg(`Auto-detected: ${res.city || res.district}, ${res.state}`);
+          setTimeout(() => setPincodeSuccessMsg(null), 4000);
+          toast.success(`PIN ${clean} verified: ${res.city || res.district}, ${res.state}`);
+        }
+      } catch (err) {
+        console.warn("Pincode lookup failed:", err);
+      } finally {
+        setIsPincodeLoading(false);
+      }
+    }
+  };
+
   const handleHqStateChange = (newState: string) => {
     const districtsForNewState = getDistrictsForState(newState);
     const newDistrict = districtsForNewState.length > 0 ? districtsForNewState[0] : "";
@@ -2218,6 +2248,34 @@ function AddMerchantDrawer({
                     </label>
                   </div>
 
+                  {/* Quick Pincode Auto-Fill Bar */}
+                  <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/60 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                      <span className="text-[11px] font-semibold text-purple-900 dark:text-purple-200">
+                        Quick Auto-Fill with PIN Code:
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="6-digit PIN"
+                        value={hqPincodeSearch}
+                        onChange={(e) => handleHqPincodeChange(e.target.value)}
+                        className="w-28 px-2 py-1 text-xs rounded-lg border border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800 font-mono text-center font-bold text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                      />
+                      {isPincodeLoading && (
+                        <span className="text-[10px] text-purple-600 animate-pulse font-semibold">Detecting...</span>
+                      )}
+                    </div>
+                  </div>
+                  {pincodeSuccessMsg && (
+                    <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Check size={12} /> {pincodeSuccessMsg}
+                    </p>
+                  )}
+
                   <div className="grid grid-cols-2 gap-3">
                     {/* State Selector */}
                     <div>
@@ -2253,16 +2311,44 @@ function AddMerchantDrawer({
                       )}
                     </div>
 
-                    {/* District Selector */}
+                    {/* District Selector with Manual Toggle */}
                     <div>
-                      <label className="font-semibold text-slate-600 dark:text-slate-400 block mb-1 text-[11px]">
-                        District *
-                      </label>
-                      <div className="relative">
-                        {hqDistricts.length > 0 ? (
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
+                          District *
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setIsCustomHqDistrict(!isCustomHqDistrict)}
+                          className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold hover:underline"
+                        >
+                          {isCustomHqDistrict ? "← Select from list" : "Type custom"}
+                        </button>
+                      </div>
+                      {isCustomHqDistrict ? (
+                        <input
+                          type="text"
+                          value={formData.district}
+                          onChange={(e) => handleHqDistrictChange(e.target.value)}
+                          placeholder="District name"
+                          className={cn(
+                            "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden",
+                            errors.district
+                              ? "border-rose-500 ring-1 ring-rose-500/20"
+                              : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
+                          )}
+                        />
+                      ) : (
+                        <div className="relative">
                           <select
                             value={formData.district}
-                            onChange={(e) => handleHqDistrictChange(e.target.value)}
+                            onChange={(e) => {
+                              if (e.target.value === "__CUSTOM__") {
+                                setIsCustomHqDistrict(true);
+                              } else {
+                                handleHqDistrictChange(e.target.value);
+                              }
+                            }}
                             className={cn(
                               "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white appearance-none cursor-pointer focus:outline-hidden",
                               errors.district
@@ -2275,22 +2361,13 @@ function AddMerchantDrawer({
                                 {dst}
                               </option>
                             ))}
+                            <option value="__CUSTOM__">+ Other (Type custom district...)</option>
                           </select>
-                        ) : (
-                          <input
-                            type="text"
-                            value={formData.district}
-                            onChange={(e) => handleHqDistrictChange(e.target.value)}
-                            placeholder="District"
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold"
-                          />
-                        )}
-                        {hqDistricts.length > 0 && (
                           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 text-xs">
                             ▼
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       {errors.district && (
                         <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
                           <AlertCircle size={12} className="shrink-0" />
@@ -2300,23 +2377,44 @@ function AddMerchantDrawer({
                     </div>
                   </div>
 
-                  {/* City / Town Dropdown */}
+                  {/* City / Town Dropdown with Manual Toggle */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
                         Headquarters City / Town *
                       </label>
-                      {hqCities.length > 0 && (
-                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
-                          ({hqCities.length} cities loaded for {formData.district || formData.state})
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomHqCity(!isCustomHqCity)}
+                        className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold hover:underline"
+                      >
+                        {isCustomHqCity ? "← Choose from list" : "Can't find city? Type manually"}
+                      </button>
                     </div>
-                    <div className="relative">
-                      {hqCities.length > 0 ? (
+                    {isCustomHqCity ? (
+                      <input
+                        type="text"
+                        value={formData.city}
+                        onChange={(e) => handleHqCityChange(e.target.value)}
+                        placeholder="e.g. Nagpur / Ramdaspeth"
+                        className={cn(
+                          "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden",
+                          errors.city
+                            ? "border-rose-500 ring-1 ring-rose-500/20"
+                            : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
+                        )}
+                      />
+                    ) : (
+                      <div className="relative">
                         <select
                           value={formData.city}
-                          onChange={(e) => handleHqCityChange(e.target.value)}
+                          onChange={(e) => {
+                            if (e.target.value === "__CUSTOM__") {
+                              setIsCustomHqCity(true);
+                            } else {
+                              handleHqCityChange(e.target.value);
+                            }
+                          }}
                           className={cn(
                             "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white appearance-none cursor-pointer focus:outline-hidden",
                             errors.city
@@ -2329,27 +2427,13 @@ function AddMerchantDrawer({
                               {ct}
                             </option>
                           ))}
+                          <option value="__CUSTOM__">+ Other (Type custom city/town...)</option>
                         </select>
-                      ) : (
-                        <input
-                          type="text"
-                          value={formData.city}
-                          onChange={(e) => handleHqCityChange(e.target.value)}
-                          placeholder="e.g. Nagpur"
-                          className={cn(
-                            "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden",
-                            errors.city
-                              ? "border-rose-500 ring-1 ring-rose-500/20"
-                              : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                          )}
-                        />
-                      )}
-                      {hqCities.length > 0 && (
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 text-xs">
                           ▼
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     {errors.city && (
                       <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
                         <AlertCircle size={12} className="shrink-0" />
@@ -3468,6 +3552,31 @@ function EditMerchantDrawer({
   const hqDistricts = useMemo(() => getDistrictsForState(formData.state), [formData.state]);
   const hqCities = useMemo(() => getCitiesForDistrictOrState(formData.state, formData.district), [formData.state, formData.district]);
 
+  const [isCustomEditDistrict, setIsCustomEditDistrict] = useState(false);
+  const [isCustomEditCity, setIsCustomEditCity] = useState(false);
+  const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+
+  const handleEditPincodeChange = async (pin: string) => {
+    setFormData((prev) => ({ ...prev, pincode: pin }));
+    const clean = pin.replace(/\D/g, "").slice(0, 6);
+    if (clean.length === 6) {
+      try {
+        setIsPincodeLoading(true);
+        const res = await cityApi.lookupPincode(clean);
+        if (res && res.state) {
+          handleStateChange(res.state);
+          if (res.district) handleDistrictChange(res.district);
+          if (res.city) setFormData((prev) => ({ ...prev, city: res.city }));
+          toast.success(`PIN ${clean} verified: ${res.city || res.district}, ${res.state}`);
+        }
+      } catch (err) {
+        console.warn("Pincode lookup failed:", err);
+      } finally {
+        setIsPincodeLoading(false);
+      }
+    }
+  };
+
   const handleStateChange = (newState: string) => {
     const dists = getDistrictsForState(newState);
     const newDist = dists[0] || "";
@@ -3625,13 +3734,34 @@ function EditMerchantDrawer({
 
             {/* Address & HQ Location */}
             <div className="space-y-3 pt-2">
-              <h4 className="font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-1 flex items-center gap-1.5">
-                <MapPin size={14} className="text-purple-600" />
-                <span>Headquarters Address & Location</span>
-              </h4>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
+                <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <MapPin size={14} className="text-purple-600" />
+                  <span>Headquarters Address & Location</span>
+                </h4>
+                {isPincodeLoading && (
+                  <span className="text-[10px] text-purple-600 font-semibold animate-pulse">Checking PIN...</span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-semibold text-slate-600 block mb-1 text-[11px]">State *</label>
+                  <label className="font-semibold text-slate-600 dark:text-slate-400 block mb-1 text-[11px]">
+                    PIN Code (Auto-fills State & City)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={formData.pincode}
+                    onChange={(e) => handleEditPincodeChange(e.target.value)}
+                    placeholder="e.g. 440010"
+                    className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-600 dark:text-slate-400 block mb-1 text-[11px]">
+                    State *
+                  </label>
                   <select
                     value={formData.state}
                     onChange={(e) => handleStateChange(e.target.value)}
@@ -3642,29 +3772,85 @@ function EditMerchantDrawer({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-semibold text-slate-600 block mb-1 text-[11px]">District *</label>
-                  <select
-                    value={formData.district}
-                    onChange={(e) => handleDistrictChange(e.target.value)}
-                    className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
-                  >
-                    {hqDistricts.map((dst) => (
-                      <option key={dst} value={dst}>{dst}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">District *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomEditDistrict(!isCustomEditDistrict)}
+                      className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold hover:underline"
+                    >
+                      {isCustomEditDistrict ? "← List" : "Custom"}
+                    </button>
+                  </div>
+                  {isCustomEditDistrict ? (
+                    <input
+                      type="text"
+                      value={formData.district}
+                      onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                      placeholder="District"
+                      className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                    />
+                  ) : (
+                    <select
+                      value={formData.district}
+                      onChange={(e) => {
+                        if (e.target.value === "__CUSTOM__") {
+                          setIsCustomEditDistrict(true);
+                        } else {
+                          handleDistrictChange(e.target.value);
+                        }
+                      }}
+                      className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                    >
+                      {hqDistricts.map((dst) => (
+                        <option key={dst} value={dst}>{dst}</option>
+                      ))}
+                      <option value="__CUSTOM__">+ Other (Custom district...)</option>
+                    </select>
+                  )}
                 </div>
+
                 <div>
-                  <label className="font-semibold text-slate-600 block mb-1 text-[11px]">City / Town *</label>
-                  <select
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
-                  >
-                    {hqCities.map((ct) => (
-                      <option key={ct} value={ct}>{ct}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">City / Town *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomEditCity(!isCustomEditCity)}
+                      className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold hover:underline"
+                    >
+                      {isCustomEditCity ? "← List" : "Custom"}
+                    </button>
+                  </div>
+                  {isCustomEditCity ? (
+                    <input
+                      type="text"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      placeholder="City / Town"
+                      className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                    />
+                  ) : (
+                    <select
+                      value={formData.city}
+                      onChange={(e) => {
+                        if (e.target.value === "__CUSTOM__") {
+                          setIsCustomEditCity(true);
+                        } else {
+                          setFormData({ ...formData, city: e.target.value });
+                        }
+                      }}
+                      className="w-full px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                    >
+                      {hqCities.map((ct) => (
+                        <option key={ct} value={ct}>{ct}</option>
+                      ))}
+                      <option value="__CUSTOM__">+ Other (Custom city...)</option>
+                    </select>
+                  )}
                 </div>
               </div>
             </div>

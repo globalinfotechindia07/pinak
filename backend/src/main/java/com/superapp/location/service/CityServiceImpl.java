@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
@@ -42,6 +43,8 @@ public class CityServiceImpl implements CityService {
     private final ObjectMapper objectMapper;
     private final StoreRepository storeRepository;
     private final List<CityService.StateData> indiaLocations = new CopyOnWriteArrayList<>();
+    public record PincodeEntry(String state, String district, String city, List<String> postOffices) {}
+    private final Map<String, PincodeEntry> pincodeLookupMap = new ConcurrentHashMap<>();
 
     @Autowired
     public CityServiceImpl(CityRepository cityRepository,
@@ -166,6 +169,20 @@ public class CityServiceImpl implements CityService {
         String clean = pincode.trim().replaceAll("\\D", "");
         if (clean.length() != 6) {
             return new CityService.PincodeLookupResponse(pincode, null, null, null, List.of(), List.of());
+        }
+
+        PincodeEntry entry = pincodeLookupMap.get(clean);
+        if (entry != null) {
+            List<String> availableDistricts = getDistrictsForState(entry.state());
+            List<String> availableCities = getCitiesForDistrictOrState(entry.state(), entry.district());
+            return new CityService.PincodeLookupResponse(
+                    clean,
+                    entry.state(),
+                    entry.district(),
+                    entry.city(),
+                    availableDistricts,
+                    availableCities
+            );
         }
 
         String state = resolveStateFromPincode(clean);
@@ -364,6 +381,24 @@ public class CityServiceImpl implements CityService {
             }
         } catch (Exception e) {
             log.warn("Could not load /data/india_locations.json: {}", e.getMessage());
+        }
+
+        try (InputStream is = getClass().getResourceAsStream("/data/pincode_lookup.json")) {
+            if (is != null) {
+                Map<String, PincodeEntry> loaded = objectMapper.readValue(
+                        is,
+                        new TypeReference<Map<String, PincodeEntry>>() {}
+                );
+                pincodeLookupMap.clear();
+                if (loaded != null) {
+                    pincodeLookupMap.putAll(loaded);
+                }
+                log.info("Loaded {} Indian PIN codes from master postal directory", pincodeLookupMap.size());
+            } else {
+                log.warn("Master pincode_lookup.json not found in classpath /data/pincode_lookup.json");
+            }
+        } catch (Exception e) {
+            log.warn("Could not load /data/pincode_lookup.json: {}", e.getMessage());
         }
     }
 
