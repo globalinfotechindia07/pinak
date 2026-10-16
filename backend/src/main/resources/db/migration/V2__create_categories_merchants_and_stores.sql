@@ -42,7 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_cities_state ON cities(state);
 CREATE INDEX IF NOT EXISTS idx_cities_status ON cities(status);
 CREATE INDEX IF NOT EXISTS idx_cities_slug ON cities(slug);
 
--- 3. Merchants Table (Business / Brand Level)
+-- 3. Merchants Table (Business / Brand Level with Registered Location)
 CREATE TABLE IF NOT EXISTS merchants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -56,6 +56,11 @@ CREATE TABLE IF NOT EXISTS merchants (
     bank_upi_id VARCHAR(100),
     gstin VARCHAR(50),
     pan VARCHAR(20),
+    state VARCHAR(100),
+    district VARCHAR(100),
+    city VARCHAR(100),
+    pincode VARCHAR(20),
+    address TEXT,
     status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
     approval_status VARCHAR(32) NOT NULL DEFAULT 'PENDING_APPROVAL',
     kyc_status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
@@ -74,6 +79,9 @@ CREATE INDEX IF NOT EXISTS idx_merchants_category ON merchants(category_id);
 CREATE INDEX IF NOT EXISTS idx_merchants_status ON merchants(status);
 CREATE INDEX IF NOT EXISTS idx_merchants_approval ON merchants(approval_status);
 CREATE INDEX IF NOT EXISTS idx_merchants_featured ON merchants(is_featured);
+CREATE INDEX IF NOT EXISTS idx_merchants_state ON merchants(state);
+CREATE INDEX IF NOT EXISTS idx_merchants_city ON merchants(city);
+CREATE INDEX IF NOT EXISTS idx_merchants_pincode ON merchants(pincode);
 
 -- 4. Merchant KYC Table
 CREATE TABLE IF NOT EXISTS merchant_kyc (
@@ -94,7 +102,7 @@ CREATE TABLE IF NOT EXISTS merchant_kyc (
 CREATE INDEX IF NOT EXISTS idx_merchant_kyc_merchant ON merchant_kyc(merchant_id);
 CREATE INDEX IF NOT EXISTS idx_merchant_kyc_status ON merchant_kyc(verification_status);
 
--- 5. Stores Table (Physical Branch Outlets Owning Geographic Location & Showcase Presentation)
+-- 5. Stores Table (Physical Branch Outlets Owning Geographic Location & Operating Hours)
 CREATE TABLE IF NOT EXISTS stores (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
@@ -111,6 +119,9 @@ CREATE TABLE IF NOT EXISTS stores (
     location_type VARCHAR(20) NOT NULL DEFAULT 'POINT',
     location VARCHAR(255),
     phone VARCHAR(20),
+    opening_time VARCHAR(10) DEFAULT '10:00',
+    closing_time VARCHAR(10) DEFAULT '22:00',
+    operating_days VARCHAR(50) DEFAULT 'Daily (Mon - Sun)',
     status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
     approval_status VARCHAR(32) NOT NULL DEFAULT 'PENDING_APPROVAL',
     rejection_reason VARCHAR(1000),
