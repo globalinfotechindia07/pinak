@@ -63,6 +63,8 @@ export function useAppStore() {
     cloneOffer: (id: string) => appStore.cloneOffer(id),
     recordTransaction: (data: any) => appStore.recordTransaction(data),
     addCategory: (draft: any) => appStore.addCategory(draft),
+    updateCategory: (id: string, updates: any) => appStore.updateCategory(id, updates),
+    deleteCategory: (id: string) => appStore.deleteCategory(id),
     addRewardRule: (draft: any) => appStore.addRewardRule(draft),
     addAudit: (event: any) => appStore.addAudit(event),
     markAllNotificationsRead: () => appStore.markAllNotificationsRead(),

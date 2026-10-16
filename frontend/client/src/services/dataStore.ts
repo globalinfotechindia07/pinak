@@ -809,6 +809,15 @@ export const appStore = {
     setStored(STORAGE_KEYS.CATEGORIES, [...all, newCat]);
     return newCat;
   },
+  updateCategory(id: string, updates: Partial<Category>): void {
+    const all = this.getCategories();
+    const updated = all.map((c) => (c.id === id ? { ...c, ...updates } : c));
+    setStored(STORAGE_KEYS.CATEGORIES, updated);
+  },
+  deleteCategory(id: string): void {
+    const all = this.getCategories();
+    setStored(STORAGE_KEYS.CATEGORIES, all.filter((c) => c.id !== id));
+  },
 
   getRewardRules(): RewardRule[] {
     return getStored<RewardRule[]>(STORAGE_KEYS.REWARDS, []);

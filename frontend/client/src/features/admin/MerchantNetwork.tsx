@@ -61,6 +61,7 @@ import {
 import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { useAppStore } from "../../hooks/useAppStore";
 import { merchantApi } from "../../api/merchantApi";
+import { storeApi } from "../../api/storeApi";
 
 export const lookupIfscBank = (ifsc: string): string => {
   const code = (ifsc || "").toUpperCase().trim();
@@ -107,6 +108,8 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [merchantToDelete, setMerchantToDelete] = useState<Merchant | null>(null);
   const [merchantToEdit, setMerchantToEdit] = useState<Merchant | null>(null);
+  const [fetchedMerchantStores, setFetchedMerchantStores] = useState<any[]>([]);
+  const [isFetchingStores, setIsFetchingStores] = useState(false);
 
   const handleResendInvite = async (m: Merchant) => {
     try {
@@ -208,15 +211,66 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
     });
   }, [merchants, statusFilter]);
 
-  // Merchant's operating stores
+  // Fetch stores directly for selected merchant if needed
+  useEffect(() => {
+    if (!selectedMerchant?.id) {
+      setFetchedMerchantStores([]);
+      return;
+    }
+    let isCancelled = false;
+    setIsFetchingStores(true);
+    storeApi
+      .getStoresByMerchantId(String(selectedMerchant.id))
+      .then((stores) => {
+        if (!isCancelled && Array.isArray(stores)) {
+          setFetchedMerchantStores(stores);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!isCancelled) setIsFetchingStores(false);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedMerchant?.id]);
+
+  // Merchant's operating stores (null-safe and fallback to direct backend fetch)
   const merchantStores = useMemo(() => {
     if (!selectedMerchant) return [];
-    return allStores.filter(
-      (st) =>
-        st.merchantId === selectedMerchant.id ||
-        st.merchantName.toLowerCase() === selectedMerchant.businessName.toLowerCase()
-    );
-  }, [selectedMerchant, allStores]);
+    const selId = String(selectedMerchant.id || "").toLowerCase().trim();
+    const selName = (selectedMerchant.businessName || "").toLowerCase().trim();
+
+    const localMatches = allStores.filter((st) => {
+      const stMerchantId = String(st.merchantId || "").toLowerCase().trim();
+      const stMerchantName = (st.merchantName || "").toLowerCase().trim();
+      return (selId && stMerchantId === selId) || (selName && stMerchantName === selName);
+    });
+
+    if (localMatches.length > 0) return localMatches;
+
+    if (fetchedMerchantStores.length > 0) {
+      return fetchedMerchantStores.map((st: any) => ({
+        id: st.id,
+        merchantId: st.merchantId || selectedMerchant.id,
+        merchantName: st.merchantName || selectedMerchant.businessName,
+        storeName: st.storeName || st.name || "Store Outlet",
+        branchName: st.storeName || st.name || "Store Outlet",
+        address: st.address || st.addressLine1 || `${st.city || "Nagpur"} Central`,
+        city: st.cityName || st.cityId || st.city || "Nagpur",
+        state: st.state || "Maharashtra",
+        pincode: st.pincode || "",
+        latitude: st.latitude ? Number(st.latitude) : 21.1458,
+        longitude: st.longitude ? Number(st.longitude) : 79.0882,
+        status: st.status || "ACTIVE",
+        phone: st.phone || st.contactPhone || selectedMerchant.ownerPhone || "",
+        operatingHours: st.openingTime && st.closingTime ? `${st.openingTime} – ${st.closingTime}` : "10:00 AM – 10:00 PM",
+        hasActiveOffer: true,
+      }));
+    }
+
+    return [];
+  }, [selectedMerchant, allStores, fetchedMerchantStores]);
 
   // Audit logs related to selected merchant
   const merchantAuditLogs = useMemo(() => {

@@ -287,17 +287,20 @@ export default function Home() {
       }
 
       // 1. Fetch categories from Spring Boot
-      const cats = await categoryApi.getCategories();
+      const cats =
+        store.role === "admin"
+          ? await categoryApi.getAdminCategories().catch(() => categoryApi.getCategories())
+          : await categoryApi.getCategories();
       if (Array.isArray(cats) && cats.length > 0) {
         store.setCategories(
           cats.map((c: any) => ({
             id: c.id,
             name: c.name,
             description: c.description || `${c.name} category`,
-            icon: "Utensils",
-            color: "orange",
-            storeCount: 12,
-            growth: "+14.2%",
+            icon: c.icon || "Tag",
+            color: "purple",
+            storeCount: c.storeCount || 0,
+            growth: c.growth || "+0.0%",
             status: c.status || "ACTIVE",
             parentId: c.parentId,
             parentName: c.parentName,
@@ -636,18 +639,68 @@ export default function Home() {
   // Live API handlers for Category & Store actions
   const handleAddCategory = async (draft: any) => {
     try {
+      const cleanSlug = (draft.name || "new-category")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+
       await categoryApi.createCategory({
         name: draft.name || "New Category",
-        slug: (draft.name || "new-category").toLowerCase().replace(/\s+/g, "-"),
-        parentId: draft.parentId,
-        description: draft.description,
-        status: "ACTIVE",
+        slug: cleanSlug || `cat-${Date.now()}`,
+        parentId: draft.parentId || undefined,
+        description: draft.description || "",
+        icon: draft.icon || "Tag",
+        status: (draft.status as any) || "ACTIVE",
       });
       toast.success(`Category "${draft.name}" saved successfully!`);
       await syncBackendData();
     } catch (apiErr: any) {
-      console.warn("Backend category create failed, saving locally:", apiErr.message);
+      console.warn("Backend category create failed, saving locally:", apiErr?.response?.data || apiErr.message);
       store.addCategory(draft);
+    }
+  };
+
+  const handleUpdateCategory = async (id: string, updates: any) => {
+    try {
+      const cleanSlug = updates.name
+        ? updates.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+        : undefined;
+
+      await categoryApi.updateCategory(id, {
+        name: updates.name || "Category",
+        slug: cleanSlug,
+        parentId: updates.parentId || undefined,
+        description: updates.description || "",
+        icon: updates.icon || "Tag",
+        status: updates.status || "ACTIVE",
+      });
+      toast.success(`Category "${updates.name || "item"}" updated successfully!`);
+      await syncBackendData();
+    } catch (apiErr: any) {
+      console.warn("Backend category update failed, updating locally:", apiErr?.response?.data || apiErr.message);
+      store.updateCategory(id, updates);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      await categoryApi.deleteCategory(id);
+      toast.success("Category deleted successfully!");
+      await syncBackendData();
+    } catch (apiErr: any) {
+      console.warn("Backend category delete failed, deleting locally:", apiErr?.response?.data || apiErr.message);
+      store.deleteCategory(id);
+    }
+  };
+
+  const handleToggleCategoryStatus = async (id: string, status: "ACTIVE" | "INACTIVE") => {
+    try {
+      await categoryApi.updateCategoryStatus(id, status);
+      toast.success(`Category status updated to ${status}!`);
+      await syncBackendData();
+    } catch (apiErr: any) {
+      console.warn("Backend category status update failed, updating locally:", apiErr?.response?.data || apiErr.message);
+      store.updateCategory(id, { status });
     }
   };
 
@@ -677,7 +730,7 @@ export default function Home() {
       // If initial store is provided, provision store branch on backend immediately
       if (draft.initialStore && created?.id) {
         try {
-          await storeApi.createStore({
+          const storeRes = await storeApi.createStore({
             merchantId: created.id,
             storeName: draft.initialStore.branchName || `${draft.businessName} Flagship`,
             address: draft.initialStore.address || `${draft.initialStore.city || draft.city || "Nagpur"} Central`,
@@ -690,8 +743,52 @@ export default function Home() {
             closingTime: draft.initialStore.closingTime || "22:00",
           });
           toast.success("Initial flagship store branch provisioned successfully!");
+          if (storeRes) {
+            store.addStore({
+              id: storeRes.id || `st-${Date.now()}`,
+              merchantId: created.id,
+              merchantName: draft.businessName,
+              storeName: (storeRes as any).storeName || (storeRes as any).name || draft.initialStore.branchName || `${draft.businessName} Flagship`,
+              branchName: (storeRes as any).storeName || (storeRes as any).name || draft.initialStore.branchName || `${draft.businessName} Flagship`,
+              address: (storeRes as any).address || draft.initialStore.address || `${draft.city || "Nagpur"} Central`,
+              city: draft.initialStore.city || draft.city || "Nagpur",
+              state: draft.initialStore.state || draft.state || "Maharashtra",
+              pincode: draft.initialStore.pincode || "440010",
+              latitude: 21.1458,
+              longitude: 79.0882,
+              status: "ACTIVE",
+              phone: draft.ownerPhone || "+91 98765 43210",
+              operatingHours: "10:00 AM – 10:00 PM",
+              hasActiveOffer: true,
+              createdAt: new Date().toISOString(),
+              storeEmail: draft.ownerEmail || "",
+              posTerminalId: "POS-01",
+              qrCodePayload: `PINAK:STORE:${storeRes.id || created.id}`,
+            });
+          }
         } catch (storeErr: any) {
           console.warn("Backend store branch provisioning warning:", storeErr?.response?.data || storeErr.message);
+          store.addStore({
+            id: `st-local-${Date.now()}`,
+            merchantId: created.id,
+            merchantName: draft.businessName,
+            storeName: draft.initialStore.branchName || `${draft.businessName} Flagship`,
+            branchName: draft.initialStore.branchName || `${draft.businessName} Flagship`,
+            address: draft.initialStore.address || `${draft.city || "Nagpur"} Central`,
+            city: draft.initialStore.city || draft.city || "Nagpur",
+            state: draft.initialStore.state || draft.state || "Maharashtra",
+            pincode: draft.initialStore.pincode || "440010",
+            latitude: 21.1458,
+            longitude: 79.0882,
+            status: "ACTIVE",
+            phone: draft.ownerPhone || "+91 98765 43210",
+            operatingHours: "10:00 AM – 10:00 PM",
+            hasActiveOffer: true,
+            createdAt: new Date().toISOString(),
+            storeEmail: draft.ownerEmail || "",
+            posTerminalId: "POS-01",
+            qrCodePayload: `PINAK:STORE:${created.id}`,
+          });
         }
       }
 
@@ -1057,6 +1154,9 @@ export default function Home() {
                         <CategoryManager
                           categories={store.categories}
                           onAddCategory={handleAddCategory}
+                          onUpdateCategory={handleUpdateCategory}
+                          onDeleteCategory={handleDeleteCategory}
+                          onToggleCategoryStatus={handleToggleCategoryStatus}
                         />
                       )}
 

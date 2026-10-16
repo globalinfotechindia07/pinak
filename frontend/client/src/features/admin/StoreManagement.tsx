@@ -16,8 +16,19 @@ import {
   Download,
   Power,
   PowerOff,
-  Pencil
+  Pencil,
+  MoreVertical,
+  Eye,
+  Copy
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
+} from "../../components/ui/dropdown-menu";
 import { Store as StoreType, Merchant } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
@@ -154,55 +165,96 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
     },
     {
       header: "Actions",
-      className: "text-right",
+      className: "text-right whitespace-nowrap",
       render: (s) => (
         <div className="flex items-center justify-end gap-1.5">
-          {s.status !== "ACTIVE" ? (
-            <button
-              onClick={() => onApproveStore(s.id)}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 transition-colors shadow-2xs"
-            >
-              Approve
-            </button>
-          ) : (
-            <button
-              title="Temporarily close store"
-              onClick={() => {
-                onUpdateStore?.(s.id, { status: "INACTIVE" });
-                toast.info(`Store "${s.branchName}" marked as Inactive`);
-              }}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
-            >
-              <PowerOff size={13} />
-            </button>
-          )}
-
-          <button
-            onClick={() => setStoreToEdit(s)}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 transition-colors border border-amber-200/50 dark:border-amber-800/40"
-            title="Edit store outlet details"
-          >
-            <Pencil size={12} className="text-amber-600" />
-            <span>Edit</span>
-          </button>
-
+          {/* Quick View Button */}
           <button
             onClick={() => setSelectedStore(s)}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 transition-colors border border-purple-200/50 dark:border-purple-800/40"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200/80 dark:border-purple-800/60 transition-all shadow-2xs hover:shadow-xs"
+            title="View Store Location & Details"
           >
-            <MapPin size={12} className="text-pink-500" />
+            <MapPin size={13} className="text-pink-500" />
             <span>View</span>
           </button>
 
-          {onDeleteStore && (
-            <button
-              title="Delete store branch"
-              onClick={() => setStoreToDelete(s)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-            >
-              <Trash2 size={13} />
-            </button>
-          )}
+          {/* 3-Dots Dropdown Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-colors"
+                title="Store Actions"
+              >
+                <MoreVertical size={14} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#121626]">
+              <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-2 py-1">
+                Store Operations
+              </DropdownMenuLabel>
+
+              <DropdownMenuItem
+                onClick={() => setSelectedStore(s)}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+              >
+                <Eye size={14} className="text-purple-600 dark:text-purple-400" />
+                <span>View Outlet & Map</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setStoreToEdit(s)}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+              >
+                <Pencil size={14} className="text-amber-600 dark:text-amber-400" />
+                <span>Edit Store Outlet</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => {
+                  navigator.clipboard.writeText(s.id);
+                  toast.success(`Copied Store ID: ${s.id}`);
+                }}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <Copy size={14} className="text-slate-400" />
+                <span>Copy Store ID</span>
+              </DropdownMenuItem>
+
+              {s.status !== "ACTIVE" ? (
+                <DropdownMenuItem
+                  onClick={() => onApproveStore(s.id)}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                >
+                  <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                  <span>Approve & Activate</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onUpdateStore?.(s.id, { status: "INACTIVE" });
+                    toast.info(`Store "${s.branchName}" marked as Inactive`);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <PowerOff size={14} className="text-amber-500" />
+                  <span>Deactivate / Close</span>
+                </DropdownMenuItem>
+              )}
+
+              {onDeleteStore && (
+                <>
+                  <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+                  <DropdownMenuItem
+                    onClick={() => setStoreToDelete(s)}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete Store Branch</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )
     }

@@ -3,6 +3,7 @@ export interface CategoryDTO {
   name: string;
   slug: string;
   parentId?: string | null;
+  icon?: string;
   iconUrl?: string;
   description?: string;
   displayOrder: number;
@@ -17,6 +18,7 @@ export interface CreateCategoryRequest {
   name: string;
   slug: string;
   parentId?: string | null;
+  icon?: string;
   iconUrl?: string;
   description?: string;
   displayOrder?: number;
@@ -27,6 +29,7 @@ export interface UpdateCategoryRequest {
   name?: string;
   slug?: string;
   parentId?: string | null;
+  icon?: string;
   iconUrl?: string;
   description?: string;
   displayOrder?: number;

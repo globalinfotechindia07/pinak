@@ -24,6 +24,20 @@ export const storeApi = {
     return res.data?.data || (res.data as unknown as StoreDTO);
   },
 
+  // Get Stores Belonging to a Merchant
+  getStoresByMerchantId: async (merchantId: string): Promise<StoreDTO[]> => {
+    try {
+      const res = await apiClient.get<ApiResponse<any>>(`/merchants/${merchantId}/stores`);
+      const data = res.data?.data;
+      if (Array.isArray(data)) return data;
+      if (data && "content" in data && Array.isArray(data.content)) return data.content;
+      if (Array.isArray(res.data)) return res.data as any;
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
   // Create New Store Branch with Lat & Lng (works for both Admin and Merchant)
   createStore: async (payload: any): Promise<StoreDTO> => {
     if (payload.merchantId) {
