@@ -61,23 +61,43 @@ public record CreateMerchantRequest(
         String pincode,
 
         @Size(max = 2000, message = "Address must not exceed 2000 characters")
-        String address
+        String address,
+
+        @Size(max = 128, message = "Bank name must not exceed 128 characters")
+        String bankName,
+
+        @Size(max = 255, message = "Account holder name must not exceed 255 characters")
+        String accountHolderName,
+
+        @Size(max = 64, message = "Bank account number must not exceed 64 characters")
+        String bankAccountNumber,
+
+        @Size(max = 16, message = "IFSC code must not exceed 16 characters")
+        String bankIfsc
 ) {
+    // 16-arg constructor for previous callers
+    public CreateMerchantRequest(String businessName, String legalName, String description,
+                                 UUID categoryId, String phone, String email, String website,
+                                 String gstin, String pan, String bankUpiId, BigDecimal commissionRate,
+                                 String state, String district, String city, String pincode, String address) {
+        this(businessName, legalName, description, categoryId, phone, email, website, gstin, pan, bankUpiId, commissionRate, state, district, city, pincode, address, null, null, null, null);
+    }
+
     // 11-arg constructor for previous callers
     public CreateMerchantRequest(String businessName, String legalName, String description,
                                  UUID categoryId, String phone, String email, String website,
                                  String gstin, String pan, String bankUpiId, BigDecimal commissionRate) {
-        this(businessName, legalName, description, categoryId, phone, email, website, gstin, pan, bankUpiId, commissionRate, null, null, null, null, null);
+        this(businessName, legalName, description, categoryId, phone, email, website, gstin, pan, bankUpiId, commissionRate, null, null, null, null, null, null, null, null, null);
     }
 
     // 7-arg constructor for tests
     public CreateMerchantRequest(String businessName, String legalName, String description,
                                  UUID categoryId, String phone, String email, String website) {
-        this(businessName, legalName, description, categoryId, phone, email, website, null, null, null, null, null, null, null, null, null);
+        this(businessName, legalName, description, categoryId, phone, email, website, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     // Backward-compatible constructor for existing tests
     public CreateMerchantRequest(String businessName, UUID categoryId, UUID ownerUserId) {
-        this(businessName, null, null, categoryId, null, null, null, null, null, null, null, null, null, null, null, null);
+        this(businessName, null, null, categoryId, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

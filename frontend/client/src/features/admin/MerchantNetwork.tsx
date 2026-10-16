@@ -1376,9 +1376,28 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
           onClose={() => setMerchantToEdit(null)}
           onSave={async (updates) => {
             try {
-              await merchantApi.updateMerchantAdmin(merchantToEdit.id, updates);
+              const backendPayload = {
+                businessName: updates.businessName,
+                legalName: (updates as any).legalEntityName || updates.legalEntityName || updates.businessName,
+                phone: (updates as any).ownerPhone || (updates as any).phone,
+                email: (updates as any).ownerEmail || (updates as any).email,
+                state: updates.state,
+                district: updates.district,
+                city: updates.city,
+                address: (updates as any).address,
+                pincode: (updates as any).pincode,
+                bankName: (updates as any).bankName,
+                accountHolderName: (updates as any).accountHolderName,
+                bankAccountNumber: (updates as any).bankAccountNumber,
+                bankIfsc: (updates as any).bankIfsc,
+                bankUpiId: updates.bankUpiId,
+                gstin: updates.gstin,
+                pan: updates.pan,
+                commissionRate: updates.commissionRate,
+              };
+              await merchantApi.updateMerchantAdmin(merchantToEdit.id, backendPayload);
               if (onUpdateMerchant) {
-                onUpdateMerchant(merchantToEdit.id, updates);
+                await onUpdateMerchant(merchantToEdit.id, updates);
               }
               store.addAudit({
                 action: "MERCHANT_UPDATED",

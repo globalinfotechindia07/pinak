@@ -5,6 +5,7 @@ import com.superapp.merchant.entity.ApprovalStatus;
 import com.superapp.merchant.entity.KycStatus;
 import com.superapp.merchant.entity.Merchant;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -32,7 +33,12 @@ public record MerchantResponse(
         String district,
         String city,
         String pincode,
-        String address
+        String address,
+        String bankName,
+        String accountHolderName,
+        String bankAccountNumber,
+        String bankIfsc,
+        BigDecimal commissionRate
 ) {
     public static MerchantResponse fromEntity(Merchant merchant) {
         return fromEntity(merchant, null);
@@ -63,8 +69,25 @@ public record MerchantResponse(
                 merchant.getDistrict(),
                 merchant.getCity(),
                 merchant.getPincode(),
-                merchant.getAddress()
+                merchant.getAddress(),
+                merchant.getBankName(),
+                merchant.getAccountHolderName(),
+                merchant.getBankAccountNumber(),
+                merchant.getBankIfsc(),
+                merchant.getCommissionRate()
         );
+    }
+
+    // 23-arg constructor for previous callers
+    public MerchantResponse(String id, String ownerUserId, String businessName, String legalName,
+                            String description, String categoryId, String categoryName, String phone,
+                            String email, String website, String bankUpiId, String gstin,
+                            String pan, String status, String approvalStatus, String kycStatus,
+                            Instant createdAt, Instant updatedAt, String state, String district,
+                            String city, String pincode, String address) {
+        this(id, ownerUserId, businessName, legalName, description, categoryId, categoryName,
+                phone, email, website, bankUpiId, gstin, pan, status, approvalStatus, kycStatus,
+                createdAt, updatedAt, state, district, city, pincode, address, null, null, null, null, null);
     }
 
     // 18-arg backward-compatible constructor
@@ -75,7 +98,7 @@ public record MerchantResponse(
                             Instant createdAt, Instant updatedAt) {
         this(id, ownerUserId, businessName, legalName, description, categoryId, categoryName,
                 phone, email, website, bankUpiId, gstin, pan, status, approvalStatus, kycStatus,
-                createdAt, updatedAt, null, null, null, null, null);
+                createdAt, updatedAt, null, null, null, null, null, null, null, null, null, null);
     }
 
     // 9-arg backward-compatible constructor for existing tests
@@ -101,6 +124,11 @@ public record MerchantResponse(
                 kycStatus != null ? kycStatus.name() : null,
                 createdAt,
                 updatedAt,
+                null,
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -133,6 +161,11 @@ public record MerchantResponse(
                 null,
                 createdAt,
                 updatedAt,
+                null,
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

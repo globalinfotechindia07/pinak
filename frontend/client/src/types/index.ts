@@ -26,7 +26,13 @@ export interface Merchant {
   city: string;
   district?: string;
   state?: string;
+  pincode?: string;
+  address?: string;
   bankUpiId: string;
+  bankName?: string;
+  accountHolderName?: string;
+  bankAccountNumber?: string;
+  bankIfsc?: string;
   gstin: string;
   pan: string;
   kycStatus: KycStatus;

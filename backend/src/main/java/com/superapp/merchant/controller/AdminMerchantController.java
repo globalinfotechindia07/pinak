@@ -5,6 +5,7 @@ import com.superapp.merchant.dto.AdminRejectMerchantRequest;
 import com.superapp.merchant.dto.AdminSuspendMerchantRequest;
 import com.superapp.merchant.dto.MerchantApprovalActionResponse;
 import com.superapp.merchant.dto.MerchantResponse;
+import com.superapp.merchant.dto.UpdateMerchantRequest;
 import com.superapp.merchant.entity.ApprovalStatus;
 import com.superapp.merchant.enums.MerchantStatus;
 import com.superapp.merchant.service.MerchantService;
@@ -106,6 +107,17 @@ public class AdminMerchantController {
         merchantService.resendMerchantWelcomeEmail(merchantId, adminUserId);
         return ResponseEntity
                 .ok(ApiResponse.success("Welcome & onboarding email dispatched successfully to merchant", null));
+    }
+
+    @PutMapping("/{merchantId}")
+    @Operation(summary = "Admin update merchant details", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<MerchantResponse>> updateMerchant(
+            @PathVariable UUID merchantId,
+            @Valid @RequestBody UpdateMerchantRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID adminUserId = UUID.fromString(userDetails.getUsername());
+        MerchantResponse response = merchantService.updateMerchant(merchantId, request, adminUserId, true);
+        return ResponseEntity.ok(ApiResponse.success("Merchant updated successfully", response));
     }
 
     @DeleteMapping("/{merchantId}")

@@ -54,6 +54,7 @@ public class MerchantServiceImpl implements MerchantService {
     private final PasswordEncoder passwordEncoder;
     private final com.superapp.common.email.EmailService emailService;
     private final StaffMemberRepository staffMemberRepository;
+    private final com.superapp.wallet.repository.MerchantBankAccountRepository bankAccountRepository;
 
     @Autowired
     public MerchantServiceImpl(
@@ -65,7 +66,8 @@ public class MerchantServiceImpl implements MerchantService {
             MerchantMapper merchantMapper,
             @Autowired(required = false) PasswordEncoder passwordEncoder,
             @Autowired(required = false) com.superapp.common.email.EmailService emailService,
-            @Autowired(required = false) StaffMemberRepository staffMemberRepository) {
+            @Autowired(required = false) StaffMemberRepository staffMemberRepository,
+            @Autowired(required = false) com.superapp.wallet.repository.MerchantBankAccountRepository bankAccountRepository) {
         this.merchantRepository = merchantRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
@@ -75,6 +77,7 @@ public class MerchantServiceImpl implements MerchantService {
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.staffMemberRepository = staffMemberRepository;
+        this.bankAccountRepository = bankAccountRepository;
     }
 
     // Overloaded constructors for backward compatibility with existing unit tests
@@ -82,7 +85,7 @@ public class MerchantServiceImpl implements MerchantService {
             MerchantRepository merchantRepository,
             CategoryRepository categoryRepository,
             UserRepository userRepository) {
-        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null, null);
+        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null, null, null);
     }
 
     public MerchantServiceImpl(
@@ -93,7 +96,7 @@ public class MerchantServiceImpl implements MerchantService {
             AuditService auditService,
             MerchantMapper merchantMapper,
             PasswordEncoder passwordEncoder) {
-        this(merchantRepository, categoryRepository, userRepository, merchantKycRepository, auditService, merchantMapper, passwordEncoder, null, null);
+        this(merchantRepository, categoryRepository, userRepository, merchantKycRepository, auditService, merchantMapper, passwordEncoder, null, null, null);
     }
 
     @Override
@@ -192,6 +195,21 @@ public class MerchantServiceImpl implements MerchantService {
         if (request.bankUpiId() != null && !request.bankUpiId().isBlank()) {
             merchant.setBankUpiId(request.bankUpiId().trim());
         }
+        if (request.bankName() != null && !request.bankName().isBlank()) {
+            merchant.setBankName(request.bankName().trim());
+        }
+        if (request.accountHolderName() != null && !request.accountHolderName().isBlank()) {
+            merchant.setAccountHolderName(request.accountHolderName().trim());
+        }
+        if (request.bankAccountNumber() != null && !request.bankAccountNumber().isBlank()) {
+            merchant.setBankAccountNumber(request.bankAccountNumber().trim());
+        }
+        if (request.bankIfsc() != null && !request.bankIfsc().isBlank()) {
+            merchant.setBankIfsc(request.bankIfsc().trim().toUpperCase());
+        }
+        if (request.commissionRate() != null) {
+            merchant.setCommissionRate(request.commissionRate());
+        }
         if (request.gstin() != null && !request.gstin().isBlank()) {
             merchant.setGstin(request.gstin().trim());
         }
@@ -225,6 +243,10 @@ public class MerchantServiceImpl implements MerchantService {
         Merchant saved = merchantRepository.save(merchant);
         log.info("Created merchant id={} name='{}' ownerId={} (isAdmin={})", saved.getId(), saved.getBusinessName(),
                 ownerId, isAdmin);
+
+        if (bankAccountRepository != null && request.bankAccountNumber() != null && !request.bankAccountNumber().isBlank()) {
+            saveOrUpdatePrimaryBankAccount(saved.getId(), request.bankName(), request.accountHolderName(), request.bankAccountNumber(), request.bankIfsc(), request.bankUpiId());
+        }
 
         if (auditService != null) {
             String auditMeta = "{\"merchantId\":\"" + saved.getId() + "\",\"businessName\":\"" + saved.getBusinessName()
@@ -636,9 +658,39 @@ public class MerchantServiceImpl implements MerchantService {
             merchant.setEmail(request.email().trim().toLowerCase());
         if (request.website() != null)
             merchant.setWebsite(request.website().trim());
+        if (request.gstin() != null)
+            merchant.setGstin(request.gstin().trim());
+        if (request.pan() != null)
+            merchant.setPan(request.pan().trim());
+        if (request.bankUpiId() != null)
+            merchant.setBankUpiId(request.bankUpiId().trim());
+        if (request.commissionRate() != null)
+            merchant.setCommissionRate(request.commissionRate());
+        if (request.state() != null)
+            merchant.setState(request.state().trim());
+        if (request.district() != null)
+            merchant.setDistrict(request.district().trim());
+        if (request.city() != null)
+            merchant.setCity(request.city().trim());
+        if (request.pincode() != null)
+            merchant.setPincode(request.pincode().trim());
+        if (request.address() != null)
+            merchant.setAddress(request.address().trim());
+        if (request.bankName() != null)
+            merchant.setBankName(request.bankName().trim());
+        if (request.accountHolderName() != null)
+            merchant.setAccountHolderName(request.accountHolderName().trim());
+        if (request.bankAccountNumber() != null)
+            merchant.setBankAccountNumber(request.bankAccountNumber().trim());
+        if (request.bankIfsc() != null)
+            merchant.setBankIfsc(request.bankIfsc().trim().toUpperCase());
 
         Merchant updated = merchantRepository.save(merchant);
         log.info("Updated merchant id={} name='{}'", updated.getId(), updated.getBusinessName());
+
+        if (bankAccountRepository != null && updated.getBankAccountNumber() != null && !updated.getBankAccountNumber().isBlank()) {
+            saveOrUpdatePrimaryBankAccount(updated.getId(), updated.getBankName(), updated.getAccountHolderName(), updated.getBankAccountNumber(), updated.getBankIfsc(), updated.getBankUpiId());
+        }
 
         return MerchantResponse.fromEntity(updated, categoryName);
     }
@@ -682,5 +734,32 @@ public class MerchantServiceImpl implements MerchantService {
         return categoryRepository.findById(categoryId)
                 .map(Category::getName)
                 .orElse(null);
+    }
+
+    private void saveOrUpdatePrimaryBankAccount(UUID merchantId, String bankName, String holderName, String accNumber, String ifsc, String upi) {
+        if (bankAccountRepository == null || accNumber == null || accNumber.isBlank()) return;
+        try {
+            com.superapp.wallet.entity.MerchantBankAccount acc = bankAccountRepository.findByMerchantIdAndIsPrimaryTrue(merchantId)
+                    .orElseGet(() -> {
+                        com.superapp.wallet.entity.MerchantBankAccount newAcc = new com.superapp.wallet.entity.MerchantBankAccount();
+                        newAcc.setMerchantId(merchantId);
+                        newAcc.setIsPrimary(true);
+                        newAcc.setVerificationStatus(com.superapp.wallet.enums.BankAccountVerificationStatus.VERIFIED);
+                        return newAcc;
+                    });
+            String trimmedAcc = accNumber.trim();
+            String last4 = trimmedAcc.length() >= 4 ? trimmedAcc.substring(trimmedAcc.length() - 4) : trimmedAcc;
+            String enc = "ENC_AES256_" + java.util.Base64.getEncoder().encodeToString(trimmedAcc.getBytes());
+            acc.setBankName(bankName != null && !bankName.isBlank() ? bankName.trim() : "Bank");
+            acc.setAccountHolderName(holderName != null && !holderName.isBlank() ? holderName.trim() : "Account Holder");
+            acc.setAccountNumberEncrypted(enc);
+            acc.setAccountNumberLast4(last4);
+            acc.setIfscCode(ifsc != null && !ifsc.isBlank() ? ifsc.trim().toUpperCase() : "SBIN0000000");
+            if (upi != null && !upi.isBlank()) acc.setUpiVpa(upi.trim().toLowerCase());
+            bankAccountRepository.save(acc);
+            log.info("Synchronized primary MerchantBankAccount for merchantId={}", merchantId);
+        } catch (Exception e) {
+            log.warn("Could not sync MerchantBankAccount for merchantId={}: {}", merchantId, e.getMessage());
+        }
     }
 }

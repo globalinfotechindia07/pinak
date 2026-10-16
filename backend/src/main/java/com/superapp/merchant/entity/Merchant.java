@@ -48,6 +48,21 @@ public class Merchant {
     @Column(name = "bank_upi_id", length = 100)
     private String bankUpiId;
 
+    @Column(name = "bank_name", length = 128)
+    private String bankName;
+
+    @Column(name = "account_holder_name", length = 255)
+    private String accountHolderName;
+
+    @Column(name = "bank_account_number", length = 64)
+    private String bankAccountNumber;
+
+    @Column(name = "bank_ifsc", length = 16)
+    private String bankIfsc;
+
+    @Column(name = "commission_rate", precision = 5, scale = 2)
+    private java.math.BigDecimal commissionRate = new java.math.BigDecimal("5.00");
+
     @Column(name = "gstin", length = 50)
     private String gstin;
 
@@ -308,6 +323,46 @@ public class Merchant {
 
     public void setBankUpiId(String bankUpiId) {
         this.bankUpiId = bankUpiId;
+    }
+
+    public String getBankName() {
+        return bankName;
+    }
+
+    public void setBankName(String bankName) {
+        this.bankName = bankName;
+    }
+
+    public String getAccountHolderName() {
+        return accountHolderName;
+    }
+
+    public void setAccountHolderName(String accountHolderName) {
+        this.accountHolderName = accountHolderName;
+    }
+
+    public String getBankAccountNumber() {
+        return bankAccountNumber;
+    }
+
+    public void setBankAccountNumber(String bankAccountNumber) {
+        this.bankAccountNumber = bankAccountNumber;
+    }
+
+    public String getBankIfsc() {
+        return bankIfsc;
+    }
+
+    public void setBankIfsc(String bankIfsc) {
+        this.bankIfsc = bankIfsc;
+    }
+
+    public java.math.BigDecimal getCommissionRate() {
+        return commissionRate;
+    }
+
+    public void setCommissionRate(java.math.BigDecimal commissionRate) {
+        this.commissionRate = commissionRate;
     }
 
     public String getGstin() {
