@@ -45,6 +45,9 @@ public class CityServiceImpl implements CityService {
     private final List<CityService.StateData> indiaLocations = new CopyOnWriteArrayList<>();
     public record PincodeEntry(String state, String district, String city, List<String> postOffices) {}
     private final Map<String, PincodeEntry> pincodeLookupMap = new ConcurrentHashMap<>();
+    private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(3))
+            .build();
 
     @Autowired
     public CityServiceImpl(CityRepository cityRepository,
@@ -171,6 +174,52 @@ public class CityServiceImpl implements CityService {
             return new CityService.PincodeLookupResponse(pincode, null, null, null, List.of(), List.of());
         }
 
+        // 1. Authoritative Live India Post Public Third-Party API
+        try {
+            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("https://api.postalpincode.in/pincode/" + clean))
+                    .header("Accept", "application/json")
+                    .timeout(java.time.Duration.ofSeconds(3))
+                    .GET()
+                    .build();
+            java.net.http.HttpResponse<String> resp = httpClient.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() == 200 && resp.body() != null) {
+                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(resp.body());
+                if (root.isArray() && !root.isEmpty()) {
+                    com.fasterxml.jackson.databind.JsonNode item = root.get(0);
+                    if ("Success".equalsIgnoreCase(item.path("Status").asText()) && item.has("PostOffice") && item.path("PostOffice").isArray()) {
+                        com.fasterxml.jackson.databind.JsonNode po0 = item.path("PostOffice").get(0);
+                        String rawState = po0.path("State").asText();
+                        String rawDistrict = po0.path("District").asText();
+                        String rawBlock = po0.path("Block").asText();
+                        String rawName = po0.path("Name").asText();
+
+                        String city = (!rawBlock.isBlank() && !"NA".equalsIgnoreCase(rawBlock))
+                                ? rawBlock
+                                : (!rawName.isBlank() ? rawName : rawDistrict);
+
+                        CityService.StateData matchedState = findState(rawState);
+                        String stateName = matchedState != null ? matchedState.state() : rawState;
+
+                        List<String> availableDistricts = getDistrictsForState(stateName);
+                        List<String> availableCities = getCitiesForDistrictOrState(stateName, rawDistrict);
+
+                        return new CityService.PincodeLookupResponse(
+                                clean,
+                                stateName,
+                                rawDistrict,
+                                city,
+                                availableDistricts,
+                                availableCities
+                        );
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Live postal API query for {} encountered an issue: {}", clean, e.getMessage());
+        }
+
+        // 2. Local Database & Prefix Fallback
         PincodeEntry entry = pincodeLookupMap.get(clean);
         if (entry != null) {
             List<String> availableDistricts = getDistrictsForState(entry.state());

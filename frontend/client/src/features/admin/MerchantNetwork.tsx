@@ -1587,11 +1587,11 @@ function AddMerchantDrawer({
             return next;
           });
 
-          setPincodeSuccessMsg(`Auto-detected: ${res.city || res.district}, ${res.state}`);
-          setTimeout(() => setPincodeSuccessMsg(null), 4000);
-          toast.success(`PIN ${clean} verified: ${res.city || res.district}, ${res.state}`);
+          setPincodeSuccessMsg(`Verified via India Post: ${res.city || res.district}, ${res.state}`);
+          setTimeout(() => setPincodeSuccessMsg(null), 5000);
+          toast.success(`PIN ${clean} verified via India Post: ${res.city || res.district}, ${res.state}`);
         } else {
-          toast.error(`PIN code ${clean} not found. Please select or type your location manually.`);
+          toast.error(`PIN code ${clean} not found in Postal registry. Please enter location manually.`);
         }
       } catch (err) {
         console.warn("Pincode lookup failed:", err);
