@@ -14413,3 +14413,57 @@ export const normalizeIndiaLocation = (rawState?: string, rawDistrict?: string, 
     availableCities,
   };
 };
+
+export const resolvePincodePrefixLocation = (pin: string): { state: string; district: string; city: string } | null => {
+  const clean = pin.replace(/\D/g, "");
+  if (clean.length !== 6) return null;
+  const p2 = parseInt(clean.substring(0, 2), 10);
+  const p3 = parseInt(clean.substring(0, 3), 10);
+
+  let state = "";
+  let district = "";
+  let city = "";
+
+  if (p3 === 403) { state = "Goa"; district = "North Goa"; city = "Panaji"; }
+  else if (p3 === 160) { state = "Chandigarh"; district = "Chandigarh"; city = "Chandigarh"; }
+  else if (p2 === 11) { state = "Delhi"; district = "Central Delhi"; city = "New Delhi"; }
+  else if (p2 >= 12 && p2 <= 13) { state = "Haryana"; district = p2 === 12 ? "Faridabad" : "Ambala"; city = district; }
+  else if (p2 >= 14 && p2 <= 16) { state = "Punjab"; district = p2 === 14 ? "Ludhiana" : "Amritsar"; city = district; }
+  else if (p2 === 17) { state = "Himachal Pradesh"; district = "Shimla"; city = "Shimla"; }
+  else if (p2 >= 18 && p2 <= 19) { state = "Jammu & Kashmir"; district = p2 === 18 ? "Jammu" : "Srinagar"; city = district; }
+  else if (p2 >= 20 && p2 <= 28) {
+    if (p3 >= 244 && p3 <= 249) { state = "Uttarakhand"; district = "Dehradun"; city = "Dehradun"; }
+    else { state = "Uttar Pradesh"; district = p3 === 201 ? "Gautam Buddha Nagar" : "Lucknow"; city = p3 === 201 ? "Noida" : "Lucknow"; }
+  }
+  else if (p2 >= 30 && p2 <= 34) { state = "Rajasthan"; district = p2 === 30 ? "Jaipur" : p2 === 34 ? "Jodhpur" : "Udaipur"; city = district; }
+  else if (p2 >= 36 && p2 <= 39) { state = "Gujarat"; district = p2 === 38 ? "Ahmedabad" : p2 === 39 ? "Surat" : "Rajkot"; city = district; }
+  else if (p2 >= 40 && p2 <= 44) {
+    state = "Maharashtra";
+    district = p3 === 400 ? "Mumbai" : (p3 >= 410 && p3 <= 413) ? "Pune" : (p3 >= 440 && p3 <= 441) ? "Nagpur" : "Thane";
+    city = district;
+  }
+  else if (p2 >= 45 && p2 <= 49) {
+    if (p3 >= 490 && p3 <= 497) { state = "Chhattisgarh"; district = "Raipur"; city = "Raipur"; }
+    else { state = "Madhya Pradesh"; district = p2 === 45 ? "Indore" : "Bhopal"; city = district; }
+  }
+  else if (p2 >= 50 && p2 <= 53) {
+    if (p2 === 50) { state = "Telangana"; district = "Hyderabad"; city = "Hyderabad"; }
+    else { state = "Andhra Pradesh"; district = p2 === 53 ? "Visakhapatnam" : "Vijayawada"; city = district; }
+  }
+  else if (p2 >= 56 && p2 <= 59) { state = "Karnataka"; district = p2 === 56 ? "Bengaluru Urban" : "Mysore"; city = p2 === 56 ? "Bangalore" : "Mysore"; }
+  else if (p2 >= 60 && p2 <= 64) { state = "Tamil Nadu"; district = p2 === 60 ? "Chennai" : "Coimbatore"; city = district; }
+  else if (p2 >= 67 && p2 <= 69) { state = "Kerala"; district = p2 === 68 ? "Ernakulam" : "Thiruvananthapuram"; city = p2 === 68 ? "Kochi" : "Thiruvananthapuram"; }
+  else if (p2 >= 70 && p2 <= 74) { state = "West Bengal"; district = p2 === 70 ? "Kolkata" : "Howrah"; city = district; }
+  else if (p2 >= 75 && p2 <= 77) { state = "Odisha"; district = "Khordha"; city = "Bhubaneswar"; }
+  else if (p2 === 78) { state = "Assam"; district = "Kamrup"; city = "Guwahati"; }
+  else if (p2 === 79) { state = "Meghalaya"; district = "East Khasi Hills"; city = "Shillong"; }
+  else if (p2 >= 80 && p2 <= 85) {
+    if (p3 >= 814 && p3 <= 835) { state = "Jharkhand"; district = "Ranchi"; city = "Ranchi"; }
+    else { state = "Bihar"; district = "Patna"; city = "Patna"; }
+  }
+
+  if (state) {
+    return { state, district, city };
+  }
+  return null;
+};

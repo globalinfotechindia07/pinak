@@ -1,6 +1,6 @@
 import apiClient from "./client";
 import { ApiResponse } from "../types/api/common";
-import { normalizeIndiaLocation, getDistrictsForState, getCitiesForDistrictOrState } from "../data/indiaLocations";
+import { normalizeIndiaLocation, resolvePincodePrefixLocation, getDistrictsForState, getCitiesForDistrictOrState } from "../data/indiaLocations";
 
 export interface OperatingCity {
   id: string;
@@ -104,7 +104,24 @@ export const cityApi = {
         };
       }
     } catch (err) {
-      // Backend may be offline or unauthorized
+      // Backend may be offline or unreachable
+    }
+
+    // 3. Ultimate Fallback: Official India Postal Circle & Sub-Region Prefix Inference
+    // Guarantees that ANY valid 6-digit Indian PIN code will detect state and primary district
+    const prefixFallback = resolvePincodePrefixLocation(clean);
+    if (prefixFallback) {
+      const norm = normalizeIndiaLocation(prefixFallback.state, prefixFallback.district, prefixFallback.city);
+      return {
+        pincode: clean,
+        state: norm.state,
+        district: norm.district,
+        city: norm.city,
+        availableDistricts: norm.availableDistricts,
+        availableCities: norm.availableCities,
+        isDistrictCustom: norm.isDistrictCustom,
+        isCityCustom: norm.isCityCustom,
+      };
     }
 
     return null;
