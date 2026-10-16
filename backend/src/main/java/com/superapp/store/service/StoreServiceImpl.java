@@ -12,6 +12,7 @@ import com.superapp.merchant.repository.MerchantRepository;
 import com.superapp.store.dto.*;
 import com.superapp.store.entity.City;
 import com.superapp.store.entity.Store;
+import com.superapp.store.enums.CityStatus;
 import com.superapp.store.enums.StoreStatus;
 import com.superapp.store.mapper.StoreMapper;
 import com.superapp.store.repository.CityRepository;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -73,7 +75,11 @@ public class StoreServiceImpl implements StoreService {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
 
         validateCoordinates(request.latitude(), request.longitude());
-        validateCity(request.cityId());
+        City city = resolveOrCreateCity(request.cityId(), request.state());
+        if (city != null && !city.isActive()) {
+            throw new AppException("City is not active", ApiError.CITY_INACTIVE, 409);
+        }
+        String cityId = (city != null) ? city.getId() : (request.cityId() != null ? request.cityId().trim().toLowerCase() : "nagpur");
 
         Store store = new Store(
                 merchant.getId(),
@@ -81,7 +87,7 @@ public class StoreServiceImpl implements StoreService {
                 request.description() != null ? request.description().trim() : null,
                 request.addressLine1().trim(),
                 request.addressLine2() != null ? request.addressLine2().trim() : null,
-                request.cityId(),
+                cityId,
                 request.state().trim(),
                 request.pincode().trim(),
                 request.latitude(),
@@ -149,11 +155,15 @@ public class StoreServiceImpl implements StoreService {
         Store store = getOwnedStore(storeId, merchant.getId());
 
         validateCoordinates(request.latitude(), request.longitude());
-        validateCity(request.cityId());
+        City city = resolveOrCreateCity(request.cityId(), request.state());
+        if (city != null && !city.isActive()) {
+            throw new AppException("City is not active", ApiError.CITY_INACTIVE, 409);
+        }
+        String cityId = (city != null) ? city.getId() : (request.cityId() != null ? request.cityId().trim().toLowerCase() : "nagpur");
 
         boolean locationChanged = !Objects.equals(store.getLatitude(), request.latitude())
                 || !Objects.equals(store.getLongitude(), request.longitude())
-                || !Objects.equals(store.getCityId(), request.cityId())
+                || !Objects.equals(store.getCityId(), cityId)
                 || !Objects.equals(store.getAddressLine1(), request.addressLine1())
                 || !Objects.equals(store.getAddressLine2(), request.addressLine2())
                 || !Objects.equals(store.getPincode(), request.pincode());
@@ -163,7 +173,7 @@ public class StoreServiceImpl implements StoreService {
         store.setAddressLine1(request.addressLine1().trim());
         store.setAddressLine2(request.addressLine2() != null ? request.addressLine2().trim() : null);
         store.setAddress(buildAddress(request.addressLine1(), request.addressLine2()));
-        store.setCityId(request.cityId());
+        store.setCityId(cityId);
         store.setState(request.state().trim());
         store.setPincode(request.pincode().trim());
         store.setLatitude(request.latitude());
@@ -387,14 +397,11 @@ public class StoreServiceImpl implements StoreService {
 
         validateCoordinates(request.latitude(), request.longitude());
 
-        String cityId = request.cityId() != null ? request.cityId().trim().toLowerCase() : "nagpur";
-        if (cityRepository != null && !cityRepository.existsById(cityId)) {
-            cityId = cityRepository.findAll().stream()
-                    .filter(c -> c.getName().equalsIgnoreCase(request.cityId()))
-                    .map(City::getId)
-                    .findFirst()
-                    .orElse("nagpur");
+        City city = resolveOrCreateCity(request.cityId(), request.state());
+        if (city != null && !city.isActive()) {
+            throw new AppException("City is not active", ApiError.CITY_INACTIVE, 409);
         }
+        String cityId = (city != null) ? city.getId() : (request.cityId() != null ? request.cityId().trim().toLowerCase() : "nagpur");
 
         Store store = new Store(
                 request.merchantId(),
@@ -605,11 +612,50 @@ public class StoreServiceImpl implements StoreService {
         }
     }
 
+    private City resolveOrCreateCity(String cityIdOrName, String stateName) {
+        if (cityRepository == null) return null;
+        if (cityIdOrName == null || cityIdOrName.isBlank()) {
+            cityIdOrName = "nagpur";
+        }
+        final String clean = cityIdOrName.trim();
+        String rawSlug = clean.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+        final String slug = rawSlug.isBlank() ? "city" : rawSlug;
+
+        // 1. Try direct ID lookup
+        Optional<City> byId = cityRepository.findById(clean);
+        if (byId.isPresent()) return byId.get();
+
+        // 2. Try lowercased ID lookup
+        Optional<City> byLowerId = cityRepository.findById(clean.toLowerCase());
+        if (byLowerId.isPresent()) return byLowerId.get();
+
+        // 3. Try slug lookup
+        Optional<City> bySlug = cityRepository.findBySlug(slug);
+        if (bySlug.isPresent()) return bySlug.get();
+
+        // 4. Try name ignore case lookup
+        Optional<City> byName = cityRepository.findByNameIgnoreCase(clean);
+        if (byName.isPresent()) return byName.get();
+
+        // 5. Auto-provision city dynamically in master table so stores foreign key is satisfied
+        String effectiveState = (stateName != null && !stateName.isBlank()) ? stateName.trim() : "India";
+        String effectiveName = Character.toUpperCase(clean.charAt(0)) + (clean.length() > 1 ? clean.substring(1) : "");
+        City newCity = new City(slug, effectiveName, slug, effectiveState, "India", CityStatus.ACTIVE);
+        try {
+            return cityRepository.save(newCity);
+        } catch (Exception e) {
+            log.warn("City auto-provisioning duplicate or race for slug '{}': {}", slug, e.getMessage());
+            return cityRepository.findById(slug)
+                    .or(() -> cityRepository.findBySlug(slug))
+                    .or(() -> cityRepository.findByNameIgnoreCase(clean))
+                    .orElse(newCity);
+        }
+    }
+
     private void validateCity(String cityId) {
         if (cityRepository != null && cityId != null && !cityId.isBlank()) {
-            City city = cityRepository.findById(cityId)
-                    .orElseThrow(() -> new AppException("City not found", ApiError.CITY_NOT_FOUND, 404));
-            if (!city.isActive()) {
+            City city = resolveOrCreateCity(cityId, null);
+            if (city != null && !city.isActive()) {
                 throw new AppException("City is not active", ApiError.CITY_INACTIVE, 409);
             }
         }

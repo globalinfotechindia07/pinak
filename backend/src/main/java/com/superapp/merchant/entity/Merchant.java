@@ -84,6 +84,21 @@ public class Merchant {
     @Column(name = "is_featured")
     private Boolean isFeatured = false;
 
+    @Column(name = "state", length = 100)
+    private String state;
+
+    @Column(name = "district", length = 100)
+    private String district;
+
+    @Column(name = "city", length = 100)
+    private String city;
+
+    @Column(name = "pincode", length = 20)
+    private String pincode;
+
+    @Column(name = "address", columnDefinition = "TEXT")
+    private String address;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -329,6 +344,46 @@ public class Merchant {
 
     public void setIsFeatured(Boolean featured) {
         this.isFeatured = featured;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getDistrict() {
+        return district;
+    }
+
+    public void setDistrict(String district) {
+        this.district = district;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getPincode() {
+        return pincode;
+    }
+
+    public void setPincode(String pincode) {
+        this.pincode = pincode;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     @Override

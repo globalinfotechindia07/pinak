@@ -16,6 +16,7 @@ build/
 target/
 **/target/
 *.dist
+scratch/
 
 # Secrets & Environment variables
 .env

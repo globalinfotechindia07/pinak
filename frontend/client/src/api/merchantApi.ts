@@ -44,6 +44,11 @@ export const merchantApi = {
     bankUpiId?: string;
     gstin?: string;
     pan?: string;
+    state?: string;
+    district?: string;
+    city?: string;
+    pincode?: string;
+    address?: string;
   }): Promise<MerchantProfileDTO> => {
     const res = await apiClient.post<ApiResponse<MerchantProfileDTO>>("/merchants", payload);
     return res.data?.data || (res.data as unknown as MerchantProfileDTO);

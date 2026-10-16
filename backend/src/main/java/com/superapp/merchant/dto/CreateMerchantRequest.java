@@ -46,17 +46,38 @@ public record CreateMerchantRequest(
 
         @DecimalMin(value = "0.00", message = "Take-rate cannot be negative")
         @DecimalMax(value = "100.00", message = "Take-rate cannot exceed 100%")
-        BigDecimal commissionRate
+        BigDecimal commissionRate,
+
+        @Size(max = 100, message = "State must not exceed 100 characters")
+        String state,
+
+        @Size(max = 100, message = "District must not exceed 100 characters")
+        String district,
+
+        @Size(max = 100, message = "City must not exceed 100 characters")
+        String city,
+
+        @Size(max = 20, message = "Pincode must not exceed 20 characters")
+        String pincode,
+
+        @Size(max = 2000, message = "Address must not exceed 2000 characters")
+        String address
 ) {
+    // 11-arg constructor for previous callers
+    public CreateMerchantRequest(String businessName, String legalName, String description,
+                                 UUID categoryId, String phone, String email, String website,
+                                 String gstin, String pan, String bankUpiId, BigDecimal commissionRate) {
+        this(businessName, legalName, description, categoryId, phone, email, website, gstin, pan, bankUpiId, commissionRate, null, null, null, null, null);
+    }
+
     // 7-arg constructor for tests
     public CreateMerchantRequest(String businessName, String legalName, String description,
                                  UUID categoryId, String phone, String email, String website) {
-        this(businessName, legalName, description, categoryId, phone, email, website, null, null, null, null);
+        this(businessName, legalName, description, categoryId, phone, email, website, null, null, null, null, null, null, null, null, null);
     }
 
     // Backward-compatible constructor for existing tests
     public CreateMerchantRequest(String businessName, UUID categoryId, UUID ownerUserId) {
-        this(businessName, null, null, categoryId, null, null, null, null, null, null, null);
+        this(businessName, null, null, categoryId, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }
-

@@ -198,6 +198,21 @@ public class MerchantServiceImpl implements MerchantService {
         if (request.pan() != null && !request.pan().isBlank()) {
             merchant.setPan(request.pan().trim());
         }
+        if (request.state() != null && !request.state().isBlank()) {
+            merchant.setState(request.state().trim());
+        }
+        if (request.district() != null && !request.district().isBlank()) {
+            merchant.setDistrict(request.district().trim());
+        }
+        if (request.city() != null && !request.city().isBlank()) {
+            merchant.setCity(request.city().trim());
+        }
+        if (request.pincode() != null && !request.pincode().isBlank()) {
+            merchant.setPincode(request.pincode().trim());
+        }
+        if (request.address() != null && !request.address().isBlank()) {
+            merchant.setAddress(request.address().trim());
+        }
 
         if (isAdmin) {
             merchant.setStatus(MerchantStatus.ACTIVE);

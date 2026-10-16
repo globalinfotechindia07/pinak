@@ -723,6 +723,11 @@ export default function Home() {
         gstin: draft.gstin,
         pan: draft.pan,
         description: `Registered partner merchant ${draft.businessName}`,
+        state: draft.state || "Maharashtra",
+        district: draft.district || "Nagpur",
+        city: draft.city || "Nagpur",
+        pincode: draft.pincode || draft.initialStore?.pincode || "440010",
+        address: draft.address || draft.initialStore?.address || `${draft.city || "Nagpur"} Central`,
       });
 
       toast.success(`Merchant "${draft.businessName}" onboarded successfully!`);

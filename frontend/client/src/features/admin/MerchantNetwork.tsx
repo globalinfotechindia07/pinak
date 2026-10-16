@@ -1992,6 +1992,8 @@ function AddMerchantDrawer({
       state: formData.state.trim() || "Maharashtra",
       district: formData.district.trim() || "Nagpur",
       city: formData.city.trim() || "Nagpur",
+      pincode: hqPincodeSearch.trim() || formData.branchPincode?.trim() || "440010",
+      address: formData.branchAddress?.trim() || `${formData.city.trim() || "Nagpur"} Central`,
       ownerName: formData.ownerName.trim(),
       ownerEmail: formData.ownerEmail.trim().toLowerCase(),
       ownerPhone: formData.ownerPhone.trim(),

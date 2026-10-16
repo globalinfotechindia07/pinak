@@ -27,7 +27,12 @@ public record MerchantResponse(
         String approvalStatus,
         String kycStatus,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String state,
+        String district,
+        String city,
+        String pincode,
+        String address
 ) {
     public static MerchantResponse fromEntity(Merchant merchant) {
         return fromEntity(merchant, null);
@@ -53,8 +58,24 @@ public record MerchantResponse(
                 merchant.getApprovalStatus() != null ? merchant.getApprovalStatus().name() : null,
                 merchant.getKycStatus() != null ? merchant.getKycStatus().name() : null,
                 merchant.getCreatedAt(),
-                merchant.getUpdatedAt()
+                merchant.getUpdatedAt(),
+                merchant.getState(),
+                merchant.getDistrict(),
+                merchant.getCity(),
+                merchant.getPincode(),
+                merchant.getAddress()
         );
+    }
+
+    // 18-arg backward-compatible constructor
+    public MerchantResponse(String id, String ownerUserId, String businessName, String legalName,
+                            String description, String categoryId, String categoryName, String phone,
+                            String email, String website, String bankUpiId, String gstin,
+                            String pan, String status, String approvalStatus, String kycStatus,
+                            Instant createdAt, Instant updatedAt) {
+        this(id, ownerUserId, businessName, legalName, description, categoryId, categoryName,
+                phone, email, website, bankUpiId, gstin, pan, status, approvalStatus, kycStatus,
+                createdAt, updatedAt, null, null, null, null, null);
     }
 
     // 9-arg backward-compatible constructor for existing tests
@@ -79,7 +100,12 @@ public record MerchantResponse(
                 status != null ? status.name() : "PENDING_APPROVAL",
                 kycStatus != null ? kycStatus.name() : null,
                 createdAt,
-                updatedAt
+                updatedAt,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 
@@ -106,7 +132,12 @@ public record MerchantResponse(
                 approvalStatus,
                 null,
                 createdAt,
-                updatedAt
+                updatedAt,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 }
