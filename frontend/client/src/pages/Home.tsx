@@ -726,76 +726,11 @@ export default function Home() {
         state: draft.state || "Maharashtra",
         district: draft.district || "Nagpur",
         city: draft.city || "Nagpur",
-        pincode: draft.pincode || draft.initialStore?.pincode || "440010",
-        address: draft.address || draft.initialStore?.address || `${draft.city || "Nagpur"} Central`,
+        pincode: draft.pincode || "440010",
+        address: draft.address || `${draft.city || "Nagpur"} Central`,
       });
 
       toast.success(`Merchant "${draft.businessName}" onboarded successfully!`);
-
-      // If initial store is provided, provision store branch on backend immediately
-      if (draft.initialStore && created?.id) {
-        try {
-          const storeRes = await storeApi.createStore({
-            merchantId: created.id,
-            storeName: draft.initialStore.branchName || `${draft.businessName} Flagship`,
-            address: draft.initialStore.address || `${draft.initialStore.city || draft.city || "Nagpur"} Central`,
-            cityId: (draft.initialStore.city || draft.city || "Nagpur").toLowerCase(),
-            state: draft.initialStore.state || draft.state || "Maharashtra",
-            pincode: draft.initialStore.pincode || "440010",
-            latitude: 21.1458,
-            longitude: 79.0882,
-            openingTime: draft.initialStore.openingTime || "10:00",
-            closingTime: draft.initialStore.closingTime || "22:00",
-          });
-          toast.success("Initial flagship store branch provisioned successfully!");
-          if (storeRes) {
-            store.addStore({
-              id: storeRes.id || `st-${Date.now()}`,
-              merchantId: created.id,
-              merchantName: draft.businessName,
-              storeName: (storeRes as any).storeName || (storeRes as any).name || draft.initialStore.branchName || `${draft.businessName} Flagship`,
-              branchName: (storeRes as any).storeName || (storeRes as any).name || draft.initialStore.branchName || `${draft.businessName} Flagship`,
-              address: (storeRes as any).address || draft.initialStore.address || `${draft.city || "Nagpur"} Central`,
-              city: draft.initialStore.city || draft.city || "Nagpur",
-              state: draft.initialStore.state || draft.state || "Maharashtra",
-              pincode: draft.initialStore.pincode || "440010",
-              latitude: 21.1458,
-              longitude: 79.0882,
-              status: "ACTIVE",
-              phone: draft.ownerPhone || "+91 98765 43210",
-              operatingHours: "10:00 AM – 10:00 PM",
-              hasActiveOffer: true,
-              createdAt: new Date().toISOString(),
-              storeEmail: draft.ownerEmail || "",
-              posTerminalId: "POS-01",
-              qrCodePayload: `PINAK:STORE:${storeRes.id || created.id}`,
-            });
-          }
-        } catch (storeErr: any) {
-          console.warn("Backend store branch provisioning warning:", storeErr?.response?.data || storeErr.message);
-          store.addStore({
-            id: `st-local-${Date.now()}`,
-            merchantId: created.id,
-            merchantName: draft.businessName,
-            storeName: draft.initialStore.branchName || `${draft.businessName} Flagship`,
-            branchName: draft.initialStore.branchName || `${draft.businessName} Flagship`,
-            address: draft.initialStore.address || `${draft.city || "Nagpur"} Central`,
-            city: draft.initialStore.city || draft.city || "Nagpur",
-            state: draft.initialStore.state || draft.state || "Maharashtra",
-            pincode: draft.initialStore.pincode || "440010",
-            latitude: 21.1458,
-            longitude: 79.0882,
-            status: "ACTIVE",
-            phone: draft.ownerPhone || "+91 98765 43210",
-            operatingHours: "10:00 AM – 10:00 PM",
-            hasActiveOffer: true,
-            createdAt: new Date().toISOString(),
-            storeEmail: draft.ownerEmail || "",
-            posTerminalId: "POS-01",
-            qrCodePayload: `PINAK:STORE:${created.id}`,
-          });
-        }
-      }
 
       await syncBackendData();
     } catch (apiErr: any) {

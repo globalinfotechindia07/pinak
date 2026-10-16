@@ -62,13 +62,15 @@ export const merchantOnboardingSchema = z
     bankName: z.string().optional(),
     accountHolderName: z.string().optional(),
     bankAccountNumber: z.string().optional(),
+    pincode: z.string().optional().or(z.literal("")),
+    address: z.string().optional().or(z.literal("")),
     confirmBankAccountNumber: z.string().optional(),
     bankIfsc: z.string().optional(),
     commissionRate: z
       .number({ message: "Platform take-rate must be a number" })
       .min(0, "Take-rate cannot be negative")
       .max(100, "Take-rate cannot exceed 100%"),
-    provisionBranch: z.boolean().default(true),
+    provisionBranch: z.boolean().optional(),
     branchName: z.string().optional(),
     branchAddress: z.string().optional(),
     branchState: z.string().optional(),
@@ -76,52 +78,6 @@ export const merchantOnboardingSchema = z
     branchCity: z.string().optional(),
     branchPincode: z.string().optional(),
     operatingHours: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.provisionBranch) {
-      if (!data.branchName || data.branchName.trim().length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["branchName"],
-          message: "Branch name must be at least 2 characters",
-        });
-      }
-      if (!data.branchAddress || data.branchAddress.trim().length < 5) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["branchAddress"],
-          message: "Street address must be at least 5 characters",
-        });
-      }
-      if (!data.branchState || data.branchState.trim().length < 1) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["branchState"],
-          message: "Please select store branch state",
-        });
-      }
-      if (!data.branchDistrict || data.branchDistrict.trim().length < 1) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["branchDistrict"],
-          message: "Please select store branch district",
-        });
-      }
-      if (!data.branchCity || data.branchCity.trim().length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["branchCity"],
-          message: "Please select or enter store branch city",
-        });
-      }
-      if (!data.branchPincode || !INDIAN_PINCODE_REGEX.test(data.branchPincode.trim())) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["branchPincode"],
-          message: "Please enter a valid 6-digit Indian PIN code",
-        });
-      }
-    }
   });
 
 export type MerchantOnboardingFormValues = z.infer<typeof merchantOnboardingSchema>;

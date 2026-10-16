@@ -1476,7 +1476,7 @@ function AddMerchantDrawer({
   onClose: () => void;
   onSave: (d: any) => Promise<void> | void;
 }) {
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [staffMembers, setStaffMembers] = useState<BackendStaffResponse[]>([]);
@@ -1489,6 +1489,8 @@ function AddMerchantDrawer({
     state: "Maharashtra",
     district: "Nagpur",
     city: "Nagpur",
+    pincode: "440010",
+    address: "",
     ownerName: "",
     ownerEmail: "",
     ownerPhone: "",
@@ -1501,36 +1503,8 @@ function AddMerchantDrawer({
     gstin: "",
     pan: "",
     commissionRate: 5.0,
-    // Initial Store Branch Configuration
-    provisionBranch: true,
-    branchName: "",
-    branchAddress: "",
-    branchState: "Maharashtra",
-    branchDistrict: "Nagpur",
-    branchCity: "Nagpur",
-    branchPincode: "440010",
-    operatingHours: "10:00 AM – 10:00 PM (Daily)",
   });
-  const [openingTime, setOpeningTime] = useState("10:00");
-  const [closingTime, setClosingTime] = useState("22:00");
-  const [operatingDays, setOperatingDays] = useState("Daily (Mon – Sun)");
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const formatTime12h = (time24: string) => {
-    if (!time24) return "10:00 AM";
-    const [hStr, mStr] = time24.split(":");
-    let h = parseInt(hStr || "10", 10);
-    const m = mStr || "00";
-    const ampm = h >= 12 ? "PM" : "AM";
-    h = h % 12;
-    if (h === 0) h = 12;
-    return `${h.toString().padStart(2, "0")}:${m} ${ampm}`;
-  };
-
-  const updateOperatingHours = (open: string, close: string, days: string) => {
-    const formatted = `${formatTime12h(open)} – ${formatTime12h(close)} (${days})`;
-    setFormData((prev) => ({ ...prev, operatingHours: formatted }));
-  };
 
   const formatUserFriendlyError = (raw: string): string => {
     if (!raw) return "Unable to onboard merchant. Please verify all details and retry.";
@@ -1573,10 +1547,7 @@ function AddMerchantDrawer({
             state: res.state,
             district: res.district,
             city: res.city,
-            branchState: prev.branchState === prev.state || !prev.branchState ? res.state : prev.branchState,
-            branchDistrict: prev.branchDistrict === prev.district || !prev.branchDistrict ? res.district : prev.branchDistrict,
-            branchCity: prev.branchCity === prev.city || !prev.branchCity ? res.city : prev.branchCity,
-            branchPincode: prev.branchPincode || clean,
+            pincode: clean,
           }));
 
           setErrors((prev) => {
@@ -1612,9 +1583,6 @@ function AddMerchantDrawer({
       state: newState,
       district: newDistrict,
       city: newCity,
-      branchState: prev.branchState === prev.state ? newState : prev.branchState,
-      branchDistrict: prev.branchDistrict === prev.district ? newDistrict : prev.branchDistrict,
-      branchCity: prev.branchCity === prev.city ? newCity : prev.branchCity,
     }));
 
     setErrors((prev) => {
@@ -1634,8 +1602,6 @@ function AddMerchantDrawer({
       ...prev,
       district: newDistrict,
       city: newCity,
-      branchDistrict: prev.branchDistrict === prev.district ? newDistrict : prev.branchDistrict,
-      branchCity: prev.branchCity === prev.city ? newCity : prev.branchCity,
     }));
 
     setErrors((prev) => {
@@ -1650,7 +1616,6 @@ function AddMerchantDrawer({
     setFormData((prev) => ({
       ...prev,
       city: newCity,
-      branchCity: prev.branchCity === prev.city ? newCity : prev.branchCity,
     }));
 
     if (errors.city) {
@@ -1773,6 +1738,8 @@ function AddMerchantDrawer({
       state: pick.state,
       district: pick.district,
       city: pick.city,
+      pincode: pick.branchPincode || "440010",
+      address: pick.branchAddress || `${pick.city} Central`,
       ownerName: pick.ownerName,
       ownerEmail: uniqueEmail,
       ownerPhone: uniquePhone,
@@ -1785,19 +1752,9 @@ function AddMerchantDrawer({
       gstin: pick.gstin,
       pan: pick.pan,
       commissionRate: 5.0,
-      provisionBranch: true,
-      branchName: pick.branchName,
-      branchAddress: pick.branchAddress,
-      branchState: pick.state,
-      branchDistrict: pick.district,
-      branchCity: pick.city,
-      branchPincode: pick.branchPincode,
-      operatingHours: "10:00 AM – 10:00 PM (Daily)",
     });
 
-    setOpeningTime("10:00");
-    setClosingTime("22:00");
-    setOperatingDays("Daily (Mon – Sun)");
+    setHqPincodeSearch(pick.branchPincode || "440010");
     setErrors({});
     setSubmitError(null);
     toast.success(`Auto-filled details for "${pick.businessName}"!`);
@@ -1903,27 +1860,6 @@ function AddMerchantDrawer({
       if (formData.commissionRate < 0 || formData.commissionRate > 100) {
         stepErrors.commissionRate = "Commission take-rate must be between 0% and 100%";
       }
-    } else if (step === 4) {
-      if (formData.provisionBranch) {
-        if (!formData.branchName.trim()) {
-          stepErrors.branchName = "Flagship branch name is required";
-        }
-        if (!formData.branchAddress.trim()) {
-          stepErrors.branchAddress = "Street address is required";
-        }
-        if (!formData.branchState.trim()) {
-          stepErrors.branchState = "Branch state is required";
-        }
-        if (!formData.branchDistrict.trim()) {
-          stepErrors.branchDistrict = "Branch district is required";
-        }
-        if (!formData.branchCity.trim() || formData.branchCity.trim().length < 2) {
-          stepErrors.branchCity = "Branch city must be at least 2 characters";
-        }
-        if (!formData.branchPincode.trim() || formData.branchPincode.replace(/\D/g, "").length !== 6) {
-          stepErrors.branchPincode = "Please enter a valid 6-digit Indian pincode";
-        }
-      }
     }
 
     if (Object.keys(stepErrors).length > 0) {
@@ -1938,17 +1874,17 @@ function AddMerchantDrawer({
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(4, prev + 1) as 1 | 2 | 3 | 4);
+      setCurrentStep((prev) => Math.min(3, prev + 1) as 1 | 2 | 3);
     }
   };
 
   const handleBack = () => {
-    setCurrentStep((prev) => Math.max(1, prev - 1) as 1 | 2 | 3 | 4);
+    setCurrentStep((prev) => Math.max(1, prev - 1) as 1 | 2 | 3);
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (currentStep !== 4) {
+    if (currentStep !== 3) {
       return;
     }
     setSubmitError(null);
@@ -1992,8 +1928,8 @@ function AddMerchantDrawer({
       state: formData.state.trim() || "Maharashtra",
       district: formData.district.trim() || "Nagpur",
       city: formData.city.trim() || "Nagpur",
-      pincode: hqPincodeSearch.trim() || formData.branchPincode?.trim() || "440010",
-      address: formData.branchAddress?.trim() || `${formData.city.trim() || "Nagpur"} Central`,
+      pincode: hqPincodeSearch.trim() || formData.pincode?.trim() || "440010",
+      address: formData.address?.trim() || `${formData.city.trim() || "Nagpur"} Central`,
       ownerName: formData.ownerName.trim(),
       ownerEmail: formData.ownerEmail.trim().toLowerCase(),
       ownerPhone: formData.ownerPhone.trim(),
@@ -2005,19 +1941,7 @@ function AddMerchantDrawer({
       gstin: formData.gstin.trim().toUpperCase(),
       pan: formData.pan.trim().toUpperCase(),
       commissionRate: Number(formData.commissionRate) || 5.0,
-      initialStore: formData.provisionBranch
-        ? {
-          branchName: formData.branchName.trim() || `${formData.businessName.trim()} Flagship`,
-          address: formData.branchAddress.trim() || `${formData.branchCity.trim() || "Nagpur"} Central Complex`,
-          city: formData.branchCity.trim() || "Nagpur",
-          district: formData.branchDistrict.trim() || "Nagpur",
-          state: formData.branchState.trim() || "Maharashtra",
-          pincode: formData.branchPincode.trim() || "440010",
-          openingTime: openingTime,
-          closingTime: closingTime,
-          operatingHours: formData.operatingHours.trim() || `${formatTime12h(openingTime)} – ${formatTime12h(closingTime)} (${operatingDays})`,
-        }
-        : null,
+      initialStore: null,
     };
 
     try {
@@ -2038,10 +1962,9 @@ function AddMerchantDrawer({
   };
 
   const stepsConfig = [
-    { num: 1, label: "Brand Identity", icon: Building2 },
+    { num: 1, label: "Brand & Location", icon: Building2 },
     { num: 2, label: "Signatory & Contact", icon: UserCheck },
     { num: 3, label: "Tax & Bank Payout", icon: ShieldCheck },
-    { num: 4, label: "Store & Review", icon: Store },
   ];
 
   return (
@@ -2061,7 +1984,7 @@ function AddMerchantDrawer({
                     <span>Onboard Partner Merchant</span>
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Step {currentStep} of 4: {stepsConfig[currentStep - 1].label}
+                    Step {currentStep} of 3: {stepsConfig[currentStep - 1].label}
                   </p>
                 </div>
               </div>
@@ -2087,7 +2010,7 @@ function AddMerchantDrawer({
             </div>
 
             {/* Stepper Wizard Bar */}
-            <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+            <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800/80">
               {stepsConfig.map((s) => {
                 const Icon = s.icon;
                 const isCurrent = currentStep === s.num;
@@ -2156,14 +2079,14 @@ function AddMerchantDrawer({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (currentStep === 4) {
+              if (currentStep === 3) {
                 handleSubmit(e);
               }
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.target as HTMLElement)?.tagName !== "TEXTAREA") {
                 e.preventDefault();
-                if (currentStep < 4) {
+                if (currentStep < 3) {
                   handleNext();
                 }
               }
@@ -2462,6 +2385,20 @@ function AddMerchantDrawer({
                         <span>{errors.city}</span>
                       </p>
                     )}
+                  </div>
+
+                  {/* Registered Commercial Address */}
+                  <div>
+                    <label className="font-semibold text-slate-600 dark:text-slate-400 block mb-1 text-[11px]">
+                      Registered Office / Business Address
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.address}
+                      onChange={(e) => updateField("address", e.target.value)}
+                      placeholder="e.g. 104 Central Avenue, Commercial Arcade"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                    />
                   </div>
                 </div>
 
@@ -2830,156 +2767,12 @@ function AddMerchantDrawer({
                     )}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* STEP 4: Initial Store & Review */}
-            {currentStep === 4 && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Store size={16} className="text-purple-600 dark:text-purple-400" />
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-                        4. Initial Outlet & Review
-                      </h4>
-                      <p className="text-[11px] text-slate-500">
-                        Optionally add the first branch store and confirm details
-                      </p>
-                    </div>
-                  </div>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-purple-700 dark:text-purple-300">
-                    <input
-                      type="checkbox"
-                      checked={formData.provisionBranch}
-                      onChange={(e) => setFormData({ ...formData, provisionBranch: e.target.checked })}
-                      className="rounded text-purple-600"
-                    />
-                    <span>Add First Outlet</span>
-                  </label>
-                </div>
-
-                {formData.provisionBranch && (
-                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
-                    <div>
-                      <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Branch / Store Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.branchName}
-                        onChange={(e) => updateField("branchName", e.target.value)}
-                        placeholder="e.g. Dharampeth Flagship"
-                        className={cn(
-                          "w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-xs font-semibold focus:outline-hidden",
-                          errors.branchName
-                            ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/20"
-                            : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                        )}
-                      />
-                      {errors.branchName && (
-                        <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                          <AlertCircle size={12} className="shrink-0" />
-                          <span>{errors.branchName}</span>
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Pre-populated Indian Address Fields (State, District, City, Address, Pincode) */}
-                    <IndiaAddressFields
-                      state={formData.branchState}
-                      district={formData.branchDistrict}
-                      city={formData.branchCity}
-                      pincode={formData.branchPincode}
-                      address={formData.branchAddress}
-                      errors={{
-                        state: errors.branchState,
-                        district: errors.branchDistrict,
-                        city: errors.branchCity,
-                        pincode: errors.branchPincode,
-                        address: errors.branchAddress,
-                      }}
-                      onStateChange={(val) => updateField("branchState", val)}
-                      onDistrictChange={(val) => updateField("branchDistrict", val)}
-                      onCityChange={(val) => updateField("branchCity", val)}
-                      onPincodeChange={(val) => updateField("branchPincode", val)}
-                      onAddressChange={(val) => updateField("branchAddress", val)}
-                    />
-
-                    {/* Operating Hours Real Time Inputs */}
-                    <div className="space-y-2.5 p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
-                      <div className="flex items-center justify-between">
-                        <label className="font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                          <Clock size={14} className="text-purple-600 dark:text-purple-400" />
-                          Operating Hours
-                        </label>
-                        <span className="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
-                          {formData.operatingHours}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
-                            Opening Time
-                          </label>
-                          <input
-                            type="time"
-                            value={openingTime}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setOpeningTime(val);
-                              updateOperatingHours(val, closingTime, operatingDays);
-                            }}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-purple-500/20"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
-                            Closing Time
-                          </label>
-                          <input
-                            type="time"
-                            value={closingTime}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setClosingTime(val);
-                              updateOperatingHours(openingTime, val, operatingDays);
-                            }}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-purple-500/20"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
-                          Days of Operation
-                        </label>
-                        <select
-                          value={operatingDays}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setOperatingDays(val);
-                            updateOperatingHours(openingTime, closingTime, val);
-                          }}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-purple-500/20"
-                        >
-                          <option value="Daily (Mon – Sun)">Daily (Mon – Sun)</option>
-                          <option value="Mon – Sat">Monday to Saturday</option>
-                          <option value="Weekdays (Mon – Fri)">Weekdays (Mon – Fri)</option>
-                          <option value="Weekends Only">Weekends Only (Sat – Sun)</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Onboarding Summary Card */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 via-purple-50/20 to-pink-50/20 dark:from-slate-900/60 dark:via-purple-950/20 dark:to-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 via-purple-50/20 to-pink-50/20 dark:from-slate-900/60 dark:via-purple-950/20 dark:to-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-3 mt-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
-                      Onboarding Summary
+                      Merchant Profile Summary
                     </span>
                     <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200">
                       Ready to Onboard
@@ -3007,11 +2800,9 @@ function AddMerchantDrawer({
                     </div>
 
                     <div>
-                      <span className="text-slate-400 block text-[10px]">Initial Outlet</span>
-                      <span className="text-slate-700 dark:text-slate-300 text-[10px]">
-                        {formData.provisionBranch
-                          ? `${formData.branchName || "Initial Outlet"} (${formData.branchCity}, ${formData.branchState})`
-                          : "Can be added later in Store Management"}
+                      <span className="text-slate-400 block text-[10px]">Bank / UPI Target</span>
+                      <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px] truncate block">
+                        {formData.bankUpiId || formData.bankAccountNumber || "Direct Settlement"}
                       </span>
                     </div>
                   </div>
@@ -3042,7 +2833,7 @@ function AddMerchantDrawer({
                 </button>
               )}
 
-              {currentStep < 4 ? (
+              {currentStep < 3 ? (
                 <button
                   key="btn-wizard-next"
                   type="button"
@@ -3105,6 +2896,8 @@ function BulkImportDrawer({
       state: "Maharashtra",
       district: "Nagpur",
       city: "Nagpur",
+      pincode: "440001",
+      address: "Residency Road Sadar",
       ownerName: "Tarun Khanna",
       ownerEmail: "tarun.khanna@chaipoint.com",
       ownerPhone: "9823011223",
@@ -3112,13 +2905,7 @@ function BulkImportDrawer({
       gstin: "27AAECM1234F1Z5",
       pan: "AAECM1234F",
       commissionRate: 5.0,
-      initialStore: {
-        branchName: "Chai Point Sadar Flagship",
-        address: "Residency Road Sadar",
-        city: "Nagpur",
-        state: "Maharashtra",
-        pincode: "440001",
-      },
+      initialStore: null,
     },
     {
       businessName: "Naturals Ice Cream",
@@ -3127,6 +2914,8 @@ function BulkImportDrawer({
       state: "Maharashtra",
       district: "Pune",
       city: "Pune",
+      pincode: "411004",
+      address: "FC Road Deccan Gymkhana",
       ownerName: "Srinivas Kamath",
       ownerEmail: "srinivas@naturalicecreams.in",
       ownerPhone: "9823044556",
@@ -3134,13 +2923,7 @@ function BulkImportDrawer({
       gstin: "27AABCK5678G1Z9",
       pan: "AABCK5678G",
       commissionRate: 5.0,
-      initialStore: {
-        branchName: "Naturals FC Road",
-        address: "FC Road Deccan Gymkhana",
-        city: "Pune",
-        state: "Maharashtra",
-        pincode: "411004",
-      },
+      initialStore: null,
     },
     {
       businessName: "Fabindia Retail",
@@ -3149,6 +2932,8 @@ function BulkImportDrawer({
       state: "Maharashtra",
       district: "Mumbai",
       city: "Mumbai",
+      pincode: "400050",
+      address: "Linking Road Bandra",
       ownerName: "William Bissell",
       ownerEmail: "retail.ops@fabindia.net",
       ownerPhone: "9823077889",
@@ -3156,13 +2941,7 @@ function BulkImportDrawer({
       gstin: "27AAACF9012H1ZK",
       pan: "AAACF9012H",
       commissionRate: 6.5,
-      initialStore: {
-        branchName: "Fabindia Bandra West",
-        address: "Linking Road Bandra",
-        city: "Mumbai",
-        state: "Maharashtra",
-        pincode: "400050",
-      },
+      initialStore: null,
     },
     {
       businessName: "Social Offline",
@@ -3171,6 +2950,8 @@ function BulkImportDrawer({
       state: "Maharashtra",
       district: "Pune",
       city: "Pune",
+      pincode: "411004",
+      address: "Fergusson College Road",
       ownerName: "Riyaaz Amlani",
       ownerEmail: "partnerships@socialoffline.in",
       ownerPhone: "9823099001",
@@ -3178,13 +2959,7 @@ function BulkImportDrawer({
       gstin: "27AABCI3456J1ZL",
       pan: "AABCI3456J",
       commissionRate: 5.0,
-      initialStore: {
-        branchName: "FC Road Social",
-        address: "Fergusson College Road",
-        city: "Pune",
-        state: "Maharashtra",
-        pincode: "411004",
-      },
+      initialStore: null,
     },
     {
       businessName: "Bata India",
@@ -3193,6 +2968,8 @@ function BulkImportDrawer({
       state: "Maharashtra",
       district: "Nagpur",
       city: "Nagpur",
+      pincode: "440010",
+      address: "West High Court Road",
       ownerName: "Gunjan Shah",
       ownerEmail: "franchise@bata.in",
       ownerPhone: "9823022334",
@@ -3200,23 +2977,17 @@ function BulkImportDrawer({
       gstin: "27AAACB7890K1ZM",
       pan: "AAACB7890K",
       commissionRate: 5.0,
-      initialStore: {
-        branchName: "Bata Dharampeth",
-        address: "West High Court Road",
-        city: "Nagpur",
-        state: "Maharashtra",
-        pincode: "440010",
-      },
+      initialStore: null,
     },
   ];
 
   // 1-Click Download Sample CSV Template
   const handleDownloadSampleCsv = () => {
     const headers =
-      "BusinessName,LegalEntityName,Category,State,District,City,OwnerName,OwnerEmail,OwnerPhone,GSTIN,PAN,BankUPI,CommissionRate,BranchName,BranchAddress,BranchPincode";
+      "BusinessName,LegalEntityName,Category,State,District,City,Pincode,Address,OwnerName,OwnerEmail,OwnerPhone,GSTIN,PAN,BankUPI,CommissionRate";
     const sampleRows = [
-      "The Belgian Waffle Co,Bloombay Enterprises Pvt Ltd,Food & Dining,Maharashtra,Nagpur,Nagpur,Shrey Aggarwal,shrey@belgianwaffle.in,9823011445,27AABCB1234F1Z9,AABCB1234F,belgianwaffle@icici,5.0,Belgian Waffle Sadar,Mount Road Sadar,440001",
-      "Keventers Milkshakes,Super Milk Products Pvt Ltd,Food & Dining,Maharashtra,Pune,Pune,Aman Arora,aman@keventers.com,9823099887,27AABCS5678H1Z2,AABCS5678H,keventers@hdfcbank,5.0,Keventers Koregaon Park,North Main Road,411001",
+      "The Belgian Waffle Co,Bloombay Enterprises Pvt Ltd,Food & Dining,Maharashtra,Nagpur,Nagpur,440001,Mount Road Sadar,Shrey Aggarwal,shrey@belgianwaffle.in,9823011445,27AABCB1234F1Z9,AABCB1234F,belgianwaffle@icici,5.0",
+      "Keventers Milkshakes,Super Milk Products Pvt Ltd,Food & Dining,Maharashtra,Pune,Pune,411001,North Main Road,Aman Arora,aman@keventers.com,9823099887,27AABCS5678H1Z2,AABCS5678H,keventers@hdfcbank,5.0",
     ];
     const csvContent = [headers, ...sampleRows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -3271,6 +3042,8 @@ function BulkImportDrawer({
           state: row["state"] || "Maharashtra",
           district: row["district"] || city,
           city: city,
+          pincode: row["pincode"] || row["branchpincode"] || "440001",
+          address: row["address"] || row["branchaddress"] || `${city} Central`,
           ownerName: row["ownername"] || "Authorized Signatory",
           ownerEmail: email,
           ownerPhone: phone,
@@ -3278,13 +3051,7 @@ function BulkImportDrawer({
           gstin: gstin,
           pan: pan,
           commissionRate: parseFloat(row["commissionrate"] || "5.0") || 5.0,
-          initialStore: {
-            branchName: row["branchname"] || `${bName} Main Outlet`,
-            address: row["branchaddress"] || `${city} Central`,
-            city: city,
-            state: row["state"] || "Maharashtra",
-            pincode: row["branchpincode"] || "440001",
-          },
+          initialStore: null,
         });
       }
 
