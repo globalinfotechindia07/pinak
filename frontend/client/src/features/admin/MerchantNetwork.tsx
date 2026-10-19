@@ -407,25 +407,14 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
       sortable: false,
       className: "text-right whitespace-nowrap",
       render: (m) => (
-        <div className="flex items-center justify-end gap-1.5">
-          {/* Primary Review KYC Button */}
-          <button
-            onClick={() => setSelectedMerchant(m)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200/80 dark:border-purple-800/60 transition-all shadow-2xs hover:shadow-xs"
-            title="Review Merchant KYC Details"
-          >
-            <Eye size={13} />
-            <span>Review KYC</span>
-          </button>
-
-          {/* Secondary Actions Dropdown */}
+        <div className="flex items-center justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-colors"
-                title="More Actions"
+                title="Merchant Actions"
               >
-                <MoreVertical size={14} />
+                <MoreVertical size={15} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#121626]">
@@ -437,8 +426,8 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                 onClick={() => setSelectedMerchant(m)}
                 className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
               >
-                <ShieldCheck size={14} className="text-purple-600 dark:text-purple-400" />
-                <span>Review KYC Documents</span>
+                <Eye size={14} className="text-purple-600 dark:text-purple-400" />
+                <span>Review KYC & Details</span>
               </DropdownMenuItem>
 
               <DropdownMenuItem
@@ -460,16 +449,16 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                 <span>Copy Merchant ID</span>
               </DropdownMenuItem>
 
-              {m.bankUpiId && (
+              {m.bankAccountNumber && (
                 <DropdownMenuItem
                   onClick={() => {
-                    navigator.clipboard.writeText(m.bankUpiId);
-                    toast.success(`Copied VPA: ${m.bankUpiId}`);
+                    navigator.clipboard.writeText(m.bankAccountNumber || "");
+                    toast.success(`Copied Account Number: ${m.bankAccountNumber}`);
                   }}
                   className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  <CreditCard size={14} className="text-slate-400" />
-                  <span>Copy Bank VPA</span>
+                  <Building2 size={14} className="text-slate-400" />
+                  <span>Copy Bank Account</span>
                 </DropdownMenuItem>
               )}
 
