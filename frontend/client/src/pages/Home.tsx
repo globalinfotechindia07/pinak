@@ -375,7 +375,7 @@ export default function Home() {
                 gstin: m.gstin || "",
                 pan: m.pan || "",
                 commissionRate: m.commissionRate != null ? Number(m.commissionRate) : 5.0,
-                kycStatus: (m.kycStatus === "REJECTED" || m.approvalStatus === "REJECTED") ? "REJECTED" : (m.kycStatus === "VERIFIED" || m.approvalStatus === "APPROVED" ? "APPROVED" : (m.kycStatus || "PENDING_REVIEW")),
+                kycStatus: (m.kycStatus === "REJECTED" || m.approvalStatus === "REJECTED") ? "REJECTED" : (m.kycStatus === "VERIFIED" || m.approvalStatus === "APPROVED" ? "APPROVED" : "PENDING_REVIEW"),
                 status: m.status || "ACTIVE",
                 rating: m.rating ?? 5.0,
                 initials: (m.businessName || "M").substring(0, 2).toUpperCase(),

@@ -91,6 +91,27 @@ class MerchantServiceTest {
     }
 
     @Test
+    @DisplayName("Create merchant as admin sets ACTIVE status, PENDING_APPROVAL, PENDING kyc, and null approvedAt")
+    void createMerchant_asAdmin_keepsPendingApprovalAndKycPending() {
+        CreateMerchantRequest request = new CreateMerchantRequest("Admin Brand", null, null);
+
+        when(userRepository.existsById(ownerId)).thenReturn(true);
+        when(merchantRepository.save(any(Merchant.class))).thenAnswer(inv -> {
+            Merchant m = inv.getArgument(0);
+            m.setId(merchantId);
+            return m;
+        });
+
+        MerchantResponse response = merchantService.createMerchant(request, ownerId, true);
+
+        assertThat(response).isNotNull();
+        assertThat(response.businessName()).isEqualTo("Admin Brand");
+        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(response.approvalStatus()).isEqualTo("PENDING_APPROVAL");
+        assertThat(response.kycStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
     @DisplayName("Create merchant fails if category is INACTIVE")
     void createMerchant_inactiveCategory_throwsException() {
         CreateMerchantRequest request = new CreateMerchantRequest(

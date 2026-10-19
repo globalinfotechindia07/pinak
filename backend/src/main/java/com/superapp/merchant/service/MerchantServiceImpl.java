@@ -234,9 +234,9 @@ public class MerchantServiceImpl implements MerchantService {
 
         if (isAdmin) {
             merchant.setStatus(MerchantStatus.ACTIVE);
-            merchant.setApprovalStatus(ApprovalStatus.APPROVED);
-            merchant.setKycStatus(KycStatus.VERIFIED);
-            merchant.setApprovedAt(Instant.now());
+            merchant.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+            merchant.setKycStatus(KycStatus.PENDING);
+            merchant.setApprovedAt(null);
             merchant.setCreatedBy("ADMIN");
         }
 

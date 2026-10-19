@@ -181,7 +181,7 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
     [merchants]
   );
   const pendingCount = useMemo(
-    () => merchants.filter((m) => m.kycStatus === "PENDING_REVIEW" || m.kycStatus === "SUBMITTED").length,
+    () => merchants.filter((m) => m.kycStatus === "PENDING_REVIEW" || m.kycStatus === "SUBMITTED" || m.kycStatus === "PENDING").length,
     [merchants]
   );
   const totalBranches = useMemo(
@@ -193,7 +193,7 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
   const tabCounts = useMemo(() => {
     return {
       ALL: merchants.length,
-      PENDING_REVIEW: merchants.filter((m) => m.kycStatus === "PENDING_REVIEW" || m.kycStatus === "SUBMITTED").length,
+      PENDING_REVIEW: merchants.filter((m) => m.kycStatus === "PENDING_REVIEW" || m.kycStatus === "SUBMITTED" || m.kycStatus === "PENDING").length,
       APPROVED: merchants.filter((m) => m.kycStatus === "APPROVED").length,
       REJECTED: merchants.filter((m) => m.kycStatus === "REJECTED" || (m as any).approvalStatus === "REJECTED").length,
       SUSPENDED: merchants.filter((m) => m.status === "SUSPENDED").length,
@@ -207,7 +207,7 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
       if (statusFilter === "SUSPENDED") return m.status === "SUSPENDED";
       if (statusFilter === "REJECTED") return m.kycStatus === "REJECTED" || (m as any).approvalStatus === "REJECTED";
       if (statusFilter === "APPROVED") return m.kycStatus === "APPROVED";
-      if (statusFilter === "PENDING_REVIEW") return m.kycStatus === "PENDING_REVIEW" || m.kycStatus === "SUBMITTED";
+      if (statusFilter === "PENDING_REVIEW") return m.kycStatus === "PENDING_REVIEW" || m.kycStatus === "SUBMITTED" || m.kycStatus === "PENDING";
       return m.kycStatus === statusFilter;
     });
   }, [merchants, statusFilter]);
@@ -398,7 +398,7 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
           ) : (
             <Clock size={12} />
           )}
-          {((m.kycStatus === "REJECTED" || (m as any).approvalStatus === "REJECTED") ? "REJECTED" : m.kycStatus).replace("_", " ")}
+          {((m.kycStatus === "REJECTED" || (m as any).approvalStatus === "REJECTED") ? "REJECTED" : (m.kycStatus === "APPROVED" ? "APPROVED" : "PENDING REVIEW"))}
         </Badge>
       )
     },
@@ -731,7 +731,7 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                       return (
                         <Badge variant={isApproved ? "success" : isRejected ? "destructive" : "warning"}>
                           {isApproved ? <CheckCircle2 size={12} /> : isRejected ? <XCircle size={12} /> : <Clock size={12} />}
-                          {isRejected ? "REJECTED" : selectedMerchant.kycStatus.replace("_", " ")}
+                          {isRejected ? "REJECTED" : isApproved ? "APPROVED" : "PENDING REVIEW"}
                         </Badge>
                       );
                     })()}
@@ -913,33 +913,85 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                         </div>
                       </div>
 
-                      {/* Settlement & Banking */}
-                      <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/70 dark:border-purple-900/50 space-y-1.5">
+                      {/* Settlement Bank Account Details */}
+                      <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/70 dark:border-purple-900/50 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
-                            Direct Settlement UPI VPA
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <Building2 size={13} className="text-purple-600 dark:text-purple-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                              Settlement Bank Account Details
+                            </span>
+                          </div>
                           <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">
                             Take-Rate: {selectedMerchant.commissionRate ?? 5.0}%
                           </span>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-bold text-purple-700 dark:text-purple-300 text-sm">
-                            {selectedMerchant.bankUpiId}
-                          </span>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(selectedMerchant.bankUpiId);
-                              toast.success("Copied settlement VPA to clipboard");
-                            }}
-                            className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
-                          >
-                            <Copy size={11} />
-                            Copy
-                          </button>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                            <span className="text-[10px] text-slate-400 block font-medium">Bank Name</span>
+                            <span className="font-bold text-slate-900 dark:text-white truncate block mt-0.5">
+                              {selectedMerchant.bankName || "Not configured"}
+                            </span>
+                          </div>
+
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                            <span className="text-[10px] text-slate-400 block font-medium">Account Holder</span>
+                            <span className="font-bold text-slate-900 dark:text-white truncate block mt-0.5">
+                              {selectedMerchant.accountHolderName || (selectedMerchant as any).legalEntityName || selectedMerchant.businessName || "Not specified"}
+                            </span>
+                          </div>
+
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-medium">Account Number</span>
+                              {selectedMerchant.bankAccountNumber && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(selectedMerchant.bankAccountNumber || "");
+                                    toast.success("Account number copied to clipboard");
+                                  }}
+                                  className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 font-bold"
+                                  title="Copy Account Number"
+                                >
+                                  <Copy size={10} />
+                                  Copy
+                                </button>
+                              )}
+                            </div>
+                            <span className="font-mono font-bold text-purple-700 dark:text-purple-300 truncate block mt-0.5">
+                              {selectedMerchant.bankAccountNumber || "N/A"}
+                            </span>
+                          </div>
+
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-medium">IFSC Code</span>
+                              {selectedMerchant.bankIfsc && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(selectedMerchant.bankIfsc || "");
+                                    toast.success("IFSC code copied to clipboard");
+                                  }}
+                                  className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 font-bold"
+                                  title="Copy IFSC"
+                                >
+                                  <Copy size={10} />
+                                  Copy
+                                </button>
+                              )}
+                            </div>
+                            <span className="font-mono font-bold text-purple-700 dark:text-purple-300 truncate block mt-0.5">
+                              {selectedMerchant.bankIfsc || "N/A"}
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-                          Direct UPI payments settle to this VPA. 0% intermediary holding.
+
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5 flex items-center gap-1">
+                          <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                          <span>Direct settlements are credited via automated NEFT / RTGS / IMPS payout rails.</span>
                         </p>
                       </div>
 
@@ -1089,18 +1141,18 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                       </div>
                     </div>
 
-                    {/* Doc 3: NPCI UPI Settlement Route */}
+                    {/* Doc 3: Settlement Bank Account Verification */}
                     <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
-                            <ShieldCheck size={14} />
+                            <Building2 size={14} />
                           </div>
                           <div>
                             <strong className="text-xs text-slate-900 dark:text-white block">
-                              Bank Settlement VPA Mandate
+                              Settlement Bank Account Verification
                             </strong>
-                            <span className="text-[10px] text-slate-400">NPCI Direct Payout Channel</span>
+                            <span className="text-[10px] text-slate-400">Direct Core-Banking Settlement Route</span>
                           </div>
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
@@ -1109,12 +1161,14 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                       </div>
                       <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-[11px] grid grid-cols-2 gap-2">
                         <div>
-                          <span className="text-[10px] text-slate-400 block">Verified VPA</span>
-                          <span className="font-mono font-bold text-purple-600 dark:text-purple-400">{selectedMerchant.bankUpiId}</span>
+                          <span className="text-[10px] text-slate-400 block">Bank & Account</span>
+                          <span className="font-mono font-bold text-purple-600 dark:text-purple-400 truncate block">
+                            {selectedMerchant.bankName ? `${selectedMerchant.bankName} - ${selectedMerchant.bankAccountNumber || "N/A"}` : (selectedMerchant.bankAccountNumber || "Not configured")}
+                          </span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 block">Settlement Holding</span>
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">0% Non-Custodial</span>
+                          <span className="text-[10px] text-slate-400 block">IFSC Code</span>
+                          <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{selectedMerchant.bankIfsc || "N/A"}</span>
                         </div>
                       </div>
                     </div>
@@ -2140,7 +2194,6 @@ function AddMerchantDrawer({
                       setFormData((prev) => ({
                         ...prev,
                         businessName: val,
-                        branchName: prev.branchName ? prev.branchName : (val ? `${val} Flagship` : ""),
                       }));
                       if (errors.businessName) {
                         setErrors((prev) => {
