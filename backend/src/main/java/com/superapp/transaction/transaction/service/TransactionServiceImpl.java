@@ -250,15 +250,6 @@ public class TransactionServiceImpl implements TransactionService {
 
         Page<Transaction> page = transactionRepository.findAll(spec, effectivePageable);
 
-        if (auditService != null && adminUserId != null) {
-            try {
-                auditService.record(AuditEventType.TRANSACTION_SEARCHED, adminUserId, null, null, requestId,
-                        "Admin searched transactions: count=" + page.getTotalElements());
-            } catch (Exception ex) {
-                log.warn("Failed to audit admin transaction search: {}", ex.getMessage());
-            }
-        }
-
         return enrichListItems(page, effectivePageable);
     }
 
