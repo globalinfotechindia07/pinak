@@ -55,6 +55,7 @@ public class MerchantServiceImpl implements MerchantService {
     private final com.superapp.common.email.EmailService emailService;
     private final StaffMemberRepository staffMemberRepository;
     private final com.superapp.wallet.repository.MerchantBankAccountRepository bankAccountRepository;
+    private final com.superapp.wallet.repository.MerchantWalletRepository walletRepository;
 
     @Autowired
     public MerchantServiceImpl(
@@ -67,7 +68,8 @@ public class MerchantServiceImpl implements MerchantService {
             @Autowired(required = false) PasswordEncoder passwordEncoder,
             @Autowired(required = false) com.superapp.common.email.EmailService emailService,
             @Autowired(required = false) StaffMemberRepository staffMemberRepository,
-            @Autowired(required = false) com.superapp.wallet.repository.MerchantBankAccountRepository bankAccountRepository) {
+            @Autowired(required = false) com.superapp.wallet.repository.MerchantBankAccountRepository bankAccountRepository,
+            @Autowired(required = false) com.superapp.wallet.repository.MerchantWalletRepository walletRepository) {
         this.merchantRepository = merchantRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
@@ -78,6 +80,7 @@ public class MerchantServiceImpl implements MerchantService {
         this.emailService = emailService;
         this.staffMemberRepository = staffMemberRepository;
         this.bankAccountRepository = bankAccountRepository;
+        this.walletRepository = walletRepository;
     }
 
     // Overloaded constructors for backward compatibility with existing unit tests
@@ -85,7 +88,7 @@ public class MerchantServiceImpl implements MerchantService {
             MerchantRepository merchantRepository,
             CategoryRepository categoryRepository,
             UserRepository userRepository) {
-        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null, null, null);
+        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null, null, null, null);
     }
 
     public MerchantServiceImpl(
@@ -96,7 +99,7 @@ public class MerchantServiceImpl implements MerchantService {
             AuditService auditService,
             MerchantMapper merchantMapper,
             PasswordEncoder passwordEncoder) {
-        this(merchantRepository, categoryRepository, userRepository, merchantKycRepository, auditService, merchantMapper, passwordEncoder, null, null, null);
+        this(merchantRepository, categoryRepository, userRepository, merchantKycRepository, auditService, merchantMapper, passwordEncoder, null, null, null, null);
     }
 
     @Override
@@ -246,6 +249,31 @@ public class MerchantServiceImpl implements MerchantService {
 
         if (bankAccountRepository != null && request.bankAccountNumber() != null && !request.bankAccountNumber().isBlank()) {
             saveOrUpdatePrimaryBankAccount(saved.getId(), request.bankName(), request.accountHolderName(), request.bankAccountNumber(), request.bankIfsc(), request.bankUpiId());
+        }
+
+        // Auto-provision initial MerchantKyc compliance record in merchant_kyc table
+        if (merchantKycRepository != null && ((request.pan() != null && !request.pan().isBlank()) || (request.gstin() != null && !request.gstin().isBlank()))) {
+            saveOrUpdateMerchantKycRecord(saved.getId(), categoryName, request.pan(), request.gstin(), request.bankAccountNumber(), request.bankIfsc(), request.bankName(), "PENDING");
+        }
+
+        // Auto-provision merchant financial ledger wallet in merchant_wallets table
+        if (walletRepository != null) {
+            try {
+                if (walletRepository.findByMerchantId(saved.getId()).isEmpty()) {
+                    com.superapp.wallet.entity.MerchantWallet wallet = new com.superapp.wallet.entity.MerchantWallet();
+                    wallet.setMerchantId(saved.getId());
+                    wallet.setCurrency("INR");
+                    wallet.setAvailableBalance(java.math.BigDecimal.ZERO);
+                    wallet.setPendingBalance(java.math.BigDecimal.ZERO);
+                    wallet.setTotalWithdrawn(java.math.BigDecimal.ZERO);
+                    wallet.setLifetimeVolume(java.math.BigDecimal.ZERO);
+                    wallet.setStatus(com.superapp.wallet.enums.WalletStatus.ACTIVE);
+                    walletRepository.save(wallet);
+                    log.info("Auto-provisioned active MerchantWallet for merchantId={}", saved.getId());
+                }
+            } catch (Exception e) {
+                log.warn("Could not auto-provision MerchantWallet for merchantId={}: {}", saved.getId(), e.getMessage());
+            }
         }
 
         if (auditService != null) {
@@ -428,6 +456,24 @@ public class MerchantServiceImpl implements MerchantService {
         merchant.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
         merchantRepository.save(merchant);
 
+        // Update merchant_kyc table verification status
+        if (merchantKycRepository != null) {
+            merchantKycRepository.findFirstByMerchantIdOrderByCreatedAtDesc(merchantId).ifPresent(kyc -> {
+                kyc.setStatus("VERIFIED");
+                kyc.setVerifiedBy(adminUserId);
+                kyc.setVerifiedAt(Instant.now());
+                merchantKycRepository.save(kyc);
+            });
+        }
+
+        // Update merchant_bank_accounts table verification status
+        if (bankAccountRepository != null) {
+            bankAccountRepository.findByMerchantId(merchantId).forEach(acc -> {
+                acc.setVerificationStatus(com.superapp.wallet.enums.BankAccountVerificationStatus.VERIFIED);
+                bankAccountRepository.save(acc);
+            });
+        }
+
         log.info("Admin {} approved merchant id={}", adminUserId, merchantId);
 
         if (auditService != null) {
@@ -457,6 +503,23 @@ public class MerchantServiceImpl implements MerchantService {
         merchant.setKycStatus(KycStatus.REJECTED);
         merchant.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
         merchantRepository.save(merchant);
+
+        // Update merchant_kyc table rejection status
+        if (merchantKycRepository != null) {
+            merchantKycRepository.findFirstByMerchantIdOrderByCreatedAtDesc(merchantId).ifPresent(kyc -> {
+                kyc.setStatus("REJECTED");
+                kyc.setRejectionReason(reason.trim());
+                merchantKycRepository.save(kyc);
+            });
+        }
+
+        // Update merchant_bank_accounts table rejection status
+        if (bankAccountRepository != null) {
+            bankAccountRepository.findByMerchantId(merchantId).forEach(acc -> {
+                acc.setVerificationStatus(com.superapp.wallet.enums.BankAccountVerificationStatus.REJECTED);
+                bankAccountRepository.save(acc);
+            });
+        }
 
         log.info("Admin {} rejected merchant id={} reason: {}", adminUserId, merchantId, reason);
 
@@ -760,6 +823,31 @@ public class MerchantServiceImpl implements MerchantService {
             log.info("Synchronized primary MerchantBankAccount for merchantId={}", merchantId);
         } catch (Exception e) {
             log.warn("Could not sync MerchantBankAccount for merchantId={}: {}", merchantId, e.getMessage());
+        }
+    }
+
+    private void saveOrUpdateMerchantKycRecord(UUID merchantId, String businessType, String pan, String gstin, String accNumber, String ifsc, String bankName, String status) {
+        if (merchantKycRepository == null) return;
+        try {
+            MerchantKyc kyc = merchantKycRepository.findFirstByMerchantIdOrderByCreatedAtDesc(merchantId)
+                    .orElseGet(() -> {
+                        MerchantKyc newKyc = new MerchantKyc();
+                        newKyc.setMerchantId(merchantId);
+                        return newKyc;
+                    });
+            kyc.setBusinessType(businessType != null && !businessType.isBlank() ? businessType : "RETAIL_COMMERCIAL");
+            kyc.setPanNumber(pan != null && !pan.isBlank() ? pan.trim() : "PANNOTPROV");
+            kyc.setGstin(gstin != null && !gstin.isBlank() ? gstin.trim() : null);
+            kyc.setBankAccountNumber(accNumber != null && !accNumber.isBlank() ? accNumber.trim() : null);
+            kyc.setBankIfsc(ifsc != null && !ifsc.isBlank() ? ifsc.trim().toUpperCase() : null);
+            kyc.setBankName(bankName != null && !bankName.isBlank() ? bankName.trim() : null);
+            kyc.setDocumentType("PAN_CARD");
+            kyc.setDocumentNumber(pan != null && !pan.isBlank() ? pan.trim() : "PAN_NOT_PROVIDED");
+            kyc.setStatus(status != null ? status : "PENDING");
+            merchantKycRepository.save(kyc);
+            log.info("Synchronized MerchantKyc compliance record for merchantId={}", merchantId);
+        } catch (Exception e) {
+            log.warn("Could not sync MerchantKyc record for merchantId={}: {}", merchantId, e.getMessage());
         }
     }
 }

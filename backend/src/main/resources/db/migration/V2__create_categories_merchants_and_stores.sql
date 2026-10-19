@@ -92,16 +92,24 @@ CREATE INDEX IF NOT EXISTS idx_merchants_pincode ON merchants(pincode);
 CREATE TABLE IF NOT EXISTS merchant_kyc (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
-    business_type VARCHAR(64) NOT NULL,
-    pan_number VARCHAR(10) NOT NULL,
+    business_type VARCHAR(64),
+    pan_number VARCHAR(10),
     gstin VARCHAR(15),
-    bank_account_number VARCHAR(34) NOT NULL,
-    bank_ifsc VARCHAR(11) NOT NULL,
-    bank_name VARCHAR(128) NOT NULL,
+    bank_account_number VARCHAR(34),
+    bank_ifsc VARCHAR(11),
+    bank_name VARCHAR(128),
     verification_status VARCHAR(32) NOT NULL DEFAULT 'SUBMITTED',
     verified_by UUID REFERENCES users(id) ON DELETE SET NULL,
     verified_at TIMESTAMP WITHOUT TIME ZONE,
-    submitted_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    submitted_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    document_type VARCHAR(64),
+    document_number VARCHAR(128),
+    business_registration_number VARCHAR(128),
+    tax_id VARCHAR(128),
+    document_url VARCHAR(1024),
+    rejection_reason TEXT,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_merchant_kyc_merchant ON merchant_kyc(merchant_id);
