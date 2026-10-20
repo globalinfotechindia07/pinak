@@ -18,13 +18,20 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     Optional<User> findByPhone(String phone);
 
-    Optional<User> findByMobile(String mobile);
+    default Optional<User> findByMobile(String mobile) {
+        return findByPhone(mobile);
+    }
 
     boolean existsByEmail(String email);
 
     boolean existsByPhone(String phone);
 
-    boolean existsByMobile(String mobile);
+    @Query("SELECT u FROM User u WHERE u.phone IS NOT NULL AND (u.phone = :phone OR u.phone LIKE CONCAT('%', :last10))")
+    java.util.List<User> findByPhoneOrSuffix(@Param("phone") String phone, @Param("last10") String last10);
+
+    default boolean existsByMobile(String mobile) {
+        return existsByPhone(mobile);
+    }
 
     Optional<User> findByReferralCode(String referralCode);
 
