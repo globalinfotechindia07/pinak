@@ -38,6 +38,6 @@ services:
 databases:
   - name: pinak-postgres
     databaseName: superappdb
-    user: postgres
+    user: pinak_user
     plan: free
     region: singapore
