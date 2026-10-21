@@ -265,12 +265,12 @@ export function AdvancedTable<T>({
       )}
 
       {/* Table Element */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-        <table className={`w-full text-left border-collapse text-xs sm:text-sm ${tableClassName || ""}`}>
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs w-full">
+        <table className={`w-full table-fixed text-left border-collapse text-xs sm:text-sm ${tableClassName || ""}`}>
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs tracking-wider">
               {bulkActions.length > 0 && (
-                <th className="py-3 px-3 w-8 text-center">
+                <th className="py-2.5 px-3 w-8 text-center shrink-0">
                   <input
                     type="checkbox"
                     checked={allCurrentSelected}
@@ -282,15 +282,15 @@ export function AdvancedTable<T>({
               {columns.map((col, idx) => (
                 <th
                   key={idx}
-                  className={`py-3 px-4 ${col.className || ""} ${
+                  className={`py-2.5 px-3 min-w-0 overflow-hidden ${col.className || ""} ${
                     col.sortable !== false ? "cursor-pointer select-none hover:text-slate-900 dark:hover:text-white transition-colors" : ""
                   }`}
                   onClick={() => col.sortable !== false && handleSort(idx)}
                 >
-                  <div className="flex items-center gap-1.5">
-                    <span>{col.header}</span>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="truncate">{col.header}</span>
                     {col.sortable !== false && (
-                      <span className="text-slate-400">
+                      <span className="text-slate-400 shrink-0">
                         {sortIndex === idx ? (
                           sortDirection === "asc" ? (
                             <ArrowUp size={13} className="text-pink-600 font-bold" />
@@ -332,7 +332,7 @@ export function AdvancedTable<T>({
                     }`}
                   >
                     {bulkActions.length > 0 && (
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-2.5 px-3 text-center shrink-0">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -344,7 +344,7 @@ export function AdvancedTable<T>({
                     {columns.map((col, cIdx) => (
                       <td
                         key={cIdx}
-                        className={`${isCompact ? "py-2 px-4" : "py-3.5 px-4"} ${col.className || ""}`}
+                        className={`${isCompact ? "py-2 px-3" : "py-2.5 px-3"} min-w-0 overflow-hidden ${col.className || ""}`}
                       >
                         {col.render
                           ? col.render(row)

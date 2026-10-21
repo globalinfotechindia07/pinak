@@ -148,7 +148,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
 
   const columns: Column<Offer>[] = [
     {
-      header: "Campaign Offer",
+      header: "Campaign Deal",
       sortable: true,
       className: "w-[28%]",
       accessor: "title",
@@ -216,7 +216,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       )
     },
     {
-      header: "Merchant & Branch",
+      header: "Merchant & Store",
       sortable: true,
       className: "w-[22%]",
       accessor: "merchantName",
@@ -240,7 +240,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       }
     },
     {
-      header: "Discount & Terms",
+      header: "Discount",
       sortable: true,
       className: "w-[16%]",
       accessor: "value",
@@ -263,7 +263,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       )
     },
     {
-      header: "Usage / Limit",
+      header: "Claims",
       sortable: true,
       className: "w-[12%]",
       accessor: "redemptions",
@@ -284,7 +284,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       }
     },
     {
-      header: "Validity",
+      header: "Valid Till",
       sortable: true,
       className: "w-[12%]",
       accessor: "validTo",
