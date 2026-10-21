@@ -57,7 +57,7 @@ export function AdvancedTable<T>({
   onRowClick,
   defaultPageSize = 10,
   emptyMessage = "No matching records found.",
-  tableClassName = "min-w-[1050px]"
+  tableClassName = ""
 }: AdvancedTableProps<T>) {
   const [search, setSearch] = useState("");
   const [sortIndex, setSortIndex] = useState<number | null>(null);

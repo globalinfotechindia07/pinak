@@ -150,19 +150,19 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Campaign Offer",
       sortable: true,
-      className: "min-w-[320px] max-w-[380px]",
+      className: "w-[28%]",
       accessor: "title",
       render: (o) => (
-        <div className="flex items-center gap-3 py-1">
+        <div className="flex items-center gap-2.5 py-1 min-w-0">
           {o.imageUrl ? (
             <img
               src={o.imageUrl}
               alt=""
-              className="w-11 h-11 rounded-xl object-cover shrink-0 border border-slate-200/80 dark:border-slate-700 shadow-2xs"
+              className="w-8 h-8 rounded-lg object-cover shrink-0 border border-slate-200 dark:border-slate-700 shadow-2xs"
             />
           ) : (
             <div className={cn(
-              "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-2xs",
+              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-2xs",
               o.scopeType === "PRODUCT"
                 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40"
                 : o.isTableBookingEnabled
@@ -170,49 +170,44 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 : "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200/60 dark:border-pink-800/40"
             )}>
               {o.scopeType === "PRODUCT" ? (
-                <ShoppingBag size={20} />
+                <ShoppingBag size={15} />
               ) : o.isTableBookingEnabled ? (
-                <Armchair size={20} />
+                <Armchair size={15} />
               ) : (
-                <TicketPercent size={20} />
+                <TicketPercent size={15} />
               )}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 truncate">
               <span className={cn(
-                "px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wide whitespace-nowrap",
+                "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shrink-0",
                 o.scopeType === "PRODUCT"
                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                   : o.isTableBookingEnabled
                   ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
                   : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
               )}>
-                {o.scopeType === "PRODUCT" ? "Retail Deal" : o.isTableBookingEnabled ? "Table Booking" : "Service Offer"}
+                {o.scopeType === "PRODUCT" ? "Retail" : o.isTableBookingEnabled ? "Table" : "Service"}
               </span>
               {o.isFlashDeal && (
-                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 flex items-center gap-0.5 whitespace-nowrap">
-                  <Zap size={9} /> Flash
+                <span className="px-1 py-0.5 rounded text-[8px] font-black uppercase bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 shrink-0 flex items-center gap-0.5">
+                  <Zap size={8} /> Flash
                 </span>
               )}
-              {o.badgeText && (
-                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 whitespace-nowrap">
-                  {o.badgeText}
-                </span>
-              )}
+              <span className="font-bold text-slate-900 dark:text-white text-xs truncate" title={o.title}>
+                {o.title}
+              </span>
             </div>
-            <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mt-1 leading-snug line-clamp-1" title={o.title}>
-              {o.title}
-            </p>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2 whitespace-nowrap">
-              <span>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate flex items-center gap-1.5">
+              <span className="truncate">
                 {o.scopeType === "PRODUCT" && o.dealPrice
                   ? `Deal ₹${o.dealPrice} (MRP ₹${o.originalPrice || o.dealPrice})`
-                  : `Min bill: ₹${o.minBillAmount || 0}`}
+                  : `Min: ₹${o.minBillAmount || 0}`}
               </span>
               {o.bonusCoins ? (
-                <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold">
-                  <Coins size={10} /> +{o.bonusCoins}
+                <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold shrink-0">
+                  <Coins size={9} /> +{o.bonusCoins}
                 </span>
               ) : null}
             </div>
@@ -223,20 +218,20 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Merchant & Branch",
       sortable: true,
-      className: "min-w-[210px] whitespace-nowrap",
+      className: "w-[22%]",
       accessor: "merchantName",
       render: (o) => {
         const storeMatch = stores?.find((s) => s.id === o.storeId);
         const resolvedStoreName = o.storeName || storeMatch?.branchName || storeMatch?.storeName || (o.storeId === "all" ? "All Outlets" : "Main Branch");
         return (
-          <div className="space-y-1 py-1">
-            <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-100 text-xs">
-              <Building2 size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
-              <span className="truncate max-w-[190px]" title={o.merchantName}>{o.merchantName || "Partner Brand"}</span>
+          <div className="min-w-0 py-1 space-y-0.5">
+            <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-100 text-xs truncate">
+              <Building2 size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+              <span className="truncate" title={o.merchantName}>{o.merchantName || "Partner Brand"}</span>
             </div>
-            <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-              <StoreIcon size={12} className="text-pink-500 shrink-0" />
-              <span className="truncate max-w-[190px]" title={resolvedStoreName}>
+            <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              <StoreIcon size={11} className="text-pink-500 shrink-0" />
+              <span className="truncate" title={resolvedStoreName}>
                 {resolvedStoreName}
               </span>
             </div>
@@ -247,13 +242,13 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Discount & Terms",
       sortable: true,
-      className: "min-w-[160px] whitespace-nowrap",
+      className: "w-[16%]",
       accessor: "value",
       render: (o) => (
-        <div className="space-y-1 py-1">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border border-pink-200/70 dark:border-pink-900/40 font-mono text-xs font-black shadow-2xs">
-            <Tag size={11} className="shrink-0 text-pink-600" />
-            <span>
+        <div className="min-w-0 py-1 space-y-0.5">
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border border-pink-200/70 dark:border-pink-900/40 font-mono text-xs font-black">
+            <Tag size={10} className="shrink-0 text-pink-600" />
+            <span className="whitespace-nowrap">
               {o.type === "FLAT_AMT"
                 ? `Flat ₹${o.value} OFF`
                 : o.type === "FLAT_PCT"
@@ -261,41 +256,29 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 : "Buy 1 Get 1"}
             </span>
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            {o.maxDiscount ? <span>Cap ₹${o.maxDiscount}</span> : null}
-            {o.maxDiscount && o.minBillAmount ? <span>•</span> : null}
-            {o.minBillAmount ? <span>Min ₹${o.minBillAmount}</span> : <span>No min spend</span>}
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+            {o.maxDiscount ? `Cap ₹${o.maxDiscount}` : "No discount cap"}
           </div>
         </div>
       )
     },
     {
-      header: "Usage & Limit",
+      header: "Usage / Limit",
       sortable: true,
-      className: "min-w-[140px] whitespace-nowrap",
+      className: "w-[12%]",
       accessor: "redemptions",
       render: (o) => {
         const used = o.redemptions || 0;
         const total = o.maxTotalRedemptions;
         const pct = total ? Math.min(100, Math.round((used / total) * 100)) : 0;
         return (
-          <div className="space-y-1.5 w-32 py-1">
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="font-bold text-slate-900 dark:text-white">{used.toLocaleString()}</span>
-              <span className="text-[10px] text-slate-400">{total ? `/ ${total.toLocaleString()}` : "claimed"}</span>
+          <div className="min-w-0 py-1 space-y-0.5">
+            <div className="text-xs font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+              {used.toLocaleString()}{total ? ` / ${total.toLocaleString()}` : ""}
             </div>
-            {total ? (
-              <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-pink-500 to-purple-600 h-full rounded-full transition-all"
-                  style={{ width: `${Math.max(4, pct)}%` }}
-                />
-              </div>
-            ) : (
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Unlimited
-              </span>
-            )}
+            <div className="text-[10px] text-slate-400 truncate">
+              {total ? `${pct}% claimed` : "unlimited"}
+            </div>
           </div>
         );
       }
@@ -303,20 +286,20 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Validity",
       sortable: true,
-      className: "min-w-[140px] whitespace-nowrap",
+      className: "w-[12%]",
       accessor: "validTo",
       render: (o) => {
         const { text, isExpired, sub } = formatExpiryDate(o.validTo);
         return (
-          <div className="space-y-0.5 py-1">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
-              <Calendar size={12} className="text-slate-400 shrink-0" />
+          <div className="min-w-0 py-1 space-y-0.5">
+            <div className="flex items-center gap-1 text-xs font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+              <Calendar size={11} className="text-slate-400 shrink-0" />
               <span>{text}</span>
             </div>
             <span className={cn(
-              "text-[10px] font-bold block",
+              "text-[10px] font-bold block truncate",
               isExpired
-                ? "text-rose-500 font-semibold"
+                ? "text-rose-500"
                 : "text-emerald-600 dark:text-emerald-400"
             )}>
               {sub}
@@ -328,11 +311,11 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Status",
       sortable: true,
-      className: "min-w-[140px] whitespace-nowrap",
+      className: "w-[8%]",
       accessor: "status",
       render: (o) => (
         <Badge
-          className="whitespace-nowrap px-2.5 py-1 text-xs font-bold"
+          className="whitespace-nowrap px-2 py-0.5 text-[10px] font-bold"
           variant={
             o.status === "ACTIVE"
               ? "success"
@@ -342,33 +325,32 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           }
         >
           {o.status === "ACTIVE" ? (
-            <CheckCircle2 size={12} />
+            <CheckCircle2 size={11} />
           ) : o.status === "PENDING_APPROVAL" ? (
-            <Clock size={12} />
+            <Clock size={11} />
           ) : (
-            <XCircle size={12} />
+            <XCircle size={11} />
           )}
-          {o.status.replace("_", " ")}
+          <span>{o.status.replace("_", " ")}</span>
         </Badge>
       )
     },
     {
-      header: "Actions",
-      className: "w-16 min-w-[70px] whitespace-nowrap text-right",
+      header: "",
+      className: "w-[2%] text-right",
       render: (o) => (
         <div className="flex items-center justify-end py-1">
-          {/* Three Dots More Actions Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border border-slate-200/80 dark:border-slate-800 shadow-2xs"
-                title="Actions menu"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Actions"
               >
                 <MoreVertical size={16} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl p-1 z-50">
+            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl p-1 z-50">
               <DropdownMenuItem
                 onClick={() => setSelectedOffer(o)}
                 className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
@@ -679,7 +661,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           columns={columns}
           data={displayedOffers}
           keyExtractor={(o) => o.id}
-          tableClassName="min-w-[1150px]"
+          
           searchPlaceholder="Search campaigns, merchants, terms..."
           searchFilter={(o, q) =>
             Boolean(
