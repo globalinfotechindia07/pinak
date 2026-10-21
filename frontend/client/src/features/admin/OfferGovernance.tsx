@@ -354,37 +354,27 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     },
     {
       header: "Actions",
-      className: "min-w-[140px] whitespace-nowrap text-right",
+      className: "w-16 min-w-[70px] whitespace-nowrap text-right",
       render: (o) => (
-        <div className="flex items-center justify-end gap-1.5 py-1">
-          {/* Quick Review Details */}
-          <button
-            onClick={() => setSelectedOffer(o)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/40 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors shadow-2xs cursor-pointer"
-            title="Review Campaign Details"
-          >
-            <Eye size={13} />
-            <span>Review</span>
-          </button>
-
+        <div className="flex items-center justify-end py-1">
           {/* Three Dots More Actions Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border border-slate-200/80 dark:border-slate-800"
-                title="More actions"
+                className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border border-slate-200/80 dark:border-slate-800 shadow-2xs"
+                title="Actions menu"
               >
-                <MoreVertical size={15} />
+                <MoreVertical size={16} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl p-1 z-50">
+            <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl p-1 z-50">
               <DropdownMenuItem
                 onClick={() => setSelectedOffer(o)}
                 className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
               >
                 <Eye size={14} className="text-pink-600" />
-                <span>View Full Details</span>
+                <span>Review Details</span>
               </DropdownMenuItem>
 
               {o.status === "ACTIVE" && (
