@@ -72,6 +72,12 @@ export const offerApi = {
     return [];
   },
 
+  // Admin: Create and directly activate offer for any merchant / store
+  createAdminOffer: async (payload: any): Promise<OfferDTO> => {
+    const res = await apiClient.post<ApiResponse<OfferDTO>>("/admin/offers", payload);
+    return res.data?.data || (res.data as unknown as OfferDTO);
+  },
+
   // Merchant: List offers belonging to authenticated merchant
   getMyOffers: async (params?: PaginationParams & { storeId?: string; status?: string; approvalStatus?: string }): Promise<OfferDTO[]> => {
     const res = await apiClient.get<ApiResponse<OfferDTO[] | PaginatedResponse<OfferDTO>>>("/merchant/offers", { params });

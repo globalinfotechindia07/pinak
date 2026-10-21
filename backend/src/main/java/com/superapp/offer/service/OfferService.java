@@ -40,6 +40,8 @@ public interface OfferService {
     CustomerOfferDetailResponse getCustomerOfferDetails(UUID offerId);
 
     // Admin Operations
+    MerchantOfferResponse createAdminOffer(AdminCreateOfferRequest request, UUID adminUserId);
+
     Page<MerchantOfferResponse> getAdminOffers(Specification<Offer> spec, Pageable pageable);
 
     MerchantOfferResponse getAdminOfferById(UUID offerId);

@@ -1047,32 +1047,56 @@ export default function Home() {
 
   const handleAddOffer = async (draft: any) => {
     try {
-      await offerApi.createOffer({
+      const payload: any = {
+        merchantId: draft.merchantId,
+        storeId: (draft.storeId && draft.storeId !== "all") ? draft.storeId : null,
         title: draft.title || "Special Deal",
-        description: draft.terms || draft.tagline || "Offer details",
-        type: draft.type === "FLAT_PCT" ? "PERCENTAGE_DISCOUNT" : "FIXED_DISCOUNT",
+        description: draft.tagline || draft.terms || draft.description || "Offer details",
+        termsAndConditions: draft.terms || "",
+        offerType: draft.type === "FLAT_PCT" ? "PERCENTAGE_DISCOUNT" : (draft.type === "BOGO" ? "BUY_X_GET_Y" : "FIXED_DISCOUNT"),
         value: Number(draft.value) || 20,
-        minTransactionAmount: Number(draft.minBillAmount) || 500,
-        maxDiscountAmount: Number(draft.maxDiscount) || 200,
+        minTransactionAmount: Number(draft.minBillAmount) || 0,
+        maxDiscountAmount: draft.maxDiscount ? Number(draft.maxDiscount) : null,
+        usageLimit: Number(draft.maxTotalRedemptions) || 1000,
+        perCustomerLimit: Number(draft.perUserLimit) || 1,
         validFrom: draft.validFrom ? `${draft.validFrom}T00:00:00Z` : new Date().toISOString(),
-        validTo: draft.validTo ? `${draft.validTo}T23:59:59Z` : "2026-12-31T23:59:59Z",
-      });
-      toast.success(`Offer "${draft.title}" submitted successfully!`);
-      // Update local reactive store with all rich fields including District table/slot settings
+        validTo: draft.validTo ? `${draft.validTo}T23:59:59Z` : new Date(Date.now() + 90 * 86400000).toISOString(),
+        offerScope: draft.scopeType || (draft.offerScope === "STORE_PRODUCT" ? "PRODUCT" : "SERVICE"),
+        originalMrp: draft.originalPrice ? Number(draft.originalPrice) : null,
+        flashSellingPrice: draft.dealPrice ? Number(draft.dealPrice) : null,
+        isFlash: Boolean(draft.isFlashDeal),
+        remainingQuantity: draft.totalFlashUnits ? Number(draft.totalFlashUnits) : 50,
+        bonusCoins: Number(draft.bonusCoins) || 100,
+        imageUrl: draft.imageUrl || null,
+        badgeText: draft.badgeText || null,
+        ctaText: draft.ctaText || (draft.isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
+      };
+
+      if (store.role === "ADMIN" || store.role === "SUPER_ADMIN" || !store.currentUser?.merchantId) {
+        await offerApi.createAdminOffer(payload);
+      } else {
+        await offerApi.createOffer(payload);
+      }
+
+      toast.success(`Offer "${draft.title}" saved to database and activated!`);
+      // Update local reactive store with all rich fields
       store.addOffer({
         ...draft,
         id: `offer-${Date.now()}`,
         status: "ACTIVE",
+        approvalStatus: "APPROVED",
         redemptions: 0,
         createdAt: new Date().toISOString(),
       });
       await syncBackendData();
     } catch (err: any) {
-      console.warn("Backend offer create failed:", err.message);
+      console.error("Backend offer create error:", err?.response?.data || err.message);
+      toast.error(err?.response?.data?.message || err.message || "Failed to save offer to database");
       store.addOffer({
         ...draft,
         id: `offer-${Date.now()}`,
         status: "ACTIVE",
+        approvalStatus: "APPROVED",
         redemptions: 0,
         createdAt: new Date().toISOString(),
       });

@@ -424,6 +424,81 @@ public class OfferServiceImpl implements OfferService {
     // =========================================================================
 
     @Override
+    @Transactional
+    public MerchantOfferResponse createAdminOffer(AdminCreateOfferRequest request, UUID adminUserId) {
+        Store store = null;
+        UUID merchantId = request.merchantId();
+        if (request.storeId() != null) {
+            store = storeRepository.findById(request.storeId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Store not found", ApiError.STORE_NOT_FOUND));
+            if (merchantId == null) {
+                merchantId = store.getMerchantId();
+            }
+        }
+
+        if (merchantId == null) {
+            throw new AppException("Merchant ID is required", ApiError.MERCHANT_NOT_FOUND, 400);
+        }
+
+        Merchant merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Merchant not found", ApiError.MERCHANT_NOT_FOUND));
+
+        Offer offer = new Offer();
+        offer.setMerchantId(merchant.getId());
+        offer.setStoreId(store != null ? store.getId() : null);
+        offer.setCategoryId(merchant.getCategoryId());
+        offer.setTitle(request.title().trim());
+        offer.setDescription(request.description() != null ? request.description().trim() : null);
+        offer.setTermsAndConditions(request.termsAndConditions() != null ? request.termsAndConditions().trim() : null);
+        offer.setType(request.offerType());
+        offer.setValue(request.value());
+        offer.setMinTransactionAmount(request.minTransactionAmount() != null ? request.minTransactionAmount() : java.math.BigDecimal.ZERO);
+        offer.setMaxDiscountAmount(request.maxDiscountAmount());
+        offer.setUsageLimit(request.usageLimit() != null ? request.usageLimit() : 1000);
+        offer.setPerCustomerLimit(request.perCustomerLimit() != null ? request.perCustomerLimit() : 1);
+        offer.setCurrentUsageCount(0);
+        offer.setValidFrom(request.validFrom() != null ? request.validFrom() : Instant.now());
+        offer.setValidTo(request.validTo() != null ? request.validTo() : Instant.now().plus(90, java.time.temporal.ChronoUnit.DAYS));
+
+        offer.setOfferScope(request.offerScope() != null ? request.offerScope() : "SERVICE");
+        if (request.originalMrp() != null) offer.setOriginalMrp(request.originalMrp());
+        if (request.flashSellingPrice() != null) offer.setFlashSellingPrice(request.flashSellingPrice());
+        if (request.isFlash() != null) offer.setIsFlash(request.isFlash());
+        if (request.remainingQuantity() != null) offer.setRemainingQuantity(request.remainingQuantity());
+        offer.setBonusCoins(request.bonusCoins() != null ? request.bonusCoins() : 100);
+        offer.setImageUrl(request.imageUrl());
+        offer.setBadgeText(request.badgeText());
+        offer.setCtaText(request.ctaText() != null ? request.ctaText() : "Book & Pay");
+
+        // Super Admin offers are pre-approved and immediately ACTIVE
+        offer.setStatus(OfferStatus.ACTIVE);
+        offer.setApprovalStatus(OfferApprovalStatus.APPROVED);
+        offer.setApprovedAt(Instant.now());
+        offer.setApprovedBy(adminUserId);
+        offer.setCreatedBy(adminUserId.toString());
+        offer.setUpdatedBy(adminUserId.toString());
+
+        Offer saved = offerRepository.save(offer);
+        log.info("Super Admin {} created and activated offer id={} for merchant={} store={}",
+                adminUserId, saved.getId(), merchant.getId(), saved.getStoreId());
+
+        if (auditService != null) {
+            auditService.record(
+                    AuditEventType.OFFER_CREATED,
+                    adminUserId,
+                    null,
+                    null,
+                    MDC.get("requestId"),
+                    "Admin created and approved offer id=" + saved.getId() + " title='" + saved.getTitle() + "'"
+            );
+        }
+
+        evictOfferCaches(saved);
+        String storeName = store != null ? store.getStoreName() : null;
+        return offerMapper.toMerchantResponse(saved, storeName);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Page<MerchantOfferResponse> getAdminOffers(Specification<Offer> spec, Pageable pageable) {
         return offerRepository.findAll(spec, pageable)

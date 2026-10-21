@@ -33,6 +33,9 @@ public class Offer {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "terms_and_conditions", columnDefinition = "TEXT")
+    private String termsAndConditions;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 32)
     private OfferType type = OfferType.CASHBACK;
@@ -210,6 +213,14 @@ public class Offer {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getTermsAndConditions() {
+        return termsAndConditions;
+    }
+
+    public void setTermsAndConditions(String termsAndConditions) {
+        this.termsAndConditions = termsAndConditions;
     }
 
     public OfferType getType() {
