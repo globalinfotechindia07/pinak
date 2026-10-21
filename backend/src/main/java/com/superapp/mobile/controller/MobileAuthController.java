@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping({"/api/v1/mobile/auth", "/api/v1/mobile/profile"})
+@RequestMapping({"/api/v1/mobile/auth", "/api/v1/mobile/profile", "/api/v1/auth", "//api/v1/mobile/auth", "/api/v1/api/v1/mobile/auth"})
 @Tag(name = "Mobile App - Authentication", description = "PINAK Mobile OTP Authentication APIs")
 public class MobileAuthController {
 

@@ -722,14 +722,15 @@ public class OfferServiceImpl implements OfferService {
             if (!storeIds.isEmpty()) {
                 offers = offerRepository.findActiveServiceOffersByStoreIds(storeIds, now);
             }
-        }
-
-        if (offers.isEmpty()) {
+            // Strict Geo-filter: When coordinates are supplied, strictly return only matching nearby offers (no fallback)
+            if (offers.size() > limitVal) {
+                offers = offers.subList(0, limitVal);
+            }
+        } else {
+            // Only when no coordinates are provided (e.g. location disabled), show default category offers
             Page<Offer> page = offerRepository.findActiveServiceOffers(
                     categoryId, now, org.springframework.data.domain.PageRequest.of(0, limitVal));
             offers = page.getContent();
-        } else if (offers.size() > limitVal) {
-            offers = offers.subList(0, limitVal);
         }
 
         List<NearbyServiceOfferItemDto> dtos = new ArrayList<>();

@@ -62,6 +62,10 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/api/v1/mobile/auth/**",
                         "//api/v1/mobile/auth/**",
+                        "/api/v1/api/v1/mobile/auth/**",
+                        "/api/v1/auth/send-otp",
+                        "/api/v1/auth/resend-otp",
+                        "/api/v1/auth/verify-otp",
                         "/api/v1/mobile/categories",
                         "//api/v1/mobile/categories",
                         "/api/v1/mobile/locations/**",
