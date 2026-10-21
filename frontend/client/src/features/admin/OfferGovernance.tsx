@@ -159,13 +159,19 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       )
     },
     {
-      header: "Merchant Brand",
+      header: "Merchant & Store",
       sortable: true,
       accessor: "merchantName",
       render: (o) => (
-        <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
-          <Building2 size={13} className="text-purple-500" />
-          <span>{o.merchantName}</span>
+        <div>
+          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+            <Building2 size={13} className="text-purple-500 shrink-0" />
+            <span className="truncate">{o.merchantName}</span>
+          </div>
+          <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
+            <StoreIcon size={11} className="text-pink-500 shrink-0" />
+            <span className="truncate">{o.storeName || (o.storeId === "all" ? "All Outlets" : "Branch Store")}</span>
+          </div>
         </div>
       )
     },
@@ -697,9 +703,15 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                             "{o.tagline}"
                           </p>
                         )}
-                        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 font-semibold mt-1.5">
-                          <Building2 size={13} className="text-purple-500 shrink-0" />
-                          <span className="truncate">{o.merchantName}</span>
+                        <div className="flex items-center justify-between text-xs font-semibold mt-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                          <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 truncate">
+                            <Building2 size={12} className="text-purple-500 shrink-0" />
+                            <span className="truncate">{o.merchantName}</span>
+                          </span>
+                          <span className="flex items-center gap-1 text-[11px] text-pink-600 dark:text-pink-400 font-bold shrink-0">
+                            <StoreIcon size={11} className="shrink-0" />
+                            <span>{o.storeName || (o.storeId === "all" ? "All Outlets" : "Branch")}</span>
+                          </span>
                         </div>
                       </div>
 
