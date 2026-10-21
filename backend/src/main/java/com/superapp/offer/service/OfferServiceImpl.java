@@ -92,6 +92,11 @@ public class OfferServiceImpl implements OfferService {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
         offerValidator.validateCreateRequest(request);
 
+        List<Store> merchantStores = storeRepository.findByMerchantId(merchant.getId());
+        if (merchantStores.isEmpty()) {
+            throw new AppException("Merchant must have at least one store before creating an offer", ApiError.STORE_NOT_ELIGIBLE, 400);
+        }
+
         Store store = null;
         if (request.storeId() != null) {
             store = storeRepository.findById(request.storeId())
@@ -104,11 +109,16 @@ public class OfferServiceImpl implements OfferService {
             if (store.getApprovalStatus() != ApprovalStatus.APPROVED || store.getStatus() != StoreStatus.ACTIVE) {
                 throw new AppException("Store is not active or approved", ApiError.STORE_NOT_ELIGIBLE, 400);
             }
+        } else {
+            store = merchantStores.stream()
+                    .filter(s -> s.getStatus() == StoreStatus.ACTIVE && s.getApprovalStatus() == ApprovalStatus.APPROVED)
+                    .findFirst()
+                    .orElse(merchantStores.get(0));
         }
 
         Offer offer = new Offer();
         offer.setMerchantId(merchant.getId());
-        offer.setStoreId(request.storeId());
+        offer.setStoreId(store.getId());
         offer.setCategoryId(merchant.getCategoryId());
         offer.setTitle(request.title().trim());
         offer.setDescription(request.description() != null ? request.description().trim() : null);
@@ -443,9 +453,21 @@ public class OfferServiceImpl implements OfferService {
         Merchant merchant = merchantRepository.findById(merchantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Merchant not found", ApiError.MERCHANT_NOT_FOUND));
 
+        List<Store> merchantStores = storeRepository.findByMerchantId(merchant.getId());
+        if (merchantStores.isEmpty()) {
+            throw new AppException("Merchant must have at least one store before creating an offer", ApiError.STORE_NOT_ELIGIBLE, 400);
+        }
+
+        if (store == null) {
+            store = merchantStores.stream()
+                    .filter(s -> s.getStatus() == StoreStatus.ACTIVE && s.getApprovalStatus() == ApprovalStatus.APPROVED)
+                    .findFirst()
+                    .orElse(merchantStores.get(0));
+        }
+
         Offer offer = new Offer();
         offer.setMerchantId(merchant.getId());
-        offer.setStoreId(store != null ? store.getId() : null);
+        offer.setStoreId(store.getId());
         offer.setCategoryId(merchant.getCategoryId());
         offer.setTitle(request.title().trim());
         offer.setDescription(request.description() != null ? request.description().trim() : null);

@@ -1047,9 +1047,19 @@ export default function Home() {
 
   const handleAddOffer = async (draft: any) => {
     try {
+      const merchantStores = store.stores.filter((s) => s.merchantId === draft.merchantId);
+      const chosenStoreId = (draft.storeId && draft.storeId !== "all")
+        ? draft.storeId
+        : (merchantStores[0]?.id || draft.applicableStoreIds?.[0] || null);
+
+      if (!chosenStoreId && (!merchantStores || merchantStores.length === 0)) {
+        toast.error("The merchant must have at least one store before creating an offer.");
+        return;
+      }
+
       const payload: any = {
         merchantId: draft.merchantId,
-        storeId: (draft.storeId && draft.storeId !== "all") ? draft.storeId : null,
+        storeId: chosenStoreId,
         title: draft.title || "Special Deal",
         description: draft.tagline || draft.terms || draft.description || "Offer details",
         termsAndConditions: draft.terms || "",

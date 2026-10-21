@@ -552,6 +552,10 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
 
           <button
             onClick={() => {
+              if (liveStores.length === 0) {
+                toast.error("You must register at least one store branch before creating an offer.");
+                return;
+              }
               setCloningOffer(null);
               setIsCreateOpen(true);
             }}

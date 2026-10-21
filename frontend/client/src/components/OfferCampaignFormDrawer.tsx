@@ -373,9 +373,12 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         toast.error("Please select a partner merchant brand.");
         return;
       }
-      if (!selectedStoreId) {
-        toast.error("Please choose a specific store outlet or select 'All Outlets'.");
+      if (availableStoresForMerchant.length === 0) {
+        toast.error("This merchant has no registered stores. A merchant must have at least one store before creating an offer.");
         return;
+      }
+      if (!selectedStoreId || selectedStoreId === "all") {
+        setSelectedStoreId(availableStoresForMerchant[0].id);
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
@@ -474,12 +477,16 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     }
 
     setErrors({});
+    const resolvedStoreId = (selectedStoreId && selectedStoreId !== "all") 
+      ? selectedStoreId 
+      : (availableStoresForMerchant[0]?.id || selectedStoreId);
+
     onSave({
       merchantId: selectedMerchantId,
       merchantName: merchantDisplayName,
-      storeId: selectedStoreId,
-      storeName: selectedStore?.branchName || selectedStore?.storeName || (selectedStoreId === "all" ? "All Outlets" : "Branch Outlet"),
-      applicableStoreIds: selectedStoreId === "all" ? [] : [selectedStoreId],
+      storeId: resolvedStoreId,
+      storeName: selectedStore?.branchName || selectedStore?.storeName || availableStoresForMerchant[0]?.branchName || "Branch Outlet",
+      applicableStoreIds: [resolvedStoreId],
       title: finalTitle,
       tagline: tagline.trim(),
       type,
