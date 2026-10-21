@@ -61,10 +61,15 @@ public class SecurityConfig {
                 // Public mobile onboarding & authentication endpoints
                 .requestMatchers(
                         "/api/v1/mobile/auth/**",
+                        "//api/v1/mobile/auth/**",
                         "/api/v1/mobile/categories",
+                        "//api/v1/mobile/categories",
                         "/api/v1/mobile/locations/**",
+                        "//api/v1/mobile/locations/**",
                         "/api/v1/mobile/location/radar-preview",
-                        "/api/v1/locations/**"
+                        "//api/v1/mobile/location/radar-preview",
+                        "/api/v1/locations/**",
+                        "//api/v1/locations/**"
                 ).permitAll()
 
                 // Private mobile endpoints — strictly requires logged-in JWT authentication
