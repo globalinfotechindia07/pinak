@@ -50,7 +50,7 @@ public class CustomerOfferController {
             @RequestParam(required = false) String cursor) {
 
         NearbyServiceOffersResponse response = offerService.getNearbyServiceOffers(
-                latitude, longitude, radiusKm, categoryId, limit, cursor);
+                type, latitude, longitude, radiusKm, categoryId, limit, cursor);
         return ResponseEntity.ok(ApiResponse.success("Nearby service offers fetched successfully", response));
     }
 

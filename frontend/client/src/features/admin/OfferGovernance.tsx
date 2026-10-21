@@ -50,8 +50,8 @@ interface OfferGovernanceProps {
   offers: Offer[];
   merchants: Merchant[];
   stores?: Store[];
-  onAddOffer: (draft: Partial<Offer>) => void;
-  onUpdateOfferStatus: (id: string, status: "ACTIVE" | "REJECTED" | "EXPIRED" | "PENDING_APPROVAL" | "PAUSED", reason?: string) => void;
+  onAddOffer: (draft: Partial<Offer>) => Promise<any> | void;
+  onUpdateOfferStatus: (id: string, status: "ACTIVE" | "REJECTED" | "EXPIRED" | "PENDING_APPROVAL" | "PAUSED", reason?: string) => void | Promise<any>;
   onDeleteOffer?: (id: string) => void;
   onCloneOffer?: (id: string) => void;
 }
@@ -202,8 +202,8 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate flex items-center gap-1.5">
               <span className="truncate">
                 {o.scopeType === "PRODUCT" && o.dealPrice
-                  ? `Deal ₹${o.dealPrice} (MRP ₹${o.originalPrice || o.dealPrice})`
-                  : `Min: ₹${o.minBillAmount || 0}`}
+                  ? `Deal â‚¹${o.dealPrice} (MRP â‚¹${o.originalPrice || o.dealPrice})`
+                  : `Min: â‚¹${o.minBillAmount || 0}`}
               </span>
               {o.bonusCoins ? (
                 <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold shrink-0">
@@ -250,14 +250,14 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
             <Tag size={10} className="shrink-0 text-pink-600" />
             <span className="whitespace-nowrap">
               {o.type === "FLAT_AMT"
-                ? `Flat ₹${o.value} OFF`
+                ? `Flat â‚¹${o.value} OFF`
                 : o.type === "FLAT_PCT"
                 ? `${o.value}% OFF`
                 : "Buy 1 Get 1"}
             </span>
           </div>
           <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {o.maxDiscount ? `Cap ₹${o.maxDiscount}` : "No discount cap"}
+            {o.maxDiscount ? `Cap â‚¹${o.maxDiscount}` : "No discount cap"}
           </div>
         </div>
       )
@@ -334,6 +334,8 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           <span>
             {o.status === "PENDING_APPROVAL"
               ? "Pending"
+              : o.status === "DEACTIVATED" || o.status === "PAUSED"
+              ? "Paused"
               : o.status.replace("_", " ")}
           </span>
         </Badge>
@@ -368,7 +370,6 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 <DropdownMenuItem
                   onClick={() => {
                     onUpdateOfferStatus(o.id, "PAUSED");
-                    toast.info(`Offer "${o.title}" paused`);
                   }}
                   className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600"
                 >
@@ -377,11 +378,10 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 </DropdownMenuItem>
               )}
 
-              {o.status === "PAUSED" && (
+              {(o.status === "PAUSED" || o.status === "DEACTIVATED") && (
                 <DropdownMenuItem
                   onClick={() => {
                     onUpdateOfferStatus(o.id, "ACTIVE");
-                    toast.success(`Offer "${o.title}" resumed`);
                   }}
                   className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600"
                 >
@@ -787,7 +787,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                           >
                             {o.scopeType === "PRODUCT"
                               ? o.productCategory
-                                ? `${o.productCategory} • Retail`
+                                ? `${o.productCategory} â€¢ Retail`
                                 : "Retail Deal"
                               : "Service Offer"}
                           </span>
@@ -852,11 +852,11 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                           <div className="flex items-baseline justify-between">
                             <div className="flex items-baseline gap-2">
                               <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
-                                ₹{o.dealPrice || o.value}
+                                â‚¹{o.dealPrice || o.value}
                               </span>
                               {o.originalPrice && (
                                 <span className="text-xs text-slate-400 line-through">
-                                  ₹{o.originalPrice}
+                                  â‚¹{o.originalPrice}
                                 </span>
                               )}
                             </div>
@@ -870,21 +870,21 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                           <div className="flex items-baseline justify-between">
                             <span className="text-lg font-extrabold text-pink-600 dark:text-pink-400 font-mono">
                               {o.type === "FLAT_AMT"
-                                ? `Flat ₹${o.value} OFF`
+                                ? `Flat â‚¹${o.value} OFF`
                                 : o.type === "FLAT_PCT"
                                 ? `${o.value}% OFF`
                                 : "Buy 1 Get 1"}
                             </span>
                             {o.maxDiscount && (
                               <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold">
-                                Cap: ₹{o.maxDiscount}
+                                Cap: â‚¹{o.maxDiscount}
                               </span>
                             )}
                           </div>
                         )}
 
                         <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/40 dark:border-slate-800/60">
-                          <span>Min Spend: ₹{o.minBillAmount}</span>
+                          <span>Min Spend: â‚¹{o.minBillAmount}</span>
                           <span className="text-amber-600 font-bold flex items-center gap-1">
                             <Coins size={11} />
                             <span>+{o.bonusCoins || 100} Coins</span>
@@ -1000,8 +1000,8 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           onClose={() => setIsAddOpen(false)}
           merchants={merchants}
           stores={stores}
-          onSave={(draft) => {
-            onAddOffer(draft);
+          onSave={async (draft) => {
+            await onAddOffer(draft);
             setIsAddOpen(false);
           }}
         />
@@ -1025,7 +1025,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
               <p className="font-semibold text-slate-800 dark:text-slate-200">{offerToDelete.title}</p>
               <p className="text-slate-500">Merchant: {offerToDelete.merchantName}</p>
               <p className="text-slate-400 text-[11px]">
-                {offerToDelete.type === "FLAT_PCT" ? `${offerToDelete.value}% OFF` : `₹${offerToDelete.value} FLAT OFF`} • {offerToDelete.redemptions || 0} claims
+                {offerToDelete.type === "FLAT_PCT" ? `${offerToDelete.value}% OFF` : `â‚¹${offerToDelete.value} FLAT OFF`} â€¢ {offerToDelete.redemptions || 0} claims
               </p>
             </div>
 

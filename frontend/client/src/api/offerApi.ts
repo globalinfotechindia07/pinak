@@ -124,9 +124,15 @@ export const offerApi = {
     await apiClient.post(`/admin/offers/${id}/approve`);
   },
 
+  // Admin: Suspend/Pause offer
+  suspendOfferAdmin: async (id: string, reason?: string): Promise<void> => {
+    await apiClient.post(`/admin/offers/${id}/suspend`, { reason: reason || "Paused by Super Admin" });
+  },
+
   // Admin: Reject offer
   rejectOfferAdmin: async (id: string, reason?: string): Promise<void> => {
-    await apiClient.post(`/admin/offers/${id}/reject`, { rejectionReason: reason || "Does not meet guidelines" });
+    const r = reason || "Does not meet guidelines";
+    await apiClient.post(`/admin/offers/${id}/reject`, { reason: r, rejectionReason: r });
   },
 
   // Discovery: Active offers for a store

@@ -47,7 +47,7 @@ export interface OfferCampaignFormDrawerProps {
   initialData?: Offer | null;
   isEdit?: boolean;
   onClose: () => void;
-  onSave: (draft: Partial<Offer>) => void;
+  onSave: (draft: Partial<Offer>) => void | Promise<any>;
 }
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -317,9 +317,9 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       const pName = productName.trim() || "Retail Product";
       const disc = computedProductDiscountPct ? `${computedProductDiscountPct}% OFF` : `Special Deal`;
       setTitle(`${pName} @ ${disc} (${storeLabel})`);
-      setTagline(`Exclusive store bargain at ${merchantDisplayName} • Limited stock available`);
+      setTagline(`Exclusive store bargain at ${merchantDisplayName} â€¢ Limited stock available`);
     } else {
-      const disc = type === "FLAT_PCT" ? `${value}% OFF` : type === "FLAT_AMT" ? `Flat ₹${value} OFF` : "Buy 1 Get 1 FREE";
+      const disc = type === "FLAT_PCT" ? `${value}% OFF` : type === "FLAT_AMT" ? `Flat â‚¹${value} OFF` : "Buy 1 Get 1 FREE";
       const exp = isTableBookingEnabled ? "Table Reservation" : "Dine-in Experience";
       setTitle(`${disc} ${exp} @ ${storeLabel}`);
       setTagline(`Enjoy confirmed table booking & exclusive bill savings at ${merchantDisplayName}`);
@@ -336,7 +336,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       parts.push(`Table held up to ${gracePeriodMinutes} minutes from booked slot arrival.`);
       parts.push(`Valid for party size of ${minPartySize} to ${maxPartySize} guests.`);
       if (coverChargeAmount > 0) {
-        parts.push(`Cover charge deposit of ₹${coverChargeAmount} will be adjusted against the final bill.`);
+        parts.push(`Cover charge deposit of â‚¹${coverChargeAmount} will be adjusted against the final bill.`);
       }
     }
     if (offerScope === "STORE_PRODUCT") {
@@ -346,9 +346,9 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       }
     }
     if (type === "FLAT_PCT") {
-      parts.push(`Discount of ${value}% applied up to maximum ₹${maxDiscount || 'unlimited'} on bills of ₹${minBillAmount} & above.`);
+      parts.push(`Discount of ${value}% applied up to maximum â‚¹${maxDiscount || 'unlimited'} on bills of â‚¹${minBillAmount} & above.`);
     } else if (type === "FLAT_AMT") {
-      parts.push(`Flat discount of ₹${value} applied on minimum bill of ₹${minBillAmount}.`);
+      parts.push(`Flat discount of â‚¹${value} applied on minimum bill of â‚¹${minBillAmount}.`);
     } else {
       parts.push(`Buy 1 Get 1 free applicable on item of equal or lesser value.`);
     }
@@ -416,10 +416,10 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   };
 
   // Form Submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const finalTitle = title.trim() || `${type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`} at ${selectedStore?.branchName || merchantDisplayName}`;
+    const finalTitle = title.trim() || `${type === "FLAT_PCT" ? `${value}% OFF` : `â‚¹${value} OFF`} at ${selectedStore?.branchName || merchantDisplayName}`;
 
     const parseResult = offerCampaignSchema.safeParse({
       title: finalTitle,
@@ -481,62 +481,57 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       ? selectedStoreId 
       : (availableStoresForMerchant[0]?.id || selectedStoreId);
 
-    onSave({
-      merchantId: selectedMerchantId,
-      merchantName: merchantDisplayName,
-      storeId: resolvedStoreId,
-      storeName: selectedStore?.branchName || selectedStore?.storeName || availableStoresForMerchant[0]?.branchName || "Branch Outlet",
-      applicableStoreIds: [resolvedStoreId],
-      title: finalTitle,
-      tagline: tagline.trim(),
-      type,
-      value: Number(value),
-      maxDiscount: type === "FLAT_PCT" ? Number(maxDiscount) : undefined,
-      minBillAmount: Number(minBillAmount),
-      perUserLimit: perUserLimit ? Number(perUserLimit) : undefined,
-      maxTotalRedemptions: maxTotalRedemptions ? Number(maxTotalRedemptions) : undefined,
-      validFrom,
-      validTo,
-      activeDays,
-      startTime: enableHappyHours ? startTime : undefined,
-      endTime: enableHappyHours ? endTime : undefined,
-      redemptionMethod,
-      promoCode: redemptionMethod === "PROMO_CODE" ? promoCode.trim().toUpperCase() : undefined,
-      imageUrl: imageUrl.trim(),
-      terms: terms.trim(),
-      status: "ACTIVE",
-      scopeType: offerScope === "STORE_PRODUCT" ? "PRODUCT" : "SERVICE",
-      productCategory: offerScope === "STORE_PRODUCT" ? productCategory : undefined,
-      originalPrice: offerScope === "STORE_PRODUCT" && originalPrice ? Number(originalPrice) : undefined,
-      dealPrice: offerScope === "STORE_PRODUCT" && dealPrice ? Number(dealPrice) : undefined,
-      isFlashDeal: offerScope === "STORE_PRODUCT" ? isFlashDeal : false,
-      flashEndTime: offerScope === "STORE_PRODUCT" && isFlashDeal ? flashEndTime : undefined,
-      totalFlashUnits: offerScope === "STORE_PRODUCT" && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
-      bonusCoins: Number(bonusCoins),
-      badgeText: badgeText.trim() || undefined,
-      ctaText: ctaText.trim() || (offerScope === "STORE_PRODUCT" ? "Add to Cart" : isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
-      isTableBookingEnabled: offerScope === "STORE_OFFER" ? isTableBookingEnabled : false,
-      bookingType: offerScope === "STORE_OFFER" ? bookingType : undefined,
-      slotTimes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? slotTimes : undefined,
-      minPartySize: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(minPartySize) : undefined,
-      maxPartySize: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(maxPartySize) : undefined,
-      availableTablesPerSlot: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(availableTablesPerSlot) : undefined,
-      seatingAreas: offerScope === "STORE_OFFER" && isTableBookingEnabled ? seatingAreas : undefined,
-      coverChargeAmount: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(coverChargeAmount) : undefined,
-      gracePeriodMinutes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(gracePeriodMinutes) : undefined,
-      instantConfirmation: offerScope === "STORE_OFFER" && isTableBookingEnabled ? instantConfirmation : undefined,
-    });
+    try {
+      await onSave({
+        merchantId: selectedMerchantId,
+        merchantName: merchantDisplayName,
+        storeId: resolvedStoreId,
+        storeName: selectedStore?.branchName || selectedStore?.storeName || availableStoresForMerchant[0]?.branchName || "Branch Outlet",
+        applicableStoreIds: [resolvedStoreId],
+        title: finalTitle,
+        tagline: tagline.trim(),
+        type,
+        value: Number(value),
+        maxDiscount: type === "FLAT_PCT" ? Number(maxDiscount) : undefined,
+        minBillAmount: Number(minBillAmount),
+        perUserLimit: perUserLimit ? Number(perUserLimit) : undefined,
+        maxTotalRedemptions: maxTotalRedemptions ? Number(maxTotalRedemptions) : undefined,
+        validFrom,
+        validTo,
+        activeDays,
+        startTime: enableHappyHours ? startTime : undefined,
+        endTime: enableHappyHours ? endTime : undefined,
+        redemptionMethod,
+        promoCode: redemptionMethod === "PROMO_CODE" ? promoCode.trim().toUpperCase() : undefined,
+        imageUrl: imageUrl.trim(),
+        terms: terms.trim(),
+        status: "ACTIVE",
+        scopeType: offerScope === "STORE_PRODUCT" ? "PRODUCT" : "SERVICE",
+        productCategory: offerScope === "STORE_PRODUCT" ? productCategory : undefined,
+        originalPrice: offerScope === "STORE_PRODUCT" && originalPrice ? Number(originalPrice) : undefined,
+        dealPrice: offerScope === "STORE_PRODUCT" && dealPrice ? Number(dealPrice) : undefined,
+        isFlashDeal: offerScope === "STORE_PRODUCT" ? isFlashDeal : false,
+        flashEndTime: offerScope === "STORE_PRODUCT" && isFlashDeal ? flashEndTime : undefined,
+        totalFlashUnits: offerScope === "STORE_PRODUCT" && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
+        bonusCoins: Number(bonusCoins),
+        badgeText: badgeText.trim() || undefined,
+        ctaText: ctaText.trim() || (offerScope === "STORE_PRODUCT" ? "Add to Cart" : isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
+        isTableBookingEnabled: offerScope === "STORE_OFFER" ? isTableBookingEnabled : false,
+        bookingType: offerScope === "STORE_OFFER" ? bookingType : undefined,
+        slotTimes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? slotTimes : undefined,
+        minPartySize: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(minPartySize) : undefined,
+        maxPartySize: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(maxPartySize) : undefined,
+        availableTablesPerSlot: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(availableTablesPerSlot) : undefined,
+        seatingAreas: offerScope === "STORE_OFFER" && isTableBookingEnabled ? seatingAreas : undefined,
+        coverChargeAmount: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(coverChargeAmount) : undefined,
+        gracePeriodMinutes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(gracePeriodMinutes) : undefined,
+        instantConfirmation: offerScope === "STORE_OFFER" && isTableBookingEnabled ? instantConfirmation : undefined,
+      });
 
-    toast.success(
-      `Campaign "${finalTitle}" published for ${selectedStore?.branchName || merchantDisplayName}!`,
-      {
-        description: offerScope === "STORE_PRODUCT"
-          ? "Store product deal is now active on mobile catalog"
-          : isTableBookingEnabled
-          ? "District table & slot booking active for consumers"
-          : "Store offer is now live on discovery"
-      }
-    );
+      onClose();
+    } catch {
+      // Backend error already displayed via toast; keep form open for correction
+    }
   };
 
   return (
@@ -555,7 +550,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                 </h3>
                 <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
                   <span className="text-pink-600 font-bold">{merchantDisplayName}</span>
-                  <span>•</span>
+                  <span>â€¢</span>
                   <span>{selectedStore ? selectedStore.branchName : "All Outlets"}</span>
                 </p>
               </div>
@@ -654,7 +649,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     ) : (
                       merchants.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.businessName} • {m.categoryName || "General"} ({m.city || "Headquarters"})
+                          {m.businessName} â€¢ {m.categoryName || "General"} ({m.city || "Headquarters"})
                         </option>
                       ))
                     )}
@@ -667,7 +662,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           {selectedMerchant.businessName}
                         </span>
                         <span className="text-[10px] text-slate-400 block mt-0.5">
-                          Owner: {selectedMerchant.ownerName} • {selectedMerchant.city}
+                          Owner: {selectedMerchant.ownerName} â€¢ {selectedMerchant.city}
                         </span>
                       </div>
                       <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
@@ -933,21 +928,21 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                                 onClick={() => setSlotTimes(["12:00 PM", "12:30 PM", "01:00 PM", "01:30 PM", "02:00 PM"])}
                                 className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 hover:bg-amber-100 cursor-pointer"
                               >
-                                ☀️ Lunch
+                                â˜€ï¸ Lunch
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setSlotTimes(["07:00 PM", "07:30 PM", "08:00 PM", "08:30 PM", "09:00 PM", "09:30 PM"])}
                                 className="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 hover:bg-indigo-100 cursor-pointer"
                               >
-                                🌙 Dinner
+                                ðŸŒ™ Dinner
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setSlotTimes(STANDARD_SLOTS)}
                                 className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 hover:bg-slate-200 cursor-pointer"
                               >
-                                ⚡ All
+                                âš¡ All
                               </button>
                             </div>
                           </div>
@@ -1070,10 +1065,10 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                               onChange={(e) => setCoverChargeAmount(Number(e.target.value))}
                               className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs mt-0.5"
                             >
-                              <option value={0}>Free (₹0)</option>
-                              <option value={100}>₹100 (Adjusted in Bill)</option>
-                              <option value={200}>₹200 (Adjusted in Bill)</option>
-                              <option value={500}>₹500 (Cover Deposit)</option>
+                              <option value={0}>Free (â‚¹0)</option>
+                              <option value={100}>â‚¹100 (Adjusted in Bill)</option>
+                              <option value={200}>â‚¹200 (Adjusted in Bill)</option>
+                              <option value={500}>â‚¹500 (Cover Deposit)</option>
                             </select>
                           </div>
                           <div>
@@ -1168,7 +1163,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       <div className="grid grid-cols-2 gap-3 pt-1">
                         <div>
                           <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                            Original MRP (₹)
+                            Original MRP (â‚¹)
                           </label>
                           <input
                             type="number"
@@ -1180,7 +1175,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                         </div>
                         <div>
                           <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                            Store Deal Price (₹) *
+                            Store Deal Price (â‚¹) *
                           </label>
                           <input
                             type="number"
@@ -1243,7 +1238,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { key: "FLAT_PCT", label: "Percentage %", desc: "e.g. 40% OFF" },
-                      { key: "FLAT_AMT", label: "Flat Amount ₹", desc: "e.g. ₹200 OFF" },
+                      { key: "FLAT_AMT", label: "Flat Amount â‚¹", desc: "e.g. â‚¹200 OFF" },
                       { key: "BOGO", label: "Buy 1 Get 1 (BOGO)", desc: "1+1 on Menu / Pass" }
                     ].map((m) => (
                       <button
@@ -1268,7 +1263,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                      {type === "FLAT_PCT" ? "Discount Percentage (%) *" : "Discount Value (₹) *"}
+                      {type === "FLAT_PCT" ? "Discount Percentage (%) *" : "Discount Value (â‚¹) *"}
                     </label>
                     <input
                       type="number"
@@ -1280,7 +1275,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
 
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                      Minimum Spend Requirement (₹) *
+                      Minimum Spend Requirement (â‚¹) *
                     </label>
                     <input
                       type="number"
@@ -1295,7 +1290,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                   <div>
                     <div className="flex items-center justify-between">
                       <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                        Maximum Discount Cap (₹)
+                        Maximum Discount Cap (â‚¹)
                       </label>
                       <span className="text-[10px] text-slate-400">Protects store margin on large bills</span>
                     </div>
@@ -1392,7 +1387,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       <Calculator size={14} className="text-pink-600" />
                       <span>Economics Breakdown for Store: {selectedStore?.branchName || merchantDisplayName}</span>
                     </span>
-                    <span className="text-[10px] text-slate-400">Sample Order: ₹{Math.max(minBillAmount, 1000)}</span>
+                    <span className="text-[10px] text-slate-400">Sample Order: â‚¹{Math.max(minBillAmount, 1000)}</span>
                   </div>
 
                   {(() => {
@@ -1411,11 +1406,11 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-center">
                         <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
                           <span className="text-[10px] text-slate-400 block">Customer Saves</span>
-                          <span className="text-sm font-extrabold text-emerald-600 font-mono">₹{sampleDiscount.toFixed(0)}</span>
+                          <span className="text-sm font-extrabold text-emerald-600 font-mono">â‚¹{sampleDiscount.toFixed(0)}</span>
                         </div>
                         <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
                           <span className="text-[10px] text-slate-400 block">Store Receives</span>
-                          <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 font-mono">₹{customerPays.toFixed(0)}</span>
+                          <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 font-mono">â‚¹{customerPays.toFixed(0)}</span>
                         </div>
                         <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
                           <span className="text-[10px] text-slate-400 block">Loyalty Inflow</span>
@@ -1662,7 +1657,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     <div className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-xs text-purple-600 dark:text-purple-400">
-                          {merchantDisplayName} • {selectedStore?.branchName || "All Outlets"}
+                          {merchantDisplayName} â€¢ {selectedStore?.branchName || "All Outlets"}
                         </span>
                         <span className="text-[10px] text-amber-600 font-extrabold flex items-center gap-0.5">
                           <Coins size={11} />
@@ -1687,7 +1682,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           <div className="flex items-center justify-between text-[10px]">
                             <span className="font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1">
                               <Clock size={11} className="text-indigo-600" />
-                              <span>Select Time Slot ({type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`})</span>
+                              <span>Select Time Slot ({type === "FLAT_PCT" ? `${value}% OFF` : `â‚¹${value} OFF`})</span>
                             </span>
                             <span className="text-indigo-600 font-bold">{minPartySize}-{maxPartySize} Guests</span>
                           </div>
@@ -1720,25 +1715,25 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           {offerScope === "STORE_PRODUCT" && dealPrice ? (
                             <div className="flex items-baseline gap-1.5">
                               <span className="text-base font-black text-emerald-600 font-mono">
-                                ₹{dealPrice}
+                                â‚¹{dealPrice}
                               </span>
                               {originalPrice && (
                                 <span className="text-xs text-slate-400 line-through">
-                                  ₹{originalPrice}
+                                  â‚¹{originalPrice}
                                 </span>
                               )}
                             </div>
                           ) : (
                             <span className="text-base font-black text-pink-600 font-mono">
                               {type === "FLAT_AMT"
-                                ? `₹${value} FLAT`
+                                ? `â‚¹${value} FLAT`
                                 : type === "FLAT_PCT"
                                 ? `${value}% OFF`
                                 : "BOGO"}
                             </span>
                           )}
                           <span className="text-[10px] text-slate-400 block">
-                            Min spend ₹{minBillAmount}
+                            Min spend â‚¹{minBillAmount}
                           </span>
                         </div>
 

@@ -251,7 +251,7 @@ export default function Home() {
     });
   };
 
-  // Keyboard shortcuts (⌘K for AI, ⌘B for sidebar)
+  // Keyboard shortcuts (âŒ˜K for AI, âŒ˜B for sidebar)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -377,7 +377,7 @@ export default function Home() {
           longitude: s.longitude ? Number(s.longitude) : 79.0669,
           status: s.status || "ACTIVE",
           phone: s.contactPhone || s.phone || "",
-          operatingHours: s.openingTime && s.closingTime ? `${s.openingTime} – ${s.closingTime}` : "10:00 AM – 10:00 PM",
+          operatingHours: s.openingTime && s.closingTime ? `${s.openingTime} â€“ ${s.closingTime}` : "10:00 AM â€“ 10:00 PM",
           hasActiveOffer: true,
           createdAt: s.createdAt || new Date().toISOString(),
           storeEmail: s.contactEmail || "",
@@ -440,23 +440,42 @@ export default function Home() {
       }
       if (Array.isArray(backendOffers)) {
         store.setOffers(
-          backendOffers.map((o: any) => ({
-            id: o.id,
-            merchantId: o.merchantId,
-            merchantName: o.merchantName || "Partner Merchant",
-            storeId: o.storeId || "all",
-            title: o.title,
-            type: o.type === "PERCENTAGE_DISCOUNT" ? "FLAT_PCT" : (o.type === "CASHBACK" ? "CASHBACK" : "FLAT_INR"),
-            value: o.value,
-            maxDiscount: o.maxDiscountAmount || 0,
-            minBillAmount: o.minTransactionAmount || 0,
-            validFrom: o.validFrom ? o.validFrom.split("T")[0] : new Date().toISOString().split("T")[0],
-            validTo: o.validTo ? o.validTo.split("T")[0] : "",
-            status: o.status || "ACTIVE",
-            redemptions: o.currentUsageCount || 0,
-            terms: o.description || "Standard offer terms apply.",
-            createdAt: o.createdAt || new Date().toISOString(),
-          }))
+          backendOffers.map((o: any) => {
+            const matchedMerchant = store.merchants.find((m) => m.id === o.merchantId);
+            const matchedStore = store.stores.find((s) => s.id === o.storeId);
+            return {
+              id: o.id,
+              merchantId: o.merchantId,
+              merchantName: o.merchantName || matchedMerchant?.businessName || "Partner Brand",
+              storeId: o.storeId || "all",
+              storeName: o.storeName || matchedStore?.storeName || matchedStore?.branchName || "Main Branch",
+              title: o.title,
+              tagline: o.description || "",
+              type: (o.offerType || o.type) === "PERCENTAGE_DISCOUNT" ? "FLAT_PCT" : ((o.offerType || o.type) === "BUY_X_GET_Y" ? "BOGO" : "FLAT_AMT"),
+              value: Number(o.value) || 0,
+              maxDiscount: o.maxDiscountAmount ? Number(o.maxDiscountAmount) : 0,
+              minBillAmount: o.minTransactionAmount ? Number(o.minTransactionAmount) : 0,
+              validFrom: o.validFrom ? o.validFrom.split("T")[0] : new Date().toISOString().split("T")[0],
+              validTo: o.validTo ? o.validTo.split("T")[0] : "",
+              status: o.status === "DEACTIVATED" ? "PAUSED" : (o.status || "ACTIVE"),
+              approvalStatus: o.approvalStatus || "APPROVED",
+              redemptions: o.currentUsageCount || 0,
+              terms: o.termsAndConditions || o.description || "Standard offer terms apply.",
+              createdAt: o.createdAt || new Date().toISOString(),
+              scopeType: o.offerScope || "SERVICE",
+              originalPrice: o.originalMrp ? Number(o.originalMrp) : undefined,
+              dealPrice: o.flashSellingPrice ? Number(o.flashSellingPrice) : undefined,
+              isFlashDeal: Boolean(o.isFlash),
+              totalFlashUnits: o.remainingQuantity ? Number(o.remainingQuantity) : 50,
+              bonusCoins: o.bonusCoins ? Number(o.bonusCoins) : 100,
+              imageUrl: o.imageUrl || "",
+              badgeText: o.badgeText || "",
+              ctaText: o.ctaText || "Book & Pay",
+              isTableBookingEnabled: o.offerScope === "TABLE" || o.ctaText === "Reserve Table",
+              perUserLimit: o.perCustomerLimit || 1,
+              maxTotalRedemptions: o.usageLimit || 1000,
+            };
+          })
         );
       }
 
@@ -1045,6 +1064,18 @@ export default function Home() {
     }
   };
 
+  const formatInstant = (val?: string | null, isEnd: boolean = false): string => {
+    if (!val) {
+      return isEnd
+        ? new Date(Date.now() + 90 * 86400000).toISOString()
+        : new Date().toISOString();
+    }
+    if (val.includes("T")) {
+      return new Date(val).toISOString();
+    }
+    return new Date(`${val}T${isEnd ? "23:59:59" : "00:00:00"}Z`).toISOString();
+  };
+
   const handleAddOffer = async (draft: any) => {
     try {
       const merchantStores = store.stores.filter((s) => s.merchantId === draft.merchantId);
@@ -1054,13 +1085,13 @@ export default function Home() {
 
       if (!chosenStoreId && (!merchantStores || merchantStores.length === 0)) {
         toast.error("The merchant must have at least one store before creating an offer.");
-        return;
+        throw new Error("Merchant has no stores configured");
       }
 
       const payload: any = {
         merchantId: draft.merchantId,
         storeId: chosenStoreId,
-        title: draft.title || "Special Deal",
+        title: (draft.title || "Special Deal").trim(),
         description: draft.tagline || draft.terms || draft.description || "Offer details",
         termsAndConditions: draft.terms || "",
         offerType: draft.type === "FLAT_PCT" ? "PERCENTAGE_DISCOUNT" : (draft.type === "BOGO" ? "BUY_X_GET_Y" : "FIXED_DISCOUNT"),
@@ -1069,8 +1100,8 @@ export default function Home() {
         maxDiscountAmount: draft.maxDiscount ? Number(draft.maxDiscount) : null,
         usageLimit: Number(draft.maxTotalRedemptions) || 1000,
         perCustomerLimit: Number(draft.perUserLimit) || 1,
-        validFrom: draft.validFrom ? `${draft.validFrom}T00:00:00Z` : new Date().toISOString(),
-        validTo: draft.validTo ? `${draft.validTo}T23:59:59Z` : new Date(Date.now() + 90 * 86400000).toISOString(),
+        validFrom: formatInstant(draft.validFrom, false),
+        validTo: formatInstant(draft.validTo, true),
         offerScope: draft.scopeType || (draft.offerScope === "STORE_PRODUCT" ? "PRODUCT" : "SERVICE"),
         originalMrp: draft.originalPrice ? Number(draft.originalPrice) : null,
         flashSellingPrice: draft.dealPrice ? Number(draft.dealPrice) : null,
@@ -1082,53 +1113,58 @@ export default function Home() {
         ctaText: draft.ctaText || (draft.isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
       };
 
-      if (store.role === "ADMIN" || store.role === "SUPER_ADMIN" || !store.currentUser?.merchantId) {
-        await offerApi.createAdminOffer(payload);
+      const isAdmin = store.role?.toLowerCase() === "admin" || !store.currentUser?.merchantId;
+      let createdResponse: any;
+      if (isAdmin) {
+        createdResponse = await offerApi.createAdminOffer(payload);
       } else {
-        await offerApi.createOffer(payload);
+        createdResponse = await offerApi.createOffer(payload);
       }
 
-      toast.success(`Offer "${draft.title}" saved to database and activated!`);
-      // Update local reactive store with all rich fields
-      store.addOffer({
-        ...draft,
-        id: `offer-${Date.now()}`,
-        status: "ACTIVE",
-        approvalStatus: "APPROVED",
-        redemptions: 0,
-        createdAt: new Date().toISOString(),
-      });
+      toast.success(`Offer "${draft.title}" saved to PostgreSQL and active on mobile discovery!`);
       await syncBackendData();
+      return createdResponse;
     } catch (err: any) {
       console.error("Backend offer create error:", err?.response?.data || err.message);
-      toast.error(err?.response?.data?.message || err.message || "Failed to save offer to database");
-      store.addOffer({
-        ...draft,
-        id: `offer-${Date.now()}`,
-        status: "ACTIVE",
-        approvalStatus: "APPROVED",
-        redemptions: 0,
-        createdAt: new Date().toISOString(),
-      });
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err.message || "Failed to save offer to database";
+      toast.error(msg);
+      throw err;
+    }
+  };
+
+  const handleUpdateOfferStatus = async (
+    id: string,
+    status: "ACTIVE" | "REJECTED" | "EXPIRED" | "PENDING_APPROVAL" | "PAUSED",
+    reason?: string
+  ) => {
+    try {
+      if (status === "ACTIVE") {
+        await offerApi.approveOfferAdmin(id);
+        toast.success("Offer approved & live on mobile discovery!");
+      } else if (status === "PAUSED") {
+        await offerApi.suspendOfferAdmin(id, reason || "Paused by Super Admin");
+        toast.info("Campaign offer paused");
+      } else if (status === "REJECTED") {
+        await offerApi.rejectOfferAdmin(id, reason || "Rejected by Super Admin");
+        toast.warning("Campaign offer rejected");
+      }
+      await syncBackendData();
+    } catch (err: any) {
+      console.error("Backend offer status update error:", err?.response?.data || err.message);
+      toast.error(err?.response?.data?.message || err.message || "Failed to update offer status");
+      store.updateOfferStatus(id, status);
     }
   };
 
   const handleApproveOffer = async (id: string) => {
-    try {
-      await offerApi.approveOfferAdmin(id);
-      toast.success("Offer approved successfully!");
-      await syncBackendData();
-    } catch (err: any) {
-      console.warn("Backend offer approval:", err.message);
-      store.updateOfferStatus(id, "ACTIVE");
-    }
+    return handleUpdateOfferStatus(id, "ACTIVE");
   };
 
   const handleDeleteOffer = async (id: string) => {
     try {
       await offerApi.deleteOffer(id);
       store.deleteOffer(id);
-      toast.success("Offer permanently deleted.");
+      toast.success("Offer permanently deleted from database.");
       await syncBackendData();
     } catch (err: any) {
       console.warn("Backend offer delete notice:", err?.response?.data || err.message);
@@ -1320,13 +1356,7 @@ export default function Home() {
                           merchants={store.merchants}
                           stores={store.stores}
                           onAddOffer={handleAddOffer}
-                          onUpdateOfferStatus={(id, status) => {
-                            if (status === "ACTIVE") {
-                              handleApproveOffer(id);
-                            } else {
-                              store.updateOfferStatus(id, status);
-                            }
-                          }}
+                          onUpdateOfferStatus={handleUpdateOfferStatus}
                           onDeleteOffer={handleDeleteOffer}
                           onCloneOffer={(id) => {
                             const cloned = store.cloneOffer(id);

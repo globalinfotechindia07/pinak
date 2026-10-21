@@ -731,10 +731,18 @@ public class OfferServiceImpl implements OfferService {
     @Transactional(readOnly = true)
     public NearbyServiceOffersResponse getNearbyServiceOffers(
             Double latitude, Double longitude, Double radiusKm, UUID categoryId, Integer limit, String cursor) {
+        return getNearbyServiceOffers("SERVICE", latitude, longitude, radiusKm, categoryId, limit, cursor);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NearbyServiceOffersResponse getNearbyServiceOffers(
+            String type, Double latitude, Double longitude, Double radiusKm, UUID categoryId, Integer limit, String cursor) {
 
         int limitVal = (limit != null && limit > 0 && limit <= 50) ? limit : 10;
         Instant now = Instant.now();
         List<Offer> offers = new ArrayList<>();
+        String scopeFilter = (type != null && !type.isBlank()) ? type.toUpperCase() : "SERVICE";
 
         if (latitude != null && longitude != null) {
             double radiusMeters = (radiusKm != null && radiusKm > 0 ? radiusKm : 5.0) * 1000.0;
@@ -749,7 +757,7 @@ public class OfferServiceImpl implements OfferService {
                     .toList();
             List<UUID> safeMerchantIds = merchantIds.isEmpty() ? List.of(UUID.fromString("00000000-0000-0000-0000-000000000000")) : merchantIds;
             if (!storeIds.isEmpty()) {
-                offers = offerRepository.findActiveServiceOffersByStoreOrMerchantIds(storeIds, safeMerchantIds, now);
+                offers = offerRepository.findActiveOffersByStoreOrMerchantIds(storeIds, safeMerchantIds, scopeFilter, now);
             }
             // Strict Geo-filter: When coordinates are supplied, strictly return only matching nearby offers (no fallback)
             if (offers.size() > limitVal) {
@@ -757,8 +765,8 @@ public class OfferServiceImpl implements OfferService {
             }
         } else {
             // Only when no coordinates are provided (e.g. location disabled), show default category offers
-            Page<Offer> page = offerRepository.findActiveServiceOffers(
-                    categoryId, now, org.springframework.data.domain.PageRequest.of(0, limitVal));
+            Page<Offer> page = offerRepository.findActiveOffers(
+                    scopeFilter, categoryId, now, org.springframework.data.domain.PageRequest.of(0, limitVal));
             offers = page.getContent();
         }
 

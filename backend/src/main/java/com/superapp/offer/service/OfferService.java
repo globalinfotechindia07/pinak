@@ -54,6 +54,8 @@ public interface OfferService {
 
     void deleteAdminOffer(UUID offerId, UUID adminUserId);
 
+    NearbyServiceOffersResponse getNearbyServiceOffers(String type, Double latitude, Double longitude, Double radiusKm, UUID categoryId, Integer limit, String cursor);
+
     // Discover Operations (Public / Customer)
     NearbyServiceOffersResponse getNearbyServiceOffers(Double latitude, Double longitude, Double radiusKm, UUID categoryId, Integer limit, String cursor);
 
