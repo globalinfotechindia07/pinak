@@ -31,11 +31,11 @@ public class DiscoveryValidator {
     public void validateCoordinates(Double lat, Double lng) {
         List<Map<String, String>> details = new ArrayList<>();
 
-        if (lat == null || lat < -90.0 || lat > 90.0) {
+        if (lat == null || !Double.isFinite(lat) || lat < -90.0 || lat > 90.0) {
             details.add(Map.of("field", "lat", "message", "Latitude must be between -90 and 90"));
         }
 
-        if (lng == null || lng < -180.0 || lng > 180.0) {
+        if (lng == null || !Double.isFinite(lng) || lng < -180.0 || lng > 180.0) {
             details.add(Map.of("field", "lng", "message", "Longitude must be between -180 and 180"));
         }
 
@@ -47,7 +47,7 @@ public class DiscoveryValidator {
     public void validateRadius(Double radius) {
         if (radius == null) return;
 
-        if (radius < minRadius || radius > maxRadius) {
+        if (!Double.isFinite(radius) || radius < minRadius || radius > maxRadius) {
             List<Map<String, String>> details = List.of(
                     Map.of("field", "radius", "message", "Radius exceeds the maximum allowed value")
             );

@@ -42,6 +42,9 @@ class UserServiceTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private com.superapp.merchant.repository.MerchantRepository merchantRepository;
+
     private final UserMapper userMapper = new UserMapper();
     private UserService userService;
 
@@ -50,7 +53,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, passwordEncoder, userMapper, auditService);
+        userService = new UserService(userRepository, null, null, passwordEncoder, userMapper, auditService, null, merchantRepository);
 
         userId = UUID.randomUUID();
         sampleUser = new User("rohan@example.com", "Rohan User", "Rohan", "User", "hashed_pw", Role.CUSTOMER);
@@ -224,7 +227,7 @@ class UserServiceTest {
         @DisplayName("Creates user with hashed password and calculated profile completion")
         void createUser_success() {
             when(userRepository.existsByEmail("admin.new@example.com")).thenReturn(false);
-            when(userRepository.existsByMobile("+919998887776")).thenReturn(false);
+            when(userRepository.existsByPhone("+919998887776")).thenReturn(false);
             when(passwordEncoder.encode("SecretPass123!")).thenReturn("hashed_secret");
 
             ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
@@ -250,6 +253,59 @@ class UserServiceTest {
             assertThat(saved.getEmail()).isEqualTo("admin.new@example.com");
             assertThat(saved.getPhone()).isEqualTo("+919998887776");
             assertThat(saved.isProfileCompleted()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("Enterprise Business Rules: Staff Assignment")
+    class StaffAssignmentEnterpriseRules {
+
+        @Test
+        @DisplayName("validateStaffAssignmentEmail throws AppException when email matches Merchant Owner")
+        void throwsWhenMatchingMerchantOwner() {
+            UUID merchantId = UUID.randomUUID();
+            com.superapp.merchant.entity.Merchant merchant = new com.superapp.merchant.entity.Merchant();
+            merchant.setEmail("rohanitu@gmail.com");
+            merchant.setBusinessName("Haldiram's Sweets & Snacks");
+            when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
+
+            assertThatThrownBy(() -> userService.validateStaffAssignmentEmail("rohanitu@gmail.com", "STORE", merchantId, null))
+                    .isInstanceOf(com.superapp.common.exception.AppException.class)
+                    .hasMessageContaining("Store manager cannot use the Merchant Owner's email");
+        }
+
+        @Test
+        @DisplayName("validateStaffAssignmentEmail throws when email belongs to the owner of another merchant business")
+        void throwsWhenEmailBelongsToAnotherMerchantOwner() {
+            UUID merchantId = UUID.randomUUID();
+            com.superapp.merchant.entity.Merchant currentMerchant = new com.superapp.merchant.entity.Merchant();
+            currentMerchant.setId(merchantId);
+            currentMerchant.setEmail("brand1@example.com");
+            when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(currentMerchant));
+
+            User otherMerchantOwner = new User();
+            otherMerchantOwner.setId(UUID.randomUUID());
+            otherMerchantOwner.setEmail("otherowner@example.com");
+            otherMerchantOwner.setRole(Role.MERCHANT);
+            when(userRepository.findByEmail("otherowner@example.com")).thenReturn(Optional.of(otherMerchantOwner));
+
+            assertThatThrownBy(() -> userService.validateStaffAssignmentEmail("otherowner@example.com", "STORE", merchantId, null))
+                    .isInstanceOf(com.superapp.common.exception.AppException.class)
+                    .hasMessageContaining("registered as a Merchant Owner account");
+        }
+
+        @Test
+        @DisplayName("validateStaffAssignmentEmail passes when email is distinct dedicated branch email")
+        void passesWhenDedicatedBranchEmail() {
+            UUID merchantId = UUID.randomUUID();
+            com.superapp.merchant.entity.Merchant merchant = new com.superapp.merchant.entity.Merchant();
+            merchant.setEmail("rohanitu@gmail.com");
+            merchant.setBusinessName("Haldiram's Sweets & Snacks");
+            when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
+            when(userRepository.findByEmail("branch.manager@haldiram.com")).thenReturn(Optional.empty());
+
+            // Should not throw
+            userService.validateStaffAssignmentEmail("branch.manager@haldiram.com", "STORE", merchantId, null);
         }
     }
 }

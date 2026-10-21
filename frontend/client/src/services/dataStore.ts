@@ -17,6 +17,7 @@ import {
   StoreRevenueSummary,
   PlatformSettlementOverview
 } from "../types";
+import { tokenManager } from "../api/tokenManager";
 
 const STORAGE_KEYS = {
   MERCHANTS: "pinak_merchants_live",
@@ -28,10 +29,6 @@ const STORAGE_KEYS = {
   REWARDS: "pinak_rewards_live",
   AUDIT: "pinak_audit_live",
   NOTIFICATIONS: "pinak_notifications_live",
-  CURRENT_USER: "pinak_current_user",
-  IS_AUTHENTICATED: "pinak_is_authenticated",
-  USER_ROLE: "pinak_user_role",
-  USER_EMAIL: "pinak_user_email",
   ACTIVE_STORE: "pinak_active_store",
   CITIES: "pinak_cities_live",
   DISCOVERY_CURATION: "pinak_discovery_curation_live",
@@ -41,83 +38,22 @@ const STORAGE_KEYS = {
   PAYOUTS: "pinak_payouts_live",
 };
 
-// Clean out any legacy mock storage keys with dummy seed records
-function purgeLegacyMockStorage() {
+// Purge ALL pinak_* keys from localStorage on startup to guarantee zero persistent client state
+export function purgeAllLocalStorage() {
   try {
-    const legacyKeys = [
-      "pinak_merchants_v2",
-      "pinak_stores_v2",
-      "pinak_offers_v2",
-      "pinak_transactions_v2",
-      "pinak_customers_v2",
-      "pinak_categories_v2",
-      "pinak_rewards_v2",
-      "pinak_audit_v2",
-      "pinak_notifications_v2",
-      "pinak_mock_seeded"
-    ];
-    legacyKeys.forEach(k => localStorage.removeItem(k));
-
-    // Also purge any cached audit logs containing legacy mock IDs or old dummy email
-    const currentAuditRaw = localStorage.getItem(STORAGE_KEYS.AUDIT);
-    if (
-      currentAuditRaw &&
-      (currentAuditRaw.includes("aud-auth-101") ||
-        currentAuditRaw.includes("aud-merch-102") ||
-        currentAuditRaw.includes("aud-store-104") ||
-        currentAuditRaw.includes("admin@pinak.in"))
-    ) {
-      localStorage.removeItem(STORAGE_KEYS.AUDIT);
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith("pinak_") || k.includes("pinak") || k.startsWith("STORAGE_"))) {
+        keysToRemove.push(k);
+      }
     }
-
-    // Purge old dummy merchant records from localStorage if present
-    const currentMerchRaw = localStorage.getItem(STORAGE_KEYS.MERCHANTS);
-    if (
-      currentMerchRaw &&
-      (currentMerchRaw.includes("The Bombay Canteen") ||
-        currentMerchRaw.includes("The Curry Leaf") ||
-        currentMerchRaw.includes("Curry Leaf Hospitality") ||
-        currentMerchRaw.includes("Hunger Inc"))
-    ) {
-      localStorage.removeItem(STORAGE_KEYS.MERCHANTS);
-    }
-
-    // Purge old dummy store records from localStorage if present
-    const currentStoresRaw = localStorage.getItem(STORAGE_KEYS.STORES);
-    if (
-      currentStoresRaw &&
-      (currentStoresRaw.includes("Dharampeth Flagship") ||
-        currentStoresRaw.includes("Civil Lines Executive") ||
-        currentStoresRaw.includes("The Curry Leaf") ||
-        currentStoresRaw.includes("The Bombay Canteen"))
-    ) {
-      localStorage.removeItem(STORAGE_KEYS.STORES);
-    }
-
-    // Purge old dummy offer records from localStorage if present
-    const currentOffersRaw = localStorage.getItem(STORAGE_KEYS.OFFERS);
-    if (
-      currentOffersRaw &&
-      (currentOffersRaw.includes("The Curry Leaf") ||
-        currentOffersRaw.includes("The Bombay Canteen"))
-    ) {
-      localStorage.removeItem(STORAGE_KEYS.OFFERS);
-    }
-
-    const currentBroadcasts = localStorage.getItem("pinak_broadcast_campaigns");
-    if (currentBroadcasts && (currentBroadcasts.includes("The Curry Leaf") || currentBroadcasts.includes("bc-1"))) {
-      localStorage.removeItem("pinak_broadcast_campaigns");
-    }
-
-    const currentPlaybooks = localStorage.getItem("pinak_growth_playbooks");
-    if (currentPlaybooks && (currentPlaybooks.includes("The Curry Leaf") || currentPlaybooks.includes("pb-1"))) {
-      localStorage.removeItem("pinak_growth_playbooks");
-    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
   } catch {
     // Ignore storage access errors in non-browser environments
   }
 }
-purgeLegacyMockStorage();
+purgeAllLocalStorage();
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -126,22 +62,19 @@ function emitChange() {
   listeners.forEach(l => l());
 }
 
+// In-Memory Storage Map (Strictly RAM — Zero LocalStorage)
+const inMemoryStore = new Map<string, any>();
+
 function getStored<T>(key: string, defaultValue: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return defaultValue;
-    return JSON.parse(raw);
-  } catch {
+  if (!inMemoryStore.has(key)) {
+    inMemoryStore.set(key, defaultValue);
     return defaultValue;
   }
+  return inMemoryStore.get(key) as T;
 }
 
 function setStored<T>(key: string, value: T) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Ignore storage quota/security errors
-  }
+  inMemoryStore.set(key, value);
   emitChange();
 }
 
@@ -158,45 +91,41 @@ export interface CurrentUserProfile {
   status?: string;
 }
 
+// ==========================================
+// Strict In-Memory Auth State (Zero LocalStorage)
+// Tokens stay strictly in JavaScript memory closure (tokenManager.ts)
+// Refresh token stays strictly in backend HttpOnly cookie (/api/v1/auth)
+// ==========================================
+let inMemoryIsAuthenticated = false;
+let inMemoryCurrentUser: CurrentUserProfile | null = null;
+let inMemoryUserRole: UserRole = "admin";
+let inMemoryActiveStoreId: string | null = null;
+
 export const appStore = {
   subscribe(listener: Listener) {
     listeners.add(listener);
     return () => listeners.delete(listener);
   },
 
-  // Auth State
+  // Auth State (Strictly In-Memory)
   isAuthenticated(): boolean {
-    try {
-      return localStorage.getItem(STORAGE_KEYS.IS_AUTHENTICATED) === "true";
-    } catch {
-      return false;
-    }
+    return inMemoryIsAuthenticated && !!tokenManager.getAccessToken();
   },
 
   getCurrentRole(): UserRole {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.USER_ROLE) as UserRole | null;
-      if (stored === "admin" || stored === "merchant" || stored === "store") {
-        return stored;
-      }
-      return "admin";
-    } catch {
-      return "admin";
-    }
+    return inMemoryCurrentUser?.role || inMemoryUserRole;
   },
 
   setCurrentRole(role: UserRole) {
-    try {
-      localStorage.setItem(STORAGE_KEYS.USER_ROLE, role);
-    } catch {}
+    inMemoryUserRole = role;
+    if (inMemoryCurrentUser) {
+      inMemoryCurrentUser = { ...inMemoryCurrentUser, role };
+    }
     emitChange();
   },
 
   getCurrentUser(): CurrentUserProfile | null {
-    return getStored<CurrentUserProfile | null>(
-      STORAGE_KEYS.CURRENT_USER,
-      null
-    );
+    return inMemoryCurrentUser;
   },
 
   hasPermission(permKey: string): boolean {
@@ -216,21 +145,11 @@ export const appStore = {
   },
 
   getActiveStoreId(): string | null {
-    try {
-      return localStorage.getItem(STORAGE_KEYS.ACTIVE_STORE) || null;
-    } catch {
-      return null;
-    }
+    return inMemoryActiveStoreId;
   },
 
   setActiveStoreId(id: string | null) {
-    try {
-      if (id) {
-        localStorage.setItem(STORAGE_KEYS.ACTIVE_STORE, id);
-      } else {
-        localStorage.removeItem(STORAGE_KEYS.ACTIVE_STORE);
-      }
-    } catch {}
+    inMemoryActiveStoreId = id;
     emitChange();
   },
 
@@ -249,76 +168,66 @@ export const appStore = {
       status?: string;
     }
   ) {
-    try {
-      localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, "true");
-      localStorage.setItem(STORAGE_KEYS.USER_ROLE, role);
-      if (email) localStorage.setItem(STORAGE_KEYS.USER_EMAIL, email);
-      if (storeId) {
-        localStorage.setItem(STORAGE_KEYS.ACTIVE_STORE, storeId);
-      } else {
-        localStorage.removeItem(STORAGE_KEYS.ACTIVE_STORE);
-      }
+    inMemoryIsAuthenticated = true;
+    inMemoryUserRole = role;
+    inMemoryActiveStoreId = storeId || null;
 
-      let parsedPermissions: Record<string, boolean> | undefined;
-      if (typeof userMeta?.permissions === "string") {
-        try {
-          parsedPermissions = JSON.parse(userMeta.permissions);
-        } catch {
-          parsedPermissions = undefined;
+    let parsedPermissions: Record<string, boolean> | undefined;
+    if (typeof userMeta?.permissions === "string") {
+      try {
+        parsedPermissions = JSON.parse(userMeta.permissions);
+      } catch {
+        parsedPermissions = undefined;
+      }
+    } else if (typeof userMeta?.permissions === "object") {
+      parsedPermissions = userMeta.permissions as Record<string, boolean>;
+    }
+
+    // Sanitize: ONLY retain boolean values for legitimate permission keys (strip inviteToken, inviteExpiresAt, etc.)
+    if (parsedPermissions && typeof parsedPermissions === "object") {
+      const cleanPerms: Record<string, boolean> = {};
+      for (const [key, val] of Object.entries(parsedPermissions)) {
+        if (typeof val === "boolean") {
+          cleanPerms[key] = val;
         }
-      } else if (typeof userMeta?.permissions === "object") {
-        parsedPermissions = userMeta.permissions as Record<string, boolean>;
       }
+      parsedPermissions = cleanPerms;
+    }
 
-      // Sanitize: ONLY retain boolean values for legitimate permission keys (strip inviteToken, inviteExpiresAt, etc.)
-      if (parsedPermissions && typeof parsedPermissions === "object") {
-        const cleanPerms: Record<string, boolean> = {};
-        for (const [key, val] of Object.entries(parsedPermissions)) {
-          if (typeof val === "boolean") {
-            cleanPerms[key] = val;
-          }
-        }
-        parsedPermissions = cleanPerms;
-      }
+    inMemoryCurrentUser = {
+      id: userMeta?.id,
+      name: userMeta?.name || (role === "admin" ? "Platform Administrator" : role === "store" ? "Store Manager" : "Merchant Partner"),
+      email: email || (role === "admin" ? "admin@pinak.app" : "partner@pinak.app"),
+      role,
+      staffScope: userMeta?.staffScope,
+      staffRoleId: userMeta?.staffRoleId,
+      staffRoleName: userMeta?.staffRoleName || userMeta?.roleName,
+      permissions: parsedPermissions,
+      status: userMeta?.status,
+    };
 
-      const userProfile: CurrentUserProfile = {
-        id: userMeta?.id,
-        name: userMeta?.name || (role === "admin" ? "Platform Administrator" : role === "store" ? "Store Manager" : "Merchant Partner"),
-        email: email || (role === "admin" ? "admin@pinak.app" : "partner@pinak.app"),
-        role,
-        staffScope: userMeta?.staffScope,
-        staffRoleId: userMeta?.staffRoleId,
-        staffRoleName: userMeta?.staffRoleName || userMeta?.roleName,
-        permissions: parsedPermissions,
-        status: userMeta?.status,
-      };
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(userProfile));
-    } catch {}
     emitChange();
   },
 
   updateCurrentUser(updates: Partial<CurrentUserProfile>) {
-    const current = this.getCurrentUser();
-    if (!current) return;
-    const updated: CurrentUserProfile = {
-      ...current,
-      ...updates,
-      permissions: updates.permissions !== undefined ? updates.permissions : current.permissions,
-    };
-    try {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updated));
-    } catch {}
-    emitChange();
+    if (inMemoryCurrentUser) {
+      inMemoryCurrentUser = {
+        ...inMemoryCurrentUser,
+        ...updates,
+        permissions: updates.permissions !== undefined ? updates.permissions : inMemoryCurrentUser.permissions,
+      };
+      emitChange();
+    }
   },
 
   logout() {
-    try {
-      localStorage.removeItem(STORAGE_KEYS.IS_AUTHENTICATED);
-      localStorage.removeItem(STORAGE_KEYS.USER_ROLE);
-      localStorage.removeItem(STORAGE_KEYS.USER_EMAIL);
-      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-      localStorage.removeItem(STORAGE_KEYS.ACTIVE_STORE);
-    } catch {}
+    inMemoryIsAuthenticated = false;
+    inMemoryCurrentUser = null;
+    inMemoryActiveStoreId = null;
+    inMemoryUserRole = "admin";
+    inMemoryStore.clear();
+    tokenManager.clearAccessToken();
+    purgeAllLocalStorage();
     emitChange();
   },
 
@@ -351,7 +260,7 @@ export const appStore = {
       gstin: draft.gstin || "",
       pan: draft.pan || "",
       kycStatus: draft.kycStatus || "PENDING_REVIEW",
-      status: draft.status || "ACTIVE",
+      status: draft.status || "INACTIVE",
       rating: draft.rating || 5.0,
       initials: (draft.businessName || "M").substring(0, 2).toUpperCase(),
       createdAt: draft.createdAt || new Date().toISOString(),
@@ -388,6 +297,7 @@ export const appStore = {
     const updated = all.map(m => m.id === id ? {
       ...m,
       kycStatus: status,
+      status: status === "APPROVED" ? ("ACTIVE" as const) : status === "SUSPENDED" ? ("SUSPENDED" as const) : ("INACTIVE" as const),
       kycReviewedBy: reviewerName,
       kycReviewedAt: now
     } : m);
@@ -460,7 +370,20 @@ export const appStore = {
     return getStored<Store[]>(STORAGE_KEYS.STORES, []);
   },
   setStores(stores: Store[]) {
-    setStored(STORAGE_KEYS.STORES, stores);
+    const existing = getStored<Store[]>(STORAGE_KEYS.STORES, []);
+    const merged = stores.map((st) => {
+      const prev = existing.find((e) => e.id === st.id);
+      if (!prev) return st;
+      return {
+        ...st,
+        managerName: st.managerName || prev.managerName,
+        managerEmail: st.managerEmail || prev.managerEmail,
+        managerPhone: st.managerPhone || prev.managerPhone,
+        storeEmail: st.storeEmail || prev.storeEmail,
+        storePin: st.storePin || prev.storePin,
+      };
+    });
+    setStored(STORAGE_KEYS.STORES, merged);
   },
   addStore(draft: Partial<Store>): Store {
     const all = this.getStores();
@@ -481,13 +404,15 @@ export const appStore = {
       latitude: draft.latitude || 21.1458,
       longitude: draft.longitude || 79.0882,
       status: draft.status || "ACTIVE",
-      phone: draft.phone || "+91 98220 00000",
+      phone: draft.managerPhone || draft.phone || "+91 98220 00000",
       operatingHours: draft.operatingHours || "10:00 - 22:00",
       hasActiveOffer: draft.hasActiveOffer ?? false,
       createdAt: draft.createdAt || new Date().toISOString(),
-      storeEmail: draft.storeEmail,
+      storeEmail: draft.storeEmail || draft.managerEmail,
       storePin: draft.storePin,
       managerName: draft.managerName,
+      managerEmail: draft.managerEmail,
+      managerPhone: draft.managerPhone || draft.phone,
     };
     setStored(STORAGE_KEYS.STORES, [newStore, ...all]);
 
@@ -1255,11 +1180,8 @@ export const appStore = {
   },
 
   resetToDefaults() {
-    Object.values(STORAGE_KEYS).forEach(k => {
-      try {
-        localStorage.removeItem(k);
-      } catch {}
-    });
+    inMemoryStore.clear();
+    purgeAllLocalStorage();
     emitChange();
   }
 };

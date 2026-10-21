@@ -30,6 +30,13 @@ public record UpdateStoreRequest(
         @NotNull(message = "Longitude must not be null")
         @DecimalMin(value = "-180.0", message = "Longitude must be between -180 and 180")
         @DecimalMax(value = "180.0", message = "Longitude must be between -180 and 180")
-        BigDecimal longitude
+        BigDecimal longitude,
+
+        @Pattern(regexp = "^$|^[+]?[0-9]{7,20}$", message = "Invalid contact phone number format")
+        String contactPhone
 ) {
+    public UpdateStoreRequest(String storeName, String address, String cityId, String state,
+                              String pincode, BigDecimal latitude, BigDecimal longitude) {
+        this(storeName, address, cityId, state, pincode, latitude, longitude, null);
+    }
 }

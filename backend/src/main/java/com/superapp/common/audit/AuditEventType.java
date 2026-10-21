@@ -46,6 +46,7 @@ public enum AuditEventType {
     MERCHANT_REJECTED,
     MERCHANT_SUSPENDED,
     MERCHANT_REACTIVATED,
+    MERCHANT_DELETED,
 
     // Store lifecycle
     STORE_CREATED,

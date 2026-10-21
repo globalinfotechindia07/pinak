@@ -56,6 +56,9 @@ public class MerchantServiceImpl implements MerchantService {
     private final StaffMemberRepository staffMemberRepository;
     private final com.superapp.wallet.repository.MerchantBankAccountRepository bankAccountRepository;
     private final com.superapp.wallet.repository.MerchantWalletRepository walletRepository;
+    private final com.superapp.auth.service.SessionService sessionService;
+    @Autowired(required = false)
+    private com.superapp.store.repository.StoreRepository storeRepository;
 
     @Autowired
     public MerchantServiceImpl(
@@ -69,7 +72,8 @@ public class MerchantServiceImpl implements MerchantService {
             @Autowired(required = false) com.superapp.common.email.EmailService emailService,
             @Autowired(required = false) StaffMemberRepository staffMemberRepository,
             @Autowired(required = false) com.superapp.wallet.repository.MerchantBankAccountRepository bankAccountRepository,
-            @Autowired(required = false) com.superapp.wallet.repository.MerchantWalletRepository walletRepository) {
+            @Autowired(required = false) com.superapp.wallet.repository.MerchantWalletRepository walletRepository,
+            @Autowired(required = false) com.superapp.auth.service.SessionService sessionService) {
         this.merchantRepository = merchantRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
@@ -81,6 +85,7 @@ public class MerchantServiceImpl implements MerchantService {
         this.staffMemberRepository = staffMemberRepository;
         this.bankAccountRepository = bankAccountRepository;
         this.walletRepository = walletRepository;
+        this.sessionService = sessionService;
     }
 
     // Overloaded constructors for backward compatibility with existing unit tests
@@ -88,7 +93,7 @@ public class MerchantServiceImpl implements MerchantService {
             MerchantRepository merchantRepository,
             CategoryRepository categoryRepository,
             UserRepository userRepository) {
-        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null, null, null, null);
+        this(merchantRepository, categoryRepository, userRepository, null, null, new MerchantMapper(), null, null, null, null, null, null);
     }
 
     public MerchantServiceImpl(
@@ -99,7 +104,7 @@ public class MerchantServiceImpl implements MerchantService {
             AuditService auditService,
             MerchantMapper merchantMapper,
             PasswordEncoder passwordEncoder) {
-        this(merchantRepository, categoryRepository, userRepository, merchantKycRepository, auditService, merchantMapper, passwordEncoder, null, null, null, null);
+        this(merchantRepository, categoryRepository, userRepository, merchantKycRepository, auditService, merchantMapper, passwordEncoder, null, null, null, null, null);
     }
 
     @Override
@@ -121,22 +126,48 @@ public class MerchantServiceImpl implements MerchantService {
             }
         }
 
+        // Global check: ensure no merchant is already registered with this phone number
+        if (phone != null && !phone.isBlank()) {
+            if (merchantRepository.existsByPhone(phone)) {
+                throw new AppException("A merchant brand is already registered with phone number: " + phone,
+                        ApiError.VALIDATION_ERROR, 400);
+            }
+            if (storeRepository != null && storeRepository.existsByPhone(phone)) {
+                throw new AppException("Phone number " + phone + " is already registered to an active store branch.",
+                        ApiError.VALIDATION_ERROR, 400);
+            }
+            if (userRepository.existsByPhone(phone)) {
+                // If the phone belongs to an existing user, check if that user's email matches
+                Optional<User> userByPhone = userRepository.findByPhone(phone);
+                if (userByPhone.isPresent() && (email == null || !userByPhone.get().getEmail().equalsIgnoreCase(email))) {
+                    throw new AppException("Phone number " + phone + " is already linked to another user account.",
+                            ApiError.VALIDATION_ERROR, 400);
+                }
+            }
+        }
+
         // If admin onboards a merchant, associate or provision owner user by email
         if (isAdmin && email != null && !email.isBlank()) {
             Optional<User> existingUser = userRepository.findByEmail(email);
             if (existingUser.isPresent()) {
                 User u = existingUser.get();
-                // Reject role collision: platform staff/admins cannot be registered as merchant
-                // owners
+                // Reject role collision: platform staff/admins cannot be registered as merchant owners
                 if (u.getRole() == Role.ADMIN || u.getRole() == Role.SUPER_ADMIN) {
                     throw new AppException(
                             "This email is already associated with an administrator account. Please use a separate email address for the merchant owner.",
                             ApiError.VALIDATION_FAILED, 400);
                 }
+                // Check if existing user already owns an active merchant brand
+                if (merchantRepository.existsByOwnerUserId(u.getId())) {
+                    throw new AppException(
+                            "This merchant owner email is already linked to an active merchant business.",
+                            ApiError.VALIDATION_ERROR, 400);
+                }
                 if (u.getRole() == Role.CUSTOMER) {
                     u.setRole(Role.MERCHANT);
-                    userRepository.save(u);
                 }
+                u.setStatus(UserStatus.ACTIVE);
+                userRepository.save(u);
                 ownerId = u.getId();
             } else {
                 String fullName = (legalName != null && !legalName.isBlank()) ? legalName
@@ -144,12 +175,12 @@ public class MerchantServiceImpl implements MerchantService {
                 String[] parts = fullName.split("\\s+", 2);
                 String fName = parts[0];
                 String lName = parts.length > 1 ? parts[1] : "Owner";
-                // Secure random initial password hash - owner will set master password via
-                // direct invitation link
+                // Secure random initial password hash - owner will set master password via direct invitation link
                 String pwdHash = passwordEncoder != null
                         ? passwordEncoder.encode(UUID.randomUUID().toString())
                         : "$2a$10$w8.3b04J0n0W6wG6eYgPZe9q3g3C9iYy1U2m7m9wK4jE5bH5c2F7O";
                 User newOwner = new User(email, fullName, fName, lName, pwdHash, Role.MERCHANT);
+                newOwner.setStatus(UserStatus.INACTIVE);
                 if (phone != null && !phone.isBlank()) {
                     newOwner.setMobile(phone);
                 }
@@ -195,21 +226,6 @@ public class MerchantServiceImpl implements MerchantService {
                 email,
                 website);
 
-        if (request.bankUpiId() != null && !request.bankUpiId().isBlank()) {
-            merchant.setBankUpiId(request.bankUpiId().trim());
-        }
-        if (request.bankName() != null && !request.bankName().isBlank()) {
-            merchant.setBankName(request.bankName().trim());
-        }
-        if (request.accountHolderName() != null && !request.accountHolderName().isBlank()) {
-            merchant.setAccountHolderName(request.accountHolderName().trim());
-        }
-        if (request.bankAccountNumber() != null && !request.bankAccountNumber().isBlank()) {
-            merchant.setBankAccountNumber(request.bankAccountNumber().trim());
-        }
-        if (request.bankIfsc() != null && !request.bankIfsc().isBlank()) {
-            merchant.setBankIfsc(request.bankIfsc().trim().toUpperCase());
-        }
         if (request.commissionRate() != null) {
             merchant.setCommissionRate(request.commissionRate());
         }
@@ -236,11 +252,13 @@ public class MerchantServiceImpl implements MerchantService {
         }
 
         if (isAdmin) {
-            merchant.setStatus(MerchantStatus.ACTIVE);
+            merchant.setStatus(MerchantStatus.INACTIVE);
             merchant.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             merchant.setKycStatus(KycStatus.PENDING);
             merchant.setApprovedAt(null);
             merchant.setCreatedBy("ADMIN");
+        } else {
+            merchant.setStatus(MerchantStatus.INACTIVE);
         }
 
         Merchant saved = merchantRepository.save(merchant);
@@ -252,8 +270,8 @@ public class MerchantServiceImpl implements MerchantService {
         }
 
         // Auto-provision initial MerchantKyc compliance record in merchant_kyc table
-        if (merchantKycRepository != null && ((request.pan() != null && !request.pan().isBlank()) || (request.gstin() != null && !request.gstin().isBlank()))) {
-            saveOrUpdateMerchantKycRecord(saved.getId(), categoryName, request.pan(), request.gstin(), request.bankAccountNumber(), request.bankIfsc(), request.bankName(), "PENDING");
+        if (merchantKycRepository != null) {
+            saveOrUpdateMerchantKycRecord(saved.getId(), categoryName, "PENDING");
         }
 
         // Auto-provision merchant financial ledger wallet in merchant_wallets table
@@ -333,7 +351,7 @@ public class MerchantServiceImpl implements MerchantService {
             log.info("📧 Dispatched merchant setup email with direct invite URL to {}: {}", email, inviteUrl);
         }
 
-        return MerchantResponse.fromEntity(saved, categoryName);
+        return toMerchantResponse(saved, categoryName);
     }
 
     @Override
@@ -410,7 +428,6 @@ public class MerchantServiceImpl implements MerchantService {
                 request.documentType().trim(),
                 request.documentNumber().trim(),
                 request.businessRegistrationNumber() != null ? request.businessRegistrationNumber().trim() : null,
-                request.taxId() != null ? request.taxId().trim() : null,
                 request.documentUrl() != null ? request.documentUrl().trim() : null);
 
         MerchantKyc savedKyc = merchantKycRepository != null ? merchantKycRepository.save(kyc) : kyc;
@@ -451,6 +468,7 @@ public class MerchantServiceImpl implements MerchantService {
         }
 
         merchant.setApprovalStatus(ApprovalStatus.APPROVED);
+        merchant.setStatus(MerchantStatus.ACTIVE);
         merchant.setApprovedAt(Instant.now());
         merchant.setKycStatus(KycStatus.VERIFIED);
         merchant.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
@@ -499,6 +517,7 @@ public class MerchantServiceImpl implements MerchantService {
         }
 
         merchant.setApprovalStatus(ApprovalStatus.REJECTED);
+        merchant.setStatus(MerchantStatus.INACTIVE);
         merchant.setRejectionReason(reason.trim());
         merchant.setKycStatus(KycStatus.REJECTED);
         merchant.setUpdatedBy(adminUserId != null ? adminUserId.toString() : "ADMIN");
@@ -654,14 +673,14 @@ public class MerchantServiceImpl implements MerchantService {
         Merchant merchant = merchantRepository.findById(id)
                 .orElseThrow(() -> new AppException("Merchant not found", ApiError.MERCHANT_NOT_FOUND, 404));
         String categoryName = getCategoryName(merchant.getCategoryId());
-        return MerchantResponse.fromEntity(merchant, categoryName);
+        return toMerchantResponse(merchant, categoryName);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<MerchantResponse> getAllMerchants(Pageable pageable) {
         return merchantRepository.findAll(pageable)
-                .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
+                .map(m -> toMerchantResponse(m, getCategoryName(m.getCategoryId())));
     }
 
     @Override
@@ -670,13 +689,13 @@ public class MerchantServiceImpl implements MerchantService {
             ApprovalStatus approvalStatus) {
         if (status != null && approvalStatus != null) {
             return merchantRepository.findByStatusAndApprovalStatus(status, approvalStatus, pageable)
-                    .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
+                    .map(m -> toMerchantResponse(m, getCategoryName(m.getCategoryId())));
         } else if (status != null) {
             return merchantRepository.findByStatus(status, pageable)
-                    .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
+                    .map(m -> toMerchantResponse(m, getCategoryName(m.getCategoryId())));
         } else if (approvalStatus != null) {
             return merchantRepository.findByApprovalStatus(approvalStatus, pageable)
-                    .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
+                    .map(m -> toMerchantResponse(m, getCategoryName(m.getCategoryId())));
         }
         return getAllMerchants(pageable);
     }
@@ -685,7 +704,7 @@ public class MerchantServiceImpl implements MerchantService {
     @Transactional(readOnly = true)
     public Page<MerchantResponse> getMerchantsByOwner(UUID ownerUserId, Pageable pageable) {
         return merchantRepository.findByOwnerUserId(ownerUserId, pageable)
-                .map(m -> MerchantResponse.fromEntity(m, getCategoryName(m.getCategoryId())));
+                .map(m -> toMerchantResponse(m, getCategoryName(m.getCategoryId())));
     }
 
     @Override
@@ -725,8 +744,6 @@ public class MerchantServiceImpl implements MerchantService {
             merchant.setGstin(request.gstin().trim());
         if (request.pan() != null)
             merchant.setPan(request.pan().trim());
-        if (request.bankUpiId() != null)
-            merchant.setBankUpiId(request.bankUpiId().trim());
         if (request.commissionRate() != null)
             merchant.setCommissionRate(request.commissionRate());
         if (request.state() != null)
@@ -739,23 +756,15 @@ public class MerchantServiceImpl implements MerchantService {
             merchant.setPincode(request.pincode().trim());
         if (request.address() != null)
             merchant.setAddress(request.address().trim());
-        if (request.bankName() != null)
-            merchant.setBankName(request.bankName().trim());
-        if (request.accountHolderName() != null)
-            merchant.setAccountHolderName(request.accountHolderName().trim());
-        if (request.bankAccountNumber() != null)
-            merchant.setBankAccountNumber(request.bankAccountNumber().trim());
-        if (request.bankIfsc() != null)
-            merchant.setBankIfsc(request.bankIfsc().trim().toUpperCase());
 
         Merchant updated = merchantRepository.save(merchant);
         log.info("Updated merchant id={} name='{}'", updated.getId(), updated.getBusinessName());
 
-        if (bankAccountRepository != null && updated.getBankAccountNumber() != null && !updated.getBankAccountNumber().isBlank()) {
-            saveOrUpdatePrimaryBankAccount(updated.getId(), updated.getBankName(), updated.getAccountHolderName(), updated.getBankAccountNumber(), updated.getBankIfsc(), updated.getBankUpiId());
+        if (bankAccountRepository != null && request.bankAccountNumber() != null && !request.bankAccountNumber().isBlank()) {
+            saveOrUpdatePrimaryBankAccount(updated.getId(), request.bankName(), request.accountHolderName(), request.bankAccountNumber(), request.bankIfsc(), request.bankUpiId());
         }
 
-        return MerchantResponse.fromEntity(updated, categoryName);
+        return toMerchantResponse(updated, categoryName);
     }
 
     @Override
@@ -769,8 +778,59 @@ public class MerchantServiceImpl implements MerchantService {
                     ApiError.MERCHANT_ACCESS_DENIED, 403);
         }
 
+        UUID ownerId = merchant.getOwnerUserId();
+
+        // 1. Invalidate sessions and delete staff members scoped to this merchant
+        if (staffMemberRepository != null) {
+            List<StaffMember> merchantStaff = staffMemberRepository.findByMerchantId(id);
+            for (StaffMember staff : merchantStaff) {
+                if (sessionService != null && staff.getUserId() != null) {
+                    userRepository.findById(staff.getUserId()).ifPresent(sessionService::revokeAllSessions);
+                }
+                staffMemberRepository.delete(staff);
+            }
+        }
+
+        // 2. Revoke all active sessions and refresh tokens for the merchant owner
+        if (sessionService != null && ownerId != null) {
+            userRepository.findById(ownerId).ifPresent(sessionService::revokeAllSessions);
+        }
+
+        // 3. Delete merchant record (cascades kyc, bank accounts, wallets, stores)
         merchantRepository.delete(merchant);
+        merchantRepository.flush();
         log.info("Deleted merchant id={} by user={}", id, currentUserId);
+
+        // 4. Handle owner user lifecycle: if no other merchants remain, clean up or demote
+        if (ownerId != null) {
+            User owner = userRepository.findById(ownerId).orElse(null);
+            if (owner != null && owner.getRole() != Role.ADMIN && owner.getRole() != Role.SUPER_ADMIN) {
+                List<Merchant> remainingMerchants = merchantRepository.findAllByOwnerUserId(ownerId);
+                if (remainingMerchants.isEmpty()) {
+                    boolean hasOtherStaff = staffMemberRepository != null && staffMemberRepository.existsByUserId(ownerId);
+                    if (!hasOtherStaff) {
+                        try {
+                            userRepository.delete(owner);
+                            userRepository.flush();
+                            log.info("Cleaned up orphaned merchant owner user id={}", ownerId);
+                        } catch (Exception ex) {
+                            log.warn("Could not hard-delete user id={} due to constraints; deactivating: {}", ownerId, ex.getMessage());
+                            owner.setStatus(UserStatus.INACTIVE);
+                            owner.setRole(Role.CUSTOMER);
+                            userRepository.save(owner);
+                        }
+                    } else if (owner.getRole() == Role.MERCHANT) {
+                        owner.setRole(Role.CUSTOMER);
+                        userRepository.save(owner);
+                    }
+                }
+            }
+        }
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.MERCHANT_DELETED, currentUserId, null, null, MDC.get("requestId"),
+                    "{\"merchantId\":\"" + id + "\",\"businessName\":\"" + merchant.getBusinessName() + "\"}");
+        }
     }
 
     @Override
@@ -788,7 +848,7 @@ public class MerchantServiceImpl implements MerchantService {
         log.info("Admin updated merchant id={} status from {} to {}. Notes: {}",
                 id, oldStatus, request.status(), request.notes());
 
-        return MerchantResponse.fromEntity(updated, getCategoryName(updated.getCategoryId()));
+        return toMerchantResponse(updated, getCategoryName(updated.getCategoryId()));
     }
 
     private String getCategoryName(UUID categoryId) {
@@ -797,6 +857,15 @@ public class MerchantServiceImpl implements MerchantService {
         return categoryRepository.findById(categoryId)
                 .map(Category::getName)
                 .orElse(null);
+    }
+
+    private MerchantResponse toMerchantResponse(Merchant merchant, String categoryName) {
+        if (merchant == null) return null;
+        com.superapp.wallet.entity.MerchantBankAccount bank = null;
+        if (bankAccountRepository != null && merchant.getId() != null) {
+            bank = bankAccountRepository.findByMerchantIdAndIsPrimaryTrue(merchant.getId()).orElse(null);
+        }
+        return MerchantResponse.fromEntity(merchant, categoryName, bank);
     }
 
     private void saveOrUpdatePrimaryBankAccount(UUID merchantId, String bankName, String holderName, String accNumber, String ifsc, String upi) {
@@ -826,7 +895,7 @@ public class MerchantServiceImpl implements MerchantService {
         }
     }
 
-    private void saveOrUpdateMerchantKycRecord(UUID merchantId, String businessType, String pan, String gstin, String accNumber, String ifsc, String bankName, String status) {
+    private void saveOrUpdateMerchantKycRecord(UUID merchantId, String businessType, String status) {
         if (merchantKycRepository == null) return;
         try {
             MerchantKyc kyc = merchantKycRepository.findFirstByMerchantIdOrderByCreatedAtDesc(merchantId)
@@ -836,13 +905,7 @@ public class MerchantServiceImpl implements MerchantService {
                         return newKyc;
                     });
             kyc.setBusinessType(businessType != null && !businessType.isBlank() ? businessType : "RETAIL_COMMERCIAL");
-            kyc.setPanNumber(pan != null && !pan.isBlank() ? pan.trim() : "PANNOTPROV");
-            kyc.setGstin(gstin != null && !gstin.isBlank() ? gstin.trim() : null);
-            kyc.setBankAccountNumber(accNumber != null && !accNumber.isBlank() ? accNumber.trim() : null);
-            kyc.setBankIfsc(ifsc != null && !ifsc.isBlank() ? ifsc.trim().toUpperCase() : null);
-            kyc.setBankName(bankName != null && !bankName.isBlank() ? bankName.trim() : null);
-            kyc.setDocumentType("PAN_CARD");
-            kyc.setDocumentNumber(pan != null && !pan.isBlank() ? pan.trim() : "PAN_NOT_PROVIDED");
+            kyc.setDocumentType("BUSINESS_REGISTRATION");
             kyc.setStatus(status != null ? status : "PENDING");
             merchantKycRepository.save(kyc);
             log.info("Synchronized MerchantKyc compliance record for merchantId={}", merchantId);

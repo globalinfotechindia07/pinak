@@ -43,7 +43,7 @@ public record RewardBalanceResponse(
                 pendingBalance != null ? pendingBalance : BigDecimal.ZERO,
                 lifetimeEarned != null ? lifetimeEarned : BigDecimal.ZERO,
                 lifetimeRedeemed != null ? lifetimeRedeemed : BigDecimal.ZERO,
-                "PINAK_COIN",
+                currency != null ? currency : "PINAK_COIN",
                 availableBalance != null ? availableBalance.multiply(BigDecimal.valueOf(10)).longValue() : 0L,
                 pendingBalance != null ? pendingBalance.multiply(BigDecimal.valueOf(10)).longValue() : 0L,
                 (availableBalance != null ? availableBalance.multiply(BigDecimal.valueOf(10)).longValue() : 0L) + " Coins",

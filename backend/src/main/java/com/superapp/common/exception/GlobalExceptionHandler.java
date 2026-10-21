@@ -120,6 +120,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Malformed request body", ApiError.VALIDATION_FAILED.name()));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<?>> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest req) {
+        log.warn("IllegalArgumentException on {}: {}", req.getRequestURI(), ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage(), ApiError.VALIDATION_FAILED.name()));
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiResponse<?>> handleNoResource(NoResourceFoundException ex) {
         return ResponseEntity

@@ -41,5 +41,35 @@ public record UpdateOfferRequest(
         Instant validFrom,
 
         @NotNull(message = "validTo is required")
-        Instant validTo
-) {}
+        Instant validTo,
+
+        // Rich Fields for Mobile App Screen 10:
+        String offerScope,
+        BigDecimal originalMrp,
+        BigDecimal flashSellingPrice,
+        Boolean isFlash,
+        Integer remainingQuantity,
+        Integer bonusCoins,
+        String imageUrl,
+        String badgeText,
+        String ctaText
+) {
+    // 11-argument backwards-compatible constructor for existing test suites
+    public UpdateOfferRequest(
+            UUID storeId,
+            String title,
+            String description,
+            OfferType offerType,
+            BigDecimal value,
+            BigDecimal minTransactionAmount,
+            BigDecimal maxDiscountAmount,
+            Integer usageLimit,
+            Integer perCustomerLimit,
+            Instant validFrom,
+            Instant validTo
+    ) {
+        this(storeId, title, description, offerType, value, minTransactionAmount, maxDiscountAmount,
+             usageLimit, perCustomerLimit, validFrom, validTo,
+             "SERVICE", null, null, false, 50, 100, null, null, "Book & Pay");
+    }
+}

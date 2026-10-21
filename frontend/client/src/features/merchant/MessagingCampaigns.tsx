@@ -42,14 +42,7 @@ interface BroadcastCampaign {
 }
 
 export const MessagingCampaigns: React.FC = () => {
-  const [campaigns, setCampaigns] = useState<BroadcastCampaign[]>(() => {
-    try {
-      const saved = localStorage.getItem("pinak_broadcast_campaigns");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [campaigns, setCampaigns] = useState<BroadcastCampaign[]>([]);
 
   // Drawer States
   const [isComposeDrawerOpen, setIsComposeDrawerOpen] = useState(false);

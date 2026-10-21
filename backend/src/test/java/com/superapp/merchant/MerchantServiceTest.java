@@ -69,7 +69,7 @@ class MerchantServiceTest {
     }
 
     @Test
-    @DisplayName("Create merchant succeeds and defaults to ACTIVE status and PENDING_APPROVAL")
+    @DisplayName("Create merchant succeeds and defaults to INACTIVE status and PENDING_APPROVAL")
     void createMerchant_success() {
         CreateMerchantRequest request = new CreateMerchantRequest("Acme Fitness", null, null);
 
@@ -84,14 +84,14 @@ class MerchantServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.businessName()).isEqualTo("Acme Fitness");
-        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(response.status()).isEqualTo("INACTIVE");
         assertThat(response.approvalStatus()).isEqualTo("PENDING_APPROVAL");
         assertThat(response.kycStatus()).isEqualTo("PENDING");
         verify(merchantRepository).save(any(Merchant.class));
     }
 
     @Test
-    @DisplayName("Create merchant as admin sets ACTIVE status, PENDING_APPROVAL, PENDING kyc, and null approvedAt")
+    @DisplayName("Create merchant as admin sets INACTIVE status, PENDING_APPROVAL, PENDING kyc, and null approvedAt")
     void createMerchant_asAdmin_keepsPendingApprovalAndKycPending() {
         CreateMerchantRequest request = new CreateMerchantRequest("Admin Brand", null, null);
 
@@ -106,7 +106,7 @@ class MerchantServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.businessName()).isEqualTo("Admin Brand");
-        assertThat(response.status()).isEqualTo("ACTIVE");
+        assertThat(response.status()).isEqualTo("INACTIVE");
         assertThat(response.approvalStatus()).isEqualTo("PENDING_APPROVAL");
         assertThat(response.kycStatus()).isEqualTo("PENDING");
     }

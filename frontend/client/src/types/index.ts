@@ -1,8 +1,8 @@
 export type UserRole = "admin" | "merchant" | "store" | "operations" | "analyst";
 
-export type KycStatus = "SUBMITTED" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "DRAFT";
+export type KycStatus = "SUBMITTED" | "PENDING_REVIEW" | "PENDING" | "APPROVED" | "REJECTED" | "DRAFT";
 
-export type StoreStatus = "ACTIVE" | "PENDING_APPROVAL" | "INACTIVE";
+export type StoreStatus = "ACTIVE" | "PENDING_APPROVAL" | "INACTIVE" | "SUSPENDED" | "CLOSED" | "TEMPORARILY_CLOSED";
 
 export type OfferStatus = "CREATED" | "PENDING_APPROVAL" | "ACTIVE" | "EXPIRED" | "REJECTED" | "PAUSED" | "DRAFT" | "SUBMITTED" | "DEACTIVATED";
 
@@ -70,6 +70,8 @@ export interface Store {
   storeEmail?: string;
   storePin?: string;
   managerName?: string;
+  managerEmail?: string;
+  managerPhone?: string;
 }
 
 export interface RoleDefinition {
@@ -111,6 +113,45 @@ export interface Offer {
   redemptions: number;
   terms: string;
   createdAt: string;
+  // Rich Mobile App Screen 10 Fields
+  scopeType?: "SERVICE" | "PRODUCT";
+  productCategory?: string;
+  originalPrice?: number;
+  dealPrice?: number;
+  isFlashDeal?: boolean;
+  flashEndTime?: string;
+  totalFlashUnits?: number;
+  bonusCoins?: number;
+  badgeText?: string;
+  ctaText?: string;
+  // District-style Table & Slot Booking Engine
+  isTableBookingEnabled?: boolean;
+  bookingType?: "TABLE_RESERVATION" | "APPOINTMENT_SLOT";
+  slotTimes?: string[];
+  minPartySize?: number;
+  maxPartySize?: number;
+  availableTablesPerSlot?: number;
+  seatingAreas?: string[];
+  coverChargeAmount?: number;
+  gracePeriodMinutes?: number;
+  instantConfirmation?: boolean;
+}
+
+export interface HomeBanner {
+  id: string;
+  title: string;
+  subtitle?: string;
+  badgeText: string;
+  imageUrl?: string;
+  ctaText?: string;
+  ctaAction?: string;
+  ctaTargetId?: string;
+  themeStyle?: string;
+  displayOrder?: number;
+  countdownEndTime?: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Transaction {

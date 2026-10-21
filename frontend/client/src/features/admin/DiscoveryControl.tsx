@@ -42,6 +42,7 @@ import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
 import { useAppStore } from "../../hooks/useAppStore";
 import { discoveryApi, OperatingCity } from "../../api/discoveryApi";
+import { HeroBannerManager } from "./HeroBannerManager";
 
 interface DiscoveryControlProps {
   stores: Store[];
@@ -86,7 +87,7 @@ export const DiscoveryControl: React.FC<DiscoveryControlProps> = ({
   const categories = propCategories || store.categories;
 
   // Navigation Sub-Tabs
-  const [activeSubTab, setActiveSubTab] = useState<"simulator" | "cities" | "curation" | "diagnostics">("simulator");
+  const [activeSubTab, setActiveSubTab] = useState<"simulator" | "cities" | "curation" | "banners" | "diagnostics">("simulator");
 
   // ==========================================
   // TAB 1: Simulator & PostGIS Visualizer State
@@ -709,6 +710,18 @@ export const DiscoveryControl: React.FC<DiscoveryControlProps> = ({
           }`}>
             {operatingCities.length}
           </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab("banners")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+            activeSubTab === "banners"
+              ? "bg-white dark:bg-slate-900 text-pink-600 dark:text-pink-400 shadow-xs border border-slate-200/60 dark:border-slate-700/60"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50"
+          }`}
+        >
+          <Zap size={15} />
+          <span>Hero Banners CMS</span>
         </button>
 
         <button
@@ -1558,6 +1571,8 @@ export const DiscoveryControl: React.FC<DiscoveryControlProps> = ({
       {/* ========================================================= */}
       {/* SUB-TAB 4: GLOBAL SEARCH & DIAGNOSTICS SANDBOX             */}
       {/* ========================================================= */}
+      {activeSubTab === "banners" && <HeroBannerManager />}
+
       {activeSubTab === "diagnostics" && (
         <div className="space-y-6">
           {/* Search Testing Bar */}

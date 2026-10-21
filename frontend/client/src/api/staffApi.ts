@@ -49,7 +49,9 @@ export interface InviteStaffPayload {
   phone?: string;
   roleId: string;
   scope: "PLATFORM" | "MERCHANT" | "STORE";
+  merchantId?: string;
   storeId?: string;
+  posPin?: string;
   customPermissions?: string;
 }
 
@@ -202,5 +204,20 @@ export const staffApi = {
   resendMerchantStaffInvite: async (staffId: string): Promise<BackendStaffResponse> => {
     const res = await apiClient.post<ApiResponse<BackendStaffResponse>>(`/merchant/staff/${staffId}/resend-invite`);
     return res.data?.data;
+  },
+
+  validateStaffEmail: async (
+    email: string,
+    merchantId?: string,
+    scope: string = "STORE"
+  ): Promise<{ valid: boolean; message?: string }> => {
+    const params = new URLSearchParams();
+    params.append("email", email.trim().toLowerCase());
+    params.append("scope", scope);
+    if (merchantId) params.append("merchantId", merchantId);
+    const res = await apiClient.get<ApiResponse<{ valid: boolean; message?: string }>>(
+      `/merchant/staff/validate-email?${params.toString()}`
+    );
+    return res.data?.data || { valid: true };
   },
 };

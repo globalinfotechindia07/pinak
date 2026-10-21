@@ -6,8 +6,10 @@ import {
   Moon,
   ChevronRight,
   LogOut,
-  User
+  User,
+  Building2
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { UserRole } from "../../types";
 import { useAppStore } from "../../hooks/useAppStore";
 
@@ -35,6 +37,7 @@ export const Topbar: React.FC<TopbarProps> = ({
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const store = useAppStore();
+  const [, setLocation] = useLocation();
 
   const displayName =
     store.currentUser?.name ||
@@ -97,6 +100,22 @@ export const Topbar: React.FC<TopbarProps> = ({
 
       {/* Right Actions */}
       <div className="flex items-center gap-2 md:gap-3">
+        {/* Return to HQ if currently in store portal */}
+        {role === "store" && (
+          <button
+            onClick={() => {
+              store.setRole("merchant");
+              setLocation("/merchant/dashboard");
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-50 dark:bg-pink-950/50 border border-pink-200 dark:border-pink-800/80 text-pink-700 dark:text-pink-300 text-xs font-bold hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors shadow-2xs mr-1 cursor-pointer"
+            title="Return to Merchant HQ Console"
+          >
+            <Building2 size={14} className="shrink-0" />
+            <span className="hidden sm:inline">Switch to Merchant HQ</span>
+            <span className="sm:hidden">HQ</span>
+          </button>
+        )}
+
         {/* Theme Toggle */}
         <button
           onClick={onToggleTheme}

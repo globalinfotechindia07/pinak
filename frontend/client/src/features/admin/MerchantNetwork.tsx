@@ -36,7 +36,10 @@ import {
   RotateCcw,
   Sparkles,
   Edit2,
-  Save
+  Save,
+  LayoutGrid,
+  List,
+  Search
 } from "lucide-react";
 import { Merchant } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
@@ -103,6 +106,8 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
   onUpdateMerchant
 }) => {
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [cardSearch, setCardSearch] = useState("");
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
   const [kycTab, setKycTab] = useState<"overview" | "documents" | "outlets" | "audit">("overview");
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -273,18 +278,17 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
     return [];
   }, [selectedMerchant, allStores, fetchedMerchantStores]);
 
-  // Audit logs related to selected merchant
+  // Audit logs related to selected merchant (strictly scoped to this merchant's unique UUID)
   const merchantAuditLogs = useMemo(() => {
     if (!selectedMerchant) return [];
     const logs = store.auditLogs || [];
+    const mId = selectedMerchant.id;
     return logs.filter((log: any) => {
-      const isTarget = log.metadata?.targetId === selectedMerchant.id;
-      const isDetailsMatch =
-        (log.details && log.details.includes(selectedMerchant.id)) ||
-        (log.details && log.details.includes(selectedMerchant.businessName)) ||
-        (log.metadata?.details && log.metadata.details.toString().includes(selectedMerchant.id)) ||
-        (log.metadata?.details && log.metadata.details.toString().includes(selectedMerchant.businessName));
-      return isTarget || isDetailsMatch;
+      const targetId = log.metadata?.targetId || log.metadata?.merchantId || log.entityId;
+      if (targetId && targetId === mId) return true;
+      if (log.details && log.details.includes(mId)) return true;
+      if (log.metadata?.details && String(log.metadata.details).includes(mId)) return true;
+      return false;
     });
   }, [selectedMerchant, store.auditLogs]);
 
@@ -322,12 +326,15 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
       header: "Outlets",
       accessor: "storeCount",
       className: "whitespace-nowrap",
-      render: (m) => (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-300">
-          <Store size={12} className="text-purple-600 dark:text-purple-400" />
-          {m.storeCount || 1} {m.storeCount === 1 ? "outlet" : "outlets"}
-        </span>
-      )
+      render: (m) => {
+        const count = m.storeCount ?? 0;
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <Store size={12} className="text-purple-600 dark:text-purple-400" />
+            {count} {count === 1 ? "outlet" : "outlets"}
+          </span>
+        );
+      }
     },
     {
       header: "Settlement VPA",
@@ -358,24 +365,32 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
       header: "Account",
       accessor: "status",
       className: "whitespace-nowrap",
-      render: (m) => (
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border",
-            m.status === "SUSPENDED"
-              ? "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60"
-              : "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60"
-          )}
-        >
-          <span
-            className={cn(
-              "w-1.5 h-1.5 rounded-full",
-              m.status === "SUSPENDED" ? "bg-rose-500" : "bg-emerald-500"
-            )}
-          />
-          {m.status === "SUSPENDED" ? "Suspended" : "Active"}
-        </span>
-      )
+      render: (m) => {
+        const status = (m.status || "").toUpperCase();
+
+        if (status === "ACTIVE") {
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Active
+            </span>
+          );
+        }
+        if (status === "SUSPENDED") {
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+              Suspended
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Inactive (Pending Setup)
+          </span>
+        );
+      }
     },
     {
       header: "KYC Status",
@@ -430,13 +445,6 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                 <span>Review KYC & Details</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onClick={() => setMerchantToEdit(m)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
-              >
-                <Edit2 size={14} className="text-purple-600 dark:text-purple-400" />
-                <span>Edit Merchant Profile</span>
-              </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => {
@@ -445,22 +453,17 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                 }}
                 className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
-                <Copy size={14} className="text-slate-400" />
+                <Copy size={14} className="text-purple-600 dark:text-purple-400" />
                 <span>Copy Merchant ID</span>
               </DropdownMenuItem>
 
-              {m.bankAccountNumber && (
-                <DropdownMenuItem
-                  onClick={() => {
-                    navigator.clipboard.writeText(m.bankAccountNumber || "");
-                    toast.success(`Copied Account Number: ${m.bankAccountNumber}`);
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  <Building2 size={14} className="text-slate-400" />
-                  <span>Copy Bank Account</span>
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem
+                onClick={() => setMerchantToEdit(m)}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+              >
+                <Edit2 size={14} className="text-purple-600 dark:text-purple-400" />
+                <span>Edit Merchant Profile</span>
+              </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => handleResendInvite(m)}
@@ -473,21 +476,20 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
               {onUpdateMerchant && (
                 <DropdownMenuItem
                   onClick={() => {
-                    const nextStatus = m.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+                    const nextStatus = m.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
                     onUpdateMerchant(m.id, { status: nextStatus });
-                    toast.success(`Merchant "${m.businessName}" ${nextStatus === "ACTIVE" ? "activated" : "suspended"}`);
                   }}
                   className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   {m.status === "ACTIVE" ? (
                     <>
                       <PowerOff size={14} className="text-amber-500" />
-                      <span>Suspend Partner</span>
+                      <span>Deactivate Account</span>
                     </>
                   ) : (
                     <>
                       <Power size={14} className="text-emerald-500" />
-                      <span>Activate Partner</span>
+                      <span>Activate Account</span>
                     </>
                   )}
                 </DropdownMenuItem>
@@ -623,71 +625,378 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
         </div>
       </div>
 
-      {/* Status Filter Chips with Badges */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-        {[
-          { id: "ALL", label: "All Merchants", count: tabCounts.ALL },
-          { id: "PENDING_REVIEW", label: "Pending Review", count: tabCounts.PENDING_REVIEW },
-          { id: "APPROVED", label: "Approved", count: tabCounts.APPROVED },
-          { id: "REJECTED", label: "Rejected", count: tabCounts.REJECTED },
-          { id: "SUSPENDED", label: "Suspended", count: tabCounts.SUSPENDED },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setStatusFilter(tab.id)}
-            className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all",
-              statusFilter === tab.id
-                ? "bg-purple-600 text-white font-bold shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-            )}
-          >
-            <span>{tab.label}</span>
-            <span
+      {/* Status Filter Chips with Badges + View Mode Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {[
+            { id: "ALL", label: "All Merchants", count: tabCounts.ALL },
+            { id: "PENDING_REVIEW", label: "Pending Review", count: tabCounts.PENDING_REVIEW },
+            { id: "APPROVED", label: "Approved", count: tabCounts.APPROVED },
+            { id: "REJECTED", label: "Rejected", count: tabCounts.REJECTED },
+            { id: "SUSPENDED", label: "Suspended", count: tabCounts.SUSPENDED },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
               className={cn(
-                "px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all",
                 statusFilter === tab.id
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  ? "bg-purple-600 text-white font-bold shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               )}
             >
-              {tab.count}
-            </span>
+              <span>{tab.label}</span>
+              <span
+                className={cn(
+                  "px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                  statusFilter === tab.id
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                )}
+              >
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* View Mode Toggle Switch */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shrink-0 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode("table")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+              viewMode === "table"
+                ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            )}
+            title="Table View"
+          >
+            <List size={14} />
+            <span>Table</span>
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={() => setViewMode("cards")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+              viewMode === "cards"
+                ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            )}
+            title="Card Grid View"
+          >
+            <LayoutGrid size={14} />
+            <span>Cards</span>
+          </button>
+        </div>
       </div>
 
-      {/* Advanced Table */}
-      <AdvancedTable<Merchant>
-        columns={columns}
-        data={filtered}
-        keyExtractor={(m) => m.id}
-        searchPlaceholder="Search merchants by brand name, city, or owner..."
-        searchFilter={(m, query) =>
-          m.businessName.toLowerCase().includes(query) ||
-          m.city.toLowerCase().includes(query) ||
-          (m.district?.toLowerCase().includes(query) ?? false) ||
-          (m.state?.toLowerCase().includes(query) ?? false) ||
-          m.categoryName.toLowerCase().includes(query) ||
-          m.ownerName.toLowerCase().includes(query)
-        }
-        bulkActions={[
-          {
-            label: "Approve Selected KYC",
-            action: (selected) => {
-              selected.forEach((m) => onUpdateKyc(m.id, "APPROVED"));
-              toast.success(`Approved ${selected.length} merchants!`);
-            }
-          },
-          {
-            label: "Reject Selected",
-            action: (selected) => {
-              selected.forEach((m) => onUpdateKyc(m.id, "REJECTED"));
-              toast.info(`Rejected ${selected.length} merchants.`);
-            }
+      {/* Main Content: Table or Cards View */}
+      {viewMode === "table" ? (
+        <AdvancedTable<Merchant>
+          columns={columns}
+          data={filtered}
+          keyExtractor={(m) => m.id}
+          searchPlaceholder="Search merchants by brand name, city, or owner..."
+          searchFilter={(m, query) =>
+            m.businessName.toLowerCase().includes(query) ||
+            m.city.toLowerCase().includes(query) ||
+            (m.district?.toLowerCase().includes(query) ?? false) ||
+            (m.state?.toLowerCase().includes(query) ?? false) ||
+            m.categoryName.toLowerCase().includes(query) ||
+            m.ownerName.toLowerCase().includes(query)
           }
-        ]}
-      />
+          bulkActions={[
+            {
+              label: "Approve Selected KYC",
+              action: (selected) => {
+                selected.forEach((m) => onUpdateKyc(m.id, "APPROVED"));
+                toast.success(`Approved ${selected.length} merchants!`);
+              }
+            },
+            {
+              label: "Reject Selected",
+              action: (selected) => {
+                selected.forEach((m) => onUpdateKyc(m.id, "REJECTED"));
+                toast.info(`Rejected ${selected.length} merchants.`);
+              }
+            }
+          ]}
+        />
+      ) : (
+        <div className="space-y-4">
+          {/* Card Search & Summary Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="relative flex-1 max-w-md">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={cardSearch}
+                onChange={(e) => setCardSearch(e.target.value)}
+                placeholder="Search brands, city, legal name, or owner..."
+                className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-900 dark:text-white"
+              />
+              {cardSearch && (
+                <button
+                  type="button"
+                  onClick={() => setCardSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            <div className="text-xs text-slate-500 flex items-center justify-between sm:justify-end gap-2">
+              <span>Showing <strong>{
+                filtered.filter((m) => {
+                  if (!cardSearch.trim()) return true;
+                  const q = cardSearch.toLowerCase();
+                  return (
+                    m.businessName.toLowerCase().includes(q) ||
+                    m.city.toLowerCase().includes(q) ||
+                    (m.legalEntityName && m.legalEntityName.toLowerCase().includes(q)) ||
+                    (m.ownerName && m.ownerName.toLowerCase().includes(q)) ||
+                    (m.categoryName && m.categoryName.toLowerCase().includes(q))
+                  );
+                }).length
+              }</strong> of <strong>{merchants.length}</strong> merchants</span>
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          {(() => {
+            const cardData = filtered.filter((m) => {
+              if (!cardSearch.trim()) return true;
+              const q = cardSearch.toLowerCase();
+              return (
+                m.businessName.toLowerCase().includes(q) ||
+                m.city.toLowerCase().includes(q) ||
+                (m.legalEntityName && m.legalEntityName.toLowerCase().includes(q)) ||
+                (m.ownerName && m.ownerName.toLowerCase().includes(q)) ||
+                (m.categoryName && m.categoryName.toLowerCase().includes(q))
+              );
+            });
+
+            if (cardData.length === 0) {
+              return (
+                <div className="text-center py-12 px-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto mb-3">
+                    <Building2 size={24} />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">No merchants match your criteria</h4>
+                  <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms or status filters.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {cardData.map((m) => {
+                  const isRejected = m.kycStatus === "REJECTED" || (m as any).approvalStatus === "REJECTED";
+                  const isApproved = m.kycStatus === "APPROVED";
+                  const count = m.storeCount ?? 0;
+
+                  return (
+                    <div
+                      key={m.id}
+                      className="group relative rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800/80 hover:border-purple-300 dark:hover:border-purple-800 transition-all p-5 shadow-xs hover:shadow-md flex flex-col justify-between"
+                    >
+                      {/* Top Row: Avatar + Brand + Action Menu */}
+                      <div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+                              {m.initials}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                {m.businessName}
+                              </h4>
+                              <p className="text-xs text-slate-400 truncate mt-0.5">
+                                {m.legalEntityName || m.businessName}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                <span className="font-mono text-purple-600 dark:text-purple-400 font-semibold">
+                                  MID: #{m.id.substring(0, 8).toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 3-dots actions menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                title="Merchant Actions"
+                              >
+                                <MoreVertical size={15} />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#121626]">
+                              <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-2 py-1">
+                                Merchant Operations
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => setSelectedMerchant(m)}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+                              >
+                                <Eye size={14} className="text-purple-600 dark:text-purple-400" />
+                                <span>Review KYC & Details</span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  navigator.clipboard.writeText(m.id);
+                                  toast.success(`Copied Merchant ID: ${m.id}`);
+                                }}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                <Copy size={14} className="text-purple-600 dark:text-purple-400" />
+                                <span>Copy Merchant ID</span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={() => setMerchantToEdit(m)}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+                              >
+                                <Edit2 size={14} className="text-purple-600 dark:text-purple-400" />
+                                <span>Edit Merchant Profile</span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={() => handleResendInvite(m)}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+                              >
+                                <Mail size={14} className="text-purple-600 dark:text-purple-400" />
+                                <span>Resend Welcome Email</span>
+                              </DropdownMenuItem>
+
+                              {onUpdateMerchant && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    const nextStatus = m.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+                                    onUpdateMerchant(m.id, { status: nextStatus });
+                                  }}
+                                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                  {m.status === "ACTIVE" ? (
+                                    <>
+                                      <PowerOff size={14} className="text-amber-500" />
+                                      <span>Deactivate Account</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Power size={14} className="text-emerald-500" />
+                                      <span>Activate Account</span>
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                              )}
+
+                              {onDeleteMerchant && (
+                                <>
+                                  <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+                                  <DropdownMenuItem
+                                    onClick={() => setMerchantToDelete(m)}
+                                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                  >
+                                    <Trash2 size={14} />
+                                    <span>Delete Merchant</span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        {/* Status Badges Row */}
+                        <div className="flex items-center gap-2 mt-3 flex-wrap">
+                          {/* KYC Status Badge */}
+                          <Badge
+                            variant={isApproved ? "success" : isRejected ? "destructive" : "warning"}
+                            className="cursor-pointer"
+                            onClick={() => setSelectedMerchant(m)}
+                          >
+                            {isApproved ? <CheckCircle2 size={11} /> : isRejected ? <XCircle size={11} /> : <Clock size={11} />}
+                            {isRejected ? "REJECTED" : isApproved ? "APPROVED" : "PENDING REVIEW"}
+                          </Badge>
+
+                          {/* Account Status Badge */}
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase",
+                              m.status === "ACTIVE"
+                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                                : m.status === "SUSPENDED"
+                                ? "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60"
+                                : "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60"
+                            )}
+                          >
+                            <span className={cn(
+                              "w-1.5 h-1.5 rounded-full",
+                              m.status === "ACTIVE" ? "bg-emerald-500" : m.status === "SUSPENDED" ? "bg-rose-500" : "bg-amber-500"
+                            )} />
+                            {m.status === "ACTIVE" ? "ACTIVE" : m.status === "SUSPENDED" ? "SUSPENDED" : "INACTIVE (PENDING SETUP)"}
+                          </span>
+
+                          {/* Category Tag */}
+                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800">
+                            {m.categoryName}
+                          </span>
+                        </div>
+
+                        {/* Key Info Details Grid */}
+                        <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+                          <div>
+                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">City & Region</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-medium truncate flex items-center gap-1 mt-0.5">
+                              <MapPin size={11} className="text-slate-400 shrink-0" />
+                              <span className="truncate">{m.city || "Nagpur"}{m.state ? `, ${m.state}` : ""}</span>
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Store Branches</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1 mt-0.5">
+                              <Store size={11} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                              <span>{count} {count === 1 ? "outlet" : "outlets"}</span>
+                            </span>
+                          </div>
+
+                          <div className="col-span-2">
+                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Settlement VPA / Account</span>
+                            <span className="font-mono text-purple-700 dark:text-purple-300 font-bold truncate block mt-0.5">
+                              {m.bankUpiId || (m.bankAccountNumber ? `A/C **${m.bankAccountNumber.slice(-4)}` : "Not linked")}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Footer Quick Action */}
+                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-slate-400">
+                          {m.ownerEmail || m.ownerPhone || "Owner account"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMerchant(m)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors"
+                        >
+                          <Eye size={13} />
+                          <span>Review KYC</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* KYC Review Slide-Over Drawer */}
       {selectedMerchant && (
@@ -702,15 +1011,40 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-transparent">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs shadow-xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
                       {selectedMerchant.initials}
                     </div>
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                        Merchant KYC Verification
-                      </h3>
-                      <p className="text-[11px] text-slate-400 font-mono">ID: {selectedMerchant.id}</p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
+                          {selectedMerchant.businessName}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap">
+                        <span className="font-mono font-semibold text-purple-700 dark:text-purple-300">
+                          MID: #{selectedMerchant.id.substring(0, 8).toUpperCase()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedMerchant.id);
+                            toast.success(`Merchant ID (${selectedMerchant.id}) copied!`);
+                          }}
+                          className="hover:text-purple-600 dark:hover:text-purple-400 text-slate-400 p-0.5 rounded transition-colors inline-flex items-center"
+                          title="Copy Full Merchant UUID"
+                        >
+                          <Copy size={11} />
+                        </button>
+                        <span>·</span>
+                        <span className="truncate max-w-[120px]">{selectedMerchant.categoryName}</span>
+                        {selectedMerchant.city && (
+                          <>
+                            <span>·</span>
+                            <span>{selectedMerchant.city}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -724,26 +1058,6 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                         </Badge>
                       );
                     })()}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMerchantToEdit(selectedMerchant);
-                        setSelectedMerchant(null);
-                      }}
-                      className="px-2 py-1 rounded-lg border border-purple-200 dark:border-purple-800/80 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100 transition-colors flex items-center gap-1"
-                      title="Edit Merchant Brand Details"
-                    >
-                      <Edit2 size={13} />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleResendInvite(selectedMerchant)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors"
-                      title="Resend welcome and login credentials email"
-                    >
-                      <Mail size={16} />
-                    </button>
                     <button
                       onClick={() => setSelectedMerchant(null)}
                       className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -853,17 +1167,36 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
 
                     <div className="space-y-3">
                       {/* Category & Location Card */}
-                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          Industry & Headquarters
-                        </span>
-                        <div className="flex items-center justify-between text-xs pt-0.5">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Industry & Operating Sector
+                          </span>
+                          <span className="text-xs font-bold text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-lg bg-purple-100 dark:bg-purple-950/60">
                             {selectedMerchant.categoryName}
                           </span>
-                          <span className="text-slate-500">
-                            {selectedMerchant.city}{selectedMerchant.district && selectedMerchant.district !== selectedMerchant.city ? `, ${selectedMerchant.district}` : ""}, {selectedMerchant.state || "Maharashtra"}
-                          </span>
+                        </div>
+
+                        {/* Full Registered Address */}
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 space-y-1 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400 font-medium">Headquarters & Premise Address</span>
+                            {selectedMerchant.pincode && (
+                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                PIN: {selectedMerchant.pincode}
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-medium text-slate-900 dark:text-white leading-relaxed">
+                            {selectedMerchant.address || `${selectedMerchant.city} Commercial District`}
+                          </p>
+                          <div className="pt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                            <span>City: <strong className="text-slate-700 dark:text-slate-300">{selectedMerchant.city}</strong></span>
+                            <span>•</span>
+                            <span>District: <strong className="text-slate-700 dark:text-slate-300">{selectedMerchant.district || selectedMerchant.city}</strong></span>
+                            <span>•</span>
+                            <span>State: <strong className="text-slate-700 dark:text-slate-300">{selectedMerchant.state || "Maharashtra"}</strong></span>
+                          </div>
                         </div>
                       </div>
 
@@ -976,6 +1309,36 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                               {selectedMerchant.bankIfsc || "N/A"}
                             </span>
                           </div>
+
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-medium">Settlement UPI ID</span>
+                              {selectedMerchant.bankUpiId && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(selectedMerchant.bankUpiId || "");
+                                    toast.success("UPI ID copied to clipboard");
+                                  }}
+                                  className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 font-bold"
+                                  title="Copy UPI ID"
+                                >
+                                  <Copy size={10} />
+                                  Copy
+                                </button>
+                              )}
+                            </div>
+                            <span className="font-mono font-bold text-purple-700 dark:text-purple-300 truncate block mt-0.5">
+                              {selectedMerchant.bankUpiId || "Not linked"}
+                            </span>
+                          </div>
+
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                            <span className="text-[10px] text-slate-400 block font-medium">Platform Take-Rate / Fee</span>
+                            <span className="font-bold text-slate-900 dark:text-white truncate block mt-0.5">
+                              {selectedMerchant.commissionRate ?? 5.0}% <span className="text-[10px] font-normal text-slate-400">(per transaction)</span>
+                            </span>
+                          </div>
                         </div>
 
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5 flex items-center gap-1">
@@ -1000,6 +1363,22 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                         <div className="text-xs text-slate-500">
                           {selectedMerchant.ownerEmail}
                         </div>
+                        {selectedMerchant.status === "INACTIVE" && (
+                          <div className="mt-2 pt-2 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+                            <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                              Awaiting first password setup
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleResendInvite(selectedMerchant)}
+                              className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                            >
+                              <Mail size={12} />
+                              Resend Setup Link
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Governance & Audit Trail Dossier */}
@@ -1159,6 +1538,18 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                           <span className="text-[10px] text-slate-400 block">IFSC Code</span>
                           <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{selectedMerchant.bankIfsc || "N/A"}</span>
                         </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block">Settlement UPI ID</span>
+                          <span className="font-mono font-bold text-purple-700 dark:text-purple-300 truncate block">
+                            {selectedMerchant.bankUpiId || "Not linked"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block">Platform Fee / Commission</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                            {selectedMerchant.commissionRate ?? 5.0}% per txn
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -1180,11 +1571,14 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
                           Inspected
                         </span>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-[11px]">
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-[11px] space-y-1">
                         <span className="text-[10px] text-slate-400 block">Registered Physical Premise</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {selectedMerchant.city}, {selectedMerchant.state || "Maharashtra"} ({merchantStores.length} Active Branch {merchantStores.length === 1 ? "Outlet" : "Outlets"})
-                        </span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                          {selectedMerchant.address || `${selectedMerchant.city} Commercial Area`}, {selectedMerchant.city}, {selectedMerchant.district && selectedMerchant.district !== selectedMerchant.city ? `${selectedMerchant.district}, ` : ""}{selectedMerchant.state || "Maharashtra"} {selectedMerchant.pincode ? `- ${selectedMerchant.pincode}` : ""}
+                        </p>
+                        <p className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">
+                          Associated Outlets: {merchantStores.length} Provisioned {merchantStores.length === 1 ? "Branch" : "Branches"}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1398,15 +1792,6 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
           onClose={() => setIsAddOpen(false)}
           onSave={async (draft) => {
             await onAddMerchant(draft);
-            store.addAudit({
-              action: "MERCHANT_CREATED",
-              entity: "Merchant",
-              actor: store.currentUser?.email ? `${store.currentUser.name || "Admin"} (${store.currentUser.email})` : "riya.admin@pinak.app (Super Admin)",
-              severity: "success",
-              metadata: {
-                details: `Onboarded merchant brand "${draft.businessName}" (${draft.categoryName}) in ${draft.city}, ${draft.state}. Bank VPA: ${draft.bankUpiId || "N/A"}`
-              }
-            });
             setIsAddOpen(false);
           }}
         />
@@ -1869,6 +2254,22 @@ function AddMerchantDrawer({
     );
   }, [normalizedEmail, existingMerchants]);
 
+  // Real-time duplicate phone number detection
+  const cleanPhoneInput = (formData.ownerPhone || "").replace(/\D/g, "");
+  const conflictingPhone = useMemo(() => {
+    if (cleanPhoneInput.length < 10) return null;
+    return (
+      existingMerchants.find((m) => {
+        const mPhone = (m.ownerPhone || (m as any).phone || "").replace(/\D/g, "");
+        if (!mPhone) return false;
+        // Compare standard 10-digit suffixes to handle +91 / 0 prefix differences
+        const m10 = mPhone.slice(-10);
+        const input10 = cleanPhoneInput.slice(-10);
+        return m10 === input10;
+      }) || null
+    );
+  }, [cleanPhoneInput, existingMerchants]);
+
   // Step Validation logic
   const validateStep = (step: number): boolean => {
     const stepErrors: Record<string, string> = {};
@@ -1908,6 +2309,8 @@ function AddMerchantDrawer({
         stepErrors.ownerPhone = "Contact phone is required";
       } else if (phoneClean.length !== 10 && phoneClean.length !== 12) {
         stepErrors.ownerPhone = "Please enter a valid 10-digit Indian phone number";
+      } else if (conflictingPhone) {
+        stepErrors.ownerPhone = `This phone number is already registered with merchant "${conflictingPhone.businessName}". Please use a unique authorized phone number.`;
       }
     } else if (step === 3) {
       if (formData.gstin.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gstin.trim().toUpperCase())) {
@@ -2575,9 +2978,17 @@ function AddMerchantDrawer({
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Contact Phone *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 dark:text-slate-300">
+                      Contact Phone *
+                    </label>
+                    {cleanPhoneInput.length >= 10 && !conflictingPhone && (
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 size={12} />
+                        Phone available
+                      </span>
+                    )}
+                  </div>
                   <div className="relative">
                     <input
                       type="tel"
@@ -2586,14 +2997,28 @@ function AddMerchantDrawer({
                       placeholder="+91 98220 11223"
                       className={cn(
                         "w-full px-3 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-xs focus:outline-hidden",
-                        errors.ownerPhone
+                        conflictingPhone || errors.ownerPhone
                           ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/20"
                           : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
                       )}
                     />
                     <Phone size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   </div>
-                  {errors.ownerPhone && (
+
+                  {/* Real-time Duplicate Phone Warning */}
+                  {conflictingPhone && (
+                    <div className="mt-2.5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200 space-y-1 animate-in fade-in">
+                      <div className="flex items-center gap-1.5 font-bold text-[11px] text-rose-800 dark:text-rose-300">
+                        <AlertTriangle size={14} className="shrink-0" />
+                        <span>Phone Number Already Registered</span>
+                      </div>
+                      <p className="text-[11px]">
+                        This phone number is already linked to merchant <strong>"{conflictingPhone.businessName}"</strong>. Each business owner must have a unique authorized contact number.
+                      </p>
+                    </div>
+                  )}
+
+                  {errors.ownerPhone && !conflictingPhone && (
                     <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
                       <AlertCircle size={12} className="shrink-0" />
                       <span>{errors.ownerPhone}</span>

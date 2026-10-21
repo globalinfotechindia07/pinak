@@ -37,6 +37,9 @@ public interface MerchantRepository extends JpaRepository<Merchant, UUID> {
 
     boolean existsByPhone(String phone);
 
+    @org.springframework.data.jpa.repository.Query("SELECT m FROM Merchant m WHERE m.phone IS NOT NULL AND (m.phone = :phone OR m.phone LIKE CONCAT('%', :last10))")
+    java.util.List<Merchant> findByPhoneOrSuffix(@org.springframework.data.repository.query.Param("phone") String phone, @org.springframework.data.repository.query.Param("last10") String last10);
+
     long countByApprovalStatus(ApprovalStatus approvalStatus);
 
     long countByStatus(MerchantStatus status);

@@ -42,14 +42,7 @@ interface Playbook {
 }
 
 export const GrowthPlaybooks: React.FC = () => {
-  const [playbooks, setPlaybooks] = useState<Playbook[]>(() => {
-    try {
-      const saved = localStorage.getItem("pinak_growth_playbooks");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
 
   const [activeTab, setActiveTab] = useState<"all" | "active" | "paused">("all");
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);

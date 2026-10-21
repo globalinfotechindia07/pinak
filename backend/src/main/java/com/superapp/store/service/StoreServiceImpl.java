@@ -30,9 +30,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import com.superapp.user.entity.Role;
+import com.superapp.user.entity.User;
 
 @Service
 public class StoreServiceImpl implements StoreService {
@@ -44,6 +47,7 @@ public class StoreServiceImpl implements StoreService {
     private final CityRepository cityRepository;
     private final AuditService auditService;
     private final StoreMapper storeMapper;
+    private final com.superapp.user.repository.UserRepository userRepository;
 
     @Autowired
     public StoreServiceImpl(
@@ -51,18 +55,30 @@ public class StoreServiceImpl implements StoreService {
             MerchantRepository merchantRepository,
             CityRepository cityRepository,
             AuditService auditService,
-            StoreMapper storeMapper
+            StoreMapper storeMapper,
+            @Autowired(required = false) com.superapp.user.repository.UserRepository userRepository
     ) {
         this.storeRepository = storeRepository;
         this.merchantRepository = merchantRepository;
         this.cityRepository = cityRepository;
         this.auditService = auditService;
         this.storeMapper = storeMapper != null ? storeMapper : new StoreMapper();
+        this.userRepository = userRepository;
+    }
+
+    public StoreServiceImpl(
+            StoreRepository storeRepository,
+            MerchantRepository merchantRepository,
+            CityRepository cityRepository,
+            AuditService auditService,
+            StoreMapper storeMapper
+    ) {
+        this(storeRepository, merchantRepository, cityRepository, auditService, storeMapper, null);
     }
 
     // Overloaded constructor for backward compatibility with existing unit tests
     public StoreServiceImpl(StoreRepository storeRepository, MerchantRepository merchantRepository) {
-        this(storeRepository, merchantRepository, null, null, new StoreMapper());
+        this(storeRepository, merchantRepository, null, null, new StoreMapper(), null);
     }
 
     // =========================================================================
@@ -75,6 +91,10 @@ public class StoreServiceImpl implements StoreService {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
 
         validateCoordinates(request.latitude(), request.longitude());
+        String reqPhone = request.phone() != null ? request.phone().trim() : null;
+        if (reqPhone != null && !reqPhone.isBlank()) {
+            validateStorePhoneUniqueness(reqPhone, merchant.getId(), null, null);
+        }
         City city = resolveOrCreateCity(request.cityId(), request.state());
         if (city != null && !city.isActive()) {
             throw new AppException("City is not active", ApiError.CITY_INACTIVE, 409);
@@ -155,6 +175,11 @@ public class StoreServiceImpl implements StoreService {
         Store store = getOwnedStore(storeId, merchant.getId());
 
         validateCoordinates(request.latitude(), request.longitude());
+        String reqPhone = request.phone() != null ? request.phone().trim() : null;
+        if (reqPhone != null && !reqPhone.isBlank()) {
+            validateStorePhoneUniqueness(reqPhone, merchant.getId(), storeId, null);
+            store.setPhone(reqPhone);
+        }
         City city = resolveOrCreateCity(request.cityId(), request.state());
         if (city != null && !city.isActive()) {
             throw new AppException("City is not active", ApiError.CITY_INACTIVE, 409);
@@ -396,6 +421,10 @@ public class StoreServiceImpl implements StoreService {
         }
 
         validateCoordinates(request.latitude(), request.longitude());
+        String reqPhone = request.contactPhone() != null ? request.contactPhone().trim() : null;
+        if (reqPhone != null && !reqPhone.isBlank()) {
+            validateStorePhoneUniqueness(reqPhone, merchant.getId(), null, null);
+        }
 
         City city = resolveOrCreateCity(request.cityId(), request.state());
         if (city != null && !city.isActive()) {
@@ -413,6 +442,9 @@ public class StoreServiceImpl implements StoreService {
                 request.latitude(),
                 request.longitude()
         );
+        if (reqPhone != null && !reqPhone.isBlank()) {
+            store.setPhone(reqPhone);
+        }
 
         if (isAdmin) {
             store.setStatus(StoreStatus.ACTIVE);
@@ -472,6 +504,11 @@ public class StoreServiceImpl implements StoreService {
         }
 
         validateCoordinates(request.latitude(), request.longitude());
+        String reqPhone = request.contactPhone() != null ? request.contactPhone().trim() : null;
+        if (reqPhone != null && !reqPhone.isBlank()) {
+            validateStorePhoneUniqueness(reqPhone, merchant.getId(), id, null);
+            store.setPhone(reqPhone);
+        }
 
         store.setStoreName(request.storeName().trim());
         store.setAddress(request.address().trim());
@@ -683,6 +720,63 @@ public class StoreServiceImpl implements StoreService {
         return cityRepository.findById(cityId)
                 .map(City::getName)
                 .orElse(null);
+    }
+
+    @Override
+    public void validateStorePhoneUniqueness(String rawPhone, UUID targetMerchantId, UUID currentStoreId, String managerEmail) {
+        if (rawPhone == null || rawPhone.isBlank()) {
+            return;
+        }
+
+        String phone = rawPhone.trim();
+        String digitsOnly = phone.replaceAll("[^0-9]", "");
+        String last10 = digitsOnly.length() >= 10 ? digitsOnly.substring(digitsOnly.length() - 10) : digitsOnly;
+
+        // 1. Check Store table for duplicate
+        List<Store> duplicateStores = storeRepository.findByPhoneOrSuffix(phone, last10);
+        for (Store s : duplicateStores) {
+            if (currentStoreId == null || !s.getId().equals(currentStoreId)) {
+                String branch = s.getName() != null && !s.getName().isBlank() ? s.getName() : "Existing Branch";
+                throw new AppException(
+                        "Phone number " + phone + " is already registered to store branch \"" + branch + "\". Each store branch must have a unique contact number.",
+                        ApiError.DUPLICATE_RESOURCE, 400);
+            }
+        }
+
+        // 2. Check Merchant table for duplicate
+        if (merchantRepository != null) {
+            List<Merchant> duplicateMerchants = merchantRepository.findByPhoneOrSuffix(phone, last10);
+            for (Merchant m : duplicateMerchants) {
+                if (targetMerchantId == null || !m.getId().equals(targetMerchantId)) {
+                    throw new AppException(
+                            "Phone number " + phone + " is already registered as the business contact for merchant brand \"" + m.getBusinessName() + "\".",
+                            ApiError.DUPLICATE_RESOURCE, 400);
+                } else {
+                    throw new AppException(
+                            "Phone number " + phone + " is already registered as the main Merchant HQ contact for \"" + m.getBusinessName() + "\". For store operations, please provide a dedicated branch phone number.",
+                            ApiError.DUPLICATE_RESOURCE, 400);
+                }
+            }
+        }
+
+        // 3. Check User table for duplicate or role conflict
+        if (userRepository != null) {
+            List<User> duplicateUsers = userRepository.findByPhoneOrSuffix(phone, last10);
+            for (User u : duplicateUsers) {
+                if (u.getRole() == Role.ADMIN || u.getRole() == Role.SUPER_ADMIN) {
+                    throw new AppException(
+                            "Phone number " + phone + " is associated with an administrator account and cannot be used for a store branch.",
+                            ApiError.VALIDATION_ERROR, 400);
+                }
+                if (managerEmail != null && !managerEmail.isBlank()) {
+                    if (!u.getEmail().equalsIgnoreCase(managerEmail.trim())) {
+                        throw new AppException(
+                                "Phone number " + phone + " is already linked to another user account (" + u.getEmail() + ").",
+                                ApiError.DUPLICATE_RESOURCE, 400);
+                    }
+                }
+            }
+        }
     }
 
     private double calculateDistanceMeters(double lat1, double lon1, double lat2, double lon2) {

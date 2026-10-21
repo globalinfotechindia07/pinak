@@ -19,21 +19,6 @@ public class MerchantKyc {
     @Column(name = "business_type", length = 64)
     private String businessType;
 
-    @Column(name = "pan_number", length = 10)
-    private String panNumber;
-
-    @Column(name = "gstin", length = 15)
-    private String gstin;
-
-    @Column(name = "bank_account_number", length = 34)
-    private String bankAccountNumber;
-
-    @Column(name = "bank_ifsc", length = 11)
-    private String bankIfsc;
-
-    @Column(name = "bank_name", length = 128)
-    private String bankName;
-
     @Column(name = "document_type", length = 64)
     private String documentType;
 
@@ -42,9 +27,6 @@ public class MerchantKyc {
 
     @Column(name = "business_registration_number", length = 128)
     private String businessRegistrationNumber;
-
-    @Column(name = "tax_id", length = 128)
-    private String taxId;
 
     @Column(name = "document_url", length = 1024)
     private String documentUrl;
@@ -72,29 +54,21 @@ public class MerchantKyc {
 
     public MerchantKyc() {}
 
+    public MerchantKyc(UUID merchantId, String businessType, String status) {
+        this.merchantId = merchantId;
+        this.businessType = businessType;
+        this.documentType = "BUSINESS_REGISTRATION";
+        this.status = status != null ? status : "SUBMITTED";
+    }
+
     public MerchantKyc(UUID merchantId, String documentType, String documentNumber,
-                       String businessRegistrationNumber, String taxId, String documentUrl) {
+                       String businessRegistrationNumber, String documentUrl) {
         this.merchantId = merchantId;
         this.documentType = documentType;
         this.documentNumber = documentNumber;
         this.businessRegistrationNumber = businessRegistrationNumber;
-        this.taxId = taxId;
         this.documentUrl = documentUrl;
         this.status = "SUBMITTED";
-    }
-
-    public MerchantKyc(UUID merchantId, String businessType, String panNumber, String gstin,
-                       String bankAccountNumber, String bankIfsc, String bankName, String status) {
-        this.merchantId = merchantId;
-        this.businessType = businessType;
-        this.panNumber = panNumber;
-        this.gstin = gstin;
-        this.bankAccountNumber = bankAccountNumber;
-        this.bankIfsc = bankIfsc;
-        this.bankName = bankName;
-        this.documentType = "PAN_CARD";
-        this.documentNumber = panNumber;
-        this.status = status != null ? status : "SUBMITTED";
     }
 
     @PrePersist
@@ -121,21 +95,6 @@ public class MerchantKyc {
     public String getBusinessType() { return businessType; }
     public void setBusinessType(String businessType) { this.businessType = businessType; }
 
-    public String getPanNumber() { return panNumber; }
-    public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
-
-    public String getGstin() { return gstin; }
-    public void setGstin(String gstin) { this.gstin = gstin; }
-
-    public String getBankAccountNumber() { return bankAccountNumber; }
-    public void setBankAccountNumber(String bankAccountNumber) { this.bankAccountNumber = bankAccountNumber; }
-
-    public String getBankIfsc() { return bankIfsc; }
-    public void setBankIfsc(String bankIfsc) { this.bankIfsc = bankIfsc; }
-
-    public String getBankName() { return bankName; }
-    public void setBankName(String bankName) { this.bankName = bankName; }
-
     public String getDocumentType() { return documentType; }
     public void setDocumentType(String documentType) { this.documentType = documentType; }
 
@@ -144,9 +103,6 @@ public class MerchantKyc {
 
     public String getBusinessRegistrationNumber() { return businessRegistrationNumber; }
     public void setBusinessRegistrationNumber(String businessRegistrationNumber) { this.businessRegistrationNumber = businessRegistrationNumber; }
-
-    public String getTaxId() { return taxId; }
-    public void setTaxId(String taxId) { this.taxId = taxId; }
 
     public String getDocumentUrl() { return documentUrl; }
     public void setDocumentUrl(String documentUrl) { this.documentUrl = documentUrl; }

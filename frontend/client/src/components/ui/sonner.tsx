@@ -1,7 +1,7 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
-const Toaster = ({ ...props }: ToasterProps) => {
+const Toaster = ({ position = "top-right", closeButton = true, ...props }: ToasterProps) => {
   let theme: "light" | "dark" = "light";
   try {
     const themeContext = useTheme();
@@ -13,6 +13,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme}
+      position={position}
+      closeButton={closeButton}
       className="toaster group"
       toastOptions={{
         classNames: {

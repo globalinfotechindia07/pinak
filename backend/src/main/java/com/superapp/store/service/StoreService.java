@@ -48,6 +48,8 @@ public interface StoreService {
 
     StoreResponse updateStore(UUID id, UpdateStoreRequest request, UUID currentUserId, boolean isAdmin);
 
+    void validateStorePhoneUniqueness(String phone, UUID merchantId, UUID storeId, String managerEmail);
+
     void deleteStore(UUID id, UUID currentUserId, boolean isAdmin);
 
     StoreResponse updateApprovalStatus(UUID id, UpdateApprovalStatusRequest request);

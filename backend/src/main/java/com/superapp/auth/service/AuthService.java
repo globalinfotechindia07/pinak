@@ -55,6 +55,7 @@ public class AuthService {
     private final OtpService otpService;
     private final OtpStorageService otpStorageService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    private com.superapp.merchant.repository.MerchantRepository merchantRepository;
 
     public AuthService(
             UserRepository userRepository,
@@ -82,6 +83,11 @@ public class AuthService {
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.otpService = otpService;
         this.otpStorageService = otpStorageService;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setMerchantRepository(com.superapp.merchant.repository.MerchantRepository merchantRepository) {
+        this.merchantRepository = merchantRepository;
     }
 
     /**
@@ -281,6 +287,52 @@ public class AuthService {
             throw AuthException.accountSuspended("Your administrative staff account has been suspended. Please contact a Super Administrator.");
         }
 
+        // Guard for MERCHANT role: verify merchant existence & active account status
+        if (user.getRole() == Role.MERCHANT && merchantRepository != null) {
+            var merchantOpt = merchantRepository.findByOwnerUserId(user.getId());
+            boolean hasStaffScope = staffList.stream()
+                    .anyMatch(s -> ("MERCHANT".equalsIgnoreCase(s.getScope()) || "STORE".equalsIgnoreCase(s.getScope()))
+                            && !("SUSPENDED".equalsIgnoreCase(s.getStatus())));
+
+            if (merchantOpt.isPresent()) {
+                var m = merchantOpt.get();
+                if (m.getStatus() == com.superapp.merchant.enums.MerchantStatus.SUSPENDED) {
+                    auditService.record(AuditEventType.LOGIN_FAILED, user.getId(),
+                            ipAddress, userAgent, requestId, "{\"reason\":\"MERCHANT_SUSPENDED\"}");
+                    String reason = m.getSuspensionReason() != null && !m.getSuspensionReason().isBlank()
+                            ? m.getSuspensionReason() : "Account suspended by platform administrator";
+                    throw AuthException.accountSuspended("Your merchant business has been suspended: " + reason);
+                }
+                if (m.getStatus() == com.superapp.merchant.enums.MerchantStatus.INACTIVE) {
+                    auditService.record(AuditEventType.LOGIN_FAILED, user.getId(),
+                            ipAddress, userAgent, requestId, "{\"reason\":\"MERCHANT_INACTIVE\"}");
+                    throw AuthException.accountInactive("Your merchant business account is currently inactive. Please accept your email invitation to activate your account, or contact your administrator.");
+                }
+            } else if (hasStaffScope) {
+                // If user is a staff member, check if their assigned merchant is active
+                var staffMerchant = staffList.stream()
+                        .filter(s -> ("MERCHANT".equalsIgnoreCase(s.getScope()) || "STORE".equalsIgnoreCase(s.getScope())) && s.getMerchantId() != null)
+                        .findFirst();
+                if (staffMerchant.isPresent()) {
+                    var targetMerchant = merchantRepository.findById(staffMerchant.get().getMerchantId());
+                    if (targetMerchant.isPresent()) {
+                        var tm = targetMerchant.get();
+                        if (tm.getStatus() == com.superapp.merchant.enums.MerchantStatus.SUSPENDED) {
+                            throw AuthException.accountSuspended("The merchant business for this account has been suspended.");
+                        }
+                        if (tm.getStatus() == com.superapp.merchant.enums.MerchantStatus.INACTIVE) {
+                            throw AuthException.accountInactive("The merchant business for this account is currently inactive.");
+                        }
+                    }
+                }
+            } else {
+                log.warn("Login rejected: user={} has Role.MERCHANT but no active merchant business is registered", user.getId());
+                auditService.record(AuditEventType.LOGIN_FAILED, user.getId(),
+                        ipAddress, userAgent, requestId, "{\"reason\":\"NO_MERCHANT_ASSIGNED\"}");
+                throw AuthException.merchantNotFound("No active merchant business is registered for this account. Please contact your platform administrator.");
+            }
+        }
+
         // Verify password
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             log.warn("Invalid password attempt for user={}", user.getId());
@@ -399,7 +451,21 @@ public class AuthService {
         }
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));
+        if (UserStatus.INACTIVE.equals(user.getStatus())) {
+            user.setStatus(UserStatus.ACTIVE);
+        }
         userRepository.save(user);
+
+        // When merchant owner changes password, activate any INACTIVE merchant account
+        if (merchantRepository != null) {
+            merchantRepository.findByOwnerUserId(user.getId()).ifPresent(m -> {
+                if (m.getStatus() == com.superapp.merchant.enums.MerchantStatus.INACTIVE) {
+                    m.setStatus(com.superapp.merchant.enums.MerchantStatus.ACTIVE);
+                    merchantRepository.save(m);
+                    log.info("Activated merchantId={} upon owner password change", m.getId());
+                }
+            });
+        }
 
         // Invalidate all sessions after password change (security best practice)
         sessionService.revokeAllSessions(user);
@@ -464,7 +530,21 @@ public class AuthService {
 
         User user = token.getUser();
         user.setPassword(passwordEncoder.encode(request.newPassword()));
+        if (UserStatus.INACTIVE.equals(user.getStatus())) {
+            user.setStatus(UserStatus.ACTIVE);
+        }
         userRepository.save(user);
+
+        // When merchant owner changes password, activate any INACTIVE merchant account
+        if (merchantRepository != null) {
+            merchantRepository.findByOwnerUserId(user.getId()).ifPresent(m -> {
+                if (m.getStatus() == com.superapp.merchant.enums.MerchantStatus.INACTIVE) {
+                    m.setStatus(com.superapp.merchant.enums.MerchantStatus.ACTIVE);
+                    merchantRepository.save(m);
+                    log.info("Activated merchantId={} upon owner password change", m.getId());
+                }
+            });
+        }
 
         // Invalidate all sessions after password reset (security best practice)
         sessionService.revokeAllSessions(user);
@@ -818,7 +898,7 @@ public class AuthService {
 
         String trimmed = identifier.trim();
 
-        // 1. Direct lookup by email, mobile, and phone
+        // 1. Direct lookup by email and phone/mobile
         var directUser = userRepository.findByEmail(trimmed.toLowerCase())
                 .or(() -> userRepository.findByMobile(trimmed))
                 .or(() -> userRepository.findByPhone(trimmed));
@@ -860,6 +940,15 @@ public class AuthService {
                     .or(() -> userRepository.findByPhone(withCountryCode));
             if (altUser.isPresent()) {
                 return altUser.get();
+            }
+        }
+
+        // 4. Try mobile lookup if email wasn't found
+        if (trimmed.contains("@")) {
+            var fallbackUser = userRepository.findByMobile(trimmed)
+                    .or(() -> userRepository.findByPhone(trimmed));
+            if (fallbackUser.isPresent()) {
+                return fallbackUser.get();
             }
         }
 

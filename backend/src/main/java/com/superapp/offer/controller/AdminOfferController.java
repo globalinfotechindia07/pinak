@@ -99,4 +99,14 @@ public class AdminOfferController {
         OfferApprovalResponse response = offerService.suspendOffer(offerId, request.reason(), adminUserId);
         return ResponseEntity.ok(ApiResponse.success("Offer suspended successfully", response));
     }
+
+    @DeleteMapping("/{offerId}")
+    @Operation(summary = "Permanently delete an offer (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<Void>> deleteOfferAdmin(
+            @PathVariable UUID offerId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID adminUserId = UUID.fromString(userDetails.getUsername());
+        offerService.deleteAdminOffer(offerId, adminUserId);
+        return ResponseEntity.ok(ApiResponse.success("Offer deleted successfully", null));
+    }
 }

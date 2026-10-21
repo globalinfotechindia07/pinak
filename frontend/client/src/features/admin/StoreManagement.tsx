@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Store as StoreIcon,
+  Tag,
+  ShoppingBag,
   Plus,
   MapPin,
   CheckCircle2,
@@ -19,7 +21,18 @@ import {
   Pencil,
   MoreVertical,
   Eye,
-  Copy
+  Copy,
+  Sparkles,
+  LayoutGrid,
+  List,
+  Search,
+  UserCheck,
+  Mail,
+  KeyRound,
+  Send,
+  ShieldCheck,
+  User,
+  Phone
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,7 +42,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from "../../components/ui/dropdown-menu";
-import { Store as StoreType, Merchant } from "../../types";
+import { Store as StoreType, Merchant, Offer } from "../../types";
+import { OfferCampaignFormDrawer } from "../../components/OfferCampaignFormDrawer";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
 import { cn } from "../../lib/utils";
@@ -38,25 +52,37 @@ import { storeBranchSchema } from "../../lib/validationSchemas";
 import { StoreLocationPicker } from "../../components/StoreLocationPicker";
 import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { StoreScheduleSelector } from "../../components/StoreScheduleSelector";
+import { staffApi, BackendStaffResponse } from "../../api/staffApi";
+import { storeApi } from "../../api/storeApi";
 
 interface StoreManagementProps {
   stores: StoreType[];
   merchants: Merchant[];
+  offers?: Offer[];
   onAddStore: (draft: Partial<StoreType>) => void;
   onApproveStore: (id: string) => void;
   onDeleteStore?: (id: string) => void;
   onUpdateStore?: (id: string, updates: Partial<StoreType>) => void;
+  onAddOffer?: (draft: any) => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
 export const StoreManagement: React.FC<StoreManagementProps> = ({
   stores,
   merchants,
+  offers = [],
   onAddStore,
   onApproveStore,
   onDeleteStore,
-  onUpdateStore
+  onUpdateStore,
+  onAddOffer,
+  onNavigateTab
 }) => {
+  const [storeForOffer, setStoreForOffer] = useState<StoreType | null>(null);
   const [cityFilter, setCityFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [cardSearch, setCardSearch] = useState("");
   const [selectedStore, setSelectedStore] = useState<StoreType | null>(null);
   const [storeToEdit, setStoreToEdit] = useState<StoreType | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -68,10 +94,71 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
     return ["ALL", ...uniqueCities];
   }, [stores]);
 
-  // Filtered by city chip if selected
-  const displayedStores = cityFilter === "ALL" 
-    ? stores 
-    : stores.filter((s) => s.city.toLowerCase() === cityFilter.toLowerCase());
+  // Executive KPI Metrics
+  const activeCount = useMemo(
+    () => stores.filter((s) => s.status === "ACTIVE").length,
+    [stores]
+  );
+  const pendingCount = useMemo(
+    () => stores.filter((s) => s.status === "PENDING_APPROVAL").length,
+    [stores]
+  );
+  const inactiveCount = useMemo(
+    () => stores.filter((s) => s.status === "INACTIVE" || s.status === "CLOSED").length,
+    [stores]
+  );
+  const citiesCount = useMemo(
+    () => new Set(stores.map((s) => s.city).filter(Boolean)).size,
+    [stores]
+  );
+
+  // Tab counts
+  const tabCounts = useMemo(() => {
+    return {
+      ALL: stores.length,
+      ACTIVE: activeCount,
+      PENDING_APPROVAL: pendingCount,
+      INACTIVE: inactiveCount,
+    };
+  }, [stores, activeCount, pendingCount, inactiveCount]);
+
+  // Filtered by status tab and city chip
+  const displayedStores = useMemo(() => {
+    return stores.filter((s) => {
+      if (statusFilter !== "ALL") {
+        if (statusFilter === "ACTIVE" && s.status !== "ACTIVE") return false;
+        if (statusFilter === "PENDING_APPROVAL" && s.status !== "PENDING_APPROVAL") return false;
+        if (statusFilter === "INACTIVE" && s.status !== "INACTIVE" && s.status !== "CLOSED") return false;
+      }
+      if (cityFilter !== "ALL" && s.city.toLowerCase() !== cityFilter.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+  }, [stores, statusFilter, cityFilter]);
+
+  // Comprehensive store search matching across all fields
+  const matchStoreSearch = (s: StoreType, q: string) => {
+    if (!q || !q.trim()) return true;
+    const query = q.toLowerCase().trim();
+    const brand = merchants.find((m) => m.id === s.merchantId)?.businessName?.toLowerCase() || "";
+    return (
+      (s.branchName || "").toLowerCase().includes(query) ||
+      (s.storeName || "").toLowerCase().includes(query) ||
+      ((s as any).name || "").toLowerCase().includes(query) ||
+      (s.merchantName || "").toLowerCase().includes(query) ||
+      brand.includes(query) ||
+      (s.address || "").toLowerCase().includes(query) ||
+      (s.city || "").toLowerCase().includes(query) ||
+      (s.district || "").toLowerCase().includes(query) ||
+      (s.state || "").toLowerCase().includes(query) ||
+      (s.pincode || "").toLowerCase().includes(query) ||
+      (s.managerName || "").toLowerCase().includes(query) ||
+      (s.managerEmail || "").toLowerCase().includes(query) ||
+      (s.phone || "").toLowerCase().includes(query) ||
+      (s.id || "").toLowerCase().includes(query)
+    );
+  };
 
   const handleExportStoresCsv = () => {
     if (stores.length === 0) {
@@ -96,167 +183,281 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
 
   const columns: Column<StoreType>[] = [
     {
-      header: "Store / Branch",
+      header: "Store & Brand",
       sortable: true,
       accessor: "branchName",
-      render: (s) => (
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 shadow-xs">
-            <StoreIcon size={16} />
+      render: (s) => {
+        const branchTitle = s.branchName || s.storeName || (s as any).name || "Branch Outlet";
+        const parentMerchant = merchants.find((m) => m.id === s.merchantId);
+        const brandName = parentMerchant?.businessName || s.merchantName || "Partner Brand";
+        const shortBid = (s.id || "").substring(0, 8).toUpperCase();
+
+        return (
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 shadow-2xs">
+              <StoreIcon size={15} />
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-slate-900 dark:text-white leading-tight truncate">
+                {branchTitle}
+              </p>
+              <div className="flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 font-medium truncate mt-0.5">
+                <Building2 size={11} className="shrink-0 text-purple-500" />
+                <span className="truncate">{brandName}</span>
+                <span className="text-slate-300 dark:text-slate-600">·</span>
+                <span className="font-mono text-[10px] text-amber-700 dark:text-amber-400 font-semibold">
+                  #{shortBid}
+                </span>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-slate-900 dark:text-white leading-tight">
-              {s.branchName}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
-              <Clock size={11} /> {s.operatingHours}
-            </p>
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
-      header: "Brand Parent",
-      sortable: true,
-      accessor: "merchantName",
-      render: (s) => (
-        <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
-          <Building2 size={13} className="text-purple-500" />
-          <span>{s.merchantName}</span>
-        </div>
-      )
-    },
-    {
-      header: "Address & City",
+      header: "Location",
       sortable: true,
       accessor: "city",
       render: (s) => (
-        <div className="text-xs max-w-xs">
-          <p className="truncate font-medium text-slate-700 dark:text-slate-300">{s.address}</p>
-          <p className="text-slate-400 text-[11px] mt-0.5">
-            {s.city}{s.district && s.district !== s.city ? `, ${s.district}` : ""}{s.state ? `, ${s.state}` : ""} • <span className="font-mono">{s.pincode}</span>
+        <div className="min-w-0 text-xs">
+          <p className="font-semibold text-slate-800 dark:text-slate-200 truncate flex items-center gap-1">
+            <MapPin size={11} className="text-pink-500 shrink-0" />
+            <span className="truncate">{s.city}{s.state ? `, ${s.state}` : ""}</span>
+            {s.pincode && <span className="text-slate-400 font-normal">· {s.pincode}</span>}
+          </p>
+          <p className="text-slate-400 text-[11px] truncate mt-0.5" title={s.address}>
+            {s.address || "Main Street"}
           </p>
         </div>
       )
     },
     {
-      header: "GPS Coordinates",
-      render: (s) => (
-        <div className="font-mono text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 px-2.5 py-1 rounded-lg inline-flex items-center gap-1 border border-purple-200/50 dark:border-purple-900/50">
-          <MapPin size={11} className="text-pink-500" />
-          <span>{s.latitude.toFixed(4)}, {s.longitude.toFixed(4)}</span>
-        </div>
-      )
+      header: "Manager",
+      sortable: false,
+      render: (s) => {
+        if (s.managerName) {
+          return (
+            <div className="min-w-0 text-xs">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 truncate">
+                <UserCheck size={12} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="truncate">{s.managerName}</span>
+              </div>
+              <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                {s.managerEmail || s.phone || "No contact"}
+              </div>
+            </div>
+          );
+        }
+
+        if (s.phone) {
+          return (
+            <div className="min-w-0 text-xs">
+              <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-medium truncate">
+                <Phone size={11} className="text-slate-400 shrink-0" />
+                <span className="truncate">{s.phone}</span>
+              </div>
+              <span className="text-[10px] text-slate-400 italic block mt-0.5">Unassigned</span>
+            </div>
+          );
+        }
+
+        return <span className="text-slate-400 italic text-xs">Unassigned</span>;
+      }
     },
     {
-      header: "Map Status",
+      header: "Live Deals",
+      sortable: false,
+      className: "w-32 text-center whitespace-nowrap",
+      render: (s) => {
+        const storeDeals = offers.filter(o =>
+          (o.applicableStoreIds && o.applicableStoreIds.includes(s.id)) ||
+          o.storeId === s.id ||
+          (!o.applicableStoreIds?.length && o.merchantId === s.merchantId)
+        );
+        const count = storeDeals.length;
+        if (count > 0) {
+          return (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedStore(s);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 hover:bg-purple-100 transition-colors shadow-2xs"
+              title="Click to view outlet deals"
+            >
+              <Tag size={11} className="text-purple-600 dark:text-purple-400" />
+              <span>{count} Live {count === 1 ? "Deal" : "Deals"}</span>
+            </button>
+          );
+        }
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setStoreForOffer(s);
+            }}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-dashed border-slate-300 dark:border-slate-700 transition-colors"
+            title="Create promotion or product deal for this branch"
+          >
+            <Tag size={11} className="text-emerald-600" />
+            <span>+ Add Deal</span>
+          </button>
+        );
+      }
+    },
+    {
+      header: "Status",
       sortable: true,
       accessor: "status",
-      render: (s) => (
-        <Badge variant={s.status === "ACTIVE" ? "success" : "warning"}>
-          {s.status === "ACTIVE" ? (
-            <CheckCircle2 size={12} />
-          ) : (
-            <Clock size={12} />
-          )}
-          {s.status === "ACTIVE" ? "Active on Map" : "Inactive / Closed"}
-        </Badge>
-      )
+      className: "w-28 text-center whitespace-nowrap",
+      render: (s) => {
+        if (s.status === "ACTIVE") {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60 whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Active
+            </span>
+          );
+        }
+        if (s.status === "PENDING_APPROVAL") {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60 whitespace-nowrap">
+              <Clock size={11} />
+              Review
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 whitespace-nowrap">
+            Inactive
+          </span>
+        );
+      }
     },
     {
-      header: "Actions",
-      className: "text-right whitespace-nowrap",
-      render: (s) => (
-        <div className="flex items-center justify-end gap-1.5">
-          {/* Quick View Button */}
-          <button
-            onClick={() => setSelectedStore(s)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200/80 dark:border-purple-800/60 transition-all shadow-2xs hover:shadow-xs"
-            title="View Store Location & Details"
-          >
-            <MapPin size={13} className="text-pink-500" />
-            <span>View</span>
-          </button>
+      header: "",
+      sortable: false,
+      className: "w-12 text-right whitespace-nowrap",
+      render: (s) => {
+        const lat = typeof s.latitude === "number" ? s.latitude : parseFloat(String(s.latitude || 21.1458));
+        const lng = typeof s.longitude === "number" ? s.longitude : parseFloat(String(s.longitude || 79.0882));
+        const safeCoords = `${!isNaN(lat) ? lat.toFixed(6) : "21.1458"}, ${!isNaN(lng) ? lng.toFixed(6) : "79.0882"}`;
 
-          {/* 3-Dots Dropdown Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-colors"
-                title="Store Actions"
-              >
-                <MoreVertical size={14} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#121626]">
-              <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-2 py-1">
-                Store Operations
-              </DropdownMenuLabel>
-
-              <DropdownMenuItem
-                onClick={() => setSelectedStore(s)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
-              >
-                <Eye size={14} className="text-purple-600 dark:text-purple-400" />
-                <span>View Outlet & Map</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => setStoreToEdit(s)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
-              >
-                <Pencil size={14} className="text-amber-600 dark:text-amber-400" />
-                <span>Edit Store Outlet</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => {
-                  navigator.clipboard.writeText(s.id);
-                  toast.success(`Copied Store ID: ${s.id}`);
-                }}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <Copy size={14} className="text-slate-400" />
-                <span>Copy Store ID</span>
-              </DropdownMenuItem>
-
-              {s.status !== "ACTIVE" ? (
-                <DropdownMenuItem
-                  onClick={() => onApproveStore(s.id)}
-                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+        return (
+          <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-colors"
+                  title="Store Actions"
                 >
-                  <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
-                  <span>Approve & Activate</span>
+                  <MoreVertical size={14} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#121626]">
+                <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-2 py-1">
+                  Store Operations
+                </DropdownMenuLabel>
+
+                <DropdownMenuItem
+                  onClick={() => setSelectedStore(s)}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+                >
+                  <Eye size={14} className="text-purple-600 dark:text-purple-400" />
+                  <span>View Outlet & Map</span>
                 </DropdownMenuItem>
-              ) : (
+
+                <DropdownMenuItem
+                  onClick={() => setStoreToEdit(s)}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+                >
+                  <Pencil size={14} className="text-amber-600 dark:text-amber-400" />
+                  <span>Edit Store Outlet</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => setStoreForOffer(s)}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                >
+                  <Tag size={14} className="text-emerald-600 dark:text-emerald-400" />
+                  <span>Create Store Offer</span>
+                </DropdownMenuItem>
+
                 <DropdownMenuItem
                   onClick={() => {
-                    onUpdateStore?.(s.id, { status: "INACTIVE" });
-                    toast.info(`Store "${s.branchName}" marked as Inactive`);
+                    navigator.clipboard.writeText(s.id);
+                    toast.success(`Copied Store ID: ${s.id}`);
                   }}
                   className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  <PowerOff size={14} className="text-amber-500" />
-                  <span>Deactivate / Close</span>
+                  <Copy size={14} className="text-slate-400" />
+                  <span>Copy Store ID</span>
                 </DropdownMenuItem>
-              )}
 
-              {onDeleteStore && (
-                <>
-                  <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+                {s.merchantId && (
                   <DropdownMenuItem
-                    onClick={() => setStoreToDelete(s)}
-                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    onClick={() => {
+                      navigator.clipboard.writeText(s.merchantId);
+                      toast.success(`Copied Merchant ID: ${s.merchantId}`);
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
-                    <Trash2 size={14} />
-                    <span>Delete Store Branch</span>
+                    <Building2 size={14} className="text-slate-400" />
+                    <span>Copy Merchant ID</span>
                   </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )
+                )}
+
+                <DropdownMenuItem
+                  onClick={() => {
+                    navigator.clipboard.writeText(safeCoords);
+                    toast.success(`Copied Coordinates: ${safeCoords}`);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <MapPin size={14} className="text-pink-500" />
+                  <span>Copy Coordinates</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+
+                {s.status !== "ACTIVE" ? (
+                  <DropdownMenuItem
+                    onClick={() => onApproveStore(s.id)}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                  >
+                    <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                    <span>Approve & Activate</span>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      onUpdateStore?.(s.id, { status: "INACTIVE" });
+                      toast.info(`Store "${s.branchName}" marked as Inactive`);
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <PowerOff size={14} className="text-amber-500" />
+                    <span>Deactivate / Close</span>
+                  </DropdownMenuItem>
+                )}
+
+                {onDeleteStore && (
+                  <>
+                    <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+                    <DropdownMenuItem
+                      onClick={() => setStoreToDelete(s)}
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    >
+                      <Trash2 size={14} />
+                      <span>Delete Store Branch</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      }
     }
   ];
 
@@ -265,28 +466,22 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold font-['Manrope'] text-slate-900 dark:text-white">
-              Physical Stores & Branches
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
-              <MapPin size={12} />
-              Multi-Outlet Network
-            </span>
-          </div>
+          <h2 className="text-xl sm:text-2xl font-bold font-['Manrope'] text-slate-900 dark:text-white">
+            Physical Stores & Outlets Network
+          </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Manage physical retail outlets and store branches mapped to partner brands. Each location has verified GPS geocoordinates for proximity customer discovery.
+            Monitor geocoded retail branches, manager assignments, and proximity customer discovery.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={handleExportStoresCsv}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs"
             title="Export store branches as CSV"
           >
-            <Download size={14} />
+            <Download size={16} />
             <span>Export (.CSV)</span>
           </button>
           <button
@@ -299,58 +494,548 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
         </div>
       </div>
 
-      {/* Dynamic City Chips Toolbar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">City Filter:</span>
-        {availableCities.map((city) => (
-          <button
-            key={city}
-            onClick={() => setCityFilter(city)}
-            className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors border ${
-              cityFilter === city
-                ? "bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800 font-bold"
-                : "border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-            }`}
-          >
-            {city === "ALL" ? "All Cities" : city}
-          </button>
-        ))}
+      {/* Executive KPI Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Outlets */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Total Outlets</span>
+            <div className="p-2 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+              <StoreIcon size={16} />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
+              {stores.length}
+            </span>
+            <span className="text-xs text-slate-400 block mt-0.5">Registered Store Branches</span>
+          </div>
+        </div>
+
+        {/* Card 2: Live on App */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Live on App</span>
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+              <CheckCircle2 size={16} />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
+              {activeCount}
+            </span>
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold block mt-0.5">
+              {stores.length > 0 ? Math.round((activeCount / stores.length) * 100) : 0}% Active Coverage
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Action Required */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Action Required</span>
+            <div className="p-2 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+              <Clock size={16} />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
+              {pendingCount}
+            </span>
+            <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold block mt-0.5">
+              Awaiting Location Clearance
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Cities Covered */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Cities Covered</span>
+            <div className="p-2 rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400">
+              <MapPin size={16} />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
+              {citiesCount}
+            </span>
+            <span className="text-xs text-slate-400 block mt-0.5">Active Urban Presence</span>
+          </div>
+        </div>
       </div>
 
-      {/* Advanced Stores Table */}
-      <AdvancedTable
-        title="Physical Store Branches Registry"
-        subtitle={`${displayedStores.length} geocoded locations mapped to verified merchant brands`}
-        columns={columns}
-        data={displayedStores}
-        keyExtractor={(s) => s.id}
-        searchPlaceholder="Search store branch, brand, street address, or city..."
-        searchFilter={(s, q) =>
-          s.branchName.toLowerCase().includes(q) ||
-          s.merchantName.toLowerCase().includes(q) ||
-          s.address.toLowerCase().includes(q) ||
-          s.city.toLowerCase().includes(q)
-        }
-        bulkActions={[
-          {
-            label: "Approve Selected Locations",
-            variant: "success",
-            action: (selected) => {
-              selected.forEach((s) => onApproveStore(s.id));
-              toast.success(`Approved ${selected.length} store branch locations!`);
+      {/* Status Filter Chips + City Chips + View Mode Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Status Filter Tabs with Counts */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {[
+            { id: "ALL", label: "All Stores", count: tabCounts.ALL },
+            { id: "ACTIVE", label: "Active", count: tabCounts.ACTIVE },
+            { id: "PENDING_APPROVAL", label: "Pending Review", count: tabCounts.PENDING_APPROVAL },
+            { id: "INACTIVE", label: "Inactive", count: tabCounts.INACTIVE },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all",
+                statusFilter === tab.id
+                  ? "bg-purple-600 text-white font-bold shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={cn(
+                  "px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                  statusFilter === tab.id
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                )}
+              >
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Dynamic City Filter & View Mode Switcher */}
+        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+          {availableCities.length > 2 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">City:</span>
+              {availableCities.map((city) => (
+                <button
+                  key={city}
+                  onClick={() => setCityFilter(city)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border ${
+                    cityFilter === city
+                      ? "bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800 font-bold"
+                      : "border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {city === "ALL" ? "All Cities" : city}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* View Mode Toggle Switch */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                viewMode === "table"
+                  ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              )}
+              title="Table View"
+            >
+              <List size={14} />
+              <span>Table</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                viewMode === "cards"
+                  ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              )}
+              title="Card Grid View"
+            >
+              <LayoutGrid size={14} />
+              <span>Cards</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content: Table or Cards View */}
+      {viewMode === "table" ? (
+        <AdvancedTable
+          columns={columns}
+          data={displayedStores}
+          keyExtractor={(s) => s.id}
+          onRowClick={(s) => setSelectedStore(s)}
+          searchPlaceholder="Search store branch, brand, street address, or city..."
+          searchFilter={(s, q) => matchStoreSearch(s, q)}
+          bulkActions={[
+            {
+              label: "Approve Selected Locations",
+              variant: "success",
+              action: (selected) => {
+                selected.forEach((s) => onApproveStore(s.id));
+                toast.success(`Approved ${selected.length} store branch locations!`);
+              }
             }
-          }
-        ]}
-      />
+          ]}
+        />
+      ) : (
+        <div className="space-y-4">
+          {/* Card Search & Summary Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="relative flex-1 max-w-md">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={cardSearch}
+                onChange={(e) => setCardSearch(e.target.value)}
+                placeholder="Search branches, brand, manager, address, or city..."
+                className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-900 dark:text-white"
+              />
+              {cardSearch && (
+                <button
+                  type="button"
+                  onClick={() => setCardSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            <div className="text-xs text-slate-500 flex items-center justify-between sm:justify-end gap-2">
+              <span>Showing <strong>{
+                displayedStores.filter((s) => matchStoreSearch(s, cardSearch)).length
+              }</strong> of <strong>{stores.length}</strong> store branches</span>
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          {(() => {
+            const cardData = displayedStores.filter((s) => matchStoreSearch(s, cardSearch));
+
+            if (cardData.length === 0) {
+              return (
+                <div className="text-center py-12 px-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3">
+                    <StoreIcon size={24} />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">No store branches found</h4>
+                  <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms or city filters.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {cardData.map((s) => {
+                  const brand = merchants.find((m) => m.id === s.merchantId)?.businessName || s.merchantName || "Partner Brand";
+                  const lat = typeof s.latitude === "number" ? s.latitude : parseFloat(String(s.latitude || 21.1458));
+                  const lng = typeof s.longitude === "number" ? s.longitude : parseFloat(String(s.longitude || 79.0882));
+                  const safeLat = !isNaN(lat) ? lat.toFixed(4) : "21.1458";
+                  const safeLng = !isNaN(lng) ? lng.toFixed(4) : "79.0882";
+                  const safeCoords = `${!isNaN(lat) ? lat.toFixed(6) : "21.1458"}, ${!isNaN(lng) ? lng.toFixed(6) : "79.0882"}`;
+                  const shortBid = (s.id || "").substring(0, 8).toUpperCase();
+
+                  return (
+                    <div
+                      key={s.id}
+                      className="group relative rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-300 dark:hover:border-amber-800 transition-all p-5 shadow-xs hover:shadow-md flex flex-col justify-between"
+                    >
+                      {/* Top Row: Store Icon + Title + Action Menu */}
+                      <div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+                              <StoreIcon size={18} />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                                {s.branchName || s.storeName || "Branch Outlet"}
+                              </h4>
+                              <p className="text-xs text-purple-700 dark:text-purple-300 font-semibold truncate mt-0.5 flex items-center gap-1">
+                                <Building2 size={12} className="shrink-0 text-purple-500" />
+                                <span className="truncate">{brand}</span>
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                <span className="font-mono text-amber-700 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200/50 dark:border-amber-900/40">
+                                  BID: #{shortBid}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 3-dots actions menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                title="Store Actions"
+                              >
+                                <MoreVertical size={15} />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#121626]">
+                              <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-2 py-1">
+                                Store Operations
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => setSelectedStore(s)}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+                              >
+                                <Eye size={14} className="text-purple-600 dark:text-purple-400" />
+                                <span>View Outlet & Map</span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={() => setStoreToEdit(s)}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+                              >
+                                <Pencil size={14} className="text-amber-600 dark:text-amber-400" />
+                                <span>Edit Store Outlet</span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  navigator.clipboard.writeText(s.id);
+                                  toast.success(`Copied Store ID: ${s.id}`);
+                                }}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                <Copy size={14} className="text-slate-400" />
+                                <span>Copy Store ID</span>
+                              </DropdownMenuItem>
+
+                              {s.merchantId && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(s.merchantId);
+                                    toast.success(`Copied Merchant ID: ${s.merchantId}`);
+                                  }}
+                                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                  <Building2 size={14} className="text-slate-400" />
+                                  <span>Copy Merchant ID</span>
+                                </DropdownMenuItem>
+                              )}
+
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  navigator.clipboard.writeText(safeCoords);
+                                  toast.success(`Copied GPS: ${safeCoords}`);
+                                }}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                <MapPin size={14} className="text-pink-500" />
+                                <span>Copy Coordinates</span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+
+                              <DropdownMenuItem
+                                onClick={() => setStoreForOffer(s)}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                              >
+                                <Tag size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                <span>Create Store Offer</span>
+                              </DropdownMenuItem>
+
+                              {s.status !== "ACTIVE" ? (
+                                <DropdownMenuItem
+                                  onClick={() => onApproveStore(s.id)}
+                                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                >
+                                  <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                  <span>Approve & Activate</span>
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    onUpdateStore?.(s.id, { status: "INACTIVE" });
+                                    toast.info(`Store "${s.branchName}" marked as Inactive`);
+                                  }}
+                                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                  <PowerOff size={14} className="text-amber-500" />
+                                  <span>Deactivate / Close</span>
+                                </DropdownMenuItem>
+                              )}
+
+                              {onDeleteStore && (
+                                <>
+                                  <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+                                  <DropdownMenuItem
+                                    onClick={() => setStoreToDelete(s)}
+                                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                  >
+                                    <Trash2 size={14} />
+                                    <span>Delete Store</span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        {/* Status Badges Row */}
+                        <div className="flex items-center gap-2 mt-3 flex-wrap">
+                          <Badge variant={s.status === "ACTIVE" ? "success" : "destructive"}>
+                            {s.status === "ACTIVE" ? (
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block mr-1" />
+                            ) : (
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block mr-1" />
+                            )}
+                            {s.status === "ACTIVE" ? "Active on Map" : "Inactive / Closed"}
+                          </Badge>
+
+                          <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center gap-1">
+                            <MapPin size={11} className="text-pink-500" />
+                            <span>{s.city}</span>
+                          </span>
+
+                          <span className="text-[11px] font-mono text-slate-400 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800">
+                            {s.pincode}
+                          </span>
+
+                          {(() => {
+                            const storeDeals = offers.filter(o =>
+                              (o.applicableStoreIds && o.applicableStoreIds.includes(s.id)) ||
+                              o.storeId === s.id ||
+                              (!o.applicableStoreIds?.length && o.merchantId === s.merchantId)
+                            );
+                            const count = storeDeals.length;
+                            return (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setStoreForOffer(s);
+                                }}
+                                className="text-[11px] font-bold text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-800 flex items-center gap-1 hover:bg-purple-100 transition-colors"
+                                title="Manage live deals for this store"
+                              >
+                                <Tag size={11} className="text-purple-600" />
+                                <span>{count > 0 ? `${count} Live ${count === 1 ? 'Deal' : 'Deals'}` : '+ Add Deal'}</span>
+                              </button>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Location Details & Address */}
+                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2 text-xs">
+                          <div>
+                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Address</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-medium block mt-0.5">
+                              {s.address}, {s.city}{s.state ? `, ${s.state}` : ""}
+                            </span>
+                          </div>
+
+                          {/* Store Manager display */}
+                          {(s.managerName || s.managerEmail || s.phone) && (
+                            <div>
+                              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Store Manager</span>
+                              <div className="mt-0.5 text-slate-700 dark:text-slate-300 font-medium space-y-0.5">
+                                {s.managerName && (
+                                  <div className="flex items-center gap-1.5">
+                                    <UserCheck size={12} className="text-purple-500 shrink-0" />
+                                    <span className="font-semibold truncate">{s.managerName}</span>
+                                  </div>
+                                )}
+                                {s.managerEmail && (
+                                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                                    <Mail size={11} className="text-slate-400 shrink-0" />
+                                    <span className="truncate">{s.managerEmail}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+                            <div>
+                              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Schedule</span>
+                              <span className="text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1 mt-0.5">
+                                <Clock size={11} className="text-slate-400 shrink-0" />
+                                <span className="truncate">{s.operatingHours || "10:00 AM – 10:00 PM"}</span>
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Geocode (GPS)</span>
+                              <span className="font-mono text-purple-700 dark:text-purple-300 font-bold block mt-0.5">
+                                {safeLat}, {safeLng}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Footer Quick Action */}
+                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-slate-400 truncate max-w-[150px] flex items-center gap-1">
+                          {s.phone ? (
+                            <>
+                              <Phone size={11} className="text-slate-400 shrink-0" />
+                              <span>{s.phone}</span>
+                            </>
+                          ) : (
+                            "No phone listed"
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStore(s)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors"
+                        >
+                          <Compass size={13} className="text-purple-600 dark:text-purple-400" />
+                          <span>View Outlet</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Map Pin Right-Side Slide-Over Drawer */}
       {selectedStore && (
         <StorePinDrawer
           store={selectedStore}
+          offers={offers}
+          onCreateOffer={() => {
+            const st = selectedStore;
+            setSelectedStore(null);
+            setStoreForOffer(st);
+          }}
           onClose={() => setSelectedStore(null)}
           onApprove={() => {
             onApproveStore(selectedStore.id);
             setSelectedStore({ ...selectedStore, status: "ACTIVE" });
+          }}
+        />
+      )}
+
+      {/* Create Offer for Specific Store Slide-over Drawer */}
+      {storeForOffer && (
+        <OfferCampaignFormDrawer
+          merchants={merchants}
+          stores={stores}
+          merchantId={storeForOffer.merchantId}
+          merchantName={storeForOffer.merchantName || merchants.find(m => m.id === storeForOffer.merchantId)?.businessName || "Partner Brand"}
+          initialData={{
+            applicableStoreIds: [storeForOffer.id],
+            storeId: storeForOffer.id,
+            scopeType: "SERVICE",
+            ctaText: "Book & Pay",
+          } as any}
+          onClose={() => setStoreForOffer(null)}
+          onSave={(draft) => {
+            if (onAddOffer) {
+              onAddOffer({
+                ...draft,
+                merchantId: storeForOffer.merchantId,
+                applicableStoreIds: [storeForOffer.id],
+                storeId: storeForOffer.id,
+              });
+            }
+            setStoreForOffer(null);
           }}
         />
       )}
@@ -438,37 +1123,85 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
 // Right-side Slide-over Drawer for Map Pin Details
 function StorePinDrawer({
   store,
+  offers = [],
+  onCreateOffer,
   onClose,
   onApprove
 }: {
   store: StoreType;
+  offers?: Offer[];
+  onCreateOffer?: () => void;
   onClose: () => void;
   onApprove: () => void;
 }) {
+  const [storeStaff, setStoreStaff] = useState<BackendStaffResponse[]>([]);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [drawerDealsView, setDrawerDealsView] = useState<"list" | "cards">("cards");
+
+  useEffect(() => {
+    if (store.id) {
+      setIsLoadingStaff(true);
+      staffApi
+        .getMerchantStaff("STORE", store.id)
+        .then((res) => setStoreStaff(res))
+        .catch(() => setStoreStaff([]))
+        .finally(() => setIsLoadingStaff(false));
+    }
+  }, [store.id]);
+
+  const assignedStaff = storeStaff[0];
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-        <aside className="w-screen max-w-lg bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-pink-100 dark:bg-pink-950/60 text-pink-600 flex items-center justify-center">
-                <MapPin size={17} />
+        <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+          {/* Header with vibrant gradient matching merchant drawer */}
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-pink-500/10 to-transparent">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                  <StoreIcon size={20} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
+                    {store.branchName}
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap">
+                    <span className="font-mono font-semibold text-amber-700 dark:text-amber-300">
+                      BID: #{store.id.substring(0, 8).toUpperCase()}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(store.id);
+                        toast.success(`Store ID (${store.id}) copied!`);
+                      }}
+                      className="hover:text-amber-600 dark:hover:text-amber-400 text-slate-400 p-0.5 rounded transition-colors inline-flex items-center"
+                      title="Copy Full Store UUID"
+                    >
+                      <Copy size={11} />
+                    </button>
+                    <span>·</span>
+                    <span className="truncate max-w-[140px] text-purple-700 dark:text-purple-300 font-semibold">{store.merchantName}</span>
+                    <span>·</span>
+                    <span>{store.city}</span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                  Store Location & Geofence
-                </h3>
-                <p className="text-[11px] text-slate-400">Verified Spatial Geocode & Map Discovery Status</p>
+              <div className="flex items-center gap-2">
+                <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                  {store.status === "ACTIVE" ? "Live on App" : "Inactive"}
+                </Badge>
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X size={18} />
+                </button>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <X size={18} />
-            </button>
           </div>
 
           {/* Drawer Body */}
@@ -563,8 +1296,293 @@ function StorePinDrawer({
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-500">Internal Branch ID:</span>
-                <span className="font-mono text-slate-400">{store.id}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-semibold text-amber-700 dark:text-amber-400">
+                    BID: #{store.id.substring(0, 8).toUpperCase()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(store.id);
+                      toast.success(`Copied Store ID: ${store.id}`);
+                    }}
+                    className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    title={`Copy full UUID: ${store.id}`}
+                  >
+                    <Copy size={12} />
+                  </button>
+                </div>
               </div>
+            </div>
+
+            {/* Store Branch Manager & Access Credentials Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-[#121626] border border-indigo-200/80 dark:border-indigo-900/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center">
+                    <UserCheck size={15} />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900 dark:text-white text-xs block">
+                      Branch Manager & Credentials
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      Merchant & Branch Terminal Portal Access
+                    </span>
+                  </div>
+                </div>
+                {assignedStaff ? (
+                  <Badge variant={assignedStaff.status === "ACTIVE" ? "success" : "warning"}>
+                    {assignedStaff.status === "ACTIVE" ? "Active Manager" : "Invite Pending"}
+                  </Badge>
+                ) : store.managerEmail ? (
+                  <Badge variant="warning">Invite Dispatched</Badge>
+                ) : (
+                  <Badge variant="secondary">Unassigned</Badge>
+                )}
+              </div>
+
+              {assignedStaff || store.managerName || store.managerEmail ? (
+                <div className="space-y-2 pt-1 text-xs">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-500 text-[11px]">Manager Name:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {assignedStaff?.name || store.managerName || "Designated Store Manager"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-500 text-[11px] flex items-center gap-1">
+                      <Mail size={12} className="text-slate-400" />
+                      <span>Work Email:</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                        {assignedStaff?.email || store.managerEmail || store.storeEmail}
+                      </span>
+                      {(assignedStaff?.email || store.managerEmail || store.storeEmail) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              assignedStaff?.email || store.managerEmail || store.storeEmail || ""
+                            );
+                            toast.success("Manager email copied!");
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-indigo-600 transition-colors"
+                          title="Copy Email"
+                        >
+                          <Copy size={11} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {(assignedStaff?.phone || store.managerPhone || store.phone) && (
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-500 text-[11px]">Contact Phone:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {assignedStaff?.phone || store.managerPhone || store.phone}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                    <span className="text-slate-500 text-[11px]">Assigned Scope & Role:</span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                      {assignedStaff?.roleName || "Store Manager (STORE_MANAGER)"}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/60 dark:border-indigo-900/40 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
+                    <ShieldCheck size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                    <span>
+                      Store Managers can sign in directly via the Merchant Portal. Their authenticated session is scoped exclusively to this branch outlet and POS desk.
+                    </span>
+                  </div>
+
+                  {assignedStaff && assignedStaff.status === "INVITED" && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        disabled={isResending}
+                        onClick={async () => {
+                          setIsResending(true);
+                          try {
+                            await staffApi.resendMerchantStaffInvite(assignedStaff.id);
+                            toast.success(`Invitation email resent to ${assignedStaff.email}!`);
+                          } catch (err: any) {
+                            toast.error(err?.response?.data?.message || "Failed to resend invitation email");
+                          } finally {
+                            setIsResending(false);
+                          }
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold text-xs hover:bg-indigo-100 transition-colors"
+                      >
+                        <Send size={12} />
+                        <span>{isResending ? "Dispatching..." : "Resend Password Setup Email"}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400 italic">
+                  No manager has been designated yet for this branch. You can invite one from the Staff Management section.
+                </p>
+              )}
+            </div>
+
+            {/* Active Promotional Offers & Mobile App Deals Section */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50/70 via-pink-50/40 to-white dark:from-purple-950/30 dark:via-pink-950/20 dark:to-[#121626] border border-purple-200/80 dark:border-purple-900/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center">
+                    <Tag size={15} />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900 dark:text-white text-xs block">
+                      Promotional Offers & Mobile Deals
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      Discounts, Cashback & Product Bargains Live in App
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-white/70 dark:bg-slate-900/60 p-0.5 rounded-lg border border-purple-200/60 dark:border-purple-800/60">
+                    <button
+                      type="button"
+                      onClick={() => setDrawerDealsView("cards")}
+                      className={cn(
+                        "p-1 rounded text-xs transition-colors cursor-pointer",
+                        drawerDealsView === "cards"
+                          ? "bg-purple-600 text-white font-bold shadow-2xs"
+                          : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                      )}
+                      title="Cards View"
+                    >
+                      <LayoutGrid size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDrawerDealsView("list")}
+                      className={cn(
+                        "p-1 rounded text-xs transition-colors cursor-pointer",
+                        drawerDealsView === "list"
+                          ? "bg-purple-600 text-white font-bold shadow-2xs"
+                          : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                      )}
+                      title="List View"
+                    >
+                      <List size={11} />
+                    </button>
+                  </div>
+                  {onCreateOffer && (
+                    <button
+                      type="button"
+                      onClick={onCreateOffer}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus size={12} />
+                      <span>Create Deal</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {(() => {
+                const storeDeals = offers.filter(o =>
+                  (o.applicableStoreIds && o.applicableStoreIds.includes(store.id)) ||
+                  o.storeId === store.id ||
+                  (!o.applicableStoreIds?.length && o.merchantId === store.merchantId)
+                );
+
+                if (storeDeals.length === 0) {
+                  return (
+                    <div className="p-3 rounded-xl bg-white/70 dark:bg-slate-900/40 border border-dashed border-purple-200 dark:border-purple-900/60 text-center space-y-2">
+                      <p className="text-xs text-slate-500">No active offers or product deals for this outlet.</p>
+                      {onCreateOffer && (
+                        <button
+                          type="button"
+                          onClick={onCreateOffer}
+                          className="text-xs font-bold text-purple-600 hover:text-purple-700 underline"
+                        >
+                          + Launch First Deal (Service or Product)
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                return drawerDealsView === "cards" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 max-h-56 overflow-y-auto">
+                    {storeDeals.map((deal) => (
+                      <div
+                        key={deal.id}
+                        className="p-3 rounded-xl bg-white dark:bg-slate-900/90 border border-purple-100 dark:border-purple-900/40 shadow-2xs flex flex-col justify-between space-y-2 hover:border-purple-300 transition-colors"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                              {deal.scopeType === "PRODUCT" ? "Retail Deal" : "Service Offer"}
+                            </span>
+                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                              Live
+                            </span>
+                          </div>
+                          <h5 className="font-bold text-slate-900 dark:text-white text-xs line-clamp-1">
+                            {deal.title}
+                          </h5>
+                          <p className="text-[10px] text-slate-500 line-clamp-1">
+                            {deal.tagline || (deal.scopeType === "PRODUCT" ? "Direct outlet deal" : "App bill discount")}
+                          </p>
+                        </div>
+                        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-baseline justify-between text-[11px]">
+                          <span className="font-extrabold text-pink-600 dark:text-pink-400 font-mono">
+                            {deal.scopeType === "PRODUCT" && deal.dealPrice
+                              ? `₹${deal.dealPrice}`
+                              : deal.type === "FLAT_PCT"
+                              ? `${deal.value}% OFF`
+                              : `₹${deal.value} FLAT`}
+                          </span>
+                          {deal.bonusCoins && (
+                            <span className="text-[10px] text-amber-600 font-bold">
+                              +{deal.bonusCoins} Coins
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-1 max-h-48 overflow-y-auto">
+                    {storeDeals.map((deal) => (
+                      <div
+                        key={deal.id}
+                        className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/80 border border-purple-100 dark:border-purple-900/40 flex items-center justify-between gap-2 shadow-2xs"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                              {deal.scopeType === "PRODUCT" ? "Retail Deal" : "Service Offer"}
+                            </span>
+                            <span className="font-bold text-slate-900 dark:text-white text-xs truncate">
+                              {deal.title}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                            {deal.type === "FLAT_PCT" ? `${deal.value}% OFF` : `₹${deal.value} FLAT`} • {deal.badgeText || "Mobile Special"}
+                            {deal.dealPrice ? ` • Deal Price ₹${deal.dealPrice}` : ""}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md shrink-0">
+                          Live
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -615,9 +1633,77 @@ function AddStoreDrawer({
   const [latitude, setLatitude] = useState(21.1458);
   const [longitude, setLongitude] = useState(79.0882);
   const [operatingHours, setOperatingHours] = useState("11:00 AM – 11:00 PM");
+  const [managerName, setManagerName] = useState("");
+  const [managerEmail, setManagerEmail] = useState("");
+  const [managerPhone, setManagerPhone] = useState("");
+  const [managerEmailNotice, setManagerEmailNotice] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedMerchant = merchants.find(m => m.id === merchantId);
+
+  const handleAutoFillFromMerchant = () => {
+    let target = selectedMerchant;
+    if (!target && merchants.length > 0) {
+      target = merchants[0];
+      setMerchantId(target.id);
+    }
+    if (!target) {
+      toast.error("Please add or select a parent merchant brand first.");
+      return;
+    }
+
+    // Auto-generate realistic branch title based on merchant brand & city
+    const brand = target.businessName || "Flagship Outlet";
+    const mCity = target.city || "Nagpur";
+    const mDistrict = target.district || mCity;
+    const mState = target.state || "Maharashtra";
+    const mPincode = target.pincode || "440010";
+    const mAddress = target.address || `West High Court Road, ${mCity} Central`;
+
+    // Coordinates lookup for major cities
+    let lat = 21.1458;
+    let lng = 79.0882;
+    const cityLower = mCity.toLowerCase();
+    if (cityLower.includes("mumbai")) {
+      lat = 19.0760;
+      lng = 72.8777;
+    } else if (cityLower.includes("pune")) {
+      lat = 18.5204;
+      lng = 73.8567;
+    } else if (cityLower.includes("delhi")) {
+      lat = 28.6139;
+      lng = 77.2090;
+    } else if (cityLower.includes("bengaluru") || cityLower.includes("bangalore")) {
+      lat = 12.9716;
+      lng = 77.5946;
+    } else if (cityLower.includes("hyderabad")) {
+      lat = 17.3850;
+      lng = 78.4867;
+    }
+
+    const mgrFirstName = brand.split(" ")[0] || "Branch";
+    const safeBrand = brand.toLowerCase().replace(/[^a-z0-9]/g, "") || "retail";
+    const safeCity = mCity.toLowerCase().replace(/[^a-z0-9]/g, "") || "central";
+
+    setBranchName(`${brand} – ${mCity} Flagship`);
+    setAddress(mAddress);
+    setState(mState);
+    setDistrict(mDistrict);
+    setCity(mCity);
+    setPincode(mPincode);
+    setLatitude(lat);
+    setLongitude(lng);
+    setOperatingHours("10:00 AM – 10:00 PM");
+    setManagerName(`${mgrFirstName} Store Manager`);
+    setManagerEmail(`${mgrFirstName.toLowerCase()}.${safeCity}@${safeBrand}.com`);
+    setManagerPhone(target.ownerPhone || "9822100000");
+    setErrors({});
+
+    toast.success(`Auto-filled branch details & manager credentials from "${brand}"!`, {
+      description: `Mapped to ${mCity}, ${mState} (${mPincode})`
+    });
+  };
 
   const clearError = (field: string) => {
     if (errors[field]) {
@@ -629,7 +1715,46 @@ function AddStoreDrawer({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleManagerEmailBlur = async () => {
+    const email = managerEmail.trim().toLowerCase();
+    if (!email) {
+      setManagerEmailNotice(null);
+      return;
+    }
+    try {
+      const res = await staffApi.validateStaffEmail(email, merchantId, "STORE");
+      if (!res.valid && res.message) {
+        setErrors(prev => ({ ...prev, managerEmail: res.message! }));
+        setManagerEmailNotice(null);
+      } else {
+        clearError("managerEmail");
+        if ((res as any).notice) {
+          setManagerEmailNotice((res as any).notice);
+        } else {
+          setManagerEmailNotice(null);
+        }
+      }
+    } catch {
+      // ignore on blur
+    }
+  };
+
+  const handleManagerPhoneBlur = async () => {
+    const phone = managerPhone.trim();
+    if (!phone) return;
+    try {
+      const res = await storeApi.validateStorePhone(phone, merchantId, undefined, managerEmail.trim());
+      if (!res.valid && res.message) {
+        setErrors(prev => ({ ...prev, managerPhone: res.message! }));
+      } else {
+        clearError("managerPhone");
+      }
+    } catch {
+      // ignore on blur
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = storeBranchSchema.safeParse({
       merchantId,
@@ -642,6 +1767,9 @@ function AddStoreDrawer({
       latitude: Number(latitude),
       longitude: Number(longitude),
       operatingHours: operatingHours.trim(),
+      managerName: managerName.trim(),
+      managerEmail: managerEmail.trim(),
+      managerPhone: managerPhone.trim(),
     });
 
     if (!result.success) {
@@ -657,39 +1785,114 @@ function AddStoreDrawer({
       return;
     }
 
-    setErrors({});
-    onSave({
-      merchantId,
-      merchantName: selectedMerchant?.businessName || "Unknown Brand",
-      branchName: branchName.trim(),
-      address: address.trim(),
-      state: state.trim(),
-      district: district.trim(),
-      city: city.trim(),
-      pincode: pincode.trim(),
-      latitude: Number(latitude),
-      longitude: Number(longitude),
-      operatingHours: operatingHours.trim(),
-      status: "ACTIVE"
-    });
-    toast.success(`Store branch "${branchName}" registered successfully!`);
+    try {
+      setIsSubmitting(true);
+
+      // Backend enterprise verification
+      if (managerEmail.trim()) {
+        try {
+          const valRes = await staffApi.validateStaffEmail(managerEmail.trim(), merchantId, "STORE");
+          if (!valRes.valid && valRes.message) {
+            setErrors(prev => ({ ...prev, managerEmail: valRes.message! }));
+            toast.error(valRes.message);
+            setIsSubmitting(false);
+            return;
+          }
+        } catch (valErr: any) {
+          const valMsg = valErr?.response?.data?.message || valErr?.message;
+          if (valMsg && valMsg.includes("another merchant")) {
+            setErrors(prev => ({ ...prev, managerEmail: valMsg }));
+            toast.error(valMsg);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+
+      // Backend enterprise verification for manager mobile
+      if (managerPhone.trim()) {
+        try {
+          const phoneRes = await storeApi.validateStorePhone(managerPhone.trim(), merchantId, undefined, managerEmail.trim());
+          if (!phoneRes.valid && phoneRes.message) {
+            setErrors(prev => ({ ...prev, managerPhone: phoneRes.message! }));
+            toast.error(phoneRes.message);
+            setIsSubmitting(false);
+            return;
+          }
+        } catch (valErr: any) {
+          const valMsg = valErr?.response?.data?.message || valErr?.message;
+          if (valMsg) {
+            setErrors(prev => ({ ...prev, managerPhone: valMsg }));
+            toast.error(valMsg);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+
+      setErrors({});
+      await onSave({
+        merchantId,
+        merchantName: selectedMerchant?.businessName || "Unknown Brand",
+        branchName: branchName.trim(),
+        address: address.trim(),
+        state: state.trim(),
+        district: district.trim(),
+        city: city.trim(),
+        pincode: pincode.trim(),
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+        operatingHours: operatingHours.trim(),
+        managerName: managerName.trim(),
+        managerEmail: managerEmail.trim(),
+        managerPhone: managerPhone.trim(),
+        status: "ACTIVE"
+      });
+      toast.success(`Store branch "${branchName}" registered successfully!`);
+      onClose();
+    } catch (saveErr: any) {
+      const errMsg = saveErr?.response?.data?.message || saveErr?.message || "Failed to register store branch";
+      if (errMsg.toLowerCase().includes("email") || errMsg.toLowerCase().includes("merchant owner")) {
+        setErrors(prev => ({ ...prev, managerEmail: errMsg }));
+      }
+      if (errMsg.toLowerCase().includes("phone") || errMsg.toLowerCase().includes("mobile") || errMsg.toLowerCase().includes("number")) {
+        setErrors(prev => ({ ...prev, managerPhone: errMsg }));
+      }
+      toast.error(errMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-        <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Add Store Branch
-              </h3>
-              <p className="text-[11px] text-slate-400">Deploy physical outlet to merchant network</p>
+        <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-pink-500/10 to-transparent gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                <StoreIcon size={20} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">
+                  Add Store Branch
+                </h3>
+                <p className="text-xs text-slate-400 truncate mt-0.5">Deploy physical outlet to merchant network</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <X size={18} />
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleAutoFillFromMerchant}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors shadow-2xs whitespace-nowrap"
+                title="Auto Fill from Selected Merchant Details"
+              >
+                <Sparkles size={14} className="text-purple-600 dark:text-purple-400" />
+                <span>Auto Fill Details</span>
+              </button>
+              <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors" title="Close drawer">
+                <X size={20} />
               </button>
             </div>
           </div>
@@ -882,6 +2085,119 @@ function AddStoreDrawer({
               onChange={(val) => setOperatingHours(val)}
             />
 
+            {/* Store Branch Manager & Login Access Credentials */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-[#121626] border border-indigo-200/80 dark:border-indigo-900/60 space-y-3.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
+                  <UserCheck size={16} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs">
+                    Store Manager & Access Credentials
+                  </h4>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Provisions branch manager with Merchant Portal & POS terminal login access
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-100/80 dark:border-indigo-900/40 flex items-start gap-2 text-[11px] text-indigo-900 dark:text-indigo-200">
+                <Mail size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                <span>
+                  A secure 1-time password setup link (<span className="font-mono text-[10px] bg-white/70 dark:bg-slate-900/60 px-1 py-0.5 rounded">/accept-invite?token=...</span>) will be automatically emailed to this manager.
+                </span>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Manager Full Name</label>
+                <input
+                  type="text"
+                  value={managerName}
+                  onChange={e => {
+                    setManagerName(e.target.value);
+                    clearError("managerName");
+                  }}
+                  placeholder="e.g. Rajesh Sharma"
+                  className={cn(
+                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-hidden",
+                    errors.managerName ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-indigo-500"
+                  )}
+                />
+                {errors.managerName && (
+                  <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0" />
+                    <span>{errors.managerName}</span>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Manager Work Email</span>
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">Login Identifier</span>
+                </label>
+                <input
+                  type="email"
+                  value={managerEmail}
+                  onChange={e => {
+                    setManagerEmail(e.target.value);
+                    clearError("managerEmail");
+                  }}
+                  onBlur={handleManagerEmailBlur}
+                  placeholder="e.g. rajesh.store@brand.com"
+                  className={cn(
+                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-hidden",
+                    errors.managerEmail ? "border-amber-500 ring-1 ring-amber-500/20" : "border-slate-200 dark:border-slate-700 focus:border-indigo-500"
+                  )}
+                />
+                {errors.managerEmail && (
+                  <div className="p-3 rounded-xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-[12px] text-rose-900 dark:text-rose-200 flex items-start gap-2.5 mt-2 shadow-xs animate-in fade-in">
+                    <AlertCircle size={15} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                    <div className="leading-relaxed font-medium">
+                      {errors.managerEmail}
+                    </div>
+                  </div>
+                )}
+                {!errors.managerEmail && managerEmailNotice && (
+                  <div className="p-2.5 rounded-xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-[12px] text-indigo-900 dark:text-indigo-200 flex items-start gap-2 mt-2 shadow-xs animate-in fade-in">
+                    <CheckCircle2 size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                    <div className="leading-relaxed font-medium">
+                      {managerEmailNotice}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Manager Mobile</label>
+                <input
+                  type="tel"
+                  value={managerPhone}
+                  onChange={e => {
+                    setManagerPhone(e.target.value);
+                    clearError("managerPhone");
+                  }}
+                  onBlur={handleManagerPhoneBlur}
+                  placeholder="9822100000"
+                  className={cn(
+                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white font-mono focus:outline-hidden",
+                    errors.managerPhone ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-indigo-500"
+                  )}
+                />
+                {errors.managerPhone && (
+                  <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0" />
+                    <span>{errors.managerPhone}</span>
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-1 text-[10px] text-slate-400 flex items-center gap-1">
+                <KeyRound size={11} className="text-indigo-500" />
+                <span>Store Manager can sign in using Merchant Login directly upon setting password.</span>
+              </div>
+            </div>
+
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
               <button
                 type="button"
@@ -892,9 +2208,17 @@ function AddStoreDrawer({
               </button>
               <button
                 type="submit"
-                className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md"
+                disabled={isSubmitting}
+                className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-60 flex items-center gap-1.5"
               >
-                Save Branch
+                {isSubmitting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Verifying & Saving...</span>
+                  </>
+                ) : (
+                  <span>Save Branch</span>
+                )}
               </button>
             </div>
           </form>
@@ -947,17 +2271,19 @@ function EditStoreDrawer({
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-        <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-            <div className="flex items-center gap-2">
-              <Pencil size={18} className="text-amber-500" />
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">Edit Store Branch</h3>
-                <p className="text-[11px] text-slate-400">Update branch details, phone & schedule</p>
+        <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-pink-500/10 to-transparent gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                <Pencil size={18} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">Edit Store Branch</h3>
+                <p className="text-xs text-slate-400 truncate mt-0.5">Update branch details, phone & schedule</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <X size={18} />
+            <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors" title="Close drawer">
+              <X size={20} />
             </button>
           </div>
 

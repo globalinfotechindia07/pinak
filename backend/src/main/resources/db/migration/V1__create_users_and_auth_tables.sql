@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS users (
     last_name VARCHAR(100) NOT NULL,
     name VARCHAR(255) NOT NULL,
     phone VARCHAR(20) UNIQUE,
-    mobile VARCHAR(20) UNIQUE,
     role VARCHAR(50) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED', 'BLOCKED')),
     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
@@ -44,7 +43,6 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
-CREATE INDEX IF NOT EXISTS idx_users_mobile ON users(mobile);
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_pincode ON users(pincode);

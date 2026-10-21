@@ -19,7 +19,9 @@ import {
   ExternalLink,
   Ban,
   Play,
-  Pause
+  Pause,
+  Armchair,
+  Utensils
 } from "lucide-react";
 import { Offer, Store, AuditEvent } from "../types";
 import { Badge } from "./ui/badge";
@@ -305,6 +307,72 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
                     )}
                   </div>
                 </div>
+
+                {/* District Table Reservation & Slot Booking Engine */}
+                {offer.isTableBookingEnabled && (
+                  <div className="space-y-2">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
+                      <Armchair size={14} className="text-indigo-600" />
+                      <span>District-Style Table Reservation & Slot Engine</span>
+                    </label>
+                    <div className="p-3.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-900/60 space-y-2.5 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Booking Vertical:</span>
+                        <span className="font-bold text-indigo-700 dark:text-indigo-300">
+                          {offer.bookingType === "TABLE_RESERVATION" ? "🍽️ Dining Table Reservation" : "💆 Service Appointment Slot"}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Party Size Range:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {offer.minPartySize || 1} to {offer.maxPartySize || 8} Guests
+                        </span>
+                      </div>
+
+                      {offer.availableTablesPerSlot && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Capacity Per Slot:</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">
+                            {offer.availableTablesPerSlot} Tables / Slots
+                          </span>
+                        </div>
+                      )}
+
+                      {offer.slotTimes && offer.slotTimes.length > 0 && (
+                        <div>
+                          <span className="text-slate-500 block mb-1">Configured Time Slots:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {offer.slotTimes.map((slot) => (
+                              <span
+                                key={slot}
+                                className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                              >
+                                {slot}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {offer.seatingAreas && offer.seatingAreas.length > 0 && (
+                        <div className="flex justify-between items-center pt-1 border-t border-indigo-100 dark:border-indigo-900/40">
+                          <span className="text-slate-500">Seating Areas:</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">
+                            {offer.seatingAreas.join(", ")}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center pt-1 border-t border-indigo-100 dark:border-indigo-900/40">
+                        <span className="text-slate-500">Policy:</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-medium">
+                          {offer.coverChargeAmount ? `₹${offer.coverChargeAmount} Cover Deposit` : "Free Reservation"} • {offer.gracePeriodMinutes || 15}m Grace
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Customer Experience & Redemption Method */}
                 <div className="space-y-2">

@@ -95,4 +95,14 @@ public class AdminStoreController {
         StoreApprovalActionResponse response = storeService.activateStore(storeId, reason, adminUserId);
         return ResponseEntity.ok(ApiResponse.success("Store activated successfully", response));
     }
+
+    @DeleteMapping("/{storeId}")
+    @Operation(summary = "Permanently delete a store branch and cascade to its offers", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<Void>> deleteStoreAdmin(
+            @PathVariable UUID storeId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID adminUserId = UUID.fromString(userDetails.getUsername());
+        storeService.deleteStore(storeId, adminUserId, true);
+        return ResponseEntity.ok(ApiResponse.success("Store deleted successfully", null));
+    }
 }

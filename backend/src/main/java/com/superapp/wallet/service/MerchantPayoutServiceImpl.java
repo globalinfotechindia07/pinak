@@ -213,7 +213,7 @@ public class MerchantPayoutServiceImpl implements MerchantPayoutService {
             throw new AppException("Invalid HMAC-SHA256 signature", ApiError.ACCESS_DENIED, 401);
         }
 
-        if (webhook.providerPayoutId() == null) {
+        if (webhook == null || webhook.providerPayoutId() == null) {
             log.warn("Payout webhook missing providerPayoutId");
             return;
         }

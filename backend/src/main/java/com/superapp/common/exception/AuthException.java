@@ -21,6 +21,10 @@ public class AuthException extends AppException {
         return new AuthException("Your account has been blocked. Please contact support.", ApiError.ACCOUNT_BLOCKED);
     }
 
+    public static AuthException accountBlocked(String message) {
+        return new AuthException(message, ApiError.ACCOUNT_BLOCKED);
+    }
+
     public static AuthException accountSuspended() {
         return new AuthException("Your account has been suspended. Please contact your platform administrator.", ApiError.ACCOUNT_BLOCKED);
     }
@@ -31,6 +35,18 @@ public class AuthException extends AppException {
 
     public static AuthException accountInactive() {
         return new AuthException("Your account is inactive. Please contact support.", ApiError.ACCOUNT_INACTIVE);
+    }
+
+    public static AuthException accountInactive(String message) {
+        return new AuthException(message, ApiError.ACCOUNT_INACTIVE);
+    }
+
+    public static AuthException merchantNotFound(String message) {
+        return new AuthException(message, ApiError.MERCHANT_NOT_FOUND);
+    }
+
+    public static AuthException merchantPendingApproval(String message) {
+        return new AuthException(message, ApiError.MERCHANT_PENDING_APPROVAL);
     }
 
     public static AuthException tokenExpired() {

@@ -17,7 +17,16 @@ import {
   Trash2,
   Play,
   Pause,
-  Sparkles
+  Sparkles,
+  LayoutGrid,
+  List,
+  ShoppingBag,
+  Utensils,
+  Zap,
+  Coins,
+  Tag,
+  ArrowRight,
+  Armchair
 } from "lucide-react";
 import { Offer, Merchant, Store } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
@@ -50,6 +59,9 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
   const storeState = useAppStore();
   const stores = propStores || storeState.stores;
   const [filter, setFilter] = useState("ALL");
+  const [domainFilter, setDomainFilter] = useState<"ALL" | "SERVICES" | "PRODUCTS" | "TABLES">("ALL");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [cardSearch, setCardSearch] = useState("");
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [offerToDelete, setOfferToDelete] = useState<Offer | null>(null);
@@ -96,9 +108,13 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     toast.success(`Exported ${offers.length} campaign offers to CSV!`);
   };
 
-  const displayedOffers = filter === "ALL"
-    ? offers
-    : offers.filter((o) => o.status === filter);
+  const displayedOffers = offers.filter((o) => {
+    if (filter !== "ALL" && o.status !== filter) return false;
+    if (domainFilter === "SERVICES" && o.scopeType === "PRODUCT") return false;
+    if (domainFilter === "PRODUCTS" && o.scopeType !== "PRODUCT") return false;
+    if (domainFilter === "TABLES" && !o.isTableBookingEnabled) return false;
+    return true;
+  });
 
   const columns: Column<Offer>[] = [
     {
@@ -107,12 +123,37 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       accessor: "title",
       render: (o) => (
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 flex items-center justify-center shrink-0">
-            <TicketPercent size={18} />
+          <div className={cn(
+            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+            o.scopeType === "PRODUCT"
+              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+              : "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300"
+          )}>
+            {o.scopeType === "PRODUCT" ? <ShoppingBag size={18} /> : <TicketPercent size={18} />}
           </div>
           <div>
-            <p className="font-bold text-slate-900 dark:text-white leading-tight">{o.title}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Min bill: ₹{o.minBillAmount}</p>
+            <div className="flex items-center gap-1.5">
+              <span className={cn(
+                "px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase",
+                o.scopeType === "PRODUCT"
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                  : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+              )}>
+                {o.scopeType === "PRODUCT" ? "Retail Deal" : "Service Offer"}
+              </span>
+              {o.isFlashDeal && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 flex items-center gap-0.5">
+                  <Zap size={9} /> Flash
+                </span>
+              )}
+            </div>
+            <p className="font-bold text-slate-900 dark:text-white leading-tight mt-0.5">{o.title}</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {o.scopeType === "PRODUCT" && o.dealPrice
+                ? `Deal: ₹${o.dealPrice} (MRP ₹${o.originalPrice || o.dealPrice})`
+                : `Min bill: ₹${o.minBillAmount}`}
+              {o.bonusCoins ? ` • +${o.bonusCoins} Coins` : ""}
+            </p>
           </div>
         </div>
       )
@@ -258,6 +299,18 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     }
   ];
 
+  const filteredOffersForCards = displayedOffers.filter((o) => {
+    if (!cardSearch.trim()) return true;
+    const q = cardSearch.toLowerCase().trim();
+    return (
+      (o.title || "").toLowerCase().includes(q) ||
+      (o.merchantName || "").toLowerCase().includes(q) ||
+      (o.tagline || "").toLowerCase().includes(q) ||
+      (o.badgeText || "").toLowerCase().includes(q) ||
+      (o.terms || "").toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -360,50 +413,430 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
         </div>
       </div>
 
-      {/* Filter Status Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
-        {["ALL", "ACTIVE", "PAUSED", "PENDING_APPROVAL", "EXPIRED", "REJECTED"].map((st) => (
-          <button
-            key={st}
-            onClick={() => setFilter(st)}
-            className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors border ${
-              filter === st
-                ? "bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800 font-bold"
-                : "border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-            }`}
-          >
-            {st === "ALL" ? "All Campaigns" : st.replace("_", " ")}
-          </button>
-        ))}
+      {/* Filters & View Mode Switcher Toolbar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Filter Status Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
+          {["ALL", "ACTIVE", "PAUSED", "PENDING_APPROVAL", "EXPIRED", "REJECTED"].map((st) => (
+            <button
+              key={st}
+              onClick={() => setFilter(st)}
+              className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors border cursor-pointer ${
+                filter === st
+                  ? "bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800 font-bold shadow-2xs"
+                  : "border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              {st === "ALL" ? "All Campaigns" : st.replace("_", " ")}
+            </button>
+          ))}
+        </div>
+
+        {/* Domain Filter + Table/Cards Toggle */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 text-xs">
+            <button
+              type="button"
+              onClick={() => setDomainFilter("ALL")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer",
+                domainFilter === "ALL"
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-bold shadow-2xs"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+              )}
+            >
+              All Types
+            </button>
+            <button
+              type="button"
+              onClick={() => setDomainFilter("SERVICES")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1",
+                domainFilter === "SERVICES"
+                  ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 font-bold shadow-2xs"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+              )}
+            >
+              <Utensils size={11} />
+              <span>Services</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDomainFilter("PRODUCTS")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1",
+                domainFilter === "PRODUCTS"
+                  ? "bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 font-bold shadow-2xs"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+              )}
+            >
+              <ShoppingBag size={11} />
+              <span>Products</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDomainFilter("TABLES")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1",
+                domainFilter === "TABLES"
+                  ? "bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 font-bold shadow-2xs"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+              )}
+            >
+              <Armchair size={11} />
+              <span>Table Deals</span>
+            </button>
+          </div>
+
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                viewMode === "table"
+                  ? "bg-white dark:bg-slate-700 text-pink-600 dark:text-pink-300 shadow-xs font-bold"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              )}
+              title="Table View"
+            >
+              <List size={14} />
+              <span>Table</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                viewMode === "cards"
+                  ? "bg-white dark:bg-slate-700 text-pink-600 dark:text-pink-300 shadow-xs font-bold"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              )}
+              title="Card Grid View"
+            >
+              <LayoutGrid size={14} />
+              <span>Cards</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Advanced Table */}
-      <AdvancedTable
-        title="Discounts & Offers Registry"
-        subtitle={`${displayedOffers.length} discount campaigns active in catalog`}
-        columns={columns}
-        data={displayedOffers}
-        keyExtractor={(o) => o.id}
-        searchPlaceholder="Search campaigns, merchants, terms..."
-        searchFilter={(o, q) =>
-          Boolean(
-            o.title.toLowerCase().includes(q) ||
-            o.merchantName.toLowerCase().includes(q) ||
-            (o.terms && o.terms.toLowerCase().includes(q))
-          )
-        }
-        bulkActions={[
-          {
-            label: "Approve Selected Deals",
-            variant: "success",
-            action: (selected) => {
-              selected.forEach((o) => onUpdateOfferStatus(o.id, "ACTIVE"));
-              toast.success(`Approved ${selected.length} campaigns for mobile discovery!`);
-            }
+      {/* Main Content: Table View OR Cards View */}
+      {viewMode === "table" ? (
+        <AdvancedTable
+          title="Discounts & Offers Registry"
+          subtitle={`${displayedOffers.length} discount campaigns active in catalog`}
+          columns={columns}
+          data={displayedOffers}
+          keyExtractor={(o) => o.id}
+          searchPlaceholder="Search campaigns, merchants, terms..."
+          searchFilter={(o, q) =>
+            Boolean(
+              o.title.toLowerCase().includes(q) ||
+              o.merchantName.toLowerCase().includes(q) ||
+              (o.terms && o.terms.toLowerCase().includes(q))
+            )
           }
-        ]}
-      />
+          bulkActions={[
+            {
+              label: "Approve Selected Deals",
+              variant: "success",
+              action: (selected) => {
+                selected.forEach((o) => onUpdateOfferStatus(o.id, "ACTIVE"));
+                toast.success(`Approved ${selected.length} campaigns for mobile discovery!`);
+              }
+            }
+          ]}
+        />
+      ) : (
+        /* Cards View */
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="relative flex-1 max-w-md">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={cardSearch}
+                onChange={(e) => setCardSearch(e.target.value)}
+                placeholder="Search deals, products, merchants..."
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-pink-500 text-slate-800 dark:text-slate-200 placeholder-slate-400"
+              />
+              {cardSearch && (
+                <button
+                  type="button"
+                  onClick={() => setCardSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            <span className="text-xs text-slate-400 font-medium">
+              Showing <span className="font-bold text-slate-700 dark:text-slate-200">{filteredOffersForCards.length}</span> deals
+            </span>
+          </div>
+
+          {filteredOffersForCards.length === 0 ? (
+            <div className="p-12 text-center rounded-3xl bg-white dark:bg-[#121626] border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-950/40 text-pink-600 mx-auto flex items-center justify-center">
+                <TicketPercent size={24} />
+              </div>
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No campaigns found</p>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                No active campaigns match your selected status, category, or search filters.
+              </p>
+              {(filter !== "ALL" || domainFilter !== "ALL" || cardSearch) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilter("ALL");
+                    setDomainFilter("ALL");
+                    setCardSearch("");
+                  }}
+                  className="text-xs font-bold text-pink-600 hover:underline cursor-pointer"
+                >
+                  Reset all filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredOffersForCards.map((o) => {
+                const discountPct =
+                  o.originalPrice && o.dealPrice && o.originalPrice > o.dealPrice
+                    ? Math.round(((o.originalPrice - o.dealPrice) / o.originalPrice) * 100)
+                    : null;
+
+                return (
+                  <div
+                    key={o.id}
+                    className="p-5 rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-pink-300 dark:hover:border-pink-900 transition-all flex flex-col justify-between space-y-4 group"
+                  >
+                    <div className="space-y-3">
+                      {/* Image Thumbnail if available */}
+                      {o.imageUrl && (
+                        <div className="relative rounded-2xl overflow-hidden aspect-video w-full bg-slate-100 dark:bg-slate-800">
+                          <img
+                            src={o.imageUrl}
+                            alt={o.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          {o.isFlashDeal && (
+                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-red-600 text-white shadow-md flex items-center gap-1">
+                              <Zap size={11} className="fill-white" />
+                              <span>Flash Bargain</span>
+                            </span>
+                          )}
+                          {o.promoCode && (
+                            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase bg-black/70 backdrop-blur-xs text-white">
+                              Code: {o.promoCode}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Header Badges */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={cn(
+                              "px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider",
+                              o.scopeType === "PRODUCT"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                            )}
+                          >
+                            {o.scopeType === "PRODUCT"
+                              ? o.productCategory
+                                ? `${o.productCategory} • Retail`
+                                : "Retail Deal"
+                              : "Service Offer"}
+                          </span>
+                          {o.badgeText && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300">
+                              {o.badgeText}
+                            </span>
+                          )}
+                          {o.isTableBookingEnabled && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 flex items-center gap-0.5">
+                              <Armchair size={10} /> Table Booking
+                            </span>
+                          )}
+                        </div>
+
+                        <Badge
+                          variant={
+                            o.status === "ACTIVE"
+                              ? "success"
+                              : o.status === "REJECTED" || o.status === "EXPIRED"
+                              ? "destructive"
+                              : "warning"
+                          }
+                          className="shrink-0 text-[10px]"
+                        >
+                          {o.status === "ACTIVE" ? (
+                            <CheckCircle2 size={11} />
+                          ) : o.status === "PAUSED" ? (
+                            <Pause size={11} />
+                          ) : (
+                            <Clock size={11} />
+                          )}
+                          <span>{o.status.replace("_", " ")}</span>
+                        </Badge>
+                      </div>
+
+                      {/* Title & Merchant */}
+                      <div>
+                        <h4 className="font-extrabold text-slate-900 dark:text-white text-sm line-clamp-1 group-hover:text-pink-600 transition-colors">
+                          {o.title}
+                        </h4>
+                        {o.tagline && (
+                          <p className="text-[11px] text-slate-500 italic line-clamp-1 mt-0.5">
+                            "{o.tagline}"
+                          </p>
+                        )}
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 font-semibold mt-1.5">
+                          <Building2 size={13} className="text-purple-500 shrink-0" />
+                          <span className="truncate">{o.merchantName}</span>
+                        </div>
+                      </div>
+
+                      {/* Pricing Highlight */}
+                      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/80 space-y-1.5">
+                        {o.scopeType === "PRODUCT" && (o.dealPrice || o.originalPrice) ? (
+                          <div className="flex items-baseline justify-between">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                                ₹{o.dealPrice || o.value}
+                              </span>
+                              {o.originalPrice && (
+                                <span className="text-xs text-slate-400 line-through">
+                                  ₹{o.originalPrice}
+                                </span>
+                              )}
+                            </div>
+                            {discountPct && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                {discountPct}% OFF
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-lg font-extrabold text-pink-600 dark:text-pink-400 font-mono">
+                              {o.type === "FLAT_AMT"
+                                ? `Flat ₹${o.value} OFF`
+                                : o.type === "FLAT_PCT"
+                                ? `${o.value}% OFF`
+                                : "Buy 1 Get 1"}
+                            </span>
+                            {o.maxDiscount && (
+                              <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold">
+                                Cap: ₹{o.maxDiscount}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/40 dark:border-slate-800/60">
+                          <span>Min Spend: ₹{o.minBillAmount}</span>
+                          <span className="text-amber-600 font-bold flex items-center gap-1">
+                            <Coins size={11} />
+                            <span>+{o.bonusCoins || 100} Coins</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Scope & Redemption Stats */}
+                      <div className="flex items-center justify-between text-[11px] text-slate-500">
+                        <span>
+                          {o.applicableStoreIds?.length
+                            ? `${o.applicableStoreIds.length} Linked Branches`
+                            : "All Merchant Branches"}
+                        </span>
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                          {o.redemptions || 0} claims
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card Actions Footer */}
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1">
+                        {/* Pause / Resume */}
+                        {o.status === "ACTIVE" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onUpdateOfferStatus(o.id, "PAUSED");
+                              toast.info(`Offer "${o.title}" paused`);
+                            }}
+                            className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                            title="Pause Campaign"
+                          >
+                            <Pause size={14} />
+                          </button>
+                        )}
+                        {o.status === "PAUSED" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onUpdateOfferStatus(o.id, "ACTIVE");
+                              toast.success(`Offer "${o.title}" resumed`);
+                            }}
+                            className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                            title="Resume Campaign"
+                          >
+                            <Play size={14} />
+                          </button>
+                        )}
+
+                        {/* Clone */}
+                        {onCloneOffer && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onCloneOffer(o.id);
+                              toast.success(`Campaign "${o.title}" duplicated`);
+                            }}
+                            className="p-1.5 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
+                            title="Duplicate Campaign"
+                          >
+                            <Copy size={14} />
+                          </button>
+                        )}
+
+                        {/* Delete */}
+                        {onDeleteOffer && (
+                          <button
+                            type="button"
+                            onClick={() => setOfferToDelete(o)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                            title="Delete Campaign"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOffer(o)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/40 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors shadow-2xs cursor-pointer"
+                      >
+                        <Eye size={12} />
+                        <span>Review</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Offer Details & Audit History Drawer */}
       {selectedOffer && (

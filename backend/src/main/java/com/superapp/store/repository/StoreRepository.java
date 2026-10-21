@@ -19,6 +19,11 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
 
     List<Store> findByMerchantId(UUID merchantId);
 
+    @Query("SELECT s FROM Store s WHERE s.phone IS NOT NULL AND (s.phone = :phone OR s.phone LIKE CONCAT('%', :last10))")
+    List<Store> findByPhoneOrSuffix(@Param("phone") String phone, @Param("last10") String last10);
+
+    boolean existsByPhone(String phone);
+
     Page<Store> findByMerchantId(UUID merchantId, Pageable pageable);
 
     Optional<Store> findByIdAndMerchantId(UUID id, UUID merchantId);

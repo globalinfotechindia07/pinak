@@ -38,6 +38,29 @@ export const storeApi = {
     }
   },
 
+  // Validate Store Phone against duplicate enterprise business rules
+  validateStorePhone: async (
+    phone: string,
+    merchantId?: string,
+    storeId?: string,
+    email?: string
+  ): Promise<{ valid: boolean; message?: string }> => {
+    try {
+      const res = await apiClient.get<ApiResponse<{ valid: boolean; message?: string }>>("/stores/validate-phone", {
+        params: {
+          phone,
+          merchantId: merchantId || undefined,
+          storeId: storeId || undefined,
+          email: email || undefined,
+        },
+      });
+      return res.data?.data || { valid: true };
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Failed to validate phone number";
+      return { valid: false, message: msg };
+    }
+  },
+
   // Create New Store Branch with Lat & Lng (works for both Admin and Merchant)
   createStore: async (payload: any): Promise<StoreDTO> => {
     if (payload.merchantId) {

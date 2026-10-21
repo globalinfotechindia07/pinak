@@ -37,7 +37,17 @@ public class OfferMapper {
                 offer.getRejectionReason(),
                 offer.getApprovedAt(),
                 offer.getCreatedAt(),
-                offer.getUpdatedAt()
+                offer.getUpdatedAt(),
+                // Rich Fields
+                offer.getOfferScope() != null ? offer.getOfferScope() : "SERVICE",
+                offer.getOriginalMrp(),
+                offer.getFlashSellingPrice(),
+                offer.getIsFlash() != null ? offer.getIsFlash() : false,
+                offer.getRemainingQuantity() != null ? offer.getRemainingQuantity() : 50,
+                offer.getBonusCoins() != null ? offer.getBonusCoins() : 100,
+                offer.getImageUrl(),
+                offer.getBadgeText(),
+                offer.getCtaText() != null ? offer.getCtaText() : "Book & Pay"
         );
     }
 
@@ -70,6 +80,7 @@ public class OfferMapper {
 
     public OfferResponse toDiscoveryOfferResponse(Offer offer) {
         if (offer == null) return null;
+
         return new OfferResponse(
                 offer.getId().toString(),
                 offer.getTitle(),

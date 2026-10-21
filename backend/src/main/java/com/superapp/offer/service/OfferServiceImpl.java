@@ -120,6 +120,15 @@ public class OfferServiceImpl implements OfferService {
         offer.setPerCustomerLimit(request.perCustomerLimit());
         offer.setValidFrom(request.validFrom());
         offer.setValidTo(request.validTo());
+        if (request.offerScope() != null) offer.setOfferScope(request.offerScope());
+        if (request.originalMrp() != null) offer.setOriginalMrp(request.originalMrp());
+        if (request.flashSellingPrice() != null) offer.setFlashSellingPrice(request.flashSellingPrice());
+        if (request.isFlash() != null) offer.setIsFlash(request.isFlash());
+        if (request.remainingQuantity() != null) offer.setRemainingQuantity(request.remainingQuantity());
+        if (request.bonusCoins() != null) offer.setBonusCoins(request.bonusCoins());
+        if (request.imageUrl() != null) offer.setImageUrl(request.imageUrl());
+        if (request.badgeText() != null) offer.setBadgeText(request.badgeText());
+        if (request.ctaText() != null) offer.setCtaText(request.ctaText());
         offer.setStatus(OfferStatus.CREATED);
         offer.setApprovalStatus(OfferApprovalStatus.DRAFT);
         offer.setCreatedBy(currentUserId.toString());
@@ -221,6 +230,15 @@ public class OfferServiceImpl implements OfferService {
         offer.setPerCustomerLimit(request.perCustomerLimit());
         offer.setValidFrom(request.validFrom());
         offer.setValidTo(request.validTo());
+        if (request.offerScope() != null) offer.setOfferScope(request.offerScope());
+        if (request.originalMrp() != null) offer.setOriginalMrp(request.originalMrp());
+        if (request.flashSellingPrice() != null) offer.setFlashSellingPrice(request.flashSellingPrice());
+        if (request.isFlash() != null) offer.setIsFlash(request.isFlash());
+        if (request.remainingQuantity() != null) offer.setRemainingQuantity(request.remainingQuantity());
+        if (request.bonusCoins() != null) offer.setBonusCoins(request.bonusCoins());
+        if (request.imageUrl() != null) offer.setImageUrl(request.imageUrl());
+        if (request.badgeText() != null) offer.setBadgeText(request.badgeText());
+        if (request.ctaText() != null) offer.setCtaText(request.ctaText());
 
         // If offer was previously approved, modifying it requires re-approval
         if (offer.getApprovalStatus() == OfferApprovalStatus.APPROVED || offer.getStatus() == OfferStatus.ACTIVE) {
@@ -525,6 +543,29 @@ public class OfferServiceImpl implements OfferService {
 
         evictOfferCaches(saved);
         return OfferApprovalResponse.suspended(saved.getId().toString(), reason);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAdminOffer(UUID offerId, UUID adminUserId) {
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offer not found", ApiError.OFFER_NOT_FOUND));
+
+        offerRepository.delete(offer);
+        log.info("Admin {} permanently deleted offer id={}", adminUserId, offerId);
+
+        if (auditService != null) {
+            auditService.record(
+                    AuditEventType.OFFER_DELETED,
+                    adminUserId,
+                    null,
+                    null,
+                    MDC.get("requestId"),
+                    "Admin deleted offer id=" + offerId
+            );
+        }
+
+        evictOfferCaches(offer);
     }
 
     // =========================================================================

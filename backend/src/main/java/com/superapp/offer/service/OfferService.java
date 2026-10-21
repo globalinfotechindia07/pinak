@@ -50,6 +50,8 @@ public interface OfferService {
 
     OfferApprovalResponse suspendOffer(UUID offerId, String reason, UUID adminUserId);
 
+    void deleteAdminOffer(UUID offerId, UUID adminUserId);
+
     // Discover Operations (Public / Customer)
     NearbyServiceOffersResponse getNearbyServiceOffers(Double latitude, Double longitude, Double radiusKm, UUID categoryId, Integer limit, String cursor);
 

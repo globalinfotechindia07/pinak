@@ -1,6 +1,8 @@
 package com.superapp.discover.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -115,7 +117,9 @@ public final class DiscoverDtos {
     ) {}
 
     public record RecordRecentlyViewedRequest(
+            @NotBlank(message = "Item type is required")
             String itemType,
+            @NotNull(message = "Item ID is required")
             UUID itemId,
             UUID branchId
     ) {}

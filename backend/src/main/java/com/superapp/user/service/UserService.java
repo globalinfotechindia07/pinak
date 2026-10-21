@@ -2,9 +2,11 @@ package com.superapp.user.service;
 
 import com.superapp.common.audit.AuditEventType;
 import com.superapp.common.audit.AuditService;
+import com.superapp.common.exception.AppException;
 import com.superapp.common.exception.DuplicateResourceException;
 import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.common.exception.UserSuspendedException;
+import com.superapp.common.response.ApiError;
 import com.superapp.user.dto.RoleDTO;
 import com.superapp.user.dto.StaffDTO;
 import com.superapp.user.dto.UserDTO;
@@ -55,12 +57,14 @@ public class UserService {
     private final AuditService auditService;
     private final EmailService emailService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    private com.superapp.merchant.repository.MerchantRepository merchantRepository;
 
     @Autowired
     public UserService(UserRepository userRepository, RoleRepository roleRepository,
                        StaffMemberRepository staffMemberRepository, PasswordEncoder passwordEncoder,
                        UserMapper userMapper, AuditService auditService,
-                       @Autowired(required = false) EmailService emailService) {
+                       @Autowired(required = false) EmailService emailService,
+                       @Autowired(required = false) com.superapp.merchant.repository.MerchantRepository merchantRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.staffMemberRepository = staffMemberRepository;
@@ -68,21 +72,22 @@ public class UserService {
         this.userMapper = userMapper != null ? userMapper : new UserMapper();
         this.auditService = auditService;
         this.emailService = emailService;
+        this.merchantRepository = merchantRepository;
     }
 
     public UserService(UserRepository userRepository, RoleRepository roleRepository,
                        StaffMemberRepository staffMemberRepository, PasswordEncoder passwordEncoder,
                        UserMapper userMapper, AuditService auditService) {
-        this(userRepository, roleRepository, staffMemberRepository, passwordEncoder, userMapper, auditService, null);
+        this(userRepository, roleRepository, staffMemberRepository, passwordEncoder, userMapper, auditService, null, null);
     }
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        UserMapper userMapper, AuditService auditService) {
-        this(userRepository, null, null, passwordEncoder, userMapper, auditService, null);
+        this(userRepository, null, null, passwordEncoder, userMapper, auditService, null, null);
     }
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this(userRepository, null, null, passwordEncoder, new UserMapper(), null, null);
+        this(userRepository, null, null, passwordEncoder, new UserMapper(), null, null, null);
     }
 
     // ---- Self-service (CUSTOMER) ----
@@ -145,12 +150,12 @@ public class UserService {
 
         if (request.mobile() != null && !request.mobile().isBlank()) {
             String mobile = request.mobile().trim();
-            if (!mobile.equals(user.getMobile()) && !mobile.equals(user.getPhone())) {
-                if (userRepository.existsByMobile(mobile) || userRepository.existsByPhone(mobile)) {
+            if (!mobile.equals(user.getPhone())) {
+                if (userRepository.existsByPhone(mobile)) {
                     throw DuplicateResourceException.mobile(mobile);
                 }
             }
-            user.setMobile(mobile);
+            user.setPhone(mobile);
         }
 
         if (request.profilePictureUrl() != null && !request.profilePictureUrl().isBlank()) {
@@ -242,7 +247,7 @@ public class UserService {
                 String pattern = "%" + search.trim().toLowerCase() + "%";
                 jakarta.persistence.criteria.Predicate nameMatch = cb.like(cb.lower(root.get("name")), pattern);
                 jakarta.persistence.criteria.Predicate emailMatch = cb.like(cb.lower(root.get("email")), pattern);
-                jakarta.persistence.criteria.Predicate mobileMatch = cb.like(cb.lower(root.get("mobile")), pattern);
+                jakarta.persistence.criteria.Predicate mobileMatch = cb.like(cb.lower(root.get("phone")), pattern);
                 predicates.add(cb.or(nameMatch, emailMatch, mobileMatch));
             }
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
@@ -327,7 +332,7 @@ public class UserService {
 
         if (request.mobile() != null && !request.mobile().isBlank()) {
             String mobile = request.mobile().trim();
-            if (userRepository.existsByMobile(mobile) || userRepository.existsByPhone(mobile)) {
+            if (userRepository.existsByPhone(mobile)) {
                 throw DuplicateResourceException.mobile(mobile);
             }
         }
@@ -337,7 +342,6 @@ public class UserService {
                 passwordEncoder.encode(request.password()), request.role());
 
         if (request.mobile() != null && !request.mobile().isBlank()) {
-            user.setMobile(request.mobile().trim());
             user.setPhone(request.mobile().trim());
         }
 
@@ -447,18 +451,21 @@ public class UserService {
             }
         }
 
+        // Enterprise constraint: Validate staff assignment email against enterprise business rules
+        validateStaffAssignmentEmail(email, request.scope(), request.merchantId(), request.storeId());
+
         User user = userRepository.findByEmail(email).map(existing -> {
             if ("PLATFORM".equalsIgnoreCase(request.scope()) && existing.getRole() != Role.ADMIN && existing.getRole() != Role.SUPER_ADMIN) {
                 existing.setRole(Role.ADMIN);
             }
-            if (UserStatus.INACTIVE.equals(existing.getStatus())) {
-                existing.setStatus(UserStatus.ACTIVE);
-            }
-            if (reqPhone != null) {
+            // User remains INACTIVE until password is established via acceptInvite
+            if (reqPhone != null && (existing.getPhone() == null || existing.getPhone().isBlank())) {
                 existing.setPhone(reqPhone);
                 existing.setMobile(reqPhone);
             }
-            if (request.name() != null && !request.name().isBlank()) {
+            // Only update name if existing user does not already have a valid custom name
+            if ((existing.getName() == null || existing.getName().isBlank() || existing.getName().startsWith("Staff "))
+                    && request.name() != null && !request.name().isBlank()) {
                 String name = request.name().trim();
                 existing.setName(name);
                 String[] parts = name.split(" ", 2);
@@ -478,7 +485,7 @@ public class UserService {
                 newUser.setPhone(reqPhone);
             }
             newUser.setEmailVerified(false);
-            newUser.setStatus(UserStatus.ACTIVE);
+            newUser.setStatus(UserStatus.INACTIVE);
             return userRepository.save(newUser);
         });
 
@@ -510,6 +517,8 @@ public class UserService {
         UUID targetStoreId = request.storeId();
         UUID targetMerchantId = request.merchantId();
 
+        String initialStatus = UserStatus.ACTIVE.equals(user.getStatus()) ? "ACTIVE" : "INVITED";
+
         List<StaffMember> existingAssignments = staffMemberRepository.findByUserId(user.getId());
         StaffMember staff = existingAssignments.stream()
                 .filter(s -> targetScope.equalsIgnoreCase(s.getScope())
@@ -526,14 +535,14 @@ public class UserService {
                     targetMerchantId,
                     targetStoreId,
                     hashedPin,
-                    "INVITED",
+                    initialStatus,
                     permissionsJson,
                     invitedBy
             );
         } else {
             staff.setRoleId(request.roleId());
             if (hashedPin != null) staff.setPosPin(hashedPin);
-            staff.setStatus("INVITED");
+            staff.setStatus(initialStatus);
             staff.setCustomPermissions(permissionsJson);
             staff.setInvitedBy(invitedBy);
         }
@@ -577,6 +586,78 @@ public class UserService {
         }
 
         return toStaffResponse(saved, user, role);
+    }
+
+    /**
+     * Enterprise business rule validation for staff assignment.
+     * Allows the Merchant Owner to directly manage branches of their own merchant.
+     * Prevents cross-merchant collision if an email belongs to an owner of another merchant business.
+     */
+    public void validateStaffAssignmentEmail(String email, String scope, UUID merchantId, UUID storeId) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        String normalizedEmail = email.trim().toLowerCase();
+
+        if ("STORE".equalsIgnoreCase(scope)) {
+            // 1. Check parent merchant owner email or owner user record
+            if (merchantId != null && merchantRepository != null) {
+                var merchantOpt = merchantRepository.findById(merchantId);
+                if (merchantOpt.isPresent()) {
+                    var m = merchantOpt.get();
+                    String ownerEmail = m.getEmail();
+                    if (ownerEmail != null && ownerEmail.trim().equalsIgnoreCase(normalizedEmail)) {
+                        throw new AppException(
+                                "Store manager cannot use the Merchant Owner's email (" + normalizedEmail + "). A separate dedicated email must be provided for the store branch manager.",
+                                ApiError.VALIDATION_FAILED,
+                                400
+                        );
+                    }
+                    if (m.getOwnerUserId() != null && userRepository != null) {
+                        var ownerUserOpt = userRepository.findById(m.getOwnerUserId());
+                        if (ownerUserOpt.isPresent() && ownerUserOpt.get().getEmail() != null
+                                && ownerUserOpt.get().getEmail().trim().equalsIgnoreCase(normalizedEmail)) {
+                            throw new AppException(
+                                    "Store manager cannot use the Merchant Owner's account email (" + normalizedEmail + "). A separate dedicated email must be provided for the store branch manager.",
+                                    ApiError.VALIDATION_FAILED,
+                                    400
+                            );
+                        }
+                    }
+                }
+            }
+
+            // 2. Global check: is this email registered as a MERCHANT owner in users table?
+            if (userRepository != null) {
+                var userOpt = userRepository.findByEmail(normalizedEmail);
+                if (userOpt.isPresent()) {
+                    User existing = userOpt.get();
+                    if (Role.MERCHANT.equals(existing.getRole())) {
+                        throw new AppException(
+                                "This email is registered as a Merchant Owner account (" + normalizedEmail + "). Store branch managers must have a separate dedicated email address.",
+                                ApiError.VALIDATION_FAILED,
+                                400
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    public boolean isMerchantOwnerEmail(UUID merchantId, String email) {
+        if (merchantId == null || email == null || merchantRepository == null) return false;
+        String normalized = email.trim().toLowerCase();
+        var mOpt = merchantRepository.findById(merchantId);
+        if (mOpt.isEmpty()) return false;
+        var m = mOpt.get();
+        if (m.getEmail() != null && m.getEmail().trim().equalsIgnoreCase(normalized)) {
+            return true;
+        }
+        if (m.getOwnerUserId() != null && userRepository != null) {
+            var uOpt = userRepository.findById(m.getOwnerUserId());
+            return uOpt.isPresent() && uOpt.get().getEmail() != null && uOpt.get().getEmail().trim().equalsIgnoreCase(normalized);
+        }
+        return false;
     }
 
     @Transactional
@@ -880,6 +961,26 @@ public class UserService {
             user.setRole(Role.MERCHANT);
         }
         userRepository.save(user);
+
+        // When a merchant owner or staff sets their password via invite, activate the merchant business account status!
+        if (merchantRepository != null) {
+            if (staff.getMerchantId() != null) {
+                merchantRepository.findById(staff.getMerchantId()).ifPresent(m -> {
+                    if (m.getStatus() != com.superapp.merchant.enums.MerchantStatus.SUSPENDED) {
+                        m.setStatus(com.superapp.merchant.enums.MerchantStatus.ACTIVE);
+                        merchantRepository.save(m);
+                        log.info("Activated merchant account status for merchantId={} upon owner password setup", m.getId());
+                    }
+                });
+            }
+            merchantRepository.findByOwnerUserId(user.getId()).ifPresent(m -> {
+                if (m.getStatus() != com.superapp.merchant.enums.MerchantStatus.SUSPENDED) {
+                    m.setStatus(com.superapp.merchant.enums.MerchantStatus.ACTIVE);
+                    merchantRepository.save(m);
+                    log.info("Activated owned merchant account status for merchantId={} upon owner password setup", m.getId());
+                }
+            });
+        }
 
         // 2. Consume token and transition to ACTIVE status
         staff.setStatus("ACTIVE");

@@ -8,6 +8,7 @@ import com.superapp.user.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -94,7 +95,7 @@ public class DiscoverFeedController {
     @Operation(summary = "Record user item view event", security = @SecurityRequirement(name = "bearerAuth"))
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<String>> recordRecentlyViewed(
-            @RequestBody RecordRecentlyViewedRequest request,
+            @Valid @RequestBody RecordRecentlyViewedRequest request,
             Authentication authentication) {
 
         UUID userId = resolveUserId(authentication);
@@ -135,8 +136,12 @@ public class DiscoverFeedController {
         if (authentication == null || authentication.getName() == null) {
             return UUID.fromString("00000000-0000-0000-0000-000000000003");
         }
-        return userRepository.findByEmail(authentication.getName())
-                .map(User::getId)
-                .orElse(UUID.fromString("00000000-0000-0000-0000-000000000003"));
+        try {
+            return UUID.fromString(authentication.getName());
+        } catch (IllegalArgumentException e) {
+            return userRepository.findByEmail(authentication.getName())
+                    .map(User::getId)
+                    .orElse(UUID.fromString("00000000-0000-0000-0000-000000000003"));
+        }
     }
 }

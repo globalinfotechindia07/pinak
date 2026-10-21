@@ -32,7 +32,6 @@ export function setStoredTokens(accessToken: string, _refreshToken?: string): vo
 
 export function clearStoredTokens(): void {
   tokenManager.clearAccessToken();
-  localStorage.removeItem(USER_INFO_KEY);
 }
 
 // Concurrency mutex state for 401 silent token refresh

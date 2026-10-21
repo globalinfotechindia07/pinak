@@ -26,9 +26,6 @@ public class User {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "mobile", unique = true, length = 20)
-    private String mobile;
-
     @Column(name = "phone", unique = true, length = 20)
     private String phone;
 
@@ -145,11 +142,21 @@ public class User {
         if (this.status == null) {
             this.status = UserStatus.ACTIVE;
         }
+        if (this.name == null || this.name.isBlank()) {
+            String fn = this.firstName != null ? this.firstName.trim() : "";
+            String ln = this.lastName != null ? this.lastName.trim() : "";
+            this.name = (fn + " " + ln).trim();
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = Instant.now();
+        if (this.name == null || this.name.isBlank()) {
+            String fn = this.firstName != null ? this.firstName.trim() : "";
+            String ln = this.lastName != null ? this.lastName.trim() : "";
+            this.name = (fn + " " + ln).trim();
+        }
     }
 
     // ---- Getters & Setters ----
@@ -163,21 +170,12 @@ public class User {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public String getMobile() { return mobile != null ? mobile : phone; }
-    public void setMobile(String mobile) {
-        this.mobile = mobile;
-        if (this.phone == null) {
-            this.phone = mobile;
-        }
-    }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 
-    public String getPhone() { return phone != null ? phone : mobile; }
-    public void setPhone(String phone) {
-        this.phone = phone;
-        if (this.mobile == null) {
-            this.mobile = phone;
-        }
-    }
+    // Mobile is an alias to the canonical phone column
+    public String getMobile() { return phone; }
+    public void setMobile(String mobile) { this.phone = mobile; }
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }

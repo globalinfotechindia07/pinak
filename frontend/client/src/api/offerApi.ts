@@ -93,9 +93,13 @@ export const offerApi = {
     return res.data?.data || (res.data as unknown as OfferDTO);
   },
 
-  // Merchant: Delete an offer
+  // Admin & Merchant: Delete an offer
   deleteOffer: async (id: string): Promise<void> => {
-    await apiClient.delete(`/merchant/offers/${id}`);
+    try {
+      await apiClient.delete(`/admin/offers/${id}`);
+    } catch {
+      await apiClient.delete(`/merchant/offers/${id}`);
+    }
   },
 
   // Merchant: Toggle status (ACTIVE / PAUSED)

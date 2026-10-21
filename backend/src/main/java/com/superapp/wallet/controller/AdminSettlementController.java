@@ -71,6 +71,12 @@ public class AdminSettlementController {
     }
 
     private UUID extractAdminId(Principal principal) {
+        if (principal != null && principal.getName() != null) {
+            try {
+                return UUID.fromString(principal.getName());
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
         return UUID.fromString("00000000-0000-0000-0000-000000000001");
     }
 }

@@ -52,6 +52,7 @@ import { transactionApi } from "../api/transactionApi";
 import { adminApi, AdminDashboardMetrics } from "../api/adminApi";
 import { notificationApi } from "../api/notificationApi";
 import { cityApi } from "../api/cityApi";
+import { staffApi } from "../api/staffApi";
 
 export default function Home() {
   const store = useAppStore();
@@ -63,6 +64,45 @@ export default function Home() {
   const [merchantTab, setMerchantTab] = useState("MerchantDashboard");
   const [storeTab, setStoreTab] = useState("StoreDashboard");
   const [dashboardMetrics, setDashboardMetrics] = useState<AdminDashboardMetrics | null>(null);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+
+  // Silent session restoration on initial load via HttpOnly refresh token cookie
+  useEffect(() => {
+    let isMounted = true;
+    const restoreSession = async () => {
+      try {
+        const bootUser = await authApi.bootstrapSession();
+        if (bootUser && isMounted) {
+          const userRoleStr = String(bootUser.role || "").toUpperCase();
+          const staffScope = String(bootUser.staffScope || "").toUpperCase();
+          const isPlatform = staffScope === "PLATFORM" || userRoleStr.includes("ADMIN");
+          const isStore = staffScope === "STORE" || userRoleStr.includes("STORE") || userRoleStr.includes("BRANCH");
+          const resolvedRole: UserRole = isPlatform ? "admin" : isStore ? "store" : "merchant";
+
+          store.login(resolvedRole, bootUser.email, bootUser.storeId, {
+            id: bootUser.id,
+            name: bootUser.name,
+            roleName: (bootUser as any).staffRoleName || (bootUser as any).roleName,
+            staffRoleId: bootUser.staffRoleId,
+            staffScope: bootUser.staffScope,
+            permissions: bootUser.permissions,
+            status: bootUser.status,
+          });
+        }
+      } catch (err) {
+        console.debug("[Auth] No active session cookie found:", err);
+      } finally {
+        if (isMounted) {
+          setIsBootstrapping(false);
+        }
+      }
+    };
+
+    restoreSession();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Permissions Guard for Scoped RBAC
   const isTabPermitted = (tab: string): boolean => {
@@ -572,6 +612,9 @@ export default function Home() {
             } else if (a.action === "MERCHANT_SUSPENDED") {
               actionName = "Merchant Account Suspended";
               entityName = meta.businessName ? `Merchant: ${meta.businessName}` : "Merchant Brand";
+            } else if (a.action === "MERCHANT_DELETED") {
+              actionName = meta.businessName ? `Merchant Brand Deleted (${meta.businessName})` : "Merchant Brand Deleted";
+              entityName = meta.businessName ? `Merchant: ${meta.businessName}` : "Merchant Brand";
             } else if (a.action === "STORE_CREATED") {
               actionName = meta.storeName ? `Store Branch Provisioned (${meta.storeName})` : "Store Branch Provisioned";
               entityName = meta.storeName ? `Store: ${meta.storeName}` : "Store Outlet";
@@ -580,11 +623,26 @@ export default function Home() {
               entityName = meta.storeName ? `Store: ${meta.storeName}` : "Store Outlet";
             }
 
+            const detailsText =
+              meta.details ||
+              (a.action === "MERCHANT_CREATED"
+                ? `Onboarded merchant brand "${meta.businessName || "New Merchant"}" with owner "${meta.ownerName || meta.ownerEmail || ""}".`
+                : a.action === "MERCHANT_DELETED"
+                ? `Permanently deleted merchant brand "${meta.businessName || "Merchant"}", removed branch outlets and de-provisioned owner access credentials.`
+                : a.action === "MERCHANT_APPROVED"
+                ? `Approved KYC documents & commercial verification for merchant brand.`
+                : a.action === "MERCHANT_REJECTED"
+                ? `Rejected merchant KYC application: ${meta.reason || "Verification rejected during review"}.`
+                : a.action === "MERCHANT_UPDATED"
+                ? `Updated merchant business profile and contact information.`
+                : `${actionName} action executed.`);
+
             return {
               id: a.id || `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
               action: actionName,
               entity: entityName,
               actor: actorName,
+              details: detailsText,
               time: a.createdAt || new Date().toISOString(),
               severity:
                 a.action?.toLowerCase().includes("fail") || a.action?.toLowerCase().includes("reject")
@@ -594,7 +652,7 @@ export default function Home() {
                   : a.action?.toLowerCase().includes("invite") || a.action?.toLowerCase().includes("create")
                   ? "success"
                   : "info",
-              metadata: meta,
+              metadata: { ...meta, details: detailsText },
             };
           });
 
@@ -760,11 +818,48 @@ export default function Home() {
   };
 
   const handleAddStore = async (draft: any) => {
+    // 1. Authoritative Backend Validation for Store Manager Email
+    if (draft.managerEmail && draft.managerEmail.trim()) {
+      const email = draft.managerEmail.trim().toLowerCase();
+      try {
+        const valRes = await staffApi.validateStaffEmail(email, draft.merchantId, "STORE");
+        if (!valRes.valid && valRes.message) {
+          throw new Error(valRes.message);
+        }
+      } catch (valErr: any) {
+        const valMsg = valErr?.response?.data?.message || valErr?.message;
+        if (valMsg) {
+          throw new Error(valMsg);
+        }
+      }
+    }
+
+    // 1.5 Authoritative Backend Validation for Store Manager / Branch Phone
+    const phone = (draft.managerPhone || draft.phone || "").trim();
+    if (phone) {
+      try {
+        const phoneVal = await storeApi.validateStorePhone(
+          phone,
+          draft.merchantId,
+          undefined,
+          draft.managerEmail ? draft.managerEmail.trim() : undefined
+        );
+        if (!phoneVal.valid && phoneVal.message) {
+          throw new Error(phoneVal.message);
+        }
+      } catch (valErr: any) {
+        const valMsg = valErr?.response?.data?.message || valErr?.message;
+        if (valMsg && (valMsg.includes("Phone number") || valMsg.includes("Duplicate") || valMsg.includes("already"))) {
+          throw new Error(valMsg);
+        }
+      }
+    }
+
     try {
-      await storeApi.createStore({
+      const createdStore = await storeApi.createStore({
         merchantId: draft.merchantId,
         storeName: draft.branchName || draft.storeName || draft.name || "New Branch",
-        contactPhone: draft.phone || "9876543210",
+        contactPhone: draft.managerPhone || draft.phone || "9876543210",
         address: draft.address || "Main Street",
         cityId: (draft.city || "Nagpur").toLowerCase(),
         state: draft.state || "Maharashtra",
@@ -774,11 +869,62 @@ export default function Home() {
         openingTime: draft.openingTime || "09:00",
         closingTime: draft.closingTime || "22:00",
       });
-      toast.success(`Branch "${draft.branchName || draft.name || "Outlet"}" created successfully!`);
+
+      const storeId = createdStore?.id;
+
+      // Save branch locally with manager details
+      store.addStore({
+        ...draft,
+        id: storeId || draft.id,
+        phone: draft.managerPhone || draft.phone || "9876543210",
+        storeEmail: draft.managerEmail,
+        managerEmail: draft.managerEmail,
+        managerName: draft.managerName,
+        managerPhone: draft.managerPhone,
+        storePin: draft.posPin,
+      });
+
+      // If store manager email was provided, dispatch unified staff invitation!
+      if (draft.managerEmail && draft.managerEmail.trim()) {
+        try {
+          await staffApi.inviteMerchantStaff({
+            name: draft.managerName?.trim() || `${draft.branchName || "Store"} Manager`,
+            email: draft.managerEmail.trim().toLowerCase(),
+            phone: draft.managerPhone?.trim() || draft.phone,
+            roleId: "STORE_MANAGER",
+            scope: "STORE",
+            merchantId: draft.merchantId,
+            storeId: storeId,
+            posPin: draft.posPin?.trim() || undefined,
+          });
+          toast.success(
+            `Branch "${draft.branchName || "Outlet"}" created! Password setup invitation dispatched to ${draft.managerEmail.trim()}.`
+          );
+        } catch (inviteErr: any) {
+          const inviteMsg = inviteErr?.response?.data?.message || inviteErr.message;
+          console.warn("Store manager invitation notice:", inviteMsg);
+          if (inviteMsg && (inviteMsg.includes("Enterprise Notice") || inviteMsg.includes("Merchant Owner"))) {
+            toast.error(inviteMsg);
+            throw new Error(inviteMsg);
+          } else {
+            toast.success(
+              `Branch "${draft.branchName || "Outlet"}" created! Invitation dispatch note: ${inviteMsg || "Recorded"}`
+            );
+          }
+        }
+      } else {
+        toast.success(`Branch "${draft.branchName || draft.name || "Outlet"}" created successfully!`);
+      }
+
       await syncBackendData();
     } catch (apiErr: any) {
-      console.warn("Backend store create failed, saving locally:", apiErr?.response?.data || apiErr.message);
+      const errMsg = apiErr?.response?.data?.message || apiErr?.message;
+      if (errMsg && (errMsg.includes("Enterprise Notice") || errMsg.includes("Merchant Owner"))) {
+        throw new Error(errMsg);
+      }
+      console.warn("Backend store create failed, saving locally:", errMsg);
       store.addStore(draft);
+      toast.success(`Store branch "${draft.branchName || "Outlet"}" saved locally.`);
     }
   };
 
@@ -851,10 +997,10 @@ export default function Home() {
 
   const handleUpdateMerchant = async (id: string, updates: Partial<Merchant>) => {
     try {
-      if (updates.status === "SUSPENDED") {
-        await merchantApi.suspendMerchantAdmin(id, "Account suspended by platform admin");
-        store.updateMerchant(id, { status: "SUSPENDED" });
-        toast.info("Merchant suspended successfully");
+      if (updates.status === "SUSPENDED" || updates.status === "INACTIVE") {
+        await merchantApi.suspendMerchantAdmin(id, updates.status === "INACTIVE" ? "Deactivated by administrator" : "Account suspended by platform admin");
+        store.updateMerchant(id, { status: updates.status });
+        toast.info(updates.status === "INACTIVE" ? "Merchant deactivated successfully" : "Merchant suspended successfully");
       } else if (updates.status === "ACTIVE") {
         await merchantApi.activateMerchantAdmin(id);
         store.updateMerchant(id, { status: "ACTIVE" });
@@ -903,7 +1049,7 @@ export default function Home() {
     try {
       await offerApi.createOffer({
         title: draft.title || "Special Deal",
-        description: draft.terms || "Offer details",
+        description: draft.terms || draft.tagline || "Offer details",
         type: draft.type === "FLAT_PCT" ? "PERCENTAGE_DISCOUNT" : "FIXED_DISCOUNT",
         value: Number(draft.value) || 20,
         minTransactionAmount: Number(draft.minBillAmount) || 500,
@@ -912,10 +1058,24 @@ export default function Home() {
         validTo: draft.validTo ? `${draft.validTo}T23:59:59Z` : "2026-12-31T23:59:59Z",
       });
       toast.success(`Offer "${draft.title}" submitted successfully!`);
+      // Update local reactive store with all rich fields including District table/slot settings
+      store.addOffer({
+        ...draft,
+        id: `offer-${Date.now()}`,
+        status: "ACTIVE",
+        redemptions: 0,
+        createdAt: new Date().toISOString(),
+      });
       await syncBackendData();
     } catch (err: any) {
       console.warn("Backend offer create failed:", err.message);
-      store.addOffer(draft);
+      store.addOffer({
+        ...draft,
+        id: `offer-${Date.now()}`,
+        status: "ACTIVE",
+        redemptions: 0,
+        createdAt: new Date().toISOString(),
+      });
     }
   };
 
@@ -927,6 +1087,20 @@ export default function Home() {
     } catch (err: any) {
       console.warn("Backend offer approval:", err.message);
       store.updateOfferStatus(id, "ACTIVE");
+    }
+  };
+
+  const handleDeleteOffer = async (id: string) => {
+    try {
+      await offerApi.deleteOffer(id);
+      store.deleteOffer(id);
+      toast.success("Offer permanently deleted.");
+      await syncBackendData();
+    } catch (err: any) {
+      console.warn("Backend offer delete notice:", err?.response?.data || err.message);
+      store.deleteOffer(id);
+      toast.success("Offer removed");
+      await syncBackendData();
     }
   };
 
@@ -950,6 +1124,18 @@ export default function Home() {
     } catch {}
     store.markAllNotificationsRead();
   };
+
+  // While checking silent session via HttpOnly cookie on initial load
+  if (isBootstrapping) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f9fc] dark:bg-[#0c0e17]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Verifying session...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If user is logged out, render the Login screen
   if (!store.isAuthenticated) {
@@ -988,7 +1174,7 @@ export default function Home() {
         />
 
         {/* Page Body with Motion Transition */}
-        <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 md:p-8 w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={`${store.role}-${currentTab}`}
@@ -1081,9 +1267,12 @@ export default function Home() {
                         <StoreManagement
                           stores={store.stores}
                           merchants={store.merchants}
+                          offers={store.offers}
                           onAddStore={handleAddStore}
                           onApproveStore={handleApproveStore}
                           onDeleteStore={handleDeleteStore}
+                          onAddOffer={handleAddOffer}
+                          onNavigateTab={setCurrentTab}
                           onUpdateStore={(id, updates) => {
                             store.updateStore(id, updates);
                             toast.success("Store details updated");
@@ -1103,10 +1292,7 @@ export default function Home() {
                               store.updateOfferStatus(id, status);
                             }
                           }}
-                          onDeleteOffer={(id) => {
-                            store.deleteOffer(id);
-                            toast.success("Offer campaign removed");
-                          }}
+                          onDeleteOffer={handleDeleteOffer}
                           onCloneOffer={(id) => {
                             const cloned = store.cloneOffer(id);
                             if (cloned) {

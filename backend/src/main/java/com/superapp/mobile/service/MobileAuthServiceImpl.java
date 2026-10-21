@@ -213,9 +213,7 @@ public class MobileAuthServiceImpl implements MobileAuthService {
         log.info("✅ Successful OTP verification in DB for phone {}", PhoneNormalizer.mask(normalizedPhone));
 
         // 6. Look up user by normalized E.164 and 10-digit formats
-        Optional<User> existingUserOpt = userRepository.findByMobile(normalizedPhone)
-                .or(() -> userRepository.findByPhone(normalizedPhone))
-                .or(() -> userRepository.findByMobile(tenDigits))
+        Optional<User> existingUserOpt = userRepository.findByPhone(normalizedPhone)
                 .or(() -> userRepository.findByPhone(tenDigits));
 
         // 7. Smart Gateway Router

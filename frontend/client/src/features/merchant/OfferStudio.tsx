@@ -110,7 +110,17 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
           status: o.status || "ACTIVE",
           redemptions: o.currentUsageCount || o.redemptions || 0,
           terms: o.termsAndConditions || o.terms || "Standard promotional rules apply.",
-          createdAt: o.createdAt || new Date().toISOString()
+          createdAt: o.createdAt || new Date().toISOString(),
+          scopeType: o.offerScope || o.scopeType || "SERVICE",
+          originalPrice: o.originalMrp || o.originalPrice,
+          dealPrice: o.flashSellingPrice || o.dealPrice,
+          isFlashDeal: Boolean(o.isFlash || o.isFlashDeal),
+          flashEndTime: o.flashEndTime,
+          totalFlashUnits: o.remainingQuantity || o.totalFlashUnits,
+          bonusCoins: o.bonusCoins || 100,
+          badgeText: o.badgeText,
+          ctaText: o.ctaText,
+          imageUrl: o.imageUrl
         }));
         setLiveOffers(mappedOffers);
       } else if (initialOffers && initialOffers.length > 0) {
@@ -220,7 +230,17 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
           validTo: draft.validTo,
           perCustomerLimit: draft.perUserLimit,
           usageLimit: draft.maxTotalRedemptions,
-          applicableStoreIds: draft.applicableStoreIds
+          applicableStoreIds: draft.applicableStoreIds,
+          scopeType: draft.scopeType,
+          originalPrice: draft.originalPrice,
+          dealPrice: draft.dealPrice,
+          isFlashDeal: draft.isFlashDeal,
+          flashEndTime: draft.flashEndTime,
+          totalFlashUnits: draft.totalFlashUnits,
+          bonusCoins: draft.bonusCoins,
+          badgeText: draft.badgeText,
+          ctaText: draft.ctaText,
+          imageUrl: draft.imageUrl
         };
         await offerApi.updateOffer(editingOffer.id, payload);
         toast.info(

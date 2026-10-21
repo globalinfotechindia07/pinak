@@ -9,12 +9,14 @@ import { Login } from "./pages/Login";
 import AcceptInvite from "./pages/AcceptInvite";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
+import { MobileHomeScreen } from "./features/mobile/MobileHomeScreen";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/login"} component={Login} />
       <Route path={"/accept-invite"} component={AcceptInvite} />
+      <Route path={"/mobile"}>{() => <MobileHomeScreen />}</Route>
       <Route path={"/404"} component={NotFound} />
       <Route path={"/admin/:tab"} component={Home} />
       <Route path={"/admin"} component={Home} />
@@ -39,7 +41,7 @@ function App() {
           switchable
         >
           <TooltipProvider>
-            <Toaster />
+            <Toaster position="top-right" />
             <Router />
           </TooltipProvider>
         </ThemeProvider>

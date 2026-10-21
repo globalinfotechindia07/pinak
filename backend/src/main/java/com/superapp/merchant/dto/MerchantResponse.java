@@ -41,11 +41,33 @@ public record MerchantResponse(
         BigDecimal commissionRate
 ) {
     public static MerchantResponse fromEntity(Merchant merchant) {
-        return fromEntity(merchant, null);
+        return fromEntity(merchant, null, null);
     }
 
     public static MerchantResponse fromEntity(Merchant merchant, String categoryName) {
+        return fromEntity(merchant, categoryName, null);
+    }
+
+    public static MerchantResponse fromEntity(Merchant merchant, String categoryName, com.superapp.wallet.entity.MerchantBankAccount bank) {
         if (merchant == null) return null;
+        String bankUpiId = bank != null ? bank.getUpiVpa() : null;
+        String bankName = bank != null ? bank.getBankName() : null;
+        String accountHolderName = bank != null ? bank.getAccountHolderName() : null;
+        String bankAccountNumber = null;
+        if (bank != null) {
+            if (bank.getAccountNumberEncrypted() != null && bank.getAccountNumberEncrypted().startsWith("ENC_AES256_")) {
+                try {
+                    String b64 = bank.getAccountNumberEncrypted().substring("ENC_AES256_".length());
+                    bankAccountNumber = new String(java.util.Base64.getDecoder().decode(b64), java.nio.charset.StandardCharsets.UTF_8);
+                } catch (Exception ignored) {
+                    bankAccountNumber = bank.getAccountNumberLast4();
+                }
+            } else if (bank.getAccountNumberLast4() != null) {
+                bankAccountNumber = bank.getAccountNumberLast4();
+            }
+        }
+        String bankIfsc = bank != null ? bank.getIfscCode() : null;
+
         return new MerchantResponse(
                 merchant.getId() != null ? merchant.getId().toString() : null,
                 merchant.getOwnerUserId() != null ? merchant.getOwnerUserId().toString() : null,
@@ -57,7 +79,7 @@ public record MerchantResponse(
                 merchant.getPhone(),
                 merchant.getEmail(),
                 merchant.getWebsite(),
-                merchant.getBankUpiId(),
+                bankUpiId,
                 merchant.getGstin(),
                 merchant.getPan(),
                 merchant.getStatus() != null ? merchant.getStatus().name() : null,
@@ -70,10 +92,10 @@ public record MerchantResponse(
                 merchant.getCity(),
                 merchant.getPincode(),
                 merchant.getAddress(),
-                merchant.getBankName(),
-                merchant.getAccountHolderName(),
-                merchant.getBankAccountNumber(),
-                merchant.getBankIfsc(),
+                bankName,
+                accountHolderName,
+                bankAccountNumber,
+                bankIfsc,
                 merchant.getCommissionRate()
         );
     }
@@ -119,7 +141,7 @@ public record MerchantResponse(
                 null,
                 null,
                 null,
-                status != null ? status.name() : "ACTIVE",
+                status != null ? status.name() : "INACTIVE",
                 status != null ? status.name() : "PENDING_APPROVAL",
                 kycStatus != null ? kycStatus.name() : null,
                 createdAt,

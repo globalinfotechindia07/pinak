@@ -88,7 +88,7 @@ public class SecurityConfig {
                 ).permitAll()
 
                 // Public payment webhook
-                .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook", "/api/v1/payments/webhooks/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook", "/api/v1/payments/webhooks/**", "/api/v1/webhooks/payouts/**").permitAll()
 
                 // Discover Screen & catalog endpoints — strictly private and authenticated (JWT Bearer required)
                 .requestMatchers(

@@ -7,6 +7,8 @@ import { LoginRequest, OtpRequest, VerifyOtpRequest } from "../../types/api/auth
 import { handleApiErrorToast } from "../../api/error";
 import { toast } from "sonner";
 
+import { dataStore } from "../../services/dataStore";
+
 export const AUTH_QUERY_KEY = ["auth", "currentUser"];
 
 export function useAuth() {
@@ -18,6 +20,7 @@ export function useAuth() {
       if (msg.type === "AUTH_LOGOUT" || msg.type === "AUTH_EXPIRED") {
         tokenManager.clearAccessToken();
         queryClient.setQueryData(AUTH_QUERY_KEY, null);
+        dataStore.logout();
         toast.info("Session expired or signed out in another tab.");
       } else if (msg.type === "AUTH_LOGIN") {
         queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
@@ -27,6 +30,7 @@ export function useAuth() {
     const handleUnauthorized = () => {
       tokenManager.clearAccessToken();
       queryClient.setQueryData(AUTH_QUERY_KEY, null);
+      dataStore.logout();
     };
 
     window.addEventListener("pinak:unauthorized", handleUnauthorized);

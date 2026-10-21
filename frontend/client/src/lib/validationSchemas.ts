@@ -117,6 +117,28 @@ export const storeBranchSchema = z.object({
       message: "Please enter a valid 10-digit Indian phone number",
     }),
   operatingHours: z.string().optional(),
+  managerName: z.string().optional().or(z.literal("")),
+  managerEmail: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine((val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()), {
+      message: "Please enter a valid email address for the store manager",
+    }),
+  managerPhone: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine((val) => !val || INDIAN_PHONE_REGEX.test(val.trim()), {
+      message: "Please enter a valid 10-digit Indian mobile number for the manager",
+    }),
+  posPin: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine((val) => !val || /^\d{4}$/.test(val.trim()), {
+      message: "POS counter PIN must be exactly 4 digits",
+    }),
 });
 
 export type StoreBranchFormValues = z.infer<typeof storeBranchSchema>;
@@ -165,6 +187,27 @@ export const offerCampaignSchema = z
     promoCode: z.string().optional(),
     imageUrl: z.string().optional(),
     terms: z.string().max(2000, "Terms cannot exceed 2000 characters").optional(),
+    scopeType: z.enum(["SERVICE", "PRODUCT"]).optional(),
+    productCategory: z.string().optional(),
+    originalPrice: z.number().positive("Original MRP must be greater than 0").optional(),
+    dealPrice: z.number().positive("Deal price must be greater than 0").optional(),
+    isFlashDeal: z.boolean().optional(),
+    flashEndTime: z.string().optional(),
+    totalFlashUnits: z.number().positive("Flash units must be at least 1").optional(),
+    bonusCoins: z.number().min(0, "Bonus coins cannot be negative").optional(),
+    badgeText: z.string().optional(),
+    ctaText: z.string().optional(),
+    // District-style Table & Slot Booking Engine
+    isTableBookingEnabled: z.boolean().optional(),
+    bookingType: z.enum(["TABLE_RESERVATION", "APPOINTMENT_SLOT"]).optional(),
+    slotTimes: z.array(z.string()).optional(),
+    minPartySize: z.number().min(1).optional(),
+    maxPartySize: z.number().min(1).optional(),
+    availableTablesPerSlot: z.number().min(1).optional(),
+    seatingAreas: z.array(z.string()).optional(),
+    coverChargeAmount: z.number().min(0).optional(),
+    gracePeriodMinutes: z.number().min(0).optional(),
+    instantConfirmation: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === "FLAT_PCT") {

@@ -49,6 +49,24 @@ public class StoreController {
                 .body(ApiResponse.success("Store created successfully", response));
     }
 
+    @GetMapping("/stores/validate-phone")
+    @Operation(summary = "Validate store phone against duplicate enterprise business rules")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> validateStorePhone(
+            @RequestParam String phone,
+            @RequestParam(required = false) UUID merchantId,
+            @RequestParam(required = false) UUID storeId,
+            @RequestParam(required = false) String email) {
+        try {
+            storeService.validateStorePhoneUniqueness(phone, merchantId, storeId, email);
+            return ResponseEntity.ok(ApiResponse.success("Phone is valid for store branch", java.util.Map.of("valid", true)));
+        } catch (com.superapp.common.exception.AppException e) {
+            return ResponseEntity.ok(ApiResponse.success("Validation notice", java.util.Map.of(
+                    "valid", false,
+                    "message", e.getMessage()
+            )));
+        }
+    }
+
     @GetMapping("/stores")
     @Operation(summary = "Get all stores (paginated)", security = @SecurityRequirement(name = "bearerAuth"))
     @PreAuthorize("isAuthenticated()")

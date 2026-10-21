@@ -50,14 +50,9 @@ CREATE TABLE IF NOT EXISTS merchants (
     legal_name VARCHAR(255),
     description TEXT,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    phone VARCHAR(20),
-    email VARCHAR(255),
+    phone VARCHAR(20) UNIQUE,
+    email VARCHAR(255) UNIQUE,
     website VARCHAR(255),
-    bank_upi_id VARCHAR(100),
-    bank_name VARCHAR(128),
-    account_holder_name VARCHAR(255),
-    bank_account_number VARCHAR(64),
-    bank_ifsc VARCHAR(16),
     commission_rate NUMERIC(5, 2) NOT NULL DEFAULT 5.00,
     gstin VARCHAR(50),
     pan VARCHAR(20),
@@ -66,7 +61,7 @@ CREATE TABLE IF NOT EXISTS merchants (
     city VARCHAR(100),
     pincode VARCHAR(20),
     address TEXT,
-    status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    status VARCHAR(32) NOT NULL DEFAULT 'INACTIVE',
     approval_status VARCHAR(32) NOT NULL DEFAULT 'PENDING_APPROVAL',
     kyc_status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
     is_featured BOOLEAN NOT NULL DEFAULT FALSE,
@@ -87,17 +82,14 @@ CREATE INDEX IF NOT EXISTS idx_merchants_featured ON merchants(is_featured);
 CREATE INDEX IF NOT EXISTS idx_merchants_state ON merchants(state);
 CREATE INDEX IF NOT EXISTS idx_merchants_city ON merchants(city);
 CREATE INDEX IF NOT EXISTS idx_merchants_pincode ON merchants(pincode);
+CREATE INDEX IF NOT EXISTS idx_merchants_phone ON merchants(phone);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_merchants_email_lower ON merchants(LOWER(email)) WHERE email IS NOT NULL;
 
--- 4. Merchant KYC Table
+-- 4. Merchant KYC Table (Regulatory & Identity Document Verification)
 CREATE TABLE IF NOT EXISTS merchant_kyc (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     merchant_id UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
     business_type VARCHAR(64),
-    pan_number VARCHAR(10),
-    gstin VARCHAR(15),
-    bank_account_number VARCHAR(34),
-    bank_ifsc VARCHAR(11),
-    bank_name VARCHAR(128),
     verification_status VARCHAR(32) NOT NULL DEFAULT 'SUBMITTED',
     verified_by UUID REFERENCES users(id) ON DELETE SET NULL,
     verified_at TIMESTAMP WITHOUT TIME ZONE,
@@ -105,7 +97,6 @@ CREATE TABLE IF NOT EXISTS merchant_kyc (
     document_type VARCHAR(64),
     document_number VARCHAR(128),
     business_registration_number VARCHAR(128),
-    tax_id VARCHAR(128),
     document_url VARCHAR(1024),
     rejection_reason TEXT,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,

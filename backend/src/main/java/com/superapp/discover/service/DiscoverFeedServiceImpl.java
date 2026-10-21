@@ -240,9 +240,12 @@ public class DiscoverFeedServiceImpl implements DiscoverFeedService {
     @Override
     @Transactional
     public void recordRecentlyViewed(UUID userId, RecordRecentlyViewedRequest request) {
+        if (request == null || request.itemId() == null) {
+            return;
+        }
         UserRecentlyViewed record = new UserRecentlyViewed(
                 userId,
-                request.itemType() != null ? request.itemType() : "PRODUCT",
+                request.itemType() != null && !request.itemType().isBlank() ? request.itemType() : "PRODUCT",
                 request.itemId(),
                 request.branchId()
         );

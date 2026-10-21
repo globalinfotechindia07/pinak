@@ -110,6 +110,24 @@ public class MerchantStaffController {
         return ResponseEntity.ok(ApiResponse.success("Staff members retrieved successfully", staff));
     }
 
+    @GetMapping("/staff/validate-email")
+    @Operation(summary = "Validate staff email against enterprise business rules")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> validateStaffEmail(
+            @RequestParam String email,
+            @RequestParam(required = false, defaultValue = "STORE") String scope,
+            @RequestParam(required = false) UUID merchantId,
+            @RequestParam(required = false) UUID storeId) {
+        try {
+            userService.validateStaffAssignmentEmail(email, scope, merchantId, storeId);
+            return ResponseEntity.ok(ApiResponse.success("Email is valid for assignment", java.util.Map.of("valid", true)));
+        } catch (com.superapp.common.exception.AppException e) {
+            return ResponseEntity.ok(ApiResponse.success("Validation notice", java.util.Map.of(
+                    "valid", false,
+                    "message", e.getMessage()
+            )));
+        }
+    }
+
     @PostMapping("/staff")
     @Operation(summary = "Invite or assign staff member to merchant or store")
     public ResponseEntity<ApiResponse<StaffDTO.Response>> inviteStaff(
