@@ -249,6 +249,7 @@ export default function CustomerHomePreviewPage() {
       offerId: "demo-2",
       id: "demo-2",
       title: "Toni & Guy Salon",
+      subtitle: "On all hair styling, cuts & blowouts",
       imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAehSDVlzhdQ16LCD3SUe6-wxhHUsmZUUY-JmmKUaqH4ghRz4GRc5y8SKK-KUlwsumUiEhYY5_oBm0qvi0z_25GMG_Ia1eCvVn_8hAAo0SfaqVIM6ylnv46yGbRKidvcQpsUTRzx76zmddVa4cgq7k5M1oOaDI5Inq7GIUwpYx8Qa6Fm6b6MiRi7svrYl3zVvUkBWfwCJdaynuQOq__J_hcLaWDaNmNdxHAtrpv9uoxzGBOCof7iUZB",
       offerType: "BUY_X_GET_Y",
       type: "BUY_X_GET_Y",
@@ -267,12 +268,14 @@ export default function CustomerHomePreviewPage() {
       offerId: "demo-3",
       id: "demo-3",
       title: "Third Wave Coffee",
+      subtitle: "+ 2X Coins on PINAK UPI scan",
       imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuClpqS39UuLowTW3Hh-y9Tt5My-4zYZMJ3FYAg9S_V091zs2kZoz4YfYCFBZ9zbIQZj7MtacljzmCmkYPAXX3cD013fNOHUyVBehRTd5kHMDg0jUfPa3Ciy54ForaHAL0MxrnJDA1ItPq9sqMAwgYdDNxdlh0CFmQZAokEFziCj4MY3PRcK2wiwapuMQqFn9w9UUmQ5Pj5aJasCGB1Hy4UTNbEE0X9LhaIc6dZhoIMxkAgXIR6B_wtU",
       offerType: "FIXED_DISCOUNT",
       type: "FIXED_DISCOUNT",
       discountValue: 150,
       value: 150,
       maxDiscountAmount: 200,
+      minimumOrderAmount: 500,
       ctaText: "Claim Offer",
       expiresAt: new Date(Date.now() + 4 * 86400 * 1000).toISOString(), // Till <Day>
       merchant: { name: "Third Wave Coffee", isVerified: true },
@@ -542,7 +545,19 @@ export default function CustomerHomePreviewPage() {
 
                 const cap = Number(o.maxDiscountAmount ?? 0);
                 const minBill = Number(o.minimumOrderAmount ?? o.minTransactionAmount ?? 0);
-                const conditionText = `${cap > 0 ? `Cap ₹${cap} • ` : ""}${minBill > 0 ? `Min bill ₹${minBill}` : "No min bill required"}`;
+                
+                let conditionText = "";
+                if (cap > 0 && minBill > 0) {
+                  conditionText = `Up to ₹${cap.toLocaleString("en-IN")} • On bills above ₹${minBill.toLocaleString("en-IN")}`;
+                } else if (cap > 0) {
+                  conditionText = `Up to ₹${cap.toLocaleString("en-IN")} • No min bill required`;
+                } else if (minBill > 0) {
+                  conditionText = `On bills above ₹${minBill.toLocaleString("en-IN")}`;
+                } else if (o.subtitle) {
+                  conditionText = o.subtitle;
+                } else {
+                  conditionText = "No min bill required";
+                }
 
                 const expiry = o.expiresAt || o.validTo;
                 const badge = formatTimeLeftBadge(expiry);
