@@ -26,7 +26,8 @@ import {
   Coins,
   Tag,
   ArrowRight,
-  Armchair
+  Armchair,
+  Store as StoreIcon
 } from "lucide-react";
 import { Offer, Merchant, Store } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
