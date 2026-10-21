@@ -28,33 +28,139 @@ import apiClient from "@/api/client";
 import { toast } from "sonner";
 
 interface NearbyOffer {
-  id: string;
+  id?: string;
+  offerId?: string;
   title: string;
+  subtitle?: string;
   description?: string;
   type?: string;
+  offerType?: string;
   value?: number;
+  discountValue?: number;
   maxDiscountAmount?: number;
   minTransactionAmount?: number;
+  minimumOrderAmount?: number;
   imgUrl?: string;
   imageUrl?: string;
   validTo?: string;
+  expiresAt?: string;
   ctaText?: string;
   bonusCoins?: number;
+  merchant?: {
+    merchantId?: string;
+    name?: string;
+    logoUrl?: string;
+    isVerified?: boolean;
+  };
   merchantSummary?: {
     id?: string;
     name?: string;
     logoUrl?: string;
     isVerified?: boolean;
   };
+  branch?: {
+    branchId?: string;
+    name?: string;
+    distanceMeters?: number;
+  };
   branchSummary?: {
     storeId?: string;
     storeName?: string;
     distanceMeters?: number;
   };
+  reward?: {
+    coins?: number;
+    label?: string;
+  };
   rewardSummary?: {
     coins?: number;
     text?: string;
   };
+}
+
+/**
+ * Formats dynamic time-left expiry badge:
+ * e.g., "45m left", "3h left", "Till Sun", "Till Mon", "5d left"
+ */
+function formatTimeLeftBadge(expiryStr?: string | null): { text: string; bg: string } {
+  if (!expiryStr) {
+    return { text: "Till Sun", bg: "bg-indigo-700/95" };
+  }
+  const expiry = new Date(expiryStr);
+  if (isNaN(expiry.getTime())) {
+    return { text: "Till Sun", bg: "bg-indigo-700/95" };
+  }
+  const now = new Date();
+  const diffMs = expiry.getTime() - now.getTime();
+  if (diffMs <= 0) {
+    return { text: "Expiring soon", bg: "bg-rose-600/95" };
+  }
+
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 60) {
+    return { text: `${Math.max(1, diffMins)}m left`, bg: "bg-rose-600/95" };
+  }
+  if (diffHours < 24) {
+    return { text: `${diffHours}h left`, bg: "bg-amber-600/95" };
+  }
+  if (diffDays <= 7) {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return { text: `Till ${days[expiry.getDay()]}`, bg: "bg-indigo-700/95" };
+  }
+  return { text: `${diffDays}d left`, bg: "bg-purple-700/95" };
+}
+
+/**
+ * Deduplicates offers by store and picks ONLY the single best, latest offer for each store.
+ * If 1 store has 3 offers, only 1 card is displayed with the best discount / latest deal.
+ */
+function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
+  const storeMap = new Map<string, NearbyOffer>();
+
+  for (const o of rawOffers) {
+    const storeKey = (
+      o.branch?.branchId ||
+      o.branchSummary?.storeId ||
+      o.branch?.name ||
+      o.branchSummary?.storeName ||
+      o.merchant?.merchantId ||
+      o.merchantSummary?.id ||
+      o.merchant?.name ||
+      o.merchantSummary?.name ||
+      o.offerId ||
+      o.id ||
+      ""
+    ).trim().toLowerCase();
+
+    const currentVal = Number(o.discountValue ?? o.value ?? 0);
+    const currentExpiry = o.expiresAt
+      ? new Date(o.expiresAt).getTime()
+      : o.validTo
+      ? new Date(o.validTo).getTime()
+      : 0;
+
+    if (!storeMap.has(storeKey)) {
+      storeMap.set(storeKey, o);
+    } else {
+      const existing = storeMap.get(storeKey)!;
+      const existingVal = Number(existing.discountValue ?? existing.value ?? 0);
+      const existingExpiry = existing.expiresAt
+        ? new Date(existing.expiresAt).getTime()
+        : existing.validTo
+        ? new Date(existing.validTo).getTime()
+        : 0;
+
+      // Higher discount value wins. If identical, the one expiring later or latest wins.
+      if (currentVal > existingVal || (currentVal === existingVal && currentExpiry >= existingExpiry)) {
+        storeMap.set(storeKey, o);
+      }
+    }
+  }
+
+  return Array.from(storeMap.values());
 }
 
 export default function CustomerHomePreviewPage() {
@@ -119,43 +225,67 @@ export default function CustomerHomePreviewPage() {
   // Fallback demo cards when backend table has no service offers yet
   const fallbackDemoOffers: NearbyOffer[] = [
     {
+      offerId: "demo-1",
       id: "demo-1",
       title: "The Smokehouse Grill",
       imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuChrnSq1Yaf94yJfSJ5ur4cBX9zPgxfzaFFDsPdDhCidTKabd60P9K39f623JQ_oGlV5eiPB1fOJvpvCiApK6ms2dmLCzM0kWM-hM4syELjd460EHe4HKYxTHeKU9v_s5udHMvZbhsO7YeyXiZtWd7ZysQwu1cyKdgW-chLu0Pxq8BfiMm3e_rwX5FwNfcWIBNP6BnAwIYjFnu4UaiC3oo6P3pAkkIos5JeSEHTqIWbGSCOVYLS2_6A",
+      offerType: "PERCENTAGE_DISCOUNT",
       type: "PERCENTAGE_DISCOUNT",
+      discountValue: 40,
       value: 40,
       maxDiscountAmount: 500,
+      minimumOrderAmount: 1000,
       minTransactionAmount: 1000,
       ctaText: "Book & Pay",
+      expiresAt: new Date(Date.now() + 45 * 60 * 1000).toISOString(), // 45m left
+      merchant: { name: "The Smokehouse Grill", isVerified: true },
       merchantSummary: { name: "The Smokehouse Grill", isVerified: true },
+      branch: { name: "Indiranagar", distanceMeters: 400 },
       branchSummary: { storeName: "Indiranagar", distanceMeters: 400 },
+      reward: { coins: 150, label: "+150 Coins" },
       rewardSummary: { coins: 150, text: "+150 Coins" }
     },
     {
+      offerId: "demo-2",
       id: "demo-2",
       title: "Toni & Guy Salon",
       imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAehSDVlzhdQ16LCD3SUe6-wxhHUsmZUUY-JmmKUaqH4ghRz4GRc5y8SKK-KUlwsumUiEhYY5_oBm0qvi0z_25GMG_Ia1eCvVn_8hAAo0SfaqVIM6ylnv46yGbRKidvcQpsUTRzx76zmddVa4cgq7k5M1oOaDI5Inq7GIUwpYx8Qa6Fm6b6MiRi7svrYl3zVvUkBWfwCJdaynuQOq__J_hcLaWDaNmNdxHAtrpv9uoxzGBOCof7iUZB",
+      offerType: "BUY_X_GET_Y",
       type: "BUY_X_GET_Y",
+      discountValue: 100,
       value: 100,
       ctaText: "Claim Offer",
+      expiresAt: new Date(Date.now() + 3 * 3600 * 1000).toISOString(), // 3h left
+      merchant: { name: "Toni & Guy Salon", isVerified: true },
       merchantSummary: { name: "Toni & Guy Salon", isVerified: true },
+      branch: { name: "12th Main", distanceMeters: 650 },
       branchSummary: { storeName: "12th Main", distanceMeters: 650 },
+      reward: { coins: 100, label: "+100 Coins" },
       rewardSummary: { coins: 100, text: "+100 Coins" }
     },
     {
+      offerId: "demo-3",
       id: "demo-3",
       title: "Third Wave Coffee",
       imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuClpqS39UuLowTW3Hh-y9Tt5My-4zYZMJ3FYAg9S_V091zs2kZoz4YfYCFBZ9zbIQZj7MtacljzmCmkYPAXX3cD013fNOHUyVBehRTd5kHMDg0jUfPa3Ciy54ForaHAL0MxrnJDA1ItPq9sqMAwgYdDNxdlh0CFmQZAokEFziCj4MY3PRcK2wiwapuMQqFn9w9UUmQ5Pj5aJasCGB1Hy4UTNbEE0X9LhaIc6dZhoIMxkAgXIR6B_wtU",
+      offerType: "FIXED_DISCOUNT",
       type: "FIXED_DISCOUNT",
+      discountValue: 150,
       value: 150,
+      maxDiscountAmount: 200,
       ctaText: "Claim Offer",
+      expiresAt: new Date(Date.now() + 4 * 86400 * 1000).toISOString(), // Till <Day>
+      merchant: { name: "Third Wave Coffee", isVerified: true },
       merchantSummary: { name: "Third Wave Coffee", isVerified: true },
+      branch: { name: "Main Branch", distanceMeters: 300 },
       branchSummary: { storeName: "Main Branch", distanceMeters: 300 },
+      reward: { coins: 200, label: "+200 Coins" },
       rewardSummary: { coins: 200, text: "+200 Coins" }
     }
   ];
 
-  const displayedServiceOffers = offers.length > 0 ? offers : fallbackDemoOffers;
+  const rawOffers = offers.length > 0 ? offers : fallbackDemoOffers;
+  const displayedServiceOffers = deduplicateOffersByStore(rawOffers);
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center">
@@ -385,26 +515,43 @@ export default function CustomerHomePreviewPage() {
             {/* Horizontal Service Cards Rail */}
             <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
               {displayedServiceOffers.map((o) => {
-                const storeName = o.branchSummary?.storeName || o.merchantSummary?.name || "Main Branch";
-                const merchantName = o.merchantSummary?.name || o.title;
-                const distanceText = o.branchSummary?.distanceMeters != null
-                  ? (o.branchSummary.distanceMeters < 1000
-                    ? `${o.branchSummary.distanceMeters}m`
-                    : `${(o.branchSummary.distanceMeters / 1000).toFixed(1)} km`)
+                const offerKey = o.offerId || o.id || Math.random().toString();
+                const storeName = o.branch?.name || o.branchSummary?.storeName || o.merchant?.name || o.merchantSummary?.name || "Main Branch";
+                const merchantName = o.merchant?.name || o.merchantSummary?.name || o.title;
+                const distanceMeters = o.branch?.distanceMeters ?? o.branchSummary?.distanceMeters;
+                const distanceText = distanceMeters != null
+                  ? (distanceMeters < 1000
+                    ? `${distanceMeters}m`
+                    : `${(distanceMeters / 1000).toFixed(1)} km`)
                   : "Nearby";
 
-                const discountText = o.type === "FLAT_PCT" || o.type === "PERCENTAGE_DISCOUNT"
-                  ? `${o.value}% OFF`
-                  : o.type === "BUY_X_GET_Y" || o.type === "BOGO"
-                  ? "BUY 1 GET 1 FREE"
-                  : `FLAT ₹${o.value} OFF`;
+                const discountVal = Number(o.discountValue ?? o.value ?? 0);
+                const rawType = (o.offerType || o.type || "").toUpperCase();
 
-                const rewardCoins = o.rewardSummary?.coins || o.bonusCoins || 150;
-                const imageSrc = o.imgUrl || o.imageUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80";
+                let discountText = "";
+                if (rawType.includes("PERCENT") || rawType === "FLAT_PCT") {
+                  discountText = discountVal > 0 ? `${discountVal}% OFF` : (o.title?.includes("%") ? o.title : "SPECIAL DISCOUNT");
+                } else if (rawType.includes("BOGO") || rawType.includes("BUY_X_GET_Y")) {
+                  discountText = "BUY 1 GET 1 FREE";
+                } else if (rawType.includes("CASHBACK")) {
+                  discountText = discountVal > 0 ? `₹${discountVal} CASHBACK` : "CASHBACK DEAL";
+                } else {
+                  // Fixed / Flat Discount
+                  discountText = discountVal > 0 ? `FLAT ₹${discountVal} OFF` : (o.title || "SPECIAL DEAL");
+                }
+
+                const cap = Number(o.maxDiscountAmount ?? 0);
+                const minBill = Number(o.minimumOrderAmount ?? o.minTransactionAmount ?? 0);
+                const conditionText = `${cap > 0 ? `Cap ₹${cap} • ` : ""}${minBill > 0 ? `Min bill ₹${minBill}` : "No min bill required"}`;
+
+                const expiry = o.expiresAt || o.validTo;
+                const badge = formatTimeLeftBadge(expiry);
+                const rewardCoins = o.reward?.coins || o.rewardSummary?.coins || o.bonusCoins || 150;
+                const imageSrc = o.imageUrl || o.imgUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80";
 
                 return (
                   <article
-                    key={o.id}
+                    key={offerKey}
                     className="w-64 shrink-0 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow"
                   >
                     <div>
@@ -419,18 +566,20 @@ export default function CustomerHomePreviewPage() {
                               "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80";
                           }}
                         />
-                        <span className="absolute top-2 left-2 bg-rose-600/90 backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded-md">
-                          Verified Deal
+                        {/* Dynamic Time-Left Badge */}
+                        <span className={`absolute top-2 left-2 ${badge.bg} backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs tracking-tight`}>
+                          <Clock size={10} className="stroke-[2.5]" />
+                          <span>{badge.text}</span>
                         </span>
                         <button
                           type="button"
-                          onClick={(e) => toggleFavorite(o.id, e)}
+                          onClick={(e) => toggleFavorite(offerKey, e)}
                           aria-label="Favorite"
                           className="absolute top-2 right-2 w-6 h-6 rounded-md bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
                         >
                           <Heart
                             size={14}
-                            className={favorites[o.id] ? "fill-rose-500 text-rose-500" : "text-white"}
+                            className={favorites[offerKey] ? "fill-rose-500 text-rose-500" : "text-white"}
                           />
                         </button>
                       </div>
@@ -453,8 +602,7 @@ export default function CustomerHomePreviewPage() {
                             {discountText}
                           </p>
                           <p className="text-[9px] text-emerald-800 font-medium truncate">
-                            {o.maxDiscountAmount ? `Cap ₹${o.maxDiscountAmount} • ` : ""}
-                            {o.minTransactionAmount ? `Min bill ₹${o.minTransactionAmount}` : "No min bill required"}
+                            {conditionText}
                           </p>
                         </div>
                       </div>
