@@ -27,8 +27,16 @@ import {
   Tag,
   ArrowRight,
   Armchair,
+  MoreVertical,
   Store as StoreIcon
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "../../components/ui/dropdown-menu";
 import { Offer, Merchant, Store } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
@@ -346,50 +354,10 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     },
     {
       header: "Actions",
-      className: "min-w-[160px] whitespace-nowrap text-right",
+      className: "min-w-[140px] whitespace-nowrap text-right",
       render: (o) => (
         <div className="flex items-center justify-end gap-1.5 py-1">
-          {/* Pause / Resume toggle */}
-          {o.status === "ACTIVE" && (
-            <button
-              onClick={() => {
-                onUpdateOfferStatus(o.id, "PAUSED");
-                toast.info(`Offer "${o.title}" paused`);
-              }}
-              className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
-              title="Pause Campaign"
-            >
-              <Pause size={14} />
-            </button>
-          )}
-          {o.status === "PAUSED" && (
-            <button
-              onClick={() => {
-                onUpdateOfferStatus(o.id, "ACTIVE");
-                toast.success(`Offer "${o.title}" resumed`);
-              }}
-              className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
-              title="Resume Campaign"
-            >
-              <Play size={14} />
-            </button>
-          )}
-
-          {/* 1-Click Duplicate/Clone */}
-          {onCloneOffer && (
-            <button
-              onClick={() => {
-                onCloneOffer(o.id);
-                toast.success(`Campaign "${o.title}" duplicated as draft`);
-              }}
-              className="p-1.5 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
-              title="Duplicate Campaign"
-            >
-              <Copy size={14} />
-            </button>
-          )}
-
-          {/* Review Details */}
+          {/* Quick Review Details */}
           <button
             onClick={() => setSelectedOffer(o)}
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/40 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors shadow-2xs cursor-pointer"
@@ -399,16 +367,92 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
             <span>Review</span>
           </button>
 
-          {/* Delete Action */}
-          {onDeleteOffer && (
-            <button
-              onClick={() => setOfferToDelete(o)}
-              className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-              title="Delete Campaign"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
+          {/* Three Dots More Actions Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border border-slate-200/80 dark:border-slate-800"
+                title="More actions"
+              >
+                <MoreVertical size={15} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl p-1 z-50">
+              <DropdownMenuItem
+                onClick={() => setSelectedOffer(o)}
+                className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+              >
+                <Eye size={14} className="text-pink-600" />
+                <span>View Full Details</span>
+              </DropdownMenuItem>
+
+              {o.status === "ACTIVE" && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onUpdateOfferStatus(o.id, "PAUSED");
+                    toast.info(`Offer "${o.title}" paused`);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600"
+                >
+                  <Pause size={14} />
+                  <span>Pause Campaign</span>
+                </DropdownMenuItem>
+              )}
+
+              {o.status === "PAUSED" && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onUpdateOfferStatus(o.id, "ACTIVE");
+                    toast.success(`Offer "${o.title}" resumed`);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600"
+                >
+                  <Play size={14} />
+                  <span>Resume Campaign</span>
+                </DropdownMenuItem>
+              )}
+
+              {o.status === "PENDING_APPROVAL" && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onUpdateOfferStatus(o.id, "ACTIVE");
+                    toast.success(`Offer "${o.title}" approved & activated!`);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Approve & Activate</span>
+                </DropdownMenuItem>
+              )}
+
+              {onCloneOffer && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onCloneOffer(o.id);
+                    toast.success(`Campaign "${o.title}" duplicated as draft`);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600"
+                >
+                  <Copy size={14} />
+                  <span>Duplicate Campaign</span>
+                </DropdownMenuItem>
+              )}
+
+              {onDeleteOffer && (
+                <>
+                  <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+                  <DropdownMenuItem
+                    onClick={() => setOfferToDelete(o)}
+                    className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete Campaign</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )
     }
