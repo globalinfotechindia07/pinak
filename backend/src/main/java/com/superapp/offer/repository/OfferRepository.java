@@ -113,6 +113,21 @@ public interface OfferRepository extends JpaRepository<Offer, UUID>, JpaSpecific
             WHERE o.status = 'ACTIVE'
             AND o.approvalStatus = 'APPROVED'
             AND :now BETWEEN o.validFrom AND o.validTo
+            AND (o.offerScope = 'SERVICE' OR o.offerScope IS NULL)
+            AND (o.storeId IN :storeIds OR (o.storeId IS NULL AND o.merchantId IN :merchantIds))
+            ORDER BY o.value DESC
+            """)
+    List<Offer> findActiveServiceOffersByStoreOrMerchantIds(
+            @Param("storeIds") List<UUID> storeIds,
+            @Param("merchantIds") List<UUID> merchantIds,
+            @Param("now") Instant now
+    );
+
+    @Query("""
+            SELECT o FROM Offer o
+            WHERE o.status = 'ACTIVE'
+            AND o.approvalStatus = 'APPROVED'
+            AND :now BETWEEN o.validFrom AND o.validTo
             AND o.isFlash = true
             AND (:categoryId IS NULL OR o.categoryId = :categoryId)
             ORDER BY o.validTo ASC

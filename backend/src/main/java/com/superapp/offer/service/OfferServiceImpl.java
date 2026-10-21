@@ -718,9 +718,16 @@ public class OfferServiceImpl implements OfferService {
             double radiusMeters = (radiusKm != null && radiusKm > 0 ? radiusKm : 5.0) * 1000.0;
             Page<Store> nearbyStores = storeRepository.findNearbyApprovedStores(
                     latitude, longitude, radiusMeters, org.springframework.data.domain.PageRequest.of(0, 50));
-            List<UUID> storeIds = nearbyStores.getContent().stream().map(Store::getId).toList();
+            List<Store> nearbyStoreList = nearbyStores.getContent();
+            List<UUID> storeIds = nearbyStoreList.stream().map(Store::getId).toList();
+            List<UUID> merchantIds = nearbyStoreList.stream()
+                    .map(Store::getMerchantId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .toList();
+            List<UUID> safeMerchantIds = merchantIds.isEmpty() ? List.of(UUID.fromString("00000000-0000-0000-0000-000000000000")) : merchantIds;
             if (!storeIds.isEmpty()) {
-                offers = offerRepository.findActiveServiceOffersByStoreIds(storeIds, now);
+                offers = offerRepository.findActiveServiceOffersByStoreOrMerchantIds(storeIds, safeMerchantIds, now);
             }
             // Strict Geo-filter: When coordinates are supplied, strictly return only matching nearby offers (no fallback)
             if (offers.size() > limitVal) {
@@ -735,7 +742,16 @@ public class OfferServiceImpl implements OfferService {
 
         List<NearbyServiceOfferItemDto> dtos = new ArrayList<>();
         for (Offer o : offers) {
-            Store store = o.getStoreId() != null ? storeRepository.findById(o.getStoreId()).orElse(null) : null;
+            Store store = null;
+            if (o.getStoreId() != null) {
+                store = storeRepository.findById(o.getStoreId()).orElse(null);
+            } else if (o.getMerchantId() != null) {
+                // If it is an "All Branches" offer, find the closest active store of that merchant
+                store = storeRepository.findByMerchantId(o.getMerchantId()).stream()
+                        .filter(s -> s.getStatus() == StoreStatus.ACTIVE && s.getApprovalStatus() == ApprovalStatus.APPROVED)
+                        .findFirst()
+                        .orElse(null);
+            }
             Merchant merchant = o.getMerchantId() != null ? merchantRepository.findById(o.getMerchantId()).orElse(null) : null;
 
             Integer distanceMeters = null;
@@ -755,7 +771,7 @@ public class OfferServiceImpl implements OfferService {
             );
 
             NearbyServiceOfferItemDto.BranchSummaryDto branchSummary = new NearbyServiceOfferItemDto.BranchSummaryDto(
-                    o.getStoreId() != null ? o.getStoreId().toString() : null,
+                    store != null ? store.getId().toString() : (o.getStoreId() != null ? o.getStoreId().toString() : null),
                     store != null ? store.getStoreName() : "Main Branch",
                     distanceMeters
             );
