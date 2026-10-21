@@ -49,6 +49,58 @@ public class DatabaseAutoCreationProcessor implements BeanFactoryPostProcessor, 
             return;
         }
 
+        // Auto-detect and translate cloud DATABASE_URL (postgres:// or postgresql://) to Spring Boot JDBC format
+        if (environment instanceof org.springframework.core.env.ConfigurableEnvironment configEnv) {
+            String rawUrl = configEnv.getProperty("DATABASE_URL");
+            if (rawUrl == null || rawUrl.isBlank()) {
+                rawUrl = configEnv.getProperty("spring.datasource.url");
+            }
+            if (rawUrl != null && (rawUrl.startsWith("postgres://") || rawUrl.startsWith("postgresql://"))) {
+                try {
+                    String cleanUriStr = rawUrl.startsWith("postgres://")
+                            ? "postgresql://" + rawUrl.substring("postgres://".length())
+                            : rawUrl;
+                    URI uri = URI.create(cleanUriStr);
+                    String userInfo = uri.getUserInfo();
+                    String user = null;
+                    String pass = null;
+                    if (userInfo != null && userInfo.contains(":")) {
+                        String[] parts = userInfo.split(":", 2);
+                        user = parts[0];
+                        pass = parts[1];
+                    }
+                    String host = uri.getHost() != null ? uri.getHost() : "localhost";
+                    int port = uri.getPort() > 0 ? uri.getPort() : 5432;
+                    String path = uri.getPath() != null && !uri.getPath().isBlank() ? uri.getPath() : "/superappdb";
+                    String query = uri.getQuery();
+
+                    StringBuilder jdbcUrlBuilder = new StringBuilder("jdbc:postgresql://")
+                            .append(host).append(":").append(port).append(path);
+                    if (query != null && !query.isBlank()) {
+                        jdbcUrlBuilder.append("?").append(query);
+                    }
+
+                    java.util.Map<String, Object> cloudProps = new java.util.HashMap<>();
+                    cloudProps.put("spring.datasource.url", jdbcUrlBuilder.toString());
+                    if (user != null) {
+                        cloudProps.put("spring.datasource.username", user);
+                    }
+                    if (pass != null) {
+                        cloudProps.put("spring.datasource.password", pass);
+                    }
+                    // For managed cloud databases, database instance already exists
+                    cloudProps.put("spring.datasource.create-database-if-not-exist", "false");
+
+                    configEnv.getPropertySources().addFirst(
+                            new org.springframework.core.env.MapPropertySource("cloudDatabaseProperties", cloudProps));
+                    log.info("Detected cloud database URL. Automatically configured JDBC URL: {} for user: {}",
+                            jdbcUrlBuilder, user != null ? user : "configured");
+                } catch (Exception e) {
+                    log.warn("Could not auto-parse cloud DATABASE_URL: {}", e.getMessage());
+                }
+            }
+        }
+
         boolean shouldCreate = environment.getProperty("spring.datasource.create-database-if-not-exist", Boolean.class, true);
         if (!shouldCreate) {
             return;

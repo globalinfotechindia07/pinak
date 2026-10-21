@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: pinak-backend-api
+    runtime: docker
+    dockerContext: backend
+    dockerfilePath: backend/Dockerfile
+    plan: free
+    region: singapore
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: DB_URL
+        fromDatabase:
+          name: pinak-postgres
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pinak-postgres
+          property: connectionString
+      - key: CREATE_DATABASE_IF_NOT_EXIST
+        value: "false"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "*"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ISSUER
+        value: superapp-api
+      - key: JWT_AUDIENCE
+        value: superapp-client
+      - key: MAIL_MOCK
+        value: "true"
+      - key: HEALTH_REDIS_ENABLED
+        value: "false"
+
+databases:
+  - name: pinak-postgres
+    databaseName: superappdb
+    user: postgres
+    plan: free
+    region: singapore
