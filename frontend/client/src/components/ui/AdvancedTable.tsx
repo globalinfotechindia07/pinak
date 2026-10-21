@@ -41,6 +41,7 @@ interface AdvancedTableProps<T> {
   onRowClick?: (row: T) => void;
   defaultPageSize?: number;
   emptyMessage?: string;
+  tableClassName?: string;
 }
 
 export function AdvancedTable<T>({
@@ -55,7 +56,8 @@ export function AdvancedTable<T>({
   actions,
   onRowClick,
   defaultPageSize = 10,
-  emptyMessage = "No matching records found."
+  emptyMessage = "No matching records found.",
+  tableClassName = "min-w-[1050px]"
 }: AdvancedTableProps<T>) {
   const [search, setSearch] = useState("");
   const [sortIndex, setSortIndex] = useState<number | null>(null);
@@ -263,8 +265,8 @@ export function AdvancedTable<T>({
       )}
 
       {/* Table Element */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800/80">
-        <table className="w-full min-w-full text-left border-collapse text-xs sm:text-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        <table className={`w-full text-left border-collapse text-xs sm:text-sm ${tableClassName || ""}`}>
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs tracking-wider">
               {bulkActions.length > 0 && (

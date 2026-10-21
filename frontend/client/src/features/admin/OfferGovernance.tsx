@@ -117,106 +117,214 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     return true;
   });
 
+  const formatExpiryDate = (validTo?: string) => {
+    if (!validTo) return { text: "No Expiry", isExpired: false, sub: "Ongoing" };
+    try {
+      const d = new Date(validTo);
+      if (isNaN(d.getTime())) return { text: validTo, isExpired: false, sub: "" };
+      const now = new Date();
+      const diffMs = d.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const formatted = d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+      if (diffDays < 0) {
+        return { text: formatted, isExpired: true, sub: "Expired" };
+      }
+      if (diffDays === 0) {
+        return { text: formatted, isExpired: false, sub: "Expires today" };
+      }
+      return { text: formatted, isExpired: false, sub: `${diffDays}d remaining` };
+    } catch {
+      return { text: validTo, isExpired: false, sub: "" };
+    }
+  };
+
   const columns: Column<Offer>[] = [
     {
       header: "Campaign Offer",
       sortable: true,
+      className: "min-w-[320px] max-w-[380px]",
       accessor: "title",
       render: (o) => (
-        <div className="flex items-center gap-3">
-          <div className={cn(
-            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
-            o.scopeType === "PRODUCT"
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
-              : "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300"
-          )}>
-            {o.scopeType === "PRODUCT" ? <ShoppingBag size={18} /> : <TicketPercent size={18} />}
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-3 py-1">
+          {o.imageUrl ? (
+            <img
+              src={o.imageUrl}
+              alt=""
+              className="w-11 h-11 rounded-xl object-cover shrink-0 border border-slate-200/80 dark:border-slate-700 shadow-2xs"
+            />
+          ) : (
+            <div className={cn(
+              "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-2xs",
+              o.scopeType === "PRODUCT"
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40"
+                : o.isTableBookingEnabled
+                ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40"
+                : "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200/60 dark:border-pink-800/40"
+            )}>
+              {o.scopeType === "PRODUCT" ? (
+                <ShoppingBag size={20} />
+              ) : o.isTableBookingEnabled ? (
+                <Armchair size={20} />
+              ) : (
+                <TicketPercent size={20} />
+              )}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className={cn(
-                "px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase",
+                "px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wide whitespace-nowrap",
                 o.scopeType === "PRODUCT"
                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                  : o.isTableBookingEnabled
+                  ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
                   : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
               )}>
-                {o.scopeType === "PRODUCT" ? "Retail Deal" : "Service Offer"}
+                {o.scopeType === "PRODUCT" ? "Retail Deal" : o.isTableBookingEnabled ? "Table Booking" : "Service Offer"}
               </span>
               {o.isFlashDeal && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 flex items-center gap-0.5">
+                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 flex items-center gap-0.5 whitespace-nowrap">
                   <Zap size={9} /> Flash
                 </span>
               )}
+              {o.badgeText && (
+                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 whitespace-nowrap">
+                  {o.badgeText}
+                </span>
+              )}
             </div>
-            <p className="font-bold text-slate-900 dark:text-white leading-tight mt-0.5">{o.title}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              {o.scopeType === "PRODUCT" && o.dealPrice
-                ? `Deal: ₹${o.dealPrice} (MRP ₹${o.originalPrice || o.dealPrice})`
-                : `Min bill: ₹${o.minBillAmount}`}
-              {o.bonusCoins ? ` • +${o.bonusCoins} Coins` : ""}
+            <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mt-1 leading-snug line-clamp-1" title={o.title}>
+              {o.title}
             </p>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2 whitespace-nowrap">
+              <span>
+                {o.scopeType === "PRODUCT" && o.dealPrice
+                  ? `Deal ₹${o.dealPrice} (MRP ₹${o.originalPrice || o.dealPrice})`
+                  : `Min bill: ₹${o.minBillAmount || 0}`}
+              </span>
+              {o.bonusCoins ? (
+                <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold">
+                  <Coins size={10} /> +{o.bonusCoins}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
       )
     },
     {
-      header: "Merchant & Store",
+      header: "Merchant & Branch",
       sortable: true,
+      className: "min-w-[210px] whitespace-nowrap",
       accessor: "merchantName",
-      render: (o) => (
-        <div>
-          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-            <Building2 size={13} className="text-purple-500 shrink-0" />
-            <span className="truncate">{o.merchantName}</span>
+      render: (o) => {
+        const storeMatch = stores?.find((s) => s.id === o.storeId);
+        const resolvedStoreName = o.storeName || storeMatch?.branchName || storeMatch?.storeName || (o.storeId === "all" ? "All Outlets" : "Main Branch");
+        return (
+          <div className="space-y-1 py-1">
+            <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-100 text-xs">
+              <Building2 size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
+              <span className="truncate max-w-[190px]" title={o.merchantName}>{o.merchantName || "Partner Brand"}</span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+              <StoreIcon size={12} className="text-pink-500 shrink-0" />
+              <span className="truncate max-w-[190px]" title={resolvedStoreName}>
+                {resolvedStoreName}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-            <StoreIcon size={11} className="text-pink-500 shrink-0" />
-            <span className="truncate">{o.storeName || (o.storeId === "all" ? "All Outlets" : "Branch Store")}</span>
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
-      header: "Discount Rule",
+      header: "Discount & Terms",
       sortable: true,
+      className: "min-w-[160px] whitespace-nowrap",
       accessor: "value",
       render: (o) => (
-        <div>
-          <span className="font-bold text-pink-600 dark:text-pink-400 font-mono">
-            {o.type === "FLAT_AMT"
-              ? `Flat ₹${o.value} Off`
-              : o.type === "FLAT_PCT"
-              ? `${o.value}% Off`
-              : "Buy 1 Get 1"}
-          </span>
-          {o.maxDiscount && (
-            <span className="text-[11px] text-slate-400 block">cap ₹{o.maxDiscount}</span>
-          )}
+        <div className="space-y-1 py-1">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border border-pink-200/70 dark:border-pink-900/40 font-mono text-xs font-black shadow-2xs">
+            <Tag size={11} className="shrink-0 text-pink-600" />
+            <span>
+              {o.type === "FLAT_AMT"
+                ? `Flat ₹${o.value} OFF`
+                : o.type === "FLAT_PCT"
+                ? `${o.value}% OFF`
+                : "Buy 1 Get 1"}
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            {o.maxDiscount ? <span>Cap ₹${o.maxDiscount}</span> : null}
+            {o.maxDiscount && o.minBillAmount ? <span>•</span> : null}
+            {o.minBillAmount ? <span>Min ₹${o.minBillAmount}</span> : <span>No min spend</span>}
+          </div>
         </div>
       )
     },
     {
-      header: "Redemptions",
+      header: "Usage & Limit",
       sortable: true,
+      className: "min-w-[140px] whitespace-nowrap",
       accessor: "redemptions",
-      render: (o) => (
-        <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
-          {o.redemptions.toLocaleString()}
-        </span>
-      )
+      render: (o) => {
+        const used = o.redemptions || 0;
+        const total = o.maxTotalRedemptions;
+        const pct = total ? Math.min(100, Math.round((used / total) * 100)) : 0;
+        return (
+          <div className="space-y-1.5 w-32 py-1">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="font-bold text-slate-900 dark:text-white">{used.toLocaleString()}</span>
+              <span className="text-[10px] text-slate-400">{total ? `/ ${total.toLocaleString()}` : "claimed"}</span>
+            </div>
+            {total ? (
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-pink-500 to-purple-600 h-full rounded-full transition-all"
+                  style={{ width: `${Math.max(4, pct)}%` }}
+                />
+              </div>
+            ) : (
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Unlimited
+              </span>
+            )}
+          </div>
+        );
+      }
     },
     {
-      header: "Expiry Date",
+      header: "Validity",
       sortable: true,
+      className: "min-w-[140px] whitespace-nowrap",
       accessor: "validTo",
-      render: (o) => <span className="font-mono text-xs text-slate-500">{o.validTo}</span>
+      render: (o) => {
+        const { text, isExpired, sub } = formatExpiryDate(o.validTo);
+        return (
+          <div className="space-y-0.5 py-1">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
+              <Calendar size={12} className="text-slate-400 shrink-0" />
+              <span>{text}</span>
+            </div>
+            <span className={cn(
+              "text-[10px] font-bold block",
+              isExpired
+                ? "text-rose-500 font-semibold"
+                : "text-emerald-600 dark:text-emerald-400"
+            )}>
+              {sub}
+            </span>
+          </div>
+        );
+      }
     },
     {
       header: "Status",
       sortable: true,
+      className: "min-w-[140px] whitespace-nowrap",
       accessor: "status",
       render: (o) => (
         <Badge
+          className="whitespace-nowrap px-2.5 py-1 text-xs font-bold"
           variant={
             o.status === "ACTIVE"
               ? "success"
@@ -238,9 +346,9 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     },
     {
       header: "Actions",
-      className: "text-right",
+      className: "min-w-[160px] whitespace-nowrap text-right",
       render: (o) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 py-1">
           {/* Pause / Resume toggle */}
           {o.status === "ACTIVE" && (
             <button
@@ -248,7 +356,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 onUpdateOfferStatus(o.id, "PAUSED");
                 toast.info(`Offer "${o.title}" paused`);
               }}
-              className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
+              className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
               title="Pause Campaign"
             >
               <Pause size={14} />
@@ -260,7 +368,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 onUpdateOfferStatus(o.id, "ACTIVE");
                 toast.success(`Offer "${o.title}" resumed`);
               }}
-              className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+              className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
               title="Resume Campaign"
             >
               <Play size={14} />
@@ -274,7 +382,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 onCloneOffer(o.id);
                 toast.success(`Campaign "${o.title}" duplicated as draft`);
               }}
-              className="p-1.5 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+              className="p-1.5 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
               title="Duplicate Campaign"
             >
               <Copy size={14} />
@@ -284,7 +392,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           {/* Review Details */}
           <button
             onClick={() => setSelectedOffer(o)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/40 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/40 hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors shadow-2xs cursor-pointer"
             title="Review Campaign Details"
           >
             <Eye size={13} />
@@ -295,7 +403,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           {onDeleteOffer && (
             <button
               onClick={() => setOfferToDelete(o)}
-              className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+              className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
               title="Delete Campaign"
             >
               <Trash2 size={14} />
@@ -537,6 +645,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           columns={columns}
           data={displayedOffers}
           keyExtractor={(o) => o.id}
+          tableClassName="min-w-[1150px]"
           searchPlaceholder="Search campaigns, merchants, terms..."
           searchFilter={(o, q) =>
             Boolean(

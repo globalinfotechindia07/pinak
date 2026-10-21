@@ -1318,6 +1318,7 @@ export default function Home() {
                         <OfferGovernance
                           offers={store.offers}
                           merchants={store.merchants}
+                          stores={store.stores}
                           onAddOffer={handleAddOffer}
                           onUpdateOfferStatus={(id, status) => {
                             if (status === "ACTIVE") {
