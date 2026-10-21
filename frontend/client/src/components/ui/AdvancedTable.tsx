@@ -15,6 +15,7 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export interface Column<T> {
   header: string;
@@ -270,7 +271,7 @@ export function AdvancedTable<T>({
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs tracking-wider">
               {bulkActions.length > 0 && (
-                <th className="py-2.5 px-3 w-8 text-center shrink-0">
+                <th className="py-2.5 px-2.5 w-10 text-center shrink-0">
                   <input
                     type="checkbox"
                     checked={allCurrentSelected}
@@ -282,13 +283,21 @@ export function AdvancedTable<T>({
               {columns.map((col, idx) => (
                 <th
                   key={idx}
-                  className={`py-2.5 px-3 min-w-0 overflow-hidden ${col.className || ""} ${
-                    col.sortable !== false ? "cursor-pointer select-none hover:text-slate-900 dark:hover:text-white transition-colors" : ""
-                  }`}
+                  className={cn(
+                    "py-2.5 px-3 min-w-0 overflow-hidden",
+                    col.sortable !== false && "cursor-pointer select-none hover:text-slate-900 dark:hover:text-white transition-colors",
+                    col.className
+                  )}
                   onClick={() => col.sortable !== false && handleSort(idx)}
                 >
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="truncate">{col.header}</span>
+                  <div
+                    className={cn(
+                      "flex items-center gap-1.5 truncate",
+                      col.className?.includes("text-right") && "justify-end",
+                      col.className?.includes("text-center") && "justify-center"
+                    )}
+                  >
+                    {col.header ? <span className="truncate">{col.header}</span> : null}
                     {col.sortable !== false && (
                       <span className="text-slate-400 shrink-0">
                         {sortIndex === idx ? (
@@ -332,7 +341,7 @@ export function AdvancedTable<T>({
                     }`}
                   >
                     {bulkActions.length > 0 && (
-                      <td className="py-2.5 px-3 text-center shrink-0">
+                      <td className="py-2.5 px-2.5 text-center shrink-0">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -344,7 +353,11 @@ export function AdvancedTable<T>({
                     {columns.map((col, cIdx) => (
                       <td
                         key={cIdx}
-                        className={`${isCompact ? "py-2 px-3" : "py-2.5 px-3"} min-w-0 overflow-hidden ${col.className || ""}`}
+                        className={cn(
+                          isCompact ? "py-2 px-3" : "py-2.5 px-3",
+                          "min-w-0 overflow-hidden",
+                          col.className
+                        )}
                       >
                         {col.render
                           ? col.render(row)

@@ -150,7 +150,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Campaign Deal",
       sortable: true,
-      className: "w-[28%]",
+      className: "min-w-0",
       accessor: "title",
       render: (o) => (
         <div className="flex items-center gap-2.5 py-1 min-w-0">
@@ -218,7 +218,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Merchant & Store",
       sortable: true,
-      className: "w-[22%]",
+      className: "w-44 lg:w-48 min-w-0",
       accessor: "merchantName",
       render: (o) => {
         const storeMatch = stores?.find((s) => s.id === o.storeId);
@@ -242,7 +242,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Discount",
       sortable: true,
-      className: "w-[16%]",
+      className: "w-28 lg:w-32 whitespace-nowrap",
       accessor: "value",
       render: (o) => (
         <div className="min-w-0 py-1 space-y-0.5">
@@ -265,7 +265,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Claims",
       sortable: true,
-      className: "w-[12%]",
+      className: "w-20 lg:w-24 whitespace-nowrap",
       accessor: "redemptions",
       render: (o) => {
         const used = o.redemptions || 0;
@@ -286,7 +286,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Valid Till",
       sortable: true,
-      className: "w-[12%]",
+      className: "w-28 lg:w-32 whitespace-nowrap",
       accessor: "validTo",
       render: (o) => {
         const { text, isExpired, sub } = formatExpiryDate(o.validTo);
@@ -311,7 +311,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Status",
       sortable: true,
-      className: "w-[8%]",
+      className: "w-28 lg:w-32 whitespace-nowrap",
       accessor: "status",
       render: (o) => (
         <Badge
@@ -331,20 +331,25 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           ) : (
             <XCircle size={11} />
           )}
-          <span>{o.status.replace("_", " ")}</span>
+          <span>
+            {o.status === "PENDING_APPROVAL"
+              ? "Pending"
+              : o.status.replace("_", " ")}
+          </span>
         </Badge>
       )
     },
     {
       header: "",
-      className: "w-[2%] text-right",
+      sortable: false,
+      className: "w-14 text-center px-1 shrink-0",
       render: (o) => (
-        <div className="flex items-center justify-end py-1">
+        <div className="flex items-center justify-center py-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
                 title="Actions"
               >
                 <MoreVertical size={16} />
