@@ -10,6 +10,7 @@ import AcceptInvite from "./pages/AcceptInvite";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { MobileHomeScreen } from "./features/mobile/MobileHomeScreen";
+import CustomerHomePreviewPage from "./pages/CustomerHomePreviewPage";
 
 function Router() {
   return (
@@ -17,6 +18,8 @@ function Router() {
       <Route path={"/login"} component={Login} />
       <Route path={"/accept-invite"} component={AcceptInvite} />
       <Route path={"/mobile"}>{() => <MobileHomeScreen />}</Route>
+      <Route path={"/customer-preview"} component={CustomerHomePreviewPage} />
+      <Route path={"/preview"} component={CustomerHomePreviewPage} />
       <Route path={"/404"} component={NotFound} />
       <Route path={"/admin/:tab"} component={Home} />
       <Route path={"/admin"} component={Home} />

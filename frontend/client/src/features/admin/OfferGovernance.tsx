@@ -28,6 +28,7 @@ import {
   ArrowRight,
   Armchair,
   MoreVertical,
+  Smartphone,
   Store as StoreIcon
 } from "lucide-react";
 import {
@@ -467,6 +468,16 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
+          <a
+            href="/customer-preview"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors shadow-2xs"
+            title="Preview customer mobile discover feed (public reference)"
+          >
+            <Smartphone size={15} className="text-purple-600" />
+            <span>Customer App Preview</span>
+          </a>
           <button
             type="button"
             onClick={handleExportOffersCsv}

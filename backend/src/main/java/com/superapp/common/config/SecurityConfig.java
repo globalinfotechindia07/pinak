@@ -25,10 +25,10 @@ import java.nio.charset.StandardCharsets;
 /**
  * Spring Security configuration.
  * <ul>
- *   <li>Stateless JWT — no HTTP sessions.</li>
- *   <li>CSRF disabled — Bearer token transport (see SecurityHeadersFilter for CSRF strategy note).</li>
+ *   <li>Stateless JWT â€” no HTTP sessions.</li>
+ *   <li>CSRF disabled â€” Bearer token transport (see SecurityHeadersFilter for CSRF strategy note).</li>
  *   <li>CORS handled by CorsConfig bean.</li>
- *   <li>@PreAuthorize used for fine-grained authorization — @EnableMethodSecurity activated.</li>
+ *   <li>@PreAuthorize used for fine-grained authorization â€” @EnableMethodSecurity activated.</li>
  * </ul>
  */
 @Configuration
@@ -47,13 +47,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Disable CSRF — API uses Bearer tokens, not cookies (see SecurityHeadersFilter for policy)
+            // Disable CSRF â€” API uses Bearer tokens, not cookies (see SecurityHeadersFilter for policy)
             .csrf(AbstractHttpConfigurer::disable)
 
             // CORS handled by CorsConfig
             .cors(cors -> {})
 
-            // Stateless — no HTTP sessions
+            // Stateless â€” no HTTP sessions
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
             // Authorization rules
@@ -76,7 +76,7 @@ public class SecurityConfig {
                         "//api/v1/locations/**"
                 ).permitAll()
 
-                // Private mobile endpoints — strictly requires logged-in JWT authentication
+                // Private mobile endpoints â€” strictly requires logged-in JWT authentication
                 .requestMatchers("/api/v1/mobile/home/**").authenticated()
                 .requestMatchers("/api/v1/mobile/location/update-permissions").authenticated()
                 .requestMatchers("/api/v1/mobile/profile/**").authenticated()
@@ -99,7 +99,15 @@ public class SecurityConfig {
                 // Public payment webhook
                 .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook", "/api/v1/payments/webhooks/**", "/api/v1/webhooks/payouts/**").permitAll()
 
-                // Discover Screen & catalog endpoints — strictly private and authenticated (JWT Bearer required)
+                // Public customer discovery & preview endpoints (offers, banners, categories for Screen 10 reference)
+                .requestMatchers(HttpMethod.GET,
+                        "/api/v1/offers/**",
+                        "/api/v1/banners/**",
+                        "/api/v1/categories/**",
+                        "/api/v1/discovery/**"
+                ).permitAll()
+
+                // Discover Screen & catalog endpoints â€” strictly private and authenticated (JWT Bearer required)
                 .requestMatchers(
                         "/api/v1/banners/**",
                         "/api/v1/categories/**",
@@ -135,7 +143,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
 
-            // Custom 401 response — no redirect to login page
+            // Custom 401 response â€” no redirect to login page
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(401);

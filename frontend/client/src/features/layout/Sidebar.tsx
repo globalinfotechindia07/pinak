@@ -20,8 +20,10 @@ import {
   Send,
   X,
   LogOut,
-  UserCheck
+  UserCheck,
+  Smartphone
 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import { UserRole, AdminPermissions, ADMIN_PERMISSION_KEYS } from "../../types";
 import { getPathForTab } from "../../lib/routes";
 import { useAppStore } from "../../hooks/useAppStore";
@@ -268,6 +270,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               );
             })}
+          </div>
+
+          {/* Customer App Live Preview Link */}
+          <div className="px-3 pb-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 shrink-0">
+            <a
+              href="/customer-preview"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "w-full flex items-center gap-2.5 p-2 rounded-xl text-xs font-bold transition-all border shadow-2xs",
+                "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200/80",
+                "dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 dark:border-purple-800",
+                isCollapsed && "justify-center p-2.5"
+              )}
+              title="Open Live Customer Discovery App Preview"
+            >
+              <Smartphone size={16} className="text-purple-600 dark:text-purple-400 shrink-0" />
+              {!isCollapsed && <span className="truncate">Customer App Preview</span>}
+            </a>
           </div>
 
           {/* AI Assistant Banner */}
