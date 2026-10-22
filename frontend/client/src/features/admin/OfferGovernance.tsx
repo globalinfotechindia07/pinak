@@ -29,6 +29,7 @@ import {
   Armchair,
   MoreVertical,
   Smartphone,
+  MapPin,
   Store as StoreIcon
 } from "lucide-react";
 import {
