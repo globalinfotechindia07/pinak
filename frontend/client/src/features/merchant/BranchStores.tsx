@@ -28,7 +28,12 @@ import {
   Calendar,
   Layers,
   Activity,
-  Compass
+  Compass,
+  ChevronLeft,
+  ChevronRight,
+  UtensilsCrossed,
+  Camera,
+  ExternalLink
 } from "lucide-react";
 import { Store as StoreType } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
@@ -38,6 +43,7 @@ import { StoreLocationPicker } from "../../components/StoreLocationPicker";
 import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { StoreScheduleSelector } from "../../components/StoreScheduleSelector";
 import { StoreMediaAndAmenitiesSection } from "../../components/StoreMediaAndAmenitiesSection";
+import { FormStepper } from "../../components/FormStepper";
 import { useAppStore } from "../../hooks/useAppStore";
 import { StoreStaffManager } from "./StoreStaffManager";
 import { storeApi } from "../../api/storeApi";
@@ -76,6 +82,7 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
 
   // Drawers and Modals
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [addBranchStep, setAddBranchStep] = useState<number>(1);
   const [storeToEdit, setStoreToEdit] = useState<StoreType | null>(null);
   const [storeToView, setStoreToView] = useState<StoreType | null>(null);
   const [storeToDelete, setStoreToDelete] = useState<StoreType | null>(null);
@@ -831,215 +838,358 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
         </div>
       )}
 
-      {/* Add Branch Right Slide-Over Drawer */}
-      {isAddOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsAddOpen(false)}
-          />
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-            <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="flex items-center gap-2">
-                  <Store size={18} className="text-amber-600" />
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Add Store Branch Outlet
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setIsAddOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+      {/* Add Branch Right Slide-Over Drawer (Step-by-Step Wizard) */}
+      {isAddOpen && (() => {
+        const MERCHANT_ADD_STEPS = [
+          { id: 1, title: "Basic Info", subtitle: "Name & Timing" },
+          { id: 2, title: "Location", subtitle: "Address & Map" },
+          { id: 3, title: "Media", subtitle: "Menu & Photos" },
+          { id: 4, title: "Manager", subtitle: "Account & Save" },
+        ];
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Branch Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={branchName}
-                    onChange={(e) => handleBranchNameChange(e.target.value)}
-                    placeholder="e.g. Sadar Luxury Dining"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold focus:outline-hidden focus:border-purple-500"
-                  />
-                </div>
+        const handleAddNext = () => {
+          if (addBranchStep === 1) {
+            if (!branchName.trim()) {
+              toast.error("Please enter the branch outlet name");
+              return;
+            }
+            setAddBranchStep(2);
+          } else if (addBranchStep === 2) {
+            if (!address.trim()) {
+              toast.error("Please enter street address");
+              return;
+            }
+            if (!city.trim()) {
+              toast.error("Please enter city");
+              return;
+            }
+            if (!pincode.trim()) {
+              toast.error("Please enter pincode");
+              return;
+            }
+            setAddBranchStep(3);
+          } else if (addBranchStep === 3) {
+            setAddBranchStep(4);
+          }
+        };
 
-                {/* Pre-populated Indian Address Fields */}
-                <IndiaAddressFields
-                  state={state}
-                  district={district}
-                  city={city}
-                  pincode={pincode}
-                  address={address}
-                  onStateChange={(val) => setState(val)}
-                  onDistrictChange={(val) => setDistrict(val)}
-                  onCityChange={(val) => setCity(val)}
-                  onPincodeChange={(val) => setPincode(val)}
-                  onAddressChange={(val) => setAddress(val)}
-                />
+        const handleAddSubmit = () => {
+          if (!branchName || !address) {
+            toast.error("Please complete required branch details");
+            return;
+          }
+          onAddStore({
+            merchantId: currentMerchantId || "m-1",
+            merchantName: currentMerchantName,
+            storeName: currentMerchantName,
+            branchName,
+            address,
+            state,
+            district,
+            city,
+            pincode,
+            phone,
+            latitude,
+            longitude,
+            operatingHours: hours,
+            storeEmail: storeEmail || `${branchName.toLowerCase().replace(/\s+/g, "")}@${merchantDomain}.in`,
+            managerName: managerName || "Store Manager",
+            menuImages,
+            photos,
+            amenities
+          });
+          setIsAddOpen(false);
+          setAddBranchStep(1);
+          setBranchName("");
+          setAddress("");
+          setMenuImages([]);
+          setPhotos([]);
+          setAmenities([]);
+          fetchLiveStores();
+          toast.success(`Store branch "${branchName}" created! Password activation link dispatched to ${storeEmail || "Store Manager"}.`);
+        };
 
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Contact Phone
-                  </label>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                {/* Standardized Operating Hours & Schedule Selector */}
-                <StoreScheduleSelector
-                  value={hours}
-                  onChange={(newSchedule) => setHours(newSchedule)}
-                />
-
-                {/* Interactive Location Map Picker */}
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between text-xs">
-                    <span>Pinpoint Store Location on Map *</span>
-                    <span className="text-[11px] font-normal text-purple-600 dark:text-purple-400">Click map or drag pin</span>
-                  </label>
-                  <StoreLocationPicker
-                    latitude={latitude}
-                    longitude={longitude}
-                    city={city}
-                    state={state}
-                    storeName={branchName || "Store Location"}
-                    onChange={(newLat, newLng, locationHint) => {
-                      setLatitude(newLat);
-                      setLongitude(newLng);
-                      if (locationHint) {
-                        if (locationHint.state) setState(locationHint.state);
-                        if (locationHint.district) setDistrict(locationHint.district);
-                        if (locationHint.city) setCity(locationHint.city);
-                        if (locationHint.pincode) setPincode(locationHint.pincode);
-                        if (locationHint.formattedAddress && !address) {
-                          setAddress(locationHint.formattedAddress.split(",").slice(0, 3).join(","));
-                        }
-                      }
-                    }}
-                    height="200px"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      Latitude
-                    </label>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={latitude}
-                      onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      Longitude
-                    </label>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={longitude}
-                      onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                {/* Manager Login Credentials Setup */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
-                    Manager Account Provisioning
-                  </span>
-                  <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Manager Name</label>
-                    <input
-                      type="text"
-                      value={managerName}
-                      onChange={(e) => setManagerName(e.target.value)}
-                      placeholder="e.g. Ramesh Sharma"
-                      className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Manager Store Email</label>
-                    <input
-                      type="email"
-                      value={storeEmail}
-                      onChange={(e) => setStoreEmail(e.target.value)}
-                      placeholder={`sadar@${merchantDomain}.in`}
-                      className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Store Menu Cards, Ambience Photos & Amenities */}
-            <StoreMediaAndAmenitiesSection
-              menuImages={menuImages}
-              photos={photos}
-              amenities={amenities}
-              onMenuImagesChange={setMenuImages}
-              onPhotosChange={setPhotos}
-              onAmenitiesChange={setAmenities}
-              categoryHint="Dining"
+        return (
+          <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+              onClick={() => {
+                setIsAddOpen(false);
+                setAddBranchStep(1);
+              }}
             />
+            <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+              <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                  <div className="flex items-center gap-2">
+                    <Store size={18} className="text-amber-600" />
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                        Add Store Branch Outlet
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Step {addBranchStep} of 4 • {MERCHANT_ADD_STEPS[addBranchStep - 1]?.title}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsAddOpen(false);
+                      setAddBranchStep(1);
+                    }}
+                    className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
 
-          <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-2">
-                <button
-                  onClick={() => setIsAddOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    onAddStore({
-                      merchantId: currentMerchantId || "m-1",
-                      merchantName: currentMerchantName,
-                      storeName: currentMerchantName,
-                      branchName,
-                      address,
-                      state,
-                      district,
-                      city,
-                      pincode,
-                      phone,
-                      latitude,
-                      longitude,
-                      operatingHours: hours,
-                      storeEmail: storeEmail || `${branchName.toLowerCase().replace(/\s+/g, "")}@${merchantDomain}.in`,
-                      managerName: managerName || "Store Manager",
-                      menuImages,
-                      photos,
-                      amenities
-                    });
-                    setIsAddOpen(false);
-                    fetchLiveStores();
-                    toast.success(`Store branch "${branchName}" created! Password activation link dispatched to ${storeEmail || "Store Manager"}.`);
-                  }}
-                  disabled={!branchName || !address}
-                  className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold disabled:opacity-50 shadow-md"
-                >
-                  Create Store Branch
-                </button>
-              </div>
-            </aside>
+                {/* Form Stepper */}
+                <FormStepper
+                  steps={MERCHANT_ADD_STEPS}
+                  currentStep={addBranchStep}
+                  onStepClick={(s) => setAddBranchStep(s)}
+                />
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+                  {/* STEP 1: BASIC INFO & HOURS */}
+                  {addBranchStep === 1 && (
+                    <div className="space-y-4 animate-in fade-in duration-200">
+                      <div>
+                        <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                          Branch Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={branchName}
+                          onChange={(e) => handleBranchNameChange(e.target.value)}
+                          placeholder="e.g. Sadar Luxury Dining"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold focus:outline-hidden focus:border-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                          Contact Phone
+                        </label>
+                        <input
+                          type="text"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="+91 712 2550000"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <StoreScheduleSelector
+                        value={hours}
+                        onChange={(newSchedule) => setHours(newSchedule)}
+                      />
+                    </div>
+                  )}
+
+                  {/* STEP 2: ADDRESS & GPS MAP */}
+                  {addBranchStep === 2 && (
+                    <div className="space-y-4 animate-in fade-in duration-200">
+                      <IndiaAddressFields
+                        state={state}
+                        district={district}
+                        city={city}
+                        pincode={pincode}
+                        address={address}
+                        onStateChange={(val) => setState(val)}
+                        onDistrictChange={(val) => setDistrict(val)}
+                        onCityChange={(val) => setCity(val)}
+                        onPincodeChange={(val) => setPincode(val)}
+                        onAddressChange={(val) => setAddress(val)}
+                      />
+
+                      <div>
+                        <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between text-xs">
+                          <span>Pinpoint Store Location on Map *</span>
+                          <span className="text-[11px] font-normal text-purple-600 dark:text-purple-400">Click map or drag pin</span>
+                        </label>
+                        <StoreLocationPicker
+                          latitude={latitude}
+                          longitude={longitude}
+                          city={city}
+                          state={state}
+                          storeName={branchName || "Store Location"}
+                          onChange={(newLat, newLng, locationHint) => {
+                            setLatitude(newLat);
+                            setLongitude(newLng);
+                            if (locationHint) {
+                              if (locationHint.state) setState(locationHint.state);
+                              if (locationHint.district) setDistrict(locationHint.district);
+                              if (locationHint.city) setCity(locationHint.city);
+                              if (locationHint.pincode) setPincode(locationHint.pincode);
+                              if (locationHint.formattedAddress && !address) {
+                                setAddress(locationHint.formattedAddress.split(",").slice(0, 3).join(","));
+                              }
+                            }
+                          }}
+                          height="200px"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Latitude</label>
+                          <input
+                            type="number"
+                            step="0.0001"
+                            value={latitude}
+                            onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Longitude</label>
+                          <input
+                            type="number"
+                            step="0.0001"
+                            value={longitude}
+                            onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: MENUS, PHOTOS & AMENITIES */}
+                  {addBranchStep === 3 && (
+                    <div className="space-y-4 animate-in fade-in duration-200">
+                      <StoreMediaAndAmenitiesSection
+                        menuImages={menuImages}
+                        photos={photos}
+                        amenities={amenities}
+                        onMenuImagesChange={setMenuImages}
+                        onPhotosChange={setPhotos}
+                        onAmenitiesChange={setAmenities}
+                        categoryHint="Dining"
+                      />
+                    </div>
+                  )}
+
+                  {/* STEP 4: MANAGER & REVIEW */}
+                  {addBranchStep === 4 && (
+                    <div className="space-y-4 animate-in fade-in duration-200">
+                      {/* Summary Review Card */}
+                      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                        <span className="text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300 block">
+                          Outlet Summary Review
+                        </span>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-slate-400 block text-[11px]">Branch Title:</span>
+                            <span className="font-bold text-slate-900 dark:text-white">{branchName || "Outlet"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[11px]">Address:</span>
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{city}, {state}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[11px]">Media Prepared:</span>
+                            <span className="font-medium text-amber-700 dark:text-amber-300">
+                              🍽️ {menuImages.length} menu • 📸 {photos.length} photos
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[11px]">Amenities:</span>
+                            <span className="font-medium text-emerald-700 dark:text-emerald-300">
+                              ✨ {amenities.length} selected
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Manager Account Provisioning */}
+                      <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/80 space-y-3">
+                        <div className="flex items-center justify-between text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                          <span>Manager Account Provisioning</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                            <Lock size={10} />
+                            Portal Access
+                          </span>
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-slate-500 block mb-1">Manager Name</label>
+                          <input
+                            type="text"
+                            value={managerName}
+                            onChange={(e) => setManagerName(e.target.value)}
+                            placeholder="e.g. Ramesh Sharma"
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-slate-500 block mb-1">Manager Store Email</label>
+                          <input
+                            type="email"
+                            value={storeEmail}
+                            onChange={(e) => setStoreEmail(e.target.value)}
+                            placeholder={`sadar@${merchantDomain}.in`}
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Controls */}
+                <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => {
+                      setIsAddOpen(false);
+                      setAddBranchStep(1);
+                    }}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {addBranchStep > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setAddBranchStep((s) => s - 1)}
+                        className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1"
+                      >
+                        <ChevronLeft size={14} />
+                        <span>Back</span>
+                      </button>
+                    )}
+
+                    {addBranchStep < 4 ? (
+                      <button
+                        type="button"
+                        onClick={handleAddNext}
+                        className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1"
+                      >
+                        <span>Next: {MERCHANT_ADD_STEPS[addBranchStep]?.title}</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleAddSubmit}
+                        disabled={!branchName || !address}
+                        className="btn-gradient px-5 py-2 rounded-xl text-white text-xs font-bold disabled:opacity-50 shadow-md flex items-center gap-1.5"
+                      >
+                        <Check size={14} />
+                        <span>Create Store Branch</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </aside>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Edit Branch Right Slide-Over Drawer */}
       {storeToEdit && (
@@ -1116,7 +1266,7 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
   );
 };
 
-// Right-side Slide-over Drawer for Merchant to View Store Outlet Overview
+// Right-side Slide-over Drawer for Merchant to View Store Outlet Overview (Tabbed)
 function ViewBranchStoreDrawer({
   store,
   onClose,
@@ -1128,17 +1278,28 @@ function ViewBranchStoreDrawer({
   onEdit: () => void;
   onLogin: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<"overview" | "location" | "media" | "manager">("overview");
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
+
+  const menuCount = store.menuImages?.length || 0;
+  const photoCount = store.photos?.length || 0;
+  const amenityCount = store.amenities?.length || 0;
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-        <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+        <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+          {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-            <div className="flex items-center gap-2">
-              <Store size={18} className="text-purple-600" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/40 shrink-0">
+                <Store size={20} />
+              </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">{store.branchName}</h3>
-                <p className="text-[11px] text-slate-400">{store.city}, {store.state}</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{store.branchName}</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">{store.city}, {store.state}</p>
               </div>
             </div>
             <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -1146,120 +1307,272 @@ function ViewBranchStoreDrawer({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800">
-              <span className="font-bold text-slate-700 dark:text-slate-300">Operational Status</span>
-              <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
-                {store.status === "ACTIVE" ? "Active & Visible on App" : store.status}
-              </Badge>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 dark:text-slate-300 block">Address</label>
-              <p className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                {store.address}, {store.city}, {store.state} - {store.pincode}
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-700 dark:text-slate-300 block">Operating Hours</label>
-              <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                <Clock size={14} className="text-amber-600" />
-                <span className="font-semibold">{store.operatingHours || "10:00 AM – 10:00 PM (Daily)"}</span>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/80 space-y-2">
-              <div className="flex items-center justify-between text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                <span>Assigned Store Manager</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                  <Lock size={10} />
-                  Password Access
+          {/* Navigation Tabs */}
+          <div className="px-6 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-1.5 text-xs overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab("overview")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
+                activeTab === "overview"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              📌 Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("location")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
+                activeTab === "location"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              🗺️ Location & Map
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("media")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0 flex items-center gap-1",
+                activeTab === "media"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              🍽️ Menu & Ambience
+              {(menuCount > 0 || photoCount > 0) && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 text-[10px] font-bold">
+                  {menuCount + photoCount}
                 </span>
-              </div>
-              <div className="flex items-center gap-1.5 font-mono text-purple-700 dark:text-purple-300 font-bold text-xs">
-                <Mail size={12} />
-                <span>{store.storeEmail || `${store.id}@curryleaf.in`}</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-purple-100 dark:border-purple-900/50">
-                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
-                  <UserCheck size={12} className="text-purple-500" />
-                  <span className="font-semibold">{store.managerName || "Store Manager"}</span>
-                </span>
-                {store.phone && <span className="text-slate-500 font-mono">{store.phone}</span>}
-              </div>
-            </div>
-
-            {/* Store Amenities */}
-            {store.amenities && store.amenities.length > 0 && (
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                  Amenities & Facilities ({store.amenities.length})
-                </label>
-                <div className="flex flex-wrap gap-1.5 p-2.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40">
-                  {store.amenities.map((am, i) => (
-                    <span key={i} className="text-[11px] px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-medium">
-                      {am}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Store Menu Cards */}
-            {store.menuImages && store.menuImages.length > 0 && (
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                  Store Menu Cards ({store.menuImages.length} {store.menuImages.length === 1 ? "page" : "pages"})
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {store.menuImages.map((img, i) => (
-                    <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="relative rounded-xl overflow-hidden aspect-3/4 border border-slate-200 dark:border-slate-700 shadow-xs group">
-                      <img src={img} alt={`Menu ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-bold text-white">
-                        Page {i+1}
-                      </span>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Store Ambience Photos */}
-            {store.photos && store.photos.length > 0 && (
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                  Ambience & Facility Photos ({store.photos.length})
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {store.photos.map((img, i) => (
-                    <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="relative rounded-xl overflow-hidden aspect-video border border-slate-200 dark:border-slate-700 shadow-xs group">
-                      <img src={img} alt={`Photo ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between">
-                <span>GPS Location Pin</span>
-                <span className="font-mono text-[11px] text-purple-600 dark:text-purple-400">
-                  {store.latitude?.toFixed(4)}, {store.longitude?.toFixed(4)}
-                </span>
-              </label>
-              <StoreLocationPicker
-                latitude={store.latitude || 21.1458}
-                longitude={store.longitude || 79.0882}
-                onChange={() => {}}
-                city={store.city}
-                state={store.state}
-                storeName={store.branchName}
-                height="180px"
-              />
-            </div>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("manager")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
+                activeTab === "manager"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              👤 Manager Access
+            </button>
           </div>
 
+          {/* Tab Content Body */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+            {/* OVERVIEW */}
+            {activeTab === "overview" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800">
+                  <span className="font-bold text-slate-700 dark:text-slate-300">Operational Status</span>
+                  <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                    {store.status === "ACTIVE" ? "Active & Discoverable on App" : store.status}
+                  </Badge>
+                </div>
+
+                {/* Quick Metrics */}
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40">
+                    <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase block">Menu Pages</span>
+                    <span className="text-lg font-extrabold text-amber-900 dark:text-amber-100">{menuCount}</span>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40">
+                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase block">Ambience Photos</span>
+                    <span className="text-lg font-extrabold text-purple-900 dark:text-purple-100">{photoCount}</span>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40">
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold uppercase block">Amenities</span>
+                    <span className="text-lg font-extrabold text-emerald-900 dark:text-emerald-100">{amenityCount}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Operating Hours</label>
+                  <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-2 text-amber-800 dark:text-amber-200 font-semibold">
+                    <Clock size={14} className="text-amber-600" />
+                    <span>{store.operatingHours || "10:00 AM – 10:00 PM (Daily)"}</span>
+                  </div>
+                </div>
+
+                {/* Amenities Badges in Overview */}
+                {amenityCount > 0 && (
+                  <div className="p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 space-y-2">
+                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                      Conveniences & Amenities ({amenityCount})
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {store.amenities!.map((am, i) => (
+                        <span key={i} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                          {am}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* LOCATION */}
+            {activeTab === "location" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Address</label>
+                  <p className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                    {store.address}, {store.city}, {store.state} - {store.pincode}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Latitude</span>
+                    <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                      {store.latitude?.toFixed(6)}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Longitude</span>
+                    <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                      {store.longitude?.toFixed(6)}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between">
+                    <span>GPS Location Pin</span>
+                    <a
+                      href={`https://www.google.com/maps?q=${store.latitude},${store.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-pink-600 hover:underline flex items-center gap-1"
+                    >
+                      <span>Google Maps</span>
+                      <ExternalLink size={11} />
+                    </a>
+                  </label>
+                  <StoreLocationPicker
+                    latitude={store.latitude || 21.1458}
+                    longitude={store.longitude || 79.0882}
+                    onChange={() => {}}
+                    city={store.city}
+                    state={store.state}
+                    storeName={store.branchName}
+                    height="200px"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* MEDIA */}
+            {activeTab === "media" && (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <div className="space-y-2.5">
+                  <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                    <UtensilsCrossed size={14} className="text-amber-500" />
+                    <span>Store Menu Cards ({menuCount})</span>
+                  </h5>
+                  {menuCount > 0 ? (
+                    <div className="grid grid-cols-3 gap-3">
+                      {store.menuImages!.map((img, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setPreviewZoomImage(img)}
+                          className="relative group rounded-xl overflow-hidden aspect-3/4 border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer"
+                        >
+                          <img src={img} alt={`Menu ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-bold text-white">
+                            Page {i+1}
+                          </span>
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye size={16} className="text-white drop-shadow" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400">
+                      No menu cards uploaded.
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                    <Camera size={14} className="text-purple-500" />
+                    <span>Ambience & Facility Photos ({photoCount})</span>
+                  </h5>
+                  {photoCount > 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {store.photos!.map((img, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setPreviewZoomImage(img)}
+                          className="relative group rounded-xl overflow-hidden aspect-video border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer"
+                        >
+                          <img src={img} alt={`Photo ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye size={16} className="text-white drop-shadow" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400">
+                      No ambience photos uploaded.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* MANAGER ACCESS */}
+            {activeTab === "manager" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/80 space-y-3">
+                  <div className="flex items-center justify-between text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                    <span>Assigned Store Manager</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <Lock size={10} />
+                      Password Access
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-mono text-purple-700 dark:text-purple-300 font-bold text-xs">
+                    <Mail size={12} />
+                    <span>{store.storeEmail || `${store.id}@curryleaf.in`}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] pt-2 border-t border-purple-100 dark:border-purple-900/50">
+                    <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                      <UserCheck size={12} className="text-purple-500" />
+                      <span className="font-semibold">{store.managerName || "Store Manager"}</span>
+                    </span>
+
+                    <button
+                      onClick={() => {
+                        const token = `mgr_inv_${store.id}_${Date.now().toString(36)}`;
+                        const inviteUrl = `${window.location.origin}/accept-invite?token=${encodeURIComponent(token)}`;
+                        navigator.clipboard.writeText(inviteUrl);
+                        setCopiedLink(true);
+                        toast.success("Manager password setup link copied!");
+                        setTimeout(() => setCopiedLink(false), 2500);
+                      }}
+                      className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-bold hover:underline"
+                    >
+                      {copiedLink ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                      <span>{copiedLink ? "Copied Link!" : "Copy Setup Link"}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
           <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-2">
             <button
               onClick={onEdit}
@@ -1277,11 +1590,39 @@ function ViewBranchStoreDrawer({
           </div>
         </aside>
       </div>
+
+      {previewZoomImage && (
+        <div
+          className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewZoomImage(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={previewZoomImage}
+              alt="Full Preview"
+              className="max-w-full max-h-[82vh] object-contain mx-auto"
+            />
+            <div className="p-3 bg-slate-950 flex items-center justify-between border-t border-slate-800 text-xs">
+              <span className="text-slate-300 font-medium">Image Zoom Preview</span>
+              <button
+                type="button"
+                onClick={() => setPreviewZoomImage(null)}
+                className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// Right-side Slide-over Drawer for Merchant to Edit Store Outlet Details
+// Right-side Slide-over Drawer for Merchant to Edit Store Outlet (Step-by-Step Wizard)
 function EditBranchStoreDrawer({
   store,
   onClose,
@@ -1291,6 +1632,7 @@ function EditBranchStoreDrawer({
   onClose: () => void;
   onSave: (updates: Partial<StoreType>) => void;
 }) {
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [branchName, setBranchName] = useState(store.branchName || "");
   const [phone, setPhone] = useState(store.phone || "");
   const [address, setAddress] = useState(store.address || "");
@@ -1305,6 +1647,12 @@ function EditBranchStoreDrawer({
   const [menuImages, setMenuImages] = useState<string[]>(store.menuImages || []);
   const [photos, setPhotos] = useState<string[]>(store.photos || []);
   const [amenities, setAmenities] = useState<string[]>(store.amenities || []);
+
+  const MERCHANT_EDIT_STEPS = [
+    { id: 1, title: "Details & Hours", subtitle: "Name & Timing" },
+    { id: 2, title: "Location", subtitle: "Address & GPS" },
+    { id: 3, title: "Media", subtitle: "Menu & Photos" },
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1330,13 +1678,13 @@ function EditBranchStoreDrawer({
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-        <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+        <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="flex items-center gap-2">
               <Pencil size={18} className="text-amber-500" />
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">Edit Branch Outlet</h3>
-                <p className="text-[11px] text-slate-400">Update outlet contact info, hours & location</p>
+                <p className="text-[11px] text-slate-400">Step {currentStep} of 3 • {MERCHANT_EDIT_STEPS[currentStep - 1]?.title}</p>
               </div>
             </div>
             <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -1344,109 +1692,172 @@ function EditBranchStoreDrawer({
             </button>
           </div>
 
+          <FormStepper
+            steps={MERCHANT_EDIT_STEPS}
+            currentStep={currentStep}
+            onStepClick={(s) => setCurrentStep(s)}
+          />
+
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Branch Name *</label>
-              <input
-                type="text"
-                required
-                value={branchName}
-                onChange={(e) => setBranchName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
-              />
-            </div>
+            {/* STEP 1: DETAILS & HOURS */}
+            {currentStep === 1 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Branch Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={branchName}
+                    onChange={(e) => setBranchName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold focus:outline-hidden focus:border-purple-500"
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Contact Phone</label>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Contact Phone</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Operational Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as StoreType["status"])}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:border-purple-500"
+                  >
+                    <option value="ACTIVE">ACTIVE (Published on Customer App)</option>
+                    <option value="INACTIVE">INACTIVE (Temporarily Hidden)</option>
+                  </select>
+                </div>
+
+                <StoreScheduleSelector
+                  value={operatingHours}
+                  onChange={(newSchedule) => setOperatingHours(newSchedule)}
                 />
               </div>
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Outlet Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as StoreType["status"])}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
-                >
-                  <option value="ACTIVE">Active on Map</option>
-                  <option value="INACTIVE">Inactive / Closed</option>
-                  <option value="PENDING_APPROVAL">Pending Approval</option>
-                </select>
+            )}
+
+            {/* STEP 2: ADDRESS & GPS MAP */}
+            {currentStep === 2 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <IndiaAddressFields
+                  state={state}
+                  district={district}
+                  city={city}
+                  pincode={pincode}
+                  address={address}
+                  onStateChange={(val) => setState(val)}
+                  onDistrictChange={(val) => setDistrict(val)}
+                  onCityChange={(val) => setCity(val)}
+                  onPincodeChange={(val) => setPincode(val)}
+                  onAddressChange={(val) => setAddress(val)}
+                />
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between text-xs">
+                    <span>Pinpoint Location on Map *</span>
+                    <span className="text-[11px] font-normal text-purple-600 dark:text-purple-400">Click or drag pin</span>
+                  </label>
+                  <StoreLocationPicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    city={city}
+                    state={state}
+                    storeName={branchName}
+                    height="200px"
+                    onChange={(newLat, newLng) => {
+                      setLatitude(newLat);
+                      setLongitude(newLng);
+                    }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Latitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={latitude}
+                      onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Longitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={longitude}
+                      onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Standardized Operating Hours & Schedule Selector */}
-            <StoreScheduleSelector
-              value={operatingHours}
-              onChange={(newSchedule) => setOperatingHours(newSchedule)}
-            />
-
-            {/* Pre-populated Indian Address Fields */}
-            <IndiaAddressFields
-              state={state}
-              district={district}
-              city={city}
-              pincode={pincode}
-              address={address}
-              onStateChange={setState}
-              onDistrictChange={setDistrict}
-              onCityChange={setCity}
-              onPincodeChange={setPincode}
-              onAddressChange={setAddress}
-            />
-
-            {/* Location Map Picker */}
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-xs">Pinpoint Location on Map *</label>
-              <StoreLocationPicker
-                latitude={latitude}
-                longitude={longitude}
-                city={city}
-                state={state}
-                storeName={branchName}
-                height="180px"
-                onChange={(lat, lng) => {
-                  setLatitude(lat);
-                  setLongitude(lng);
-                }}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Latitude</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={latitude}
-                  onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+            {/* STEP 3: MENUS, PHOTOS & AMENITIES */}
+            {currentStep === 3 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <StoreMediaAndAmenitiesSection
+                  menuImages={menuImages}
+                  photos={photos}
+                  amenities={amenities}
+                  onMenuImagesChange={setMenuImages}
+                  onPhotosChange={setPhotos}
+                  onAmenitiesChange={setAmenities}
+                  categoryHint="Dining"
                 />
               </div>
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Longitude</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={longitude}
-                  onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
-                />
-              </div>
-            </div>
+            )}
 
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
+            {/* Footer Buttons */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              >
                 Cancel
               </button>
-              <button type="submit" className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md">
-                Save Outlet Changes
-              </button>
+
+              <div className="flex items-center gap-2">
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep((s) => s - 1)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Back</span>
+                  </button>
+                )}
+
+                {currentStep < 3 ? (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep((s) => s + 1)}
+                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1"
+                  >
+                    <span>Next: {MERCHANT_EDIT_STEPS[currentStep]?.title}</span>
+                    <ChevronRight size={14} />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="btn-gradient px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1.5"
+                  >
+                    <Check size={14} />
+                    <span>Save Branch Changes</span>
+                  </button>
+                )}
+              </div>
             </div>
           </form>
         </aside>

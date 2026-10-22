@@ -6,6 +6,7 @@ import {
   Plus,
   MapPin,
   CheckCircle2,
+  Check,
   Clock,
   Building2,
   Navigation,
@@ -32,7 +33,11 @@ import {
   Send,
   ShieldCheck,
   User,
-  Phone
+  Phone,
+  ChevronLeft,
+  ChevronRight,
+  UtensilsCrossed,
+  Camera
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -53,6 +58,7 @@ import { StoreLocationPicker } from "../../components/StoreLocationPicker";
 import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { StoreScheduleSelector } from "../../components/StoreScheduleSelector";
 import { StoreMediaAndAmenitiesSection } from "../../components/StoreMediaAndAmenitiesSection";
+import { FormStepper } from "../../components/FormStepper";
 import { staffApi, BackendStaffResponse } from "../../api/staffApi";
 import { storeApi } from "../../api/storeApi";
 
@@ -1140,7 +1146,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
   );
 };
 
-// Right-side Slide-over Drawer for Map Pin Details
+// Right-side Slide-over Drawer for Map Pin Details (Step-organized & Tabbed)
 function StorePinDrawer({
   store,
   offers = [],
@@ -1154,10 +1160,12 @@ function StorePinDrawer({
   onClose: () => void;
   onApprove: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<"overview" | "location" | "media" | "manager" | "deals">("overview");
   const [storeStaff, setStoreStaff] = useState<BackendStaffResponse[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [drawerDealsView, setDrawerDealsView] = useState<"list" | "cards">("cards");
+  const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (store.id) {
@@ -1172,12 +1180,23 @@ function StorePinDrawer({
 
   const assignedStaff = storeStaff[0];
 
+  const storeDeals = offers.filter(
+    (o) =>
+      (o.applicableStoreIds && o.applicableStoreIds.includes(store.id)) ||
+      o.storeId === store.id ||
+      (!o.applicableStoreIds?.length && o.merchantId === store.merchantId)
+  );
+
+  const menuCount = store.menuImages?.length || 0;
+  const photoCount = store.photos?.length || 0;
+  const amenityCount = store.amenities?.length || 0;
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
         <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-          {/* Header with vibrant gradient matching merchant drawer */}
+          {/* Header */}
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-pink-500/10 to-transparent">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -1224,283 +1243,145 @@ function StorePinDrawer({
             </div>
           </div>
 
-          {/* Drawer Body */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
-            {/* Store Card Info */}
-            <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
-                  Store Branch
-                </span>
-                <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
-                  {store.status === "ACTIVE" ? "Active on App" : "Needs Geocode Review"}
-                </Badge>
-              </div>
-              <h4 className="text-base font-extrabold text-slate-900 dark:text-white font-['Manrope']">
-                {store.branchName}
-              </h4>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                {store.address}, {store.city} - {store.pincode}
-              </p>
-              <div className="pt-2 border-t border-purple-200/50 dark:border-purple-900/50 flex items-center justify-between text-[11px]">
-                <span className="text-slate-500">Merchant Brand:</span>
-                <span className="font-bold text-purple-700 dark:text-purple-300">{store.merchantName}</span>
-              </div>
-            </div>
-
-            {/* Coordinate Inspector */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
-                  <Layers size={13} className="text-purple-600" />
-                  <span>Verified GPS Geocoordinates</span>
-                </label>
-                <a
-                  href={`https://www.google.com/maps?q=${store.latitude},${store.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-bold text-pink-600 dark:text-pink-400 hover:underline flex items-center gap-1"
-                >
-                  <span>Open in Google Maps</span>
-                  <ExternalLink size={11} />
-                </a>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Latitude</span>
-                  <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
-                    {store.latitude.toFixed(6)}
-                  </p>
-                </div>
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Longitude</span>
-                  <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
-                    {store.longitude.toFixed(6)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Real Interactive Leaflet Geocode Map */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Compass size={13} className="text-pink-600" />
-                  <span>Interactive Map Preview</span>
-                </span>
-                <span className="text-[11px] font-mono text-purple-600 dark:text-purple-400">
-                  {store.city}, {store.state || "Maharashtra"}
-                </span>
-              </div>
-              <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-xs">
-                <StoreLocationPicker
-                  latitude={store.latitude}
-                  longitude={store.longitude}
-                  city={store.city}
-                  state={store.state}
-                  storeName={store.branchName}
-                  height="220px"
-                  onChange={() => {}}
-                />
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
-                Pinpoint location for proximity discovery and geofenced customer deal delivery
-              </p>
-            </div>
-
-            {/* Timings & Specs */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Operating Schedule:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{store.operatingHours}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Internal Branch ID:</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-semibold text-amber-700 dark:text-amber-400">
-                    BID: #{store.id.substring(0, 8).toUpperCase()}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(store.id);
-                      toast.success(`Copied Store ID: ${store.id}`);
-                    }}
-                    className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                    title={`Copy full UUID: ${store.id}`}
-                  >
-                    <Copy size={12} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Store Branch Manager & Access Credentials Card */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-[#121626] border border-indigo-200/80 dark:border-indigo-900/60 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center">
-                    <UserCheck size={15} />
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-900 dark:text-white text-xs block">
-                      Branch Manager & Credentials
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      Merchant & Branch Terminal Portal Access
-                    </span>
-                  </div>
-                </div>
-                {assignedStaff ? (
-                  <Badge variant={assignedStaff.status === "ACTIVE" ? "success" : "warning"}>
-                    {assignedStaff.status === "ACTIVE" ? "Active Manager" : "Invite Pending"}
-                  </Badge>
-                ) : store.managerEmail ? (
-                  <Badge variant="warning">Invite Dispatched</Badge>
-                ) : (
-                  <Badge variant="secondary">Unassigned</Badge>
-                )}
-              </div>
-
-              {assignedStaff || store.managerName || store.managerEmail ? (
-                <div className="space-y-2 pt-1 text-xs">
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-500 text-[11px]">Manager Name:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">
-                      {assignedStaff?.name || store.managerName || "Designated Store Manager"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-500 text-[11px] flex items-center gap-1">
-                      <Mail size={12} className="text-slate-400" />
-                      <span>Work Email:</span>
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
-                        {assignedStaff?.email || store.managerEmail || store.storeEmail}
-                      </span>
-                      {(assignedStaff?.email || store.managerEmail || store.storeEmail) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(
-                              assignedStaff?.email || store.managerEmail || store.storeEmail || ""
-                            );
-                            toast.success("Manager email copied!");
-                          }}
-                          className="p-1 rounded text-slate-400 hover:text-indigo-600 transition-colors"
-                          title="Copy Email"
-                        >
-                          <Copy size={11} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {(assignedStaff?.phone || store.managerPhone || store.phone) && (
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
-                      <span className="text-slate-500 text-[11px]">Contact Phone:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">
-                        {assignedStaff?.phone || store.managerPhone || store.phone}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-500 text-[11px]">Assigned Scope & Role:</span>
-                    <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                      {assignedStaff?.roleName || "Store Manager (STORE_MANAGER)"}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/60 dark:border-indigo-900/40 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
-                    <ShieldCheck size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-                    <span>
-                      Store Managers can sign in directly via the Merchant Portal. Their authenticated session is scoped exclusively to this branch outlet and POS desk.
-                    </span>
-                  </div>
-
-                  {assignedStaff && assignedStaff.status === "INVITED" && (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        disabled={isResending}
-                        onClick={async () => {
-                          setIsResending(true);
-                          try {
-                            await staffApi.resendMerchantStaffInvite(assignedStaff.id);
-                            toast.success(`Invitation email resent to ${assignedStaff.email}!`);
-                          } catch (err: any) {
-                            toast.error(err?.response?.data?.message || "Failed to resend invitation email");
-                          } finally {
-                            setIsResending(false);
-                          }
-                        }}
-                        className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold text-xs hover:bg-indigo-100 transition-colors"
-                      >
-                        <Send size={12} />
-                        <span>{isResending ? "Dispatching..." : "Resend Password Setup Email"}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-[11px] text-slate-400 italic">
-                  No manager has been designated yet for this branch. You can invite one from the Staff Management section.
-                </p>
+          {/* Navigation Tabs corresponding to the multi-step structure */}
+          <div className="px-6 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-1 overflow-x-auto text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab("overview")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
+                activeTab === "overview"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
               )}
-            </div>
+            >
+              📌 Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("location")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
+                activeTab === "location"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              🗺️ Location & Map
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("media")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0 flex items-center gap-1",
+                activeTab === "media"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              🍽️ Menus & Photos
+              {(menuCount > 0 || photoCount > 0) && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 text-[10px] font-bold">
+                  {menuCount + photoCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("manager")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
+                activeTab === "manager"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              👤 Manager
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("deals")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0 flex items-center gap-1",
+                activeTab === "deals"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              🏷️ Deals ({storeDeals.length})
+            </button>
+          </div>
 
-            {/* Store Amenities, Menu & Photos in Admin Pin Drawer */}
-            {((store.amenities && store.amenities.length > 0) || (store.menuImages && store.menuImages.length > 0) || (store.photos && store.photos.length > 0)) && (
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 space-y-3 text-xs">
-                {store.amenities && store.amenities.length > 0 && (
-                  <div>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs mb-1.5 flex items-center justify-between">
-                      <span>Store Amenities</span>
-                      <span className="text-[10px] text-emerald-600 font-semibold">{store.amenities.length} active</span>
+          {/* Drawer Body - Tab Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+            {/* TAB 1: OVERVIEW */}
+            {activeTab === "overview" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
+                      Branch Identity
+                    </span>
+                    <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                      {store.status === "ACTIVE" ? "Active on App" : "Needs Review"}
+                    </Badge>
+                  </div>
+                  <h4 className="text-base font-extrabold text-slate-900 dark:text-white font-['Manrope']">
+                    {store.branchName}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    {store.address}, {store.city} - {store.pincode}
+                  </p>
+                  <div className="pt-2 border-t border-purple-200/50 dark:border-purple-900/50 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">Merchant Brand:</span>
+                    <span className="font-bold text-purple-700 dark:text-purple-300">{store.merchantName}</span>
+                  </div>
+                </div>
+
+                {/* Quick Metrics */}
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40">
+                    <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase block">Menu Cards</span>
+                    <span className="text-lg font-extrabold text-amber-900 dark:text-amber-100">{menuCount}</span>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40">
+                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase block">Ambience Photos</span>
+                    <span className="text-lg font-extrabold text-purple-900 dark:text-purple-100">{photoCount}</span>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40">
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold uppercase block">Amenities</span>
+                    <span className="text-lg font-extrabold text-emerald-900 dark:text-emerald-100">{amenityCount}</span>
+                  </div>
+                </div>
+
+                {/* Operating Schedule */}
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Operating Schedule:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Clock size={13} className="text-amber-500" />
+                      {store.operatingHours || "10:00 AM – 10:00 PM (Daily)"}
+                    </span>
+                  </div>
+                  {store.phone && (
+                    <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                      <span className="text-slate-500">Contact Phone:</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{store.phone}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Amenities Badges in Overview */}
+                {amenityCount > 0 && (
+                  <div className="p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 space-y-2">
+                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                      Conveniences & Amenities ({amenityCount})
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {store.amenities.map((am, i) => (
-                        <span key={i} className="text-[11px] px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium">
+                      {store.amenities!.map((am, i) => (
+                        <span key={i} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs">
                           {am}
                         </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {store.menuImages && store.menuImages.length > 0 && (
-                  <div>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs mb-1.5 flex items-center justify-between">
-                      <span>Menu Card Pages</span>
-                      <span className="text-[10px] text-amber-600 font-semibold">{store.menuImages.length} pages</span>
-                    </span>
-                    <div className="grid grid-cols-3 gap-2">
-                      {store.menuImages.map((img, i) => (
-                        <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="relative rounded-xl overflow-hidden aspect-3/4 border border-slate-200 dark:border-slate-700 shadow-xs group">
-                          <img src={img} alt={`Menu ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-bold text-white">
-                            Page {i+1}
-                          </span>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {store.photos && store.photos.length > 0 && (
-                  <div>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs mb-1.5 flex items-center justify-between">
-                      <span>Ambience & Facility Photos</span>
-                      <span className="text-[10px] text-purple-600 font-semibold">{store.photos.length} photos</span>
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {store.photos.map((img, i) => (
-                        <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="relative rounded-xl overflow-hidden aspect-video border border-slate-200 dark:border-slate-700 shadow-xs group">
-                          <img src={img} alt={`Photo ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        </a>
                       ))}
                     </div>
                   </div>
@@ -1508,161 +1389,272 @@ function StorePinDrawer({
               </div>
             )}
 
-            {/* Active Promotional Offers & Mobile App Deals Section */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50/70 via-pink-50/40 to-white dark:from-purple-950/30 dark:via-pink-950/20 dark:to-[#121626] border border-purple-200/80 dark:border-purple-900/60 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center">
-                    <Tag size={15} />
+            {/* TAB 2: LOCATION & MAP */}
+            {activeTab === "location" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <MapPin size={14} className="text-pink-600" />
+                      <span>Registered Physical Address</span>
+                    </span>
+                    <a
+                      href={`https://www.google.com/maps?q=${store.latitude},${store.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-pink-600 dark:text-pink-400 hover:underline flex items-center gap-1"
+                    >
+                      <span>Google Maps</span>
+                      <ExternalLink size={11} />
+                    </a>
                   </div>
-                  <div>
-                    <span className="font-bold text-slate-900 dark:text-white text-xs block">
-                      Promotional Offers & Mobile Deals
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      Discounts, Cashback & Product Bargains Live in App
-                    </span>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    {store.address}, {store.city}, {store.state} - {store.pincode}
+                  </p>
+                </div>
+
+                {/* GPS Coordinates */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Latitude</span>
+                    <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                      {store.latitude?.toFixed(6)}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Longitude</span>
+                    <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                      {store.longitude?.toFixed(6)}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center bg-white/70 dark:bg-slate-900/60 p-0.5 rounded-lg border border-purple-200/60 dark:border-purple-800/60">
-                    <button
-                      type="button"
-                      onClick={() => setDrawerDealsView("cards")}
-                      className={cn(
-                        "p-1 rounded text-xs transition-colors cursor-pointer",
-                        drawerDealsView === "cards"
-                          ? "bg-purple-600 text-white font-bold shadow-2xs"
-                          : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
-                      )}
-                      title="Cards View"
-                    >
-                      <LayoutGrid size={11} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDrawerDealsView("list")}
-                      className={cn(
-                        "p-1 rounded text-xs transition-colors cursor-pointer",
-                        drawerDealsView === "list"
-                          ? "bg-purple-600 text-white font-bold shadow-2xs"
-                          : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
-                      )}
-                      title="List View"
-                    >
-                      <List size={11} />
-                    </button>
+
+                {/* Real Interactive Leaflet Geocode Map */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Compass size={13} className="text-pink-600" />
+                      <span>Interactive Leaflet Map Pinpoint</span>
+                    </span>
                   </div>
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-xs">
+                    <StoreLocationPicker
+                      latitude={store.latitude}
+                      longitude={store.longitude}
+                      city={store.city}
+                      state={store.state}
+                      storeName={store.branchName}
+                      height="240px"
+                      onChange={() => {}}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: MENUS & AMBIENCE PHOTOS */}
+            {activeTab === "media" && (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                {/* Menu Cards */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                      <UtensilsCrossed size={14} className="text-amber-500" />
+                      <span>Store Menu Cards ({menuCount} {menuCount === 1 ? "page" : "pages"})</span>
+                    </h5>
+                    <span className="text-[10px] text-slate-400">Click to view full image</span>
+                  </div>
+
+                  {menuCount > 0 ? (
+                    <div className="grid grid-cols-3 gap-3">
+                      {store.menuImages!.map((img, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setPreviewZoomImage(img)}
+                          className="relative group rounded-xl overflow-hidden aspect-3/4 border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer"
+                        >
+                          <img
+                            src={img}
+                            alt={`Menu page ${i + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                          />
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/75 text-[9px] font-bold text-white">
+                            Page {i + 1}
+                          </span>
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye size={16} className="text-white drop-shadow" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400">
+                      No menu cards uploaded for this outlet.
+                    </div>
+                  )}
+                </div>
+
+                {/* Ambience Photos */}
+                <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                      <Camera size={14} className="text-purple-500" />
+                      <span>Ambience & Facility Photos ({photoCount})</span>
+                    </h5>
+                    <span className="text-[10px] text-slate-400">Click to view full photo</span>
+                  </div>
+
+                  {photoCount > 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {store.photos!.map((img, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setPreviewZoomImage(img)}
+                          className="relative group rounded-xl overflow-hidden aspect-video border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer"
+                        >
+                          <img
+                            src={img}
+                            alt={`Photo ${i + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Eye size={16} className="text-white drop-shadow" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400">
+                      No ambience photos uploaded for this outlet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: MANAGER & ACCESS */}
+            {activeTab === "manager" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-[#121626] border border-indigo-200/80 dark:border-indigo-900/60 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold">
+                        <UserCheck size={16} />
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white text-xs block">
+                          Assigned Store Manager
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          Merchant Portal & POS Terminal Access
+                        </span>
+                      </div>
+                    </div>
+                    {assignedStaff ? (
+                      <Badge variant={assignedStaff.status === "ACTIVE" ? "success" : "warning"}>
+                        {assignedStaff.status === "ACTIVE" ? "Active Manager" : "Invite Pending"}
+                      </Badge>
+                    ) : store.managerEmail ? (
+                      <Badge variant="warning">Invite Dispatched</Badge>
+                    ) : (
+                      <Badge variant="secondary">Unassigned</Badge>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 pt-1 text-xs">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-500 text-[11px]">Manager Name:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        {assignedStaff?.name || store.managerName || "Designated Store Manager"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-500 text-[11px] flex items-center gap-1">
+                        <Mail size={12} className="text-slate-400" />
+                        <span>Work Email:</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                          {assignedStaff?.email || store.managerEmail || store.storeEmail || "Not configured"}
+                        </span>
+                        {(assignedStaff?.email || store.managerEmail || store.storeEmail) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(assignedStaff?.email || store.managerEmail || store.storeEmail || "");
+                              toast.success("Manager email copied!");
+                            }}
+                            className="p-1 rounded text-slate-400 hover:text-slate-600"
+                          >
+                            <Copy size={11} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {(assignedStaff?.phone || store.managerPhone || store.phone) && (
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500 text-[11px] flex items-center gap-1">
+                          <Phone size={12} className="text-slate-400" />
+                          <span>Mobile Number:</span>
+                        </span>
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                          {assignedStaff?.phone || store.managerPhone || store.phone}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: DEALS & OFFERS */}
+            {activeTab === "deals" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    Active Deals ({storeDeals.length})
+                  </span>
                   {onCreateOffer && (
                     <button
                       type="button"
                       onClick={onCreateOffer}
-                      className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/40 flex items-center gap-1"
                     >
                       <Plus size={12} />
-                      <span>Create Deal</span>
+                      <span>Add Deal</span>
                     </button>
                   )}
                 </div>
-              </div>
 
-              {(() => {
-                const storeDeals = offers.filter(o =>
-                  (o.applicableStoreIds && o.applicableStoreIds.includes(store.id)) ||
-                  o.storeId === store.id ||
-                  (!o.applicableStoreIds?.length && o.merchantId === store.merchantId)
-                );
-
-                if (storeDeals.length === 0) {
-                  return (
-                    <div className="p-3 rounded-xl bg-white/70 dark:bg-slate-900/40 border border-dashed border-purple-200 dark:border-purple-900/60 text-center space-y-2">
-                      <p className="text-xs text-slate-500">No active offers or product deals for this outlet.</p>
-                      {onCreateOffer && (
-                        <button
-                          type="button"
-                          onClick={onCreateOffer}
-                          className="text-xs font-bold text-purple-600 hover:text-purple-700 underline"
-                        >
-                          + Launch First Deal (Service or Product)
-                        </button>
-                      )}
-                    </div>
-                  );
-                }
-
-                return drawerDealsView === "cards" ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 max-h-56 overflow-y-auto">
+                {storeDeals.length > 0 ? (
+                  <div className="space-y-2">
                     {storeDeals.map((deal) => (
                       <div
                         key={deal.id}
-                        className="p-3 rounded-xl bg-white dark:bg-slate-900/90 border border-purple-100 dark:border-purple-900/40 shadow-2xs flex flex-col justify-between space-y-2 hover:border-purple-300 transition-colors"
+                        className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex items-center justify-between"
                       >
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-                              {deal.scopeType === "PRODUCT" ? "Retail Deal" : "Service Offer"}
-                            </span>
-                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                              Live
-                            </span>
-                          </div>
-                          <h5 className="font-bold text-slate-900 dark:text-white text-xs line-clamp-1">
-                            {deal.title}
-                          </h5>
-                          <p className="text-[10px] text-slate-500 line-clamp-1">
-                            {deal.tagline || (deal.scopeType === "PRODUCT" ? "Direct outlet deal" : "App bill discount")}
-                          </p>
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white text-xs">{deal.title}</p>
+                          <p className="text-[11px] text-slate-400">{deal.type} • {deal.badgeText || "Special Deal"}</p>
                         </div>
-                        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-baseline justify-between text-[11px]">
-                          <span className="font-extrabold text-pink-600 dark:text-pink-400 font-mono">
-                            {deal.scopeType === "PRODUCT" && deal.dealPrice
-                              ? `₹${deal.dealPrice}`
-                              : deal.type === "FLAT_PCT"
-                              ? `${deal.value}% OFF`
-                              : `₹${deal.value} FLAT`}
-                          </span>
-                          {deal.bonusCoins && (
-                            <span className="text-[10px] text-amber-600 font-bold">
-                              +{deal.bonusCoins} Coins
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-2 pt-1 max-h-48 overflow-y-auto">
-                    {storeDeals.map((deal) => (
-                      <div
-                        key={deal.id}
-                        className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/80 border border-purple-100 dark:border-purple-900/40 flex items-center justify-between gap-2 shadow-2xs"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-                              {deal.scopeType === "PRODUCT" ? "Retail Deal" : "Service Offer"}
-                            </span>
-                            <span className="font-bold text-slate-900 dark:text-white text-xs truncate">
-                              {deal.title}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                            {deal.type === "FLAT_PCT" ? `${deal.value}% OFF` : `₹${deal.value} FLAT`} • {deal.badgeText || "Mobile Special"}
-                            {deal.dealPrice ? ` • Deal Price ₹${deal.dealPrice}` : ""}
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md shrink-0">
-                          Live
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
+                          Active
                         </span>
                       </div>
                     ))}
                   </div>
-                );
-              })()}
-            </div>
+                ) : (
+                  <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                    No active deals linked to this outlet yet.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Drawer Footer */}
+          {/* Footer */}
           <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-3">
             {store.status !== "ACTIVE" ? (
               <button
@@ -1685,11 +1677,40 @@ function StorePinDrawer({
           </div>
         </aside>
       </div>
+
+      {/* Lightbox Modal for Zooming Menu or Photo */}
+      {previewZoomImage && (
+        <div
+          className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewZoomImage(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={previewZoomImage}
+              alt="Full Preview"
+              className="max-w-full max-h-[82vh] object-contain mx-auto"
+            />
+            <div className="p-3 bg-slate-950 flex items-center justify-between border-t border-slate-800 text-xs">
+              <span className="text-slate-300 font-medium">Image Zoom Preview</span>
+              <button
+                type="button"
+                onClick={() => setPreviewZoomImage(null)}
+                className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// Right-side Slide-over Drawer for Adding a Store Branch
+// Right-side Slide-over Drawer for Adding a Store Branch (Step-by-Step Wizard)
 function AddStoreDrawer({
   merchants,
   onClose,
@@ -1699,6 +1720,7 @@ function AddStoreDrawer({
   onClose: () => void;
   onSave: (draft: any) => void;
 }) {
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [merchantId, setMerchantId] = useState(merchants[0]?.id || "");
   const [branchName, setBranchName] = useState("");
   const [address, setAddress] = useState("");
@@ -1708,7 +1730,8 @@ function AddStoreDrawer({
   const [pincode, setPincode] = useState("440010");
   const [latitude, setLatitude] = useState(21.1458);
   const [longitude, setLongitude] = useState(79.0882);
-  const [operatingHours, setOperatingHours] = useState("11:00 AM – 11:00 PM");
+  const [operatingHours, setOperatingHours] = useState("10:00 AM – 10:00 PM");
+  const [phone, setPhone] = useState("+91 712 2550000");
   const [managerName, setManagerName] = useState("");
   const [managerEmail, setManagerEmail] = useState("");
   const [managerPhone, setManagerPhone] = useState("");
@@ -1719,7 +1742,14 @@ function AddStoreDrawer({
   const [photos, setPhotos] = useState<string[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
 
-  const selectedMerchant = merchants.find(m => m.id === merchantId);
+  const selectedMerchant = merchants.find((m) => m.id === merchantId);
+
+  const ADD_STEPS = [
+    { id: 1, title: "Basic Info", subtitle: "Brand & Hours" },
+    { id: 2, title: "Location", subtitle: "Address & GPS" },
+    { id: 3, title: "Media", subtitle: "Menu & Photos" },
+    { id: 4, title: "Manager", subtitle: "Access & Review" },
+  ];
 
   const handleAutoFillFromMerchant = () => {
     let target = selectedMerchant;
@@ -1732,7 +1762,6 @@ function AddStoreDrawer({
       return;
     }
 
-    // Auto-generate realistic branch title based on merchant brand & city
     const brand = target.businessName || "Flagship Outlet";
     const mCity = target.city || "Nagpur";
     const mDistrict = target.district || mCity;
@@ -1740,7 +1769,6 @@ function AddStoreDrawer({
     const mPincode = target.pincode || "440010";
     const mAddress = target.address || `West High Court Road, ${mCity} Central`;
 
-    // Coordinates lookup for major cities
     let lat = 21.1458;
     let lng = 79.0882;
     const cityLower = mCity.toLowerCase();
@@ -1774,6 +1802,8 @@ function AddStoreDrawer({
     setLatitude(lat);
     setLongitude(lng);
     setOperatingHours("10:00 AM – 10:00 PM");
+    setPhone(target.ownerPhone || "+91 712 2550000");
+
     if (menuImages.length === 0) {
       setMenuImages([
         "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
@@ -1789,6 +1819,7 @@ function AddStoreDrawer({
     if (amenities.length === 0) {
       setAmenities(["Air Conditioned", "Free High-Speed Wi-Fi", "Cards & UPI Accepted", "Valet Parking"]);
     }
+
     setManagerName(`${mgrFirstName} Store Manager`);
     setManagerEmail(`${mgrFirstName.toLowerCase()}.${safeCity}@${safeBrand}.com`);
     setManagerPhone(target.ownerPhone || "9822100000");
@@ -1801,7 +1832,7 @@ function AddStoreDrawer({
 
   const clearError = (field: string) => {
     if (errors[field]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const next = { ...prev };
         delete next[field];
         return next;
@@ -1809,126 +1840,52 @@ function AddStoreDrawer({
     }
   };
 
-  const handleManagerEmailBlur = async () => {
-    const email = managerEmail.trim().toLowerCase();
-    if (!email) {
-      setManagerEmailNotice(null);
-      return;
-    }
-    try {
-      const res = await staffApi.validateStaffEmail(email, merchantId, "STORE");
-      if (!res.valid && res.message) {
-        setErrors(prev => ({ ...prev, managerEmail: res.message! }));
-        setManagerEmailNotice(null);
-      } else {
-        clearError("managerEmail");
-        if ((res as any).notice) {
-          setManagerEmailNotice((res as any).notice);
-        } else {
-          setManagerEmailNotice(null);
-        }
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      if (!merchantId) {
+        toast.error("Please select a parent merchant brand");
+        return;
       }
-    } catch {
-      // ignore on blur
-    }
-  };
-
-  const handleManagerPhoneBlur = async () => {
-    const phone = managerPhone.trim();
-    if (!phone) return;
-    try {
-      const res = await storeApi.validateStorePhone(phone, merchantId, undefined, managerEmail.trim());
-      if (!res.valid && res.message) {
-        setErrors(prev => ({ ...prev, managerPhone: res.message! }));
-      } else {
-        clearError("managerPhone");
+      if (!branchName.trim()) {
+        toast.error("Please enter the branch outlet name");
+        return;
       }
-    } catch {
-      // ignore on blur
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      if (!address.trim()) {
+        toast.error("Please enter the street address");
+        return;
+      }
+      if (!city.trim()) {
+        toast.error("Please enter city");
+        return;
+      }
+      if (!pincode.trim()) {
+        toast.error("Please enter pincode");
+        return;
+      }
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
+      setCurrentStep(4);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = storeBranchSchema.safeParse({
-      merchantId,
-      branchName: branchName.trim(),
-      address: address.trim(),
-      state: state.trim(),
-      district: district.trim(),
-      city: city.trim(),
-      pincode: pincode.trim(),
-      latitude: Number(latitude),
-      longitude: Number(longitude),
-      operatingHours: operatingHours.trim(),
-      managerName: managerName.trim(),
-      managerEmail: managerEmail.trim(),
-      managerPhone: managerPhone.trim(),
-    });
-
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach(issue => {
-        const key = issue.path[0] as string;
-        if (!fieldErrors[key]) {
-          fieldErrors[key] = issue.message;
-        }
-      });
-      setErrors(fieldErrors);
-      toast.error(result.error.issues[0]?.message || "Please fix validation errors");
+    if (!branchName.trim() || !address.trim() || !merchantId) {
+      toast.error("Please fill required store details");
       return;
     }
 
     try {
       setIsSubmitting(true);
-
-      // Backend enterprise verification
-      if (managerEmail.trim()) {
-        try {
-          const valRes = await staffApi.validateStaffEmail(managerEmail.trim(), merchantId, "STORE");
-          if (!valRes.valid && valRes.message) {
-            setErrors(prev => ({ ...prev, managerEmail: valRes.message! }));
-            toast.error(valRes.message);
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (valErr: any) {
-          const valMsg = valErr?.response?.data?.message || valErr?.message;
-          if (valMsg && valMsg.includes("another merchant")) {
-            setErrors(prev => ({ ...prev, managerEmail: valMsg }));
-            toast.error(valMsg);
-            setIsSubmitting(false);
-            return;
-          }
-        }
-      }
-
-      // Backend enterprise verification for manager mobile
-      if (managerPhone.trim()) {
-        try {
-          const phoneRes = await storeApi.validateStorePhone(managerPhone.trim(), merchantId, undefined, managerEmail.trim());
-          if (!phoneRes.valid && phoneRes.message) {
-            setErrors(prev => ({ ...prev, managerPhone: phoneRes.message! }));
-            toast.error(phoneRes.message);
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (valErr: any) {
-          const valMsg = valErr?.response?.data?.message || valErr?.message;
-          if (valMsg) {
-            setErrors(prev => ({ ...prev, managerPhone: valMsg }));
-            toast.error(valMsg);
-            setIsSubmitting(false);
-            return;
-          }
-        }
-      }
-
-      setErrors({});
       await onSave({
         merchantId,
         merchantName: selectedMerchant?.businessName || "Unknown Brand",
         branchName: branchName.trim(),
+        storeName: branchName.trim(),
+        phone: phone.trim(),
+        contactPhone: phone.trim(),
         address: address.trim(),
         state: state.trim(),
         district: district.trim(),
@@ -1949,12 +1906,6 @@ function AddStoreDrawer({
       onClose();
     } catch (saveErr: any) {
       const errMsg = saveErr?.response?.data?.message || saveErr?.message || "Failed to register store branch";
-      if (errMsg.toLowerCase().includes("email") || errMsg.toLowerCase().includes("merchant owner")) {
-        setErrors(prev => ({ ...prev, managerEmail: errMsg }));
-      }
-      if (errMsg.toLowerCase().includes("phone") || errMsg.toLowerCase().includes("mobile") || errMsg.toLowerCase().includes("number")) {
-        setErrors(prev => ({ ...prev, managerPhone: errMsg }));
-      }
       toast.error(errMsg);
     } finally {
       setIsSubmitting(false);
@@ -1966,368 +1917,312 @@ function AddStoreDrawer({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
         <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-pink-500/10 to-transparent gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
-                <StoreIcon size={20} />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">
-                  Add Store Branch
-                </h3>
-                <p className="text-xs text-slate-400 truncate mt-0.5">Deploy physical outlet to merchant network</p>
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="flex items-center gap-2">
+              <StoreIcon size={18} className="text-amber-600" />
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Add Store Branch</h3>
+                <p className="text-[11px] text-slate-400">Step {currentStep} of 4 • {ADD_STEPS[currentStep - 1]?.title}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={handleAutoFillFromMerchant}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors shadow-2xs whitespace-nowrap"
-                title="Auto Fill from Selected Merchant Details"
-              >
-                <Sparkles size={14} className="text-purple-600 dark:text-purple-400" />
-                <span>Auto Fill Details</span>
-              </button>
-              <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors" title="Close drawer">
-                <X size={20} />
-              </button>
-            </div>
+            <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <X size={18} />
+            </button>
           </div>
 
-          <form onSubmit={handleSubmit} noValidate className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Parent Merchant Brand *</label>
-              <select
-                value={merchantId}
-                onChange={e => {
-                  setMerchantId(e.target.value);
-                  clearError("merchantId");
-                }}
-                className={cn(
-                  "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white",
-                  errors.merchantId ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700"
-                )}
-              >
-                {merchants.map(m => (
-                  <option key={m.id} value={m.id}>{m.businessName} ({m.city})</option>
-                ))}
-              </select>
-              {errors.merchantId && (
-                <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} className="shrink-0" />
-                  <span>{errors.merchantId}</span>
-                </p>
-              )}
-              {selectedMerchant && (
-                <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
-                  <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-semibold border border-purple-200/50 dark:border-purple-800/40">
-                    Category: {selectedMerchant.categoryName}
-                  </span>
-                  {selectedMerchant.commissionRate !== undefined && (
-                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
-                      Take-Rate: {selectedMerchant.commissionRate}%
-                    </span>
-                  )}
+          {/* Stepper Progress Bar */}
+          <FormStepper
+            steps={ADD_STEPS}
+            currentStep={currentStep}
+            onStepClick={(s) => setCurrentStep(s)}
+          />
+
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+            {/* STEP 1: BASIC INFO & HOURS */}
+            {currentStep === 1 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    Parent Merchant Brand *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAutoFillFromMerchant}
+                    className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                  >
+                    <Sparkles size={12} />
+                    <span>Auto-fill from Brand</span>
+                  </button>
                 </div>
-              )}
-            </div>
 
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Branch Name *</label>
-              <input
-                type="text"
-                value={branchName}
-                onChange={e => {
-                  setBranchName(e.target.value);
-                  clearError("branchName");
-                }}
-                placeholder="e.g. Sadar Flagship Outlet"
-                className={cn(
-                  "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-hidden",
-                  errors.branchName ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                )}
-              />
-              {errors.branchName && (
-                <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} className="shrink-0" />
-                  <span>{errors.branchName}</span>
-                </p>
-              )}
-            </div>
+                <select
+                  value={merchantId}
+                  onChange={(e) => setMerchantId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:border-purple-500"
+                >
+                  {merchants.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.businessName} ({m.city || "Nagpur"})
+                    </option>
+                  ))}
+                </select>
 
-            {/* Pre-populated Indian Address Fields (State, District, City, Address, Pincode) */}
-            <IndiaAddressFields
-              state={state}
-              district={district}
-              city={city}
-              pincode={pincode}
-              address={address}
-              errors={errors}
-              onStateChange={(val) => {
-                setState(val);
-                clearError("state");
-              }}
-              onDistrictChange={(val) => {
-                setDistrict(val);
-                clearError("district");
-              }}
-              onCityChange={(val) => {
-                setCity(val);
-                clearError("city");
-              }}
-              onPincodeChange={(val) => {
-                setPincode(val);
-                clearError("pincode");
-              }}
-              onAddressChange={(val) => {
-                setAddress(val);
-                clearError("address");
-              }}
-            />
-
-            {/* Interactive Location Map Picker */}
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between text-xs">
-                <span>Pinpoint Store Location on Map *</span>
-                <span className="text-[11px] font-normal text-purple-600 dark:text-purple-400">Click map or drag pin</span>
-              </label>
-              <StoreLocationPicker
-                latitude={latitude}
-                longitude={longitude}
-                city={city}
-                state={state}
-                storeName={branchName || "Store Location"}
-                onChange={(newLat, newLng, locationHint) => {
-                  setLatitude(newLat);
-                  setLongitude(newLng);
-                  clearError("latitude");
-                  clearError("longitude");
-                  if (locationHint) {
-                    if (locationHint.state) {
-                      setState(locationHint.state);
-                      clearError("state");
-                    }
-                    if (locationHint.district) {
-                      setDistrict(locationHint.district);
-                      clearError("district");
-                    }
-                    if (locationHint.city) {
-                      setCity(locationHint.city);
-                      clearError("city");
-                    }
-                    if (locationHint.pincode) {
-                      setPincode(locationHint.pincode);
-                      clearError("pincode");
-                    }
-                    if (locationHint.formattedAddress && !address) {
-                      setAddress(locationHint.formattedAddress.split(",").slice(0, 3).join(","));
-                      clearError("address");
-                    }
-                  }
-                }}
-                height="220px"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Latitude (-90 to 90) *</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={latitude}
-                  onChange={e => {
-                    setLatitude(parseFloat(e.target.value) || 0);
-                    clearError("latitude");
-                  }}
-                  className={cn(
-                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white font-mono focus:outline-hidden",
-                    errors.latitude ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                  )}
-                />
-                {errors.latitude && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" />
-                    <span>{errors.latitude}</span>
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Longitude (-180 to 180) *</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={longitude}
-                  onChange={e => {
-                    setLongitude(parseFloat(e.target.value) || 0);
-                    clearError("longitude");
-                  }}
-                  className={cn(
-                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white font-mono focus:outline-hidden",
-                    errors.longitude ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-purple-500"
-                  )}
-                />
-                {errors.longitude && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" />
-                    <span>{errors.longitude}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Standardized Operating Hours & Schedule Selector */}
-            <StoreScheduleSelector
-              value={operatingHours}
-              onChange={(val) => setOperatingHours(val)}
-            />
-
-            {/* Store Menu Cards, Ambience Photos & Amenities */}
-            <StoreMediaAndAmenitiesSection
-              menuImages={menuImages}
-              photos={photos}
-              amenities={amenities}
-              onMenuImagesChange={setMenuImages}
-              onPhotosChange={setPhotos}
-              onAmenitiesChange={setAmenities}
-              categoryHint={selectedMerchant?.categoryName || "Dining"}
-            />
-
-            {/* Store Branch Manager & Login Access Credentials */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-[#121626] border border-indigo-200/80 dark:border-indigo-900/60 space-y-3.5">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
-                  <UserCheck size={16} />
-                </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 dark:text-white text-xs">
-                    Store Manager & Access Credentials
-                  </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Provisions branch manager with Merchant Portal & POS terminal login access
-                  </p>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Branch Outlet Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={branchName}
+                    onChange={(e) => setBranchName(e.target.value)}
+                    placeholder="e.g. Indiranagar Luxury Dining"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold focus:outline-hidden focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Branch Contact Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+91 712 2550000"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <StoreScheduleSelector
+                  value={operatingHours}
+                  onChange={(val) => setOperatingHours(val)}
+                />
+              </div>
+            )}
+
+            {/* STEP 2: LOCATION & GPS MAP */}
+            {currentStep === 2 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <IndiaAddressFields
+                  state={state}
+                  district={district}
+                  city={city}
+                  pincode={pincode}
+                  address={address}
+                  onStateChange={(v) => setState(v)}
+                  onDistrictChange={(v) => setDistrict(v)}
+                  onCityChange={(v) => setCity(v)}
+                  onPincodeChange={(v) => setPincode(v)}
+                  onAddressChange={(v) => setAddress(v)}
+                />
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between text-xs">
+                    <span>Pinpoint Location on Map *</span>
+                    <span className="text-[11px] font-normal text-purple-600 dark:text-purple-400">Click or drag pin</span>
+                  </label>
+                  <StoreLocationPicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    city={city}
+                    state={state}
+                    storeName={branchName || "Store Location"}
+                    onChange={(newLat, newLng, locationHint) => {
+                      setLatitude(newLat);
+                      setLongitude(newLng);
+                      if (locationHint) {
+                        if (locationHint.state) setState(locationHint.state);
+                        if (locationHint.district) setDistrict(locationHint.district);
+                        if (locationHint.city) setCity(locationHint.city);
+                        if (locationHint.pincode) setPincode(locationHint.pincode);
+                        if (locationHint.formattedAddress && !address) {
+                          setAddress(locationHint.formattedAddress.split(",").slice(0, 3).join(","));
+                        }
+                      }
+                    }}
+                    height="200px"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Latitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={latitude}
+                      onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Longitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={longitude}
+                      onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                    />
+                  </div>
                 </div>
               </div>
+            )}
 
-              <div className="p-2.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-100/80 dark:border-indigo-900/40 flex items-start gap-2 text-[11px] text-indigo-900 dark:text-indigo-200">
-                <Mail size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-                <span>
-                  A secure 1-time password setup link (<span className="font-mono text-[10px] bg-white/70 dark:bg-slate-900/60 px-1 py-0.5 rounded">/accept-invite?token=...</span>) will be automatically emailed to this manager.
-                </span>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Manager Full Name</label>
-                <input
-                  type="text"
-                  value={managerName}
-                  onChange={e => {
-                    setManagerName(e.target.value);
-                    clearError("managerName");
-                  }}
-                  placeholder="e.g. Rajesh Sharma"
-                  className={cn(
-                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-hidden",
-                    errors.managerName ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-indigo-500"
-                  )}
+            {/* STEP 3: MENUS, PHOTOS & AMENITIES */}
+            {currentStep === 3 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <StoreMediaAndAmenitiesSection
+                  menuImages={menuImages}
+                  photos={photos}
+                  amenities={amenities}
+                  onMenuImagesChange={setMenuImages}
+                  onPhotosChange={setPhotos}
+                  onAmenitiesChange={setAmenities}
+                  categoryHint={selectedMerchant?.categoryName || "Dining"}
                 />
-                {errors.managerName && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" />
-                    <span>{errors.managerName}</span>
-                  </p>
-                )}
               </div>
+            )}
 
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                  <span>Manager Work Email</span>
-                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">Login Identifier</span>
-                </label>
-                <input
-                  type="email"
-                  value={managerEmail}
-                  onChange={e => {
-                    setManagerEmail(e.target.value);
-                    clearError("managerEmail");
-                  }}
-                  onBlur={handleManagerEmailBlur}
-                  placeholder="e.g. rajesh.store@brand.com"
-                  className={cn(
-                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-hidden",
-                    errors.managerEmail ? "border-amber-500 ring-1 ring-amber-500/20" : "border-slate-200 dark:border-slate-700 focus:border-indigo-500"
-                  )}
-                />
-                {errors.managerEmail && (
-                  <div className="p-3 rounded-xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-[12px] text-rose-900 dark:text-rose-200 flex items-start gap-2.5 mt-2 shadow-xs animate-in fade-in">
-                    <AlertCircle size={15} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                    <div className="leading-relaxed font-medium">
-                      {errors.managerEmail}
+            {/* STEP 4: MANAGER & ACCESS CREDENTIALS */}
+            {currentStep === 4 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                {/* Summary Review Card */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300 block">
+                    Branch Summary Review
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Brand & Outlet:</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{branchName || "Outlet"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Location:</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200">{city}, {state}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Media Prepared:</span>
+                      <span className="font-medium text-amber-700 dark:text-amber-300">
+                        🍽️ {menuImages.length} menu • 📸 {photos.length} photos
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Amenities:</span>
+                      <span className="font-medium text-emerald-700 dark:text-emerald-300">
+                        ✨ {amenities.length} selected
+                      </span>
                     </div>
                   </div>
-                )}
-                {!errors.managerEmail && managerEmailNotice && (
-                  <div className="p-2.5 rounded-xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-[12px] text-indigo-900 dark:text-indigo-200 flex items-start gap-2 mt-2 shadow-xs animate-in fade-in">
-                    <CheckCircle2 size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-                    <div className="leading-relaxed font-medium">
-                      {managerEmailNotice}
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-[#121626] border border-indigo-200/80 dark:border-indigo-900/60 space-y-3.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
+                      <UserCheck size={16} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-xs">
+                        Store Manager & Access Credentials
+                      </h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Provisions branch manager with Merchant Portal & POS terminal login
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
 
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Manager Mobile</label>
-                <input
-                  type="tel"
-                  value={managerPhone}
-                  onChange={e => {
-                    setManagerPhone(e.target.value);
-                    clearError("managerPhone");
-                  }}
-                  onBlur={handleManagerPhoneBlur}
-                  placeholder="9822100000"
-                  className={cn(
-                    "mt-1 w-full px-3 py-2 rounded-xl border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white font-mono focus:outline-hidden",
-                    errors.managerPhone ? "border-rose-500 ring-1 ring-rose-500/20" : "border-slate-200 dark:border-slate-700 focus:border-indigo-500"
-                  )}
-                />
-                {errors.managerPhone && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" />
-                    <span>{errors.managerPhone}</span>
-                  </p>
-                )}
-              </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Manager Full Name</label>
+                    <input
+                      type="text"
+                      value={managerName}
+                      onChange={(e) => setManagerName(e.target.value)}
+                      placeholder="e.g. Rajesh Sharma"
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                    />
+                  </div>
 
-              <div className="pt-1 text-[10px] text-slate-400 flex items-center gap-1">
-                <KeyRound size={11} className="text-indigo-500" />
-                <span>Store Manager can sign in using Merchant Login directly upon setting password.</span>
-              </div>
-            </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                      <span>Manager Work Email</span>
+                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">Login Identifier</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={managerEmail}
+                      onChange={(e) => setManagerEmail(e.target.value)}
+                      placeholder="e.g. rajesh.store@brand.com"
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                    />
+                  </div>
 
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Manager Mobile</label>
+                    <input
+                      type="tel"
+                      value={managerPhone}
+                      onChange={(e) => setManagerPhone(e.target.value)}
+                      placeholder="9822100000"
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Stepper Action Buttons */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-60 flex items-center gap-1.5"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Verifying & Saving...</span>
-                  </>
-                ) : (
-                  <span>Save Branch</span>
+
+              <div className="flex items-center gap-2">
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep((s) => s - 1)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Back</span>
+                  </button>
                 )}
-              </button>
+
+                {currentStep < 4 ? (
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1"
+                  >
+                    <span>Next: {ADD_STEPS[currentStep]?.title}</span>
+                    <ChevronRight size={14} />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !branchName || !address}
+                    className="btn-gradient px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Registering Outlet...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check size={14} />
+                        <span>Register Store Branch</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </form>
         </aside>
@@ -2336,7 +2231,7 @@ function AddStoreDrawer({
   );
 }
 
-// Right-side Slide-over Drawer for Editing Existing Store Branch
+// Right-side Slide-over Drawer for Editing Existing Store Branch (Step-by-Step Wizard)
 function EditStoreDrawer({
   store,
   onClose,
@@ -2346,6 +2241,7 @@ function EditStoreDrawer({
   onClose: () => void;
   onSave: (updates: Partial<StoreType>) => void;
 }) {
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [branchName, setBranchName] = useState(store.branchName || "");
   const [phone, setPhone] = useState(store.phone || "");
   const [address, setAddress] = useState(store.address || "");
@@ -2355,11 +2251,17 @@ function EditStoreDrawer({
   const [pincode, setPincode] = useState(store.pincode || "440010");
   const [latitude, setLatitude] = useState(store.latitude || 21.1458);
   const [longitude, setLongitude] = useState(store.longitude || 79.0882);
-  const [operatingHours, setOperatingHours] = useState(store.operatingHours || "09:00 AM – 10:00 PM (Daily)");
+  const [operatingHours, setOperatingHours] = useState(store.operatingHours || "10:00 AM – 10:00 PM (Daily)");
   const [status, setStatus] = useState<StoreType["status"]>(store.status || "ACTIVE");
   const [menuImages, setMenuImages] = useState<string[]>(store.menuImages || []);
   const [photos, setPhotos] = useState<string[]>(store.photos || []);
   const [amenities, setAmenities] = useState<string[]>(store.amenities || []);
+
+  const EDIT_STEPS = [
+    { id: 1, title: "Basic Info", subtitle: "Name, Phone & Status" },
+    { id: 2, title: "Location", subtitle: "Address & Map" },
+    { id: 3, title: "Media", subtitle: "Menu & Amenities" },
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2386,6 +2288,7 @@ function EditStoreDrawer({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
         <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+          {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-pink-500/10 to-transparent gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
@@ -2393,7 +2296,7 @@ function EditStoreDrawer({
               </div>
               <div className="min-w-0">
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">Edit Store Branch</h3>
-                <p className="text-xs text-slate-400 truncate mt-0.5">Update branch details, phone & schedule</p>
+                <p className="text-xs text-slate-400 truncate mt-0.5">Step {currentStep} of 3 • {EDIT_STEPS[currentStep - 1]?.title}</p>
               </div>
             </div>
             <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors" title="Close drawer">
@@ -2401,120 +2304,171 @@ function EditStoreDrawer({
             </button>
           </div>
 
+          {/* Stepper Header */}
+          <FormStepper
+            steps={EDIT_STEPS}
+            currentStep={currentStep}
+            onStepClick={(s) => setCurrentStep(s)}
+          />
+
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Branch Name *</label>
-              <input
-                type="text"
-                required
-                value={branchName}
-                onChange={(e) => setBranchName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
-              />
-            </div>
+            {/* STEP 1: BASIC INFO & HOURS */}
+            {currentStep === 1 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Branch Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={branchName}
+                    onChange={(e) => setBranchName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-semibold focus:outline-hidden focus:border-purple-500"
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Contact Phone</label>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Contact Phone</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Operational Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as StoreType["status"])}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:border-purple-500"
+                  >
+                    <option value="ACTIVE">ACTIVE (Published on Customer Map)</option>
+                    <option value="INACTIVE">INACTIVE (Temporarily Hidden)</option>
+                    <option value="PENDING_APPROVAL">PENDING_APPROVAL (Under Verification)</option>
+                  </select>
+                </div>
+
+                <StoreScheduleSelector
+                  value={operatingHours}
+                  onChange={(val) => setOperatingHours(val)}
                 />
               </div>
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Store Map Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as StoreType["status"])}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
-                >
-                  <option value="ACTIVE">Active on Map</option>
-                  <option value="INACTIVE">Inactive / Closed</option>
-                  <option value="PENDING_APPROVAL">Pending Approval</option>
-                </select>
+            )}
+
+            {/* STEP 2: LOCATION & GPS MAP */}
+            {currentStep === 2 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <IndiaAddressFields
+                  state={state}
+                  district={district}
+                  city={city}
+                  pincode={pincode}
+                  address={address}
+                  onStateChange={setState}
+                  onDistrictChange={setDistrict}
+                  onCityChange={setCity}
+                  onPincodeChange={setPincode}
+                  onAddressChange={setAddress}
+                />
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-xs">Pinpoint Location on Map *</label>
+                  <StoreLocationPicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    city={city}
+                    state={state}
+                    storeName={branchName}
+                    height="200px"
+                    onChange={(lat, lng) => {
+                      setLatitude(lat);
+                      setLongitude(lng);
+                    }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Latitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={latitude}
+                      onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Longitude</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={longitude}
+                      onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Standardized Operating Hours & Schedule Selector */}
-            <StoreScheduleSelector
-              value={operatingHours}
-              onChange={(newSchedule) => setOperatingHours(newSchedule)}
-            />
-
-            {/* Pre-populated Indian Address Fields */}
-            <IndiaAddressFields
-              state={state}
-              district={district}
-              city={city}
-              pincode={pincode}
-              address={address}
-              onStateChange={setState}
-              onDistrictChange={setDistrict}
-              onCityChange={setCity}
-              onPincodeChange={setPincode}
-              onAddressChange={setAddress}
-            />
-
-            {/* Location Map Picker */}
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1 text-xs">Pinpoint Location on Map *</label>
-              <StoreLocationPicker
-                latitude={latitude}
-                longitude={longitude}
-                city={city}
-                state={state}
-                storeName={branchName}
-                height="180px"
-                onChange={(lat, lng) => {
-                  setLatitude(lat);
-                  setLongitude(lng);
-                }}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Latitude</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={latitude}
-                  onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
+            {/* STEP 3: MENUS, PHOTOS & AMENITIES */}
+            {currentStep === 3 && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <StoreMediaAndAmenitiesSection
+                  menuImages={menuImages}
+                  photos={photos}
+                  amenities={amenities}
+                  onMenuImagesChange={setMenuImages}
+                  onPhotosChange={setPhotos}
+                  onAmenitiesChange={setAmenities}
+                  categoryHint="Dining"
                 />
               </div>
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Longitude</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={longitude}
-                  onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white"
-                />
-              </div>
-            </div>
+            )}
 
-            {/* Store Menu Cards, Ambience Photos & Amenities */}
-            <StoreMediaAndAmenitiesSection
-              menuImages={menuImages}
-              photos={photos}
-              amenities={amenities}
-              onMenuImagesChange={setMenuImages}
-              onPhotosChange={setPhotos}
-              onAmenitiesChange={setAmenities}
-              categoryHint="Dining"
-            />
-
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
+            {/* Bottom Navigation Buttons */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              >
                 Cancel
               </button>
-              <button type="submit" className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md">
-                Save Store Changes
-              </button>
+
+              <div className="flex items-center gap-2">
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep((s) => s - 1)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Back</span>
+                  </button>
+                )}
+
+                {currentStep < 3 ? (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep((s) => s + 1)}
+                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1"
+                  >
+                    <span>Next: {EDIT_STEPS[currentStep]?.title}</span>
+                    <ChevronRight size={14} />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="btn-gradient px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1.5"
+                  >
+                    <Check size={14} />
+                    <span>Save Store Changes</span>
+                  </button>
+                )}
+              </div>
             </div>
           </form>
         </aside>
