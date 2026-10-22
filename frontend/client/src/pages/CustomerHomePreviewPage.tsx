@@ -182,14 +182,33 @@ export default function CustomerHomePreviewPage() {
   const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+  const [cart, setCart] = useState<Record<string, number>>({});
   const [seconds, setSeconds] = useState(10);
+  const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
   const [userLocation, setUserLocation] = useState({
     name: "100ft Rd, Indiranagar",
     city: "Bengaluru, Karnataka",
-    latitude: 21.1458,
-    longitude: 79.0882,
+    latitude: 12.9716,
+    longitude: 77.6412,
     radiusKm: 15.0
   });
+
+  const PRESET_LOCATIONS = [
+    {
+      name: "100ft Rd, Indiranagar",
+      city: "Bengaluru, Karnataka",
+      latitude: 12.9716,
+      longitude: 77.6412,
+      radiusKm: 15.0
+    },
+    {
+      name: "West High Court Rd, Dharampeth",
+      city: "Nagpur, Maharashtra",
+      latitude: 21.1458,
+      longitude: 79.0882,
+      radiusKm: 15.0
+    }
+  ];
 
   const fetchNearbyOffers = async () => {
     setLoading(true);
@@ -235,7 +254,7 @@ export default function CustomerHomePreviewPage() {
               dealPrice: deal,
               originalPrice: orig,
               discountPct: pct,
-              discountBadge: pct > 0 ? `${pct}% OFF` : (item.badgeText || "DEAL"),
+              discountBadge: item.badgeText || (pct > 0 ? `${pct}% OFF` : "DEAL"),
               imageUrl: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
               merchantName: item.merchant?.name,
               storeName: item.branch?.name
@@ -482,20 +501,57 @@ export default function CustomerHomePreviewPage() {
               </div>
 
               {/* Location Selector */}
-              <button
-                type="button"
-                onClick={() => toast.info("Location locked to partner region for deal discovery")}
-                className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 transition-colors max-w-[170px] rounded-lg text-left"
-              >
-                <MapPin className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                <div className="overflow-hidden">
-                  <p className="text-[11px] font-bold text-slate-800 leading-tight truncate">{userLocation.name}</p>
-                  <p className="text-[9px] text-slate-500 truncate leading-none">{userLocation.city}</p>
-                </div>
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsLocationMenuOpen((v) => !v)}
+                  className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 transition-colors max-w-[170px] rounded-lg text-left cursor-pointer"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                  <div className="overflow-hidden">
+                    <p className="text-[11px] font-bold text-slate-800 leading-tight truncate">{userLocation.name}</p>
+                    <p className="text-[9px] text-slate-500 truncate leading-none">{userLocation.city}</p>
+                  </div>
+                </button>
+
+                {isLocationMenuOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 text-slate-900">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-2 py-1">
+                      Select GPS Discovery Point
+                    </span>
+                    {PRESET_LOCATIONS.map((loc, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setUserLocation(loc);
+                          setIsLocationMenuOpen(false);
+                          toast.success(`Switched GPS point to ${loc.name}`);
+                        }}
+                        className={cn(
+                          "w-full text-left p-2 rounded-lg text-xs transition-colors cursor-pointer flex items-start gap-2",
+                          userLocation.name === loc.name ? "bg-purple-50 text-purple-900 font-bold" : "hover:bg-slate-50 text-slate-700"
+                        )}
+                      >
+                        <MapPin size={12} className={userLocation.name === loc.name ? "text-purple-600 shrink-0 mt-0.5" : "text-slate-400 shrink-0 mt-0.5"} />
+                        <div className="min-w-0">
+                          <p className="truncate leading-tight">{loc.name}</p>
+                          <p className="text-[10px] text-slate-400 font-normal leading-tight">{loc.city} ({loc.latitude}, {loc.longitude})</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Right Utilities */}
               <div className="flex items-center space-x-2 shrink-0">
+                {Object.values(cart).reduce((a, b) => a + b, 0) > 0 && (
+                  <div className="flex items-center bg-emerald-50 border border-emerald-300 px-2 py-0.5 space-x-1 rounded-md text-[10px] font-bold text-emerald-800 shadow-2xs animate-pulse">
+                    <ShoppingBag size={11} className="text-emerald-600" />
+                    <span>{Object.values(cart).reduce((a, b) => a + b, 0)} Cart</span>
+                  </div>
+                )}
                 <div className="flex items-center bg-amber-50 border border-amber-200/80 px-2 py-0.5 space-x-1 shadow-2xs rounded-md">
                   <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-[9px] font-black text-amber-900">
                     ₹
@@ -775,12 +831,19 @@ export default function CustomerHomePreviewPage() {
             <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
               {displayedProductDeals.map((p) => {
                 const prodKey = p.id;
+                const qty = cart[prodKey] || 0;
+                const isBogo = p.discountBadge?.toLowerCase().includes("buy") || p.discountBadge?.toLowerCase().includes("bogo");
                 return (
                   <div
                     key={prodKey}
-                    className="w-36 shrink-0 bg-white rounded-xl border border-slate-100 p-2.5 shadow-sm flex flex-col justify-between relative hover:shadow-md transition-shadow"
+                    className="w-36 shrink-0 bg-white rounded-xl border border-slate-100 p-2.5 shadow-sm flex flex-col justify-between relative hover:shadow-md transition-shadow group"
                   >
-                    <span className="absolute top-2 left-2 bg-rose-500 text-white font-extrabold text-[8px] px-1.5 py-0.5 rounded-md z-10 shadow-2xs">
+                    <span
+                      className={cn(
+                        "absolute top-2 left-2 text-white font-extrabold text-[8px] px-1.5 py-0.5 rounded-md z-10 shadow-2xs",
+                        isBogo ? "bg-amber-500" : "bg-rose-500"
+                      )}
+                    >
                       {p.discountBadge || `${p.discountPct}% OFF`}
                     </span>
                     <button
@@ -794,10 +857,10 @@ export default function CustomerHomePreviewPage() {
                         className={favorites[prodKey] ? "fill-rose-500 text-rose-500" : "text-slate-300"}
                       />
                     </button>
-                    <div className="h-24 w-full flex items-center justify-center p-2 mb-1 bg-slate-50/50 rounded-lg">
+                    <div className="h-24 w-full flex items-center justify-center p-2 mb-1 bg-white rounded-lg overflow-hidden">
                       <img
                         alt={p.title}
-                        className="max-h-full max-w-full object-contain"
+                        className="max-h-full max-w-full object-contain transition-transform duration-200 group-hover:scale-105"
                         src={p.imageUrl}
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
@@ -825,14 +888,23 @@ export default function CustomerHomePreviewPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          toast.success(`Added "${p.title}" to cart!`, {
-                            description: `Store deal: ₹${p.dealPrice} ${p.originalPrice ? `(MRP ₹${p.originalPrice})` : ""}`
+                          setCart((prev) => {
+                            const next = (prev[prodKey] || 0) + 1;
+                            toast.success(`Added "${p.title}" to cart! (${next} in cart)`, {
+                              description: `Store deal: ₹${p.dealPrice} ${p.originalPrice ? `(MRP ₹${p.originalPrice})` : ""}`
+                            });
+                            return { ...prev, [prodKey]: next };
                           });
                         }}
-                        className="w-full py-1.5 border border-emerald-600 text-emerald-700 hover:bg-emerald-50 rounded-lg text-[10px] font-bold flex items-center justify-center space-x-1 transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                        className={cn(
+                          "w-full py-1.5 border rounded-lg text-[10px] font-bold flex items-center justify-center space-x-1 transition-all cursor-pointer active:scale-95 shadow-2xs",
+                          qty > 0
+                            ? "bg-emerald-600 border-emerald-600 text-white shadow-emerald-500/20"
+                            : "border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                        )}
                       >
                         <Plus size={12} strokeWidth={2.5} />
-                        <span>Add to Cart</span>
+                        <span>{qty > 0 ? `In Cart (${qty})` : "Add to Cart"}</span>
                       </button>
                     </div>
                   </div>

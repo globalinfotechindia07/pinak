@@ -31,6 +31,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -483,7 +484,8 @@ public class OfferServiceImpl implements OfferService {
         offer.setBonusCoins(request.bonusCoins() != null ? request.bonusCoins() : 100);
         offer.setImageUrl(request.imageUrl());
         offer.setBadgeText(request.badgeText());
-        offer.setCtaText(request.ctaText() != null ? request.ctaText() : "Book & Pay");
+        String defaultCta = "PRODUCT".equalsIgnoreCase(offer.getOfferScope()) ? "Add to Cart" : "Book & Pay";
+        offer.setCtaText(request.ctaText() != null ? request.ctaText() : defaultCta);
 
         // Super Admin offers are pre-approved and immediately ACTIVE
         offer.setStatus(OfferStatus.ACTIVE);
@@ -737,11 +739,12 @@ public class OfferServiceImpl implements OfferService {
         List<Offer> offers = new ArrayList<>();
         String scopeFilter = (type != null && !type.isBlank()) ? type.toUpperCase() : "SERVICE";
 
+        List<Store> nearbyStoreList = new ArrayList<>();
         if (latitude != null && longitude != null) {
             double radiusMeters = (radiusKm != null && radiusKm > 0 ? radiusKm : 5.0) * 1000.0;
             Page<Store> nearbyStores = storeRepository.findNearbyApprovedStores(
                     latitude, longitude, radiusMeters, org.springframework.data.domain.PageRequest.of(0, 50));
-            List<Store> nearbyStoreList = nearbyStores.getContent();
+            nearbyStoreList = nearbyStores.getContent();
             List<UUID> storeIds = nearbyStoreList.stream().map(Store::getId).toList();
             List<UUID> merchantIds = nearbyStoreList.stream()
                     .map(Store::getMerchantId)
@@ -830,7 +833,8 @@ public class OfferServiceImpl implements OfferService {
                     o.getOriginalMrp(),
                     sellingPrice,
                     o.getIsFlash() != null ? o.getIsFlash() : false,
-                    o.getRemainingQuantity() != null ? o.getRemainingQuantity() : 50
+                    o.getRemainingQuantity() != null ? o.getRemainingQuantity() : 50,
+                    o.getBadgeText()
             ));
         }
 

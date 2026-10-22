@@ -1091,11 +1091,15 @@ export default function Home() {
         ? (draft.type === "FLAT_AMT" ? (draft.originalPrice - draft.dealPrice) : Math.round(((draft.originalPrice - draft.dealPrice) / draft.originalPrice) * 100))
         : (Number(draft.value) || 20);
 
+      const resolvedDescription = isProduct
+        ? (draft.unitOrWeight || draft.tagline || `Special store product deal at ${draft.merchantName || 'partner store'}`)
+        : (draft.tagline || draft.terms || draft.description || "Offer details");
+
       const payload: any = {
         merchantId: draft.merchantId,
         storeId: chosenStoreId,
         title: (draft.title || draft.productName || "Special Deal").trim(),
-        description: draft.tagline || draft.terms || draft.description || (isProduct ? `Special product deal at ${draft.merchantName || 'partner store'}` : "Offer details"),
+        description: resolvedDescription,
         termsAndConditions: draft.terms || "",
         offerType: draft.type === "FLAT_PCT" ? "PERCENTAGE_DISCOUNT" : (draft.type === "BOGO" ? "BUY_X_GET_Y" : "FIXED_DISCOUNT"),
         value: resolvedValue,

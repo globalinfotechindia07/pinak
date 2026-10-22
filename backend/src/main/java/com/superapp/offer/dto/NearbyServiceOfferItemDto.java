@@ -63,7 +63,10 @@ public record NearbyServiceOfferItemDto(
         Boolean isFlash,
 
         @Schema(description = "Remaining flash units stock")
-        Integer remainingQuantity
+        Integer remainingQuantity,
+
+        @Schema(description = "Deal badge text", example = "20% OFF")
+        String badgeText
 ) {
     public NearbyServiceOfferItemDto(
             String offerId,
@@ -83,7 +86,7 @@ public record NearbyServiceOfferItemDto(
     ) {
         this(offerId, title, subtitle, offerType, discountValue, maxDiscountAmount, minimumOrderAmount,
              merchant, branch, imageUrl, expiresAt, reward, ctaText, eligibilityStatus,
-             "SERVICE", null, null, false, null);
+             "SERVICE", null, null, false, null, null);
     }
     public record MerchantSummaryDto(
             String merchantId,

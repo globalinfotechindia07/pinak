@@ -32,7 +32,8 @@ import {
   Stethoscope,
   Shirt,
   HeartPulse,
-  Package
+  Package,
+  Upload
 } from "lucide-react";
 import { Offer, Store, Merchant } from "../types";
 import { offerCampaignSchema } from "../lib/validationSchemas";
@@ -99,12 +100,69 @@ const CURATED_IMAGES = {
     { label: "Health & Dental", url: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80" }
   ],
   STORE_PRODUCT: [
+    { label: "Amul Fresh Milk", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuDs3waAQbgzW6ulcWgCbnSxbpZN_13ZJXWzm4X2qAl0vMuum2WR04QFvNkO8dtZdx7jm6Hx-4Yv-UOTJvm_T1_zP-BjcNgu-n36fI1NJbiNiDN6iATJvnTI3PZFH9s3mrPOOkbC6anaq1aeOnanPe9Jc7mJ3mhPvignPOty3w2-rM7g19DmmRog4WK1HSwTg6I3iNANpsvacjgVB8XlD2SaJ5lauRM86etGCZnk70_yZwEM-f1ui0Vd" },
+    { label: "Basmati Rice", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuAz3pTi8RkZpVw-Mr8tM5TAVW9Dl52lt8OT816AYoIq9TJciz5RZiVqam6VcVx6sW0eHkx1AIsMU_2cJQnOVUCV_IsPb5ebrpge7RJgrt7_UolSuNwhci2MERrxPmWqzsSDf9lIz1ejVVwqN1p2Tqt7z2H8zJcBLccInJxlWFHuXUO9pdnl62dGbzHOHafQcu5_8dty0RVNA6-oxEzRekQ_W5lhkTuggAod0xEPnSZqWT2hebkFAl3V" },
+    { label: "Maggi Noodles", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD85STcU1nutJDJ0krl4bTkoIPmaJ4PD8EjDXxLt-3Wn97ov26ZRK_SgQz8XHHhygaSlXOwxm0aLDFgmOu9U2WwN_95PeXogGINTBsN7dXzUQy2oBGxucmNu9hQEbQmEHzwp5jNKXMetSnvoYnYlLJefb5wPnXog5WI-ZbK496lXs2rlF6L_D7_gM36Sat4HKXCWbX4zLOgCJftTO1Y9PBzQcX7uXfvPaYD0tsmT6Klx91ng021rARr" },
+    { label: "Dettol Handwash", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCT4YsSGn2-d3Ilg8GHUkjkbinPLHR9X7q1_ktSZMPpciUeZoEQEfzw0LYfSquH_5RyfBDIkaosS0Je6owvBIo-sDrn7OO0OBVdhRUVGkPxJJ0k1ju-EDmtXI5ajKvspfNIgdQctKkkZbXNRLJGJcSayNJgveLO7508KddEnkITFslKiMq3BsawnrhljZliemhFYYh4ImVZE-DuRIrI932ZwijmQEMqdv9LeTOwdA4KGdN488AuFMeH" },
+    { label: "Stanley Hammer", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuBdLPvNB0gngUt-ujV1sfzj6KGKpuoYJ5Zy68KjG0y1lOvGHx8a_FqXWold9KzYAkdgq4NHXMBc8sSqBiejzd4WpS-SB76zcwbkGXEq9Pe3ntKM4Vmo1XR8LZLgVbm9JfSa7-E-lEf0xB2X--imbz0tIZH0LMxoQ654s5_py6rGYrbv2tE5lRD-qpawWz8Qd3Tv6xjcd2VcEeGziNoRZ-Xyfjp6WeLK6bRSxWanjCq5stC_t_0Cb6kM" },
     { label: "Grocery Ration", url: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80" },
-    { label: "Fresh Milk Dairy", url: "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=800&q=80" },
     { label: "ANC Earbuds", url: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80" },
     { label: "Cotton Tees", url: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80" }
   ]
 };
+
+const PRODUCT_PRESETS = [
+  {
+    label: "Amul Fresh Milk",
+    name: "Amul Fresh Milk",
+    unit: "1 Litre",
+    mrp: 65,
+    deal: 52,
+    badge: "20% OFF",
+    cat: "DAIRY",
+    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuDs3waAQbgzW6ulcWgCbnSxbpZN_13ZJXWzm4X2qAl0vMuum2WR04QFvNkO8dtZdx7jm6Hx-4Yv-UOTJvm_T1_zP-BjcNgu-n36fI1NJbiNiDN6iATJvnTI3PZFH9s3mrPOOkbC6anaq1aeOnanPe9Jc7mJ3mhPvignPOty3w2-rM7g19DmmRog4WK1HSwTg6I3iNANpsvacjgVB8XlD2SaJ5lauRM86etGCZnk70_yZwEM-f1ui0Vd"
+  },
+  {
+    label: "India Gate Basmati Rice",
+    name: "India Gate Basmati Rice",
+    unit: "5 kg",
+    mrp: 600,
+    deal: 540,
+    badge: "10% OFF",
+    cat: "GROCERY",
+    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuAz3pTi8RkZpVw-Mr8tM5TAVW9Dl52lt8OT816AYoIq9TJciz5RZiVqam6VcVx6sW0eHkx1AIsMU_2cJQnOVUCV_IsPb5ebrpge7RJgrt7_UolSuNwhci2MERrxPmWqzsSDf9lIz1ejVVwqN1p2Tqt7z2H8zJcBLccInJxlWFHuXUO9pdnl62dGbzHOHafQcu5_8dty0RVNA6-oxEzRekQ_W5lhkTuggAod0xEPnSZqWT2hebkFAl3V"
+  },
+  {
+    label: "Maggi 2-Min Noodles",
+    name: "Maggi 2-Min Noodles",
+    unit: "70 g",
+    mrp: 32,
+    deal: 28,
+    badge: "Buy 2 Get 1",
+    cat: "PACKAGED_FOOD",
+    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD85STcU1nutJDJ0krl4bTkoIPmaJ4PD8EjDXxLt-3Wn97ov26ZRK_SgQz8XHHhygaSlXOwxm0aLDFgmOu9U2WwN_95PeXogGINTBsN7dXzUQy2oBGxucmNu9hQEbQmEHzwp5jNKXMetSnvoYnYlLJefb5wPnXog5WI-ZbK496lXs2rlF6L_D7_gM36Sat4HKXCWbX4zLOgCJftTO1Y9PBzQcX7uXfvPaYD0tsmT6Klx91ng021rARr"
+  },
+  {
+    label: "Dettol Handwash",
+    name: "Dettol Handwash",
+    unit: "200 ml",
+    mrp: 140,
+    deal: 98,
+    badge: "30% OFF",
+    cat: "PERSONAL_CARE",
+    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCT4YsSGn2-d3Ilg8GHUkjkbinPLHR9X7q1_ktSZMPpciUeZoEQEfzw0LYfSquH_5RyfBDIkaosS0Je6owvBIo-sDrn7OO0OBVdhRUVGkPxJJ0k1ju-EDmtXI5ajKvspfNIgdQctKkkZbXNRLJGJcSayNJgveLO7508KddEnkITFslKiMq3BsawnrhljZliemhFYYh4ImVZE-DuRIrI932ZwijmQEMqdv9LeTOwdA4KGdN488AuFMeH"
+  },
+  {
+    label: "Stanley Hammer",
+    name: "Stanley Hammer",
+    unit: "500 g",
+    mrp: 400,
+    deal: 340,
+    badge: "15% OFF",
+    cat: "HARDWARE",
+    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuBdLPvNB0gngUt-ujV1sfzj6KGKpuoYJ5Zy68KjG0y1lOvGHx8a_FqXWold9KzYAkdgq4NHXMBc8sSqBiejzd4WpS-SB76zcwbkGXEq9Pe3ntKM4Vmo1XR8LZLgVbm9JfSa7-E-lEf0xB2X--imbz0tIZH0LMxoQ654s5_py6rGYrbv2tE5lRD-qpawWz8Qd3Tv6xjcd2VcEeGziNoRZ-Xyfjp6WeLK6bRSxWanjCq5stC_t_0Cb6kM"
+  }
+];
 
 export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = ({
   merchants = [],
@@ -167,6 +225,9 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   // For Store Product Deals
   const [productName, setProductName] = useState<string>(
     initialData?.scopeType === "PRODUCT" ? initialData.title || "" : ""
+  );
+  const [unitOrWeight, setUnitOrWeight] = useState<string>(
+    initialData?.unitOrWeight || (initialData?.scopeType === "PRODUCT" ? (initialData.tagline || "") : "")
   );
   const [productCategory, setProductCategory] = useState<string>(
     initialData?.productCategory || "GROCERY"
@@ -278,6 +339,40 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       setTitle(`${productName} - Special Store Deal`);
     }
   }, [productName, offerScope, title]);
+
+  const handleApplyProductPreset = (preset: typeof PRODUCT_PRESETS[0]) => {
+    setProductName(preset.name);
+    setUnitOrWeight(preset.unit);
+    setOriginalPrice(preset.mrp);
+    setDealPrice(preset.deal);
+    setBadgeText(preset.badge);
+    setProductCategory(preset.cat);
+    setImageUrl(preset.url);
+    setTitle(preset.name);
+    setTagline(preset.unit);
+    const calculatedDiscount = Math.round(((preset.mrp - preset.deal) / preset.mrp) * 100);
+    setValue(calculatedDiscount);
+    setMaxDiscount(preset.mrp - preset.deal);
+    toast.success(`Loaded "${preset.name}" product template!`);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 3 * 1024 * 1024) {
+        toast.error("Image file size must be less than 3MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (typeof event.target?.result === "string") {
+          setImageUrl(event.target.result);
+          toast.success("Product image uploaded successfully!");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Helper actions
   const toggleSlot = (slot: string) => {
@@ -497,7 +592,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         storeName: isChainWide ? "All Brand Outlets" : (selectedStore?.branchName || selectedStore?.storeName || "Branch Outlet"),
         applicableStoreIds: isChainWide ? [] : (resolvedStoreId ? [resolvedStoreId] : []),
         title: finalTitle,
-        tagline: tagline.trim() || (isProduct && originalPrice ? `MRP ₹${originalPrice} • Special Store Deal` : ""),
+        tagline: isProduct && unitOrWeight ? unitOrWeight.trim() : (tagline.trim() || (isProduct && originalPrice ? `MRP ₹${originalPrice} • Special Store Deal` : "")),
+        unitOrWeight: isProduct && unitOrWeight ? unitOrWeight.trim() : undefined,
         type,
         value: resolvedValue,
         maxDiscount: resolvedMaxDiscount,
@@ -1134,17 +1230,56 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     </div>
 
                     <div className="space-y-3 pt-1">
-                      <div>
-                        <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                          Product Item Name *
-                        </label>
-                        <input
-                          type="text"
-                          value={productName}
-                          onChange={(e) => setProductName(e.target.value)}
-                          placeholder="e.g. Amul Taaza Toned Milk (1 Litre Tetra Pak) or Atta 10kg Combo"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold mt-1"
-                        />
+                      {/* 1-Click Popular Product Presets from code.html */}
+                      <div className="space-y-1.5 pb-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                            <Sparkles size={12} className="text-amber-500" />
+                            <span>1-Click Popular Catalog Products (from App Design)</span>
+                          </span>
+                          <span className="text-[9px] text-slate-400">Loads photo, MRP & pack size</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {PRODUCT_PRESETS.map((p, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleApplyProductPreset(p)}
+                              className="px-2 py-1 rounded-xl text-[11px] font-semibold bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 hover:border-emerald-600 hover:bg-emerald-50 text-slate-700 dark:text-slate-200 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs group"
+                            >
+                              <img src={p.url} alt={p.name} className="w-4 h-4 object-contain rounded" />
+                              <span className="group-hover:text-emerald-700 dark:group-hover:text-emerald-400 font-bold">{p.label}</span>
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-mono font-bold">{p.badge}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                            Product Item Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={productName}
+                            onChange={(e) => setProductName(e.target.value)}
+                            placeholder="e.g. Amul Fresh Milk"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold mt-1"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                            Pack Size / Unit (e.g. 1 Litre, 5 kg) *
+                          </label>
+                          <input
+                            type="text"
+                            value={unitOrWeight}
+                            onChange={(e) => setUnitOrWeight(e.target.value)}
+                            placeholder="e.g. 1 Litre, 5 kg, 200 ml, 70 g"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium mt-1"
+                          />
+                        </div>
                       </div>
 
                       {/* Product Department / Category Pills */}
@@ -1613,13 +1748,46 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     ))}
                   </div>
 
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="url"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://... or paste image URL / upload from computer"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                    />
+                    <label className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0">
+                      <Upload size={13} className="text-pink-600" />
+                      <span>Upload Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                  {imageUrl && (
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                      <img
+                        src={imageUrl}
+                        alt="Preview"
+                        className="w-12 h-12 object-contain rounded-lg bg-white border border-slate-200 dark:border-slate-700 p-0.5"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80";
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 block truncate">
+                          Image Connected to Offer
+                        </span>
+                        <span className="text-[9px] text-slate-400 block truncate font-mono">
+                          {imageUrl.startsWith("data:") ? "Local Upload (Data URL)" : imageUrl}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Terms and Conditions */}
