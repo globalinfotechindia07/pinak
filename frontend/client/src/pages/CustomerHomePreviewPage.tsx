@@ -93,6 +93,115 @@ interface ProductDeal {
   storeName?: string;
 }
 
+interface FeaturedMerchant {
+  merchantId: string;
+  name: string;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  categoryName?: string;
+  rating?: {
+    average: number;
+    count: number;
+  };
+  distanceMeters?: number;
+  featuredLabel?: string;
+  bestOffer?: {
+    offerId?: string;
+    label?: string;
+  };
+  isVerified?: boolean;
+}
+
+function getStoreInitialsAndColor(name: string) {
+  const lower = name.toLowerCase();
+  if (lower.includes("bigbasket")) return { initials: "bb", bg: "bg-red-100 text-red-600" };
+  if (lower.includes("reliance")) return { initials: "RF", bg: "bg-blue-100 text-blue-700" };
+  if (lower.includes("sharma")) return { initials: "SK", bg: "bg-amber-100 text-amber-800" };
+  if (lower.includes("more")) return { initials: "more", bg: "bg-orange-100 text-orange-700" };
+  if (lower.includes("haldiram")) return { initials: "H", bg: "bg-rose-100 text-rose-700" };
+  if (lower.includes("canteen") || lower.includes("bombay")) return { initials: "TBC", bg: "bg-emerald-100 text-emerald-800" };
+  
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 2) {
+    return { initials: (words[0][0] + words[1][0]).toUpperCase(), bg: "bg-purple-100 text-purple-700" };
+  }
+  return { initials: name.slice(0, 2).toUpperCase(), bg: "bg-purple-100 text-purple-700" };
+}
+
+function getStoreBadgeTextAndBg(offerLabel?: string) {
+  if (!offerLabel) return { text: "Featured Partner", bg: "bg-purple-700" };
+  const lower = offerLabel.toLowerCase();
+  if (lower.includes("10%")) return { text: "10% OFF", bg: "bg-emerald-700" };
+  if (lower.includes("flat") || lower.includes("100")) return { text: "Flat ₹100 Off", bg: "bg-rose-600" };
+  if (lower.includes("free")) return { text: "Free Delivery", bg: "bg-emerald-600" };
+  if (lower.includes("20%")) return { text: "Up to 20% OFF", bg: "bg-purple-700" };
+  if (lower.includes("30%")) return { text: "30% OFF", bg: "bg-amber-600" };
+  if (lower.includes("40%")) return { text: "40% OFF", bg: "bg-rose-600" };
+  return { text: "Special Deal", bg: "bg-purple-700" };
+}
+
+interface PopularCollection {
+  id: string;
+  title: string;
+  subtitle?: string;
+  coverImageUrl?: string;
+  badgeText?: string;
+  displayOrder?: number;
+}
+
+interface FlashDealItem {
+  offerId: string;
+  title: string;
+  imageUrl?: string;
+  badgeText?: string;
+  offerType?: string;
+  price?: {
+    currency: string;
+    sellingPrice: number;
+    mrp: number;
+  };
+  startsAt?: string;
+  endsAt?: string;
+  remainingQuantity?: number;
+  branchId?: string;
+  eligibilityStatus?: string;
+}
+
+interface RecentlyViewedItem {
+  id: string;
+  title: string;
+  unit: string;
+  dealPrice: number;
+  originalPrice: number;
+  imageUrl: string;
+}
+
+interface RecommendationItem {
+  id: string;
+  title: string;
+  badge: string;
+  distanceCategory: string;
+  discountBadge: string;
+  imageUrl: string;
+}
+
+function getCollectionGradient(title: string) {
+  const lower = title.toLowerCase();
+  if (lower.includes("essential") || lower.includes("grocer")) {
+    return { bg: "from-amber-50 to-orange-50 border-orange-100", text: "text-orange-600" };
+  }
+  if (lower.includes("electron")) {
+    return { bg: "from-blue-50 to-indigo-50 border-indigo-100", text: "text-blue-600" };
+  }
+  if (lower.includes("home") || lower.includes("improv")) {
+    return { bg: "from-purple-50 to-pink-50 border-purple-100", text: "text-purple-600" };
+  }
+  if (lower.includes("beauty") || lower.includes("personal")) {
+    return { bg: "from-rose-50 to-pink-50 border-rose-100", text: "text-rose-600" };
+  }
+  return { bg: "from-sky-50 to-blue-50 border-sky-100", text: "text-sky-600" };
+}
+
 /**
  * Formats dynamic time-left expiry badge:
  * e.g., "45m left", "3h left", "Till Sun", "Till Mon", "5d left"
@@ -181,6 +290,9 @@ function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
 export default function CustomerHomePreviewPage() {
   const [offers, setOffers] = useState<NearbyOffer[]>([]);
   const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
+  const [featuredStores, setFeaturedStores] = useState<FeaturedMerchant[]>([]);
+  const [collections, setCollections] = useState<PopularCollection[]>([]);
+  const [flashDeals, setFlashDeals] = useState<FlashDealItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -265,6 +377,58 @@ export default function CustomerHomePreviewPage() {
       }
     } catch (err: any) {
       console.warn("Could not fetch live product deals:", err?.message);
+    }
+
+    try {
+      const fRes = await apiClient.get("/merchants/featured", {
+        params: {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          limit: 10
+        }
+      });
+      const fData = fRes.data?.data;
+      const fList = Array.isArray(fData?.merchants) ? fData.merchants : [];
+      if (fList.length > 0) {
+        setFeaturedStores(fList);
+      }
+    } catch (err: any) {
+      console.warn("Could not fetch live featured merchants:", err?.message);
+    }
+
+    try {
+      const cRes = await apiClient.get("/collections/popular", {
+        params: {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          radiusKm: userLocation.radiusKm || 15.0,
+          limit: 10,
+        },
+      });
+      const cData = cRes.data?.data;
+      const cList = Array.isArray(cData?.collections) ? cData.collections : [];
+      if (cList.length > 0) {
+        setCollections(cList);
+      }
+    } catch (err: any) {
+      console.warn("Could not fetch popular collections:", err?.message);
+    }
+
+    try {
+      const fRes = await apiClient.get("/offers/flash", {
+        params: {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          limit: 10,
+        },
+      });
+      const fData = fRes.data?.data;
+      const fList = Array.isArray(fData?.deals) ? fData.deals : [];
+      if (fList.length > 0) {
+        setFlashDeals(fList);
+      }
+    } catch (err: any) {
+      console.warn("Could not fetch live flash deals:", err?.message);
     } finally {
       setLoading(false);
     }
@@ -413,9 +577,149 @@ export default function CustomerHomePreviewPage() {
     }
   ];
 
+  // Fallback demo featured stores from code.html
+  const fallbackFeaturedStores: FeaturedMerchant[] = [
+    {
+      merchantId: "a1111111-1111-1111-1111-111111111101",
+      name: "BigBasket",
+      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDpywPVartWEpSPnrIqJ1fh271avfu6p7sqwKBxw3XBO_XZVFOrecXycpjLxoKWgLURGtfURISdqZldiRMsfNWNjiEGrdOxsnV9AUV8gLIB2giL2oXuL2lvzqEtpAWgK2gpPvUjNuz-hIC617u_1JLe65ZjEhCwKHSZSGqaA3655Cnw2cW8v6ZptHiJhETagFmz92tlrfQ_QnLwt6ax9cdOq8ALs-kbrCFP9MXzRpHqxsPtyJqUbcYn",
+      categoryName: "Supermarket",
+      rating: { average: 4.6, count: 1200 },
+      distanceMeters: 800,
+      bestOffer: { label: "10% off on select items" },
+      isVerified: true
+    },
+    {
+      merchantId: "a1111111-1111-1111-1111-111111111102",
+      name: "Reliance Fresh",
+      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCO5gXpRpjf8te01togUL-QPKYmCCQR71RnYMfy9GTE5Fd7MS4J1ZCiBy9ANigvj8tSWYe_rDg113vvdk7_kIPfeRjFypYicZ4D7JbNrw0uQJ9vidqFXPQoS0kmv6QNlNZiiSxnMn475kBBcV55qLV6ObkKUEq-ll_Xr1Mj47HSQaG1WlZh4iU8wcYhhdlE4og04O0iW_noithDS6cmsWUWlAzsyyPSkFf7-grB6uVCwc9j-qK-nvin",
+      categoryName: "Supermarket",
+      rating: { average: 4.4, count: 1200 },
+      distanceMeters: 1200,
+      bestOffer: { label: "Flat ₹100 off on ₹1,000+" },
+      isVerified: true
+    },
+    {
+      merchantId: "a1111111-1111-1111-1111-111111111103",
+      name: "Sharma Kirana Store",
+      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAY5mmetrbn8RyNFJem02htY14un3y2sTrwETInC-zBXecoT0uMNmktEE2eMtjDBn1C0qbUYBsqdTYKhwy2taVrUWzH40IvG6f5Ie68eUfgrhjs4JfY6gdh199RSbCQP79r_BCiGR0HKDpKvksLp-Z4a7vtHkqPKBSb_OqXXKLK_p_783yGo-dlGgSgYlE0ynS6pHfb5_-gIh_RDQe5pcvwMzllgxTqtAi-G-FEYoc3V9SwWXiUoG5O",
+      categoryName: "Kirana & Daily Needs",
+      rating: { average: 4.5, count: 1200 },
+      distanceMeters: 900,
+      bestOffer: { label: "Free delivery above ₹299" },
+      isVerified: true
+    },
+    {
+      merchantId: "a1111111-1111-1111-1111-111111111104",
+      name: "More Supermarket",
+      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuANYyKD7SnBu1JTaFAPSa6XnxWAZDVFZoLpeEKcjj3tdXQoyCzuuiWJj7INQSTeLK8fsWArMDPHN4d6i97-G2CasE1ufVtrBKW7MfDoRJtPWhyQQvi2JR8hklyw-wrLP7oesvK37V_M-kzV5HpV5zV16wdRcH46bRnHzSoTAWaD8_fr50wooKq1hko3H1hMZil584XQam6XP5cXRTRKIb4DojxpA7aM0A9anaEffgdlwHfTaw9f7aVW",
+      categoryName: "Supermarket",
+      rating: { average: 4.3, count: 1200 },
+      distanceMeters: 1600,
+      bestOffer: { label: "Up to 20% off" },
+      isVerified: true
+    }
+  ];
+
+  const fallbackCollections: PopularCollection[] = [
+    {
+      id: "11111111-1111-1111-1111-111111111103",
+      title: "Supermarket",
+      subtitle: "BigBasket, Reliance Fresh & more",
+      badgeText: "Up to 50% OFF",
+      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDpywPVartWEpSPnrIqJ1fh271avfu6p7sqwKBxw3XBO_XZVFOrecXycpjLxoKWgLURGtfURISdqZldiRMsfNWNjiEGrdOxsnV9AUV8gLIB2giL2oXuL2lvzqEtpAWgK2gpPvUjNuz-hIC617u_1JLe65ZjEhCwKHSZSGqaA3655Cnw2cW8v6ZptHiJhETagFmz92tlrfQ_QnLwt6ax9cdOq8ALs-kbrCFP9MXzRpHqxsPtyJqUbcYn"
+    },
+    {
+      id: "11111111-1111-1111-1111-111111111101",
+      title: "Dining",
+      subtitle: "The Bombay Canteen & Haldiram's Sweets & Snacks",
+      badgeText: "Up to 40% OFF",
+      coverImageUrl: "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&q=80"
+    },
+    {
+      id: "11111111-1111-1111-1111-111111111104",
+      title: "Kirana",
+      subtitle: "Sharma Kirana Store",
+      badgeText: "Up to 30% OFF",
+      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAY5mmetrbn8RyNFJem02htY14un3y2sTrwETInC-zBXecoT0uMNmktEE2eMtjDBn1C0qbUYBsqdTYKhwy2taVrUWzH40IvG6f5Ie68eUfgrhjs4JfY6gdh199RSbCQP79r_BCiGR0HKDpKvksLp-Z4a7vtHkqPKBSb_OqXXKLK_p_783yGo-dlGgSgYlE0ynS6pHfb5_-gIh_RDQe5pcvwMzllgxTqtAi-G-FEYoc3V9SwWXiUoG5O"
+    }
+  ];
+
+  const recentlyViewedItems: RecentlyViewedItem[] = [
+    {
+      id: "rv-1",
+      title: "Amul Fresh Milk",
+      unit: "1 Litre",
+      dealPrice: 52,
+      originalPrice: 65,
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuD_2XWCwUR-vNhnMYRogZE5BxOHD5tvFlIBEroQwTtHW3782cxy3J_gj1vQTpSKBJdMvqjy8uGwEfKsoub8Bz6B8zfkWU010CQQBmjfTVf3Q8UBUn6ZDjBFmV3VcD_86Hefg9c320lIlYsgoSCNfrJStXvebXbHLAj99C3p95gcc1NhXnR7X95qHgvmTGMAvTrjPA_nWw1AbqYLLRn7yA5-zw3SnXA0sQe1GsvonrO_tei27BYpopNq"
+    },
+    {
+      id: "rv-2",
+      title: "India 2-Min Noodles",
+      unit: "5 kg",
+      dealPrice: 28,
+      originalPrice: 32,
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuA6vFoAVk9qn4U7jVocOqgf-OGHkvKwvAogRWwRsWlCXowre5wTXmYAsFUwZaBqzUIB7aRjL4pF9ldDmoP3TrF8SpoivTaORak-zj8nIF0Ree480KEmjCuN_p002Ydor_34SMTq2YDAo0vO68NnXliOmDjnKPmo5UfUQgMosCnRoFrRLmV-Kboty0mEDhFC-gc6aybP9rI7NnLHWHYqXZg20k64AVVsqB1h7xsCnmAQACFP6kkizXBq"
+    },
+    {
+      id: "rv-3",
+      title: "Dettol Handwash",
+      unit: "700 ml",
+      dealPrice: 98,
+      originalPrice: 140,
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCreckqKusFoa5QW945b8RNx-6g_J9zlNcL9EOpa5N5sPX5_W0rirzxZLyn-ixoc70h5zgY4EtEVnAxAfIQ5VZ2nGNKdq72htR9Im24ymP7LxhYhCPxgXk3GHlkEz9ZkOItbTrn-D_WWyEzAbm6CDjpKK9hNKT2OLONmbrQHovAbR0oiYdU53t9-vnirA6GNZvUHzpwqoXjbruXIjecq58ZC0ZWtbxJtwyCdJRJSPol0fsRIhjdyx8s"
+    },
+    {
+      id: "rv-4",
+      title: "Stanley Hammer",
+      unit: "500 g",
+      dealPrice: 340,
+      originalPrice: 380,
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCoomq9l_nkiSS9_QY0zNOH9cSglU5ygxqQawl4XJF2SqdQ-YSZFMeqVNNpvygzzyAoGNT-a7Rpu5ZllgM3aLOTVFOvDw7FrjxFI9Bk7sVHr9ASdECHTJOKvxEDtD9PgDdA-UHUq7t8xu77vNVZtWofLdkR4lCWLw4HhvkGC26c8ljqtFNQvwJzK94a_Zw_TtTkQ7Sg9AOpfNDOf2QqyTDV0UXsh8Q28kf5BVAsNseqJZ9-_2pdyr2U"
+    },
+    {
+      id: "rv-5",
+      title: "India Gate Rice",
+      unit: "500 g",
+      dealPrice: 540,
+      originalPrice: 680,
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuABQbLqPxidkIWnahYpif8R4SXTzjTE4XR_muh0lM5OWwTckJrBPA7m5pb2HOoNdYQLLhSRfm-qxhgUcf9fnxYvVInulnossCNVC8C9zornP9VGa3bwBjffcXCgQSz9QyKtMZr-q8x0hp0VibXIG42zTwybQWJXQwOHY79cWHksPUbkfjpHAy_rIfgVQJCPh5tNNwkcorkxwR-wKKevEj2Y3OyxoHwP4Z2nqVLy19xi1jh5Oc_O6trw"
+    }
+  ];
+
+  const recommendedItems: RecommendationItem[] = [
+    {
+      id: "rec-1",
+      title: "Truffles Burgers",
+      badge: "Based on your dining visits",
+      distanceCategory: "800m • Burgers & Shakes",
+      discountBadge: "Flat 25% OFF",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAcQ6yo-UlptTXMC1ZgJc7hzg7i2kJi0aq51wlapezX3go7pXLpHBd2K9ID3IlqNyKHpUVeQJwwZi0CyX2y88MhTwn91rZBqSlvs1ohhREGDsl9A0wTmG-Mn944GPpAkIiTBRZHTN-7xpZzfJlfsvCfx6i_H_ogkun3JgU5gv-Xf0gndDNOPPpxiZWaZqpYGhR1ZFNCmz-1ekyF9Dj7hhEEAZ4hM_9P5a8XAkZbItSGLuNmq3paGSf8"
+    },
+    {
+      id: "rec-2",
+      title: "Cult.Fit Pro",
+      badge: "Trending near you",
+      distanceCategory: "850m • Fitness & Gym",
+      discountBadge: "3-Day Pass + 25% Off",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCAPF7nqQbm0sCbVW2LHPauye1ipsfVDS4mWNvDclJS_1YTH56g-pAlUbVg8eVHveT2czNkeEssn0ylzRKh2lE0yRBQKdBkZZY7WtDU-5Aio_DW5qhmx27ndpkUmFQqDylI7CACtvC0lkrBDKqce6hWHTmWfl265XymEkX1IZBlOUIeSIom5CY2IrVNLETtJgsiPLA-ThyJRE211fiVvYgtLnZo4ab5P8UqFQI64v_JBZoRBl7iZBEh"
+    },
+    {
+      id: "rec-3",
+      title: "Bodycraft Spa",
+      badge: "Similar to your interests",
+      distanceCategory: "1.2km • Salon & Wellness",
+      discountBadge: "Flat 30% Off Mon-Thu",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCfT45o6_G73TaXK_SHKiFckXQlmqa39zYZirk-zH-YMAN_sJLP5kWGJnJsgwX6jI3n_Yg75yIA1U4RqnO7s1KLF4bWr0-xrQyHoAGV4LZZTshdZGJ_EcSHZG7oQXzDB9G2bJXoE4JZ3KyOhsk6ihz9JwnXOwp7EyEd65us_X9RyfAZmLAcVaiZlDcO75PfGKC3zL0_hg0-kJB1Y5i-v6LGfOgVtfzB742B8je0OiAolc6PDUAZHRC7"
+    }
+  ];
+
   const rawOffers = offers.length > 0 ? offers : fallbackDemoOffers;
   const displayedServiceOffers = deduplicateOffersByStore(rawOffers);
   const displayedProductDeals = productDeals.length > 0 ? productDeals : fallbackDemoProducts;
+  const displayedFeaturedStores = featuredStores.length > 0 ? featuredStores : fallbackFeaturedStores;
+  const displayedCollections = collections.length > 0 ? collections : fallbackCollections;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center">
@@ -914,6 +1218,308 @@ export default function CustomerHomePreviewPage() {
             </div>
           </section>
 
+          {/* ========================================================= */}
+          {/* FEATURED STORES FOR ALL YOUR NEEDS (CONNECTED TO BACKEND API) */}
+          {/* ========================================================= */}
+          <section className="mb-5" data-purpose="featured-stores">
+            <div className="flex justify-between items-center px-4 mb-2.5">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-6 h-6 rounded-md bg-orange-100 text-orange-700 flex items-center justify-center text-xs">
+                  🏬
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 leading-none">Featured Stores for All Your Needs</h2>
+                  <p className="text-[10px] text-slate-500 mt-0.5">From restaurants to supermarkets, kirana, electronics &amp; more</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => toast.info(`Viewing all ${displayedFeaturedStores.length} partner stores`)}
+                className="text-[11px] font-bold text-purple-700 hover:text-purple-800 flex items-center space-x-0.5 cursor-pointer"
+              >
+                <span>View All Stores</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            {/* Horizontal Stores Rail */}
+            <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
+              {displayedFeaturedStores.map((store) => {
+                const storeKey = store.merchantId;
+                const { initials, bg: brandBg } = getStoreInitialsAndColor(store.name);
+                const { text: badgeText, bg: badgeBg } = getStoreBadgeTextAndBg(store.bestOffer?.label);
+                const distanceText = store.distanceMeters != null
+                  ? (store.distanceMeters < 1000 ? `${store.distanceMeters}m` : `${(store.distanceMeters / 1000).toFixed(1)}km`)
+                  : "Nearby";
+
+                return (
+                  <article
+                    key={storeKey}
+                    onClick={() => {
+                      toast.success(`Opening ${store.name}`, {
+                        description: `${store.categoryName || "Store"} • ${store.bestOffer?.label || "Special offers available"}`
+                      });
+                    }}
+                    className="w-48 shrink-0 bg-white rounded-xl border border-slate-100 p-2.5 shadow-sm hover:shadow-md transition-shadow group cursor-pointer flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="relative h-20 rounded-lg overflow-hidden mb-2">
+                        <img
+                          alt={store.name}
+                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                          src={store.coverImageUrl || store.logoUrl || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&q=80"}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&q=80";
+                          }}
+                        />
+                        <span className={cn("absolute top-1.5 left-1.5 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md shadow-2xs", badgeBg)}>
+                          {badgeText}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => toggleFavorite(storeKey, e)}
+                          aria-label="Favorite"
+                          className="absolute top-1.5 right-1.5 text-white/90 hover:text-rose-500 z-10 transition-colors drop-shadow-sm cursor-pointer"
+                        >
+                          <Heart
+                            size={14}
+                            className={favorites[storeKey] ? "fill-rose-500 text-rose-500" : "text-white"}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center space-x-2 mb-1.5">
+                        <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center font-black text-[10px] shrink-0", brandBg)}>
+                          {initials}
+                        </div>
+                        <div className="overflow-hidden">
+                          <h4 className="text-xs font-bold text-slate-800 truncate" title={store.name}>
+                            {store.name}
+                          </h4>
+                          <p className="text-[9px] text-slate-400 truncate">
+                            {store.categoryName || "Store"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-1 text-[9px] text-slate-500 mb-1.5">
+                        <span className="flex items-center text-amber-600 font-bold">★ {store.rating?.average ? store.rating.average.toFixed(1) : "4.5"}</span>
+                        <span>• {distanceText}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 rounded-md px-1.5 py-0.5 flex items-center truncate mt-1">
+                      🏷️ {store.bestOffer?.label || "Special offers available"}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ========================================================= */}
+          {/* POPULAR CURATED COLLECTIONS (CONNECTED TO BACKEND API) */}
+          {/* ========================================================= */}
+          <section className="mb-5" data-purpose="popular-collections">
+            <div className="flex justify-between items-center px-4 mb-2.5">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center text-xs">
+                  ✨
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 leading-none">Popular Collections</h2>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Handpicked selections for you</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => toast.info(`Browsing all ${displayedCollections.length} curated collections`)}
+                className="text-[11px] font-bold text-purple-700 hover:text-purple-800 flex items-center space-x-0.5 cursor-pointer"
+              >
+                <span>View All</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            {/* Horizontal Cards for Curated Collections */}
+            <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
+              {displayedCollections.map((col) => {
+                const { bg, text } = getCollectionGradient(col.title);
+                return (
+                  <div
+                    key={col.id}
+                    onClick={() => toast.info(`Viewing collection: ${col.title}`, { description: col.badgeText })}
+                    className={cn(
+                      "w-44 shrink-0 bg-gradient-to-br border rounded-xl p-2.5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group cursor-pointer",
+                      bg
+                    )}
+                  >
+                    <div className="h-20 w-full rounded-lg overflow-hidden mb-2">
+                      <img
+                        alt={col.title}
+                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        src={col.coverImageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80"}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80";
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="overflow-hidden">
+                        <h4 className="text-xs font-bold text-slate-800 truncate">{col.title}</h4>
+                        <p className={cn("text-[9px] font-bold truncate", text)}>{col.badgeText || "Explore Offers"}</p>
+                      </div>
+                      <button className="w-5 h-5 rounded-md bg-white shadow-xs flex items-center justify-center text-slate-700 text-xs shrink-0 cursor-pointer">
+                        <ChevronRight size={12} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ========================================================= */}
+          {/* RECENTLY VIEWED (FROM CODE.HTML) */}
+          {/* ========================================================= */}
+          <section className="mb-5" data-purpose="recently-viewed">
+            <div className="flex justify-between items-center px-4 mb-2.5">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
+                  🕒
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 leading-none">Recently Viewed</h2>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Continue shopping or explore similar products</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => toast.info("Showing your recent item browsing history")}
+                className="text-[11px] font-bold text-purple-700 hover:text-purple-800 flex items-center space-x-0.5 cursor-pointer"
+              >
+                <span>View All</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            {/* Horizontal Mini Items Rail */}
+            <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
+              {recentlyViewedItems.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => toast.info(`Selected "${item.title}"`, { description: `Store price: ₹${item.dealPrice}` })}
+                  className="w-32 shrink-0 bg-white rounded-xl border border-slate-100 p-2 shadow-2xs relative hover:shadow-sm transition-shadow group cursor-pointer"
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => toggleFavorite(item.id, e)}
+                    aria-label="Favorite"
+                    className="absolute top-1.5 right-1.5 text-slate-300 hover:text-rose-500 transition-colors cursor-pointer"
+                  >
+                    <Heart
+                      size={12}
+                      className={favorites[item.id] ? "fill-rose-500 text-rose-500" : "text-slate-300"}
+                    />
+                  </button>
+                  <div className="h-16 w-full flex items-center justify-center p-1 mb-1">
+                    <img
+                      alt={item.title}
+                      className="max-h-full max-w-full object-contain transition-transform group-hover:scale-105"
+                      src={item.imageUrl}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80";
+                      }}
+                    />
+                  </div>
+                  <h5 className="text-[10px] font-bold text-slate-800 truncate">{item.title}</h5>
+                  <p className="text-[8px] text-slate-400 truncate">{item.unit}</p>
+                  <div className="flex items-baseline space-x-1 mt-0.5">
+                    <span className="text-[11px] font-bold text-slate-900 font-mono">₹{item.dealPrice}</span>
+                    <span className="text-[8px] text-slate-400 line-through font-mono">₹{item.originalPrice}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ========================================================= */}
+          {/* RECOMMENDED FOR YOU (FROM CODE.HTML) */}
+          {/* ========================================================= */}
+          <section className="mb-5" data-purpose="recommended-for-you">
+            <div className="flex justify-between items-center px-4 mb-2.5">
+              <div className="flex items-center space-x-1.5">
+                <div className="w-6 h-6 rounded-md bg-pink-100 text-pink-600 flex items-center justify-center text-xs">
+                  ❤️
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 leading-none">Recommended for You</h2>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Based on your interests and nearby availability</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => toast.info("Opening personalized recommendations")}
+                className="text-[11px] font-bold text-purple-700 hover:text-purple-800 flex items-center space-x-0.5 cursor-pointer"
+              >
+                <span>View All</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            {/* Recommendation Cards */}
+            <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
+              {recommendedItems.map((rec) => (
+                <div
+                  key={rec.id}
+                  onClick={() => toast.success(`Selected ${rec.title}`, { description: rec.discountBadge })}
+                  className="w-56 shrink-0 bg-white rounded-xl border border-slate-100 overflow-hidden shadow-xs hover:shadow-md transition-shadow group cursor-pointer"
+                >
+                  <div className="relative h-24">
+                    <img
+                      alt={rec.title}
+                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                      src={rec.imageUrl}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&q=80";
+                      }}
+                    />
+                    <span className="absolute top-2 left-2 bg-indigo-900/80 backdrop-blur-xs text-white text-[8px] font-semibold px-2 py-0.5 rounded-md">
+                      {rec.badge}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => toggleFavorite(rec.id, e)}
+                      aria-label="Favorite"
+                      className="absolute top-2 right-2 text-white/90 hover:text-rose-500 transition-colors drop-shadow-sm cursor-pointer"
+                    >
+                      <Heart
+                        size={14}
+                        className={favorites[rec.id] ? "fill-rose-500 text-rose-500" : "text-white"}
+                      />
+                    </button>
+                  </div>
+                  <div className="p-2.5">
+                    <h4 className="text-xs font-bold text-slate-900 truncate">{rec.title}</h4>
+                    <p className="text-[9px] text-slate-500 mb-2 truncate">{rec.distanceCategory}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center">
+                        🏷️ {rec.discountBadge}
+                      </span>
+                      <button className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 text-xs shrink-0 cursor-pointer">
+                        <ChevronRight size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* Flash Deals Ending Soon Block */}
           <section className="px-4 mb-5">
             <div className="bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-700 p-4 text-white shadow-md relative overflow-hidden rounded-xl">
@@ -944,10 +1550,64 @@ export default function CustomerHomePreviewPage() {
                   </div>
                 </div>
 
-                <span className="bg-white text-purple-950 text-[10px] font-extrabold px-3 py-1.5 flex items-center space-x-1 rounded-lg">
-                  View All Deals
-                </span>
+                <button
+                  type="button"
+                  onClick={() => toast.info(`Viewing all ${flashDeals.length} live flash deals`)}
+                  className="bg-white text-purple-950 text-[10px] font-extrabold px-3 py-1.5 flex items-center space-x-1 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                >
+                  <span>View All Deals</span>
+                </button>
               </div>
+
+              {/* Live Flash Deal Cards Rail */}
+              {flashDeals.length > 0 && (
+                <div className="flex space-x-2.5 overflow-x-auto no-scrollbar pt-1 pb-1">
+                  {flashDeals.map((deal) => (
+                    <div
+                      key={deal.offerId}
+                      onClick={() => toast.info(`Claimed Flash Deal: ${deal.title}`)}
+                      className="w-36 shrink-0 bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 rounded-xl p-2 flex flex-col justify-between transition-all group cursor-pointer"
+                    >
+                      <div className="relative h-20 w-full rounded-lg overflow-hidden mb-1.5 bg-black/20">
+                        <img
+                          src={deal.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80"}
+                          alt={deal.title}
+                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80";
+                          }}
+                        />
+                        {deal.badgeText && (
+                          <span className="absolute top-1 left-1 bg-amber-400 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                            {deal.badgeText}
+                          </span>
+                        )}
+                        {deal.remainingQuantity !== undefined && (
+                          <span className="absolute bottom-1 right-1 bg-red-600/90 text-white text-[7px] font-bold px-1 rounded">
+                            {deal.remainingQuantity} left
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="text-[11px] font-bold text-white truncate leading-tight mb-1">
+                          {deal.title}
+                        </h4>
+                        <div className="flex items-baseline space-x-1.5">
+                          <span className="text-xs font-black text-amber-300">
+                            ₹{deal.price?.sellingPrice ?? 0}
+                          </span>
+                          {deal.price?.mrp && (
+                            <span className="text-[9px] text-purple-200/80 line-through">
+                              ₹{deal.price.mrp}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 

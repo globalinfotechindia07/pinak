@@ -104,7 +104,13 @@ public class SecurityConfig {
                         "/api/v1/offers/**",
                         "/api/v1/banners/**",
                         "/api/v1/categories/**",
-                        "/api/v1/discovery/**"
+                        "/api/v1/discovery/**",
+                        "/api/v1/products/deals/nearby",
+                        "/api/v1/collections/popular",
+                        "/api/v1/discover/**",
+                        "/api/v1/merchants/featured",
+                        "/api/v1/merchants/popular",
+                        "/api/v1/merchants/newly-added"
                 ).permitAll()
 
                 // Discover Screen & catalog endpoints — strictly private and authenticated (JWT Bearer required)

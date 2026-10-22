@@ -582,7 +582,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
 
     setErrors({});
     const isChainWide = selectedStoreId === "all";
-    const resolvedStoreId = isChainWide ? null : selectedStoreId;
+    const resolvedStoreId = isChainWide ? undefined : selectedStoreId;
 
     try {
       await onSave({

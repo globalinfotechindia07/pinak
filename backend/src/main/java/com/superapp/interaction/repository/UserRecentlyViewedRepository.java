@@ -33,4 +33,12 @@ public interface UserRecentlyViewedRepository extends JpaRepository<UserRecently
     );
 
     Optional<UserRecentlyViewed> findByUserIdAndItemTypeAndItemId(UUID userId, String itemType, UUID itemId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM UserRecentlyViewed v WHERE v.userId = :userId")
+    void deleteByUserId(@Param("userId") UUID userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM UserRecentlyViewed v WHERE v.userId = :userId AND v.id = :id")
+    void deleteByUserIdAndId(@Param("userId") UUID userId, @Param("id") UUID id);
 }

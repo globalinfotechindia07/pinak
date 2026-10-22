@@ -33,8 +33,7 @@ public class DiscoverFeedController {
     // Section 03: Hero Promotional Banners
     // ==========================================
     @GetMapping("/banners")
-    @Operation(summary = "Get promotional banners for Discover screen", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get promotional banners for Discover screen")
     public ResponseEntity<ApiResponse<BannersResponse>> getBanners(
             @RequestParam(required = false, defaultValue = "DISCOVER") String placement,
             @RequestParam(required = false) Double latitude,
@@ -48,8 +47,7 @@ public class DiscoverFeedController {
     // Section 06: Top Product Deals Near You
     // ==========================================
     @GetMapping("/products/deals/nearby")
-    @Operation(summary = "Get nearby retail product bargains and daily essentials", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get nearby retail product bargains and daily essentials")
     public ResponseEntity<ApiResponse<ProductDealsResponse>> getNearbyProductDeals(
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude,
@@ -64,15 +62,19 @@ public class DiscoverFeedController {
     }
 
     // ==========================================
-    // Section 08: Popular Curated Collections
+    // Section 08: Popular Curated Collections (Dynamic from Categories & Live Offers)
     // ==========================================
     @GetMapping("/collections/popular")
-    @Operation(summary = "Get popular curated discovery collections", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get popular curated discovery collections")
     public ResponseEntity<ApiResponse<PopularCollectionsResponse>> getPopularCollections(
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false, defaultValue = "15.0") Double radiusKm,
+            @RequestParam(required = false) String cityId,
             @RequestParam(required = false, defaultValue = "10") Integer limit) {
 
-        PopularCollectionsResponse response = discoverService.getPopularCollections(limit);
+        PopularCollectionsResponse response = discoverService.getPopularCollections(
+                latitude, longitude, radiusKm, cityId, limit);
         return ResponseEntity.ok(ApiResponse.success("Popular collections fetched successfully", response));
     }
 
@@ -92,7 +94,7 @@ public class DiscoverFeedController {
     }
 
     @PostMapping("/users/me/recently-viewed")
-    @Operation(summary = "Record user item view event", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Record or update user item view event", security = @SecurityRequirement(name = "bearerAuth"))
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<String>> recordRecentlyViewed(
             @Valid @RequestBody RecordRecentlyViewedRequest request,
@@ -101,6 +103,28 @@ public class DiscoverFeedController {
         UUID userId = resolveUserId(authentication);
         discoverService.recordRecentlyViewed(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Item view recorded successfully", "OK"));
+    }
+
+    @DeleteMapping("/users/me/recently-viewed")
+    @Operation(summary = "Clear all recently viewed items for authenticated user", security = @SecurityRequirement(name = "bearerAuth"))
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<String>> clearRecentlyViewed(Authentication authentication) {
+
+        UUID userId = resolveUserId(authentication);
+        discoverService.clearRecentlyViewed(userId);
+        return ResponseEntity.ok(ApiResponse.success("Recently viewed history cleared successfully", "OK"));
+    }
+
+    @DeleteMapping("/users/me/recently-viewed/{id}")
+    @Operation(summary = "Remove a single item from recently viewed history", security = @SecurityRequirement(name = "bearerAuth"))
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<String>> removeRecentlyViewedItem(
+            @PathVariable UUID id,
+            Authentication authentication) {
+
+        UUID userId = resolveUserId(authentication);
+        discoverService.removeRecentlyViewedItem(userId, id);
+        return ResponseEntity.ok(ApiResponse.success("Recently viewed item removed successfully", "OK"));
     }
 
     // ==========================================
@@ -125,8 +149,7 @@ public class DiscoverFeedController {
     // Section 12: Platform Trust Badges ("Why Shop on PINAK?")
     // ==========================================
     @GetMapping("/discover/benefits")
-    @Operation(summary = "Get platform value propositions and trust guarantees", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get platform value propositions and trust guarantees")
     public ResponseEntity<ApiResponse<DiscoverBenefitsResponse>> getBenefits() {
         DiscoverBenefitsResponse response = discoverService.getActiveBenefits();
         return ResponseEntity.ok(ApiResponse.success("Platform benefits fetched successfully", response));

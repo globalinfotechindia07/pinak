@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -145,7 +146,19 @@ public class CustomerMerchantDiscoveryServiceImpl implements CustomerMerchantDis
         List<FeaturedMerchantItemDto> items = new ArrayList<>();
         for (Merchant m : merchants) {
             List<Store> branches = storeRepository.findByMerchantId(m.getId());
-            Store primeStore = branches.isEmpty() ? null : branches.get(0);
+            Store primeStore = null;
+            if (!branches.isEmpty()) {
+                if (latitude != null && longitude != null) {
+                    primeStore = branches.stream()
+                            .filter(s -> s.getLatitude() != null && s.getLongitude() != null)
+                            .min(Comparator.comparingDouble(s -> calculateHaversine(
+                                    latitude, longitude,
+                                    s.getLatitude().doubleValue(), s.getLongitude().doubleValue())))
+                            .orElse(branches.get(0));
+                } else {
+                    primeStore = branches.get(0);
+                }
+            }
             Category cat = m.getCategoryId() != null ? categoryRepository.findById(m.getCategoryId()).orElse(null) : null;
 
             Integer distanceMeters = null;
@@ -159,20 +172,25 @@ public class CustomerMerchantDiscoveryServiceImpl implements CustomerMerchantDis
             BigDecimal avgRating = (primeStore != null && primeStore.getRating() != null) ? primeStore.getRating() : new BigDecimal("4.8");
             PopularMerchantItemDto.RatingSummaryDto ratingSummary = new PopularMerchantItemDto.RatingSummaryDto(
                     avgRating,
-                    850
+                    1200
             );
 
-            // Fetch best offer for this merchant
-            List<Offer> offers = primeStore != null ? offerRepository.findActiveServiceOffersByStoreIds(List.of(primeStore.getId()), now) : List.of();
+            // Fetch best offer for this merchant / store
+            List<Offer> offers = primeStore != null ? offerRepository.findActiveOffersByStoreOrMerchantIds(
+                    List.of(primeStore.getId()), List.of(m.getId()), null, now) : List.of();
             PopularMerchantItemDto.BestOfferSummaryDto bestOffer = null;
             if (!offers.isEmpty()) {
                 Offer topOffer = offers.get(0);
                 bestOffer = new PopularMerchantItemDto.BestOfferSummaryDto(topOffer.getId().toString(), topOffer.getTitle());
-            } else if (primeStore != null && primeStore.getOpeningOffer() != null) {
+            } else if (primeStore != null && primeStore.getOpeningOffer() != null && !primeStore.getOpeningOffer().isBlank()) {
                 bestOffer = new PopularMerchantItemDto.BestOfferSummaryDto("off_deal_" + primeStore.getId().toString().substring(0, 8), primeStore.getOpeningOffer());
+            } else {
+                bestOffer = new PopularMerchantItemDto.BestOfferSummaryDto("off_deal_default", "Special Offers Available");
             }
 
-            String imgUrl = primeStore != null && primeStore.getImageUrl() != null ? primeStore.getImageUrl() : "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&q=80";
+            String imgUrl = primeStore != null && primeStore.getImageUrl() != null && !primeStore.getImageUrl().isBlank()
+                    ? primeStore.getImageUrl()
+                    : "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&q=80";
             boolean isVerified = m.getKycStatus() != null && "VERIFIED".equalsIgnoreCase(m.getKycStatus().name());
 
             items.add(new FeaturedMerchantItemDto(
@@ -180,13 +198,18 @@ public class CustomerMerchantDiscoveryServiceImpl implements CustomerMerchantDis
                     m.getBusinessName(),
                     imgUrl,
                     imgUrl,
-                    cat != null ? cat.getName() : "Retail & Shopping",
+                    cat != null ? cat.getName() : (primeStore != null && primeStore.getCuisineOrCategory() != null ? primeStore.getCuisineOrCategory() : "Retail & Shopping"),
                     ratingSummary,
                     distanceMeters,
                     "Featured Partner",
                     bestOffer,
                     isVerified
             ));
+        }
+
+        // Sort by closest distance if coordinates are provided
+        if (latitude != null && longitude != null) {
+            items.sort(Comparator.comparingInt(item -> item.distanceMeters() != null ? item.distanceMeters() : Integer.MAX_VALUE));
         }
 
         return new FeaturedMerchantsResponse(items, DiscoverPaginationDto.of(limitVal, false));

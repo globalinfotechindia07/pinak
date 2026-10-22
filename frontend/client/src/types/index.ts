@@ -92,6 +92,7 @@ export interface Offer {
   merchantId: string;
   merchantName: string;
   storeId?: string; // If specific to branch, or 'all'
+  storeName?: string;
   applicableStoreIds?: string[];
   title: string;
   tagline?: string;
@@ -116,6 +117,7 @@ export interface Offer {
   // Rich Mobile App Screen 10 Fields
   scopeType?: "SERVICE" | "PRODUCT";
   productCategory?: string;
+  unitOrWeight?: string;
   originalPrice?: number;
   dealPrice?: number;
   isFlashDeal?: boolean;

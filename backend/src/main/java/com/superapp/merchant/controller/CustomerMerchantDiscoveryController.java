@@ -29,8 +29,7 @@ public class CustomerMerchantDiscoveryController {
     }
 
     @GetMapping("/featured")
-    @Operation(summary = "Get featured merchants for Discover screen", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get featured merchants for Discover screen")
     public ResponseEntity<ApiResponse<FeaturedMerchantsResponse>> getFeaturedMerchants(
             @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double longitude,
@@ -42,5 +41,37 @@ public class CustomerMerchantDiscoveryController {
                 latitude, longitude, categoryId, limit, cursor);
 
         return ResponseEntity.ok(ApiResponse.success("Featured merchants fetched successfully", response));
+    }
+
+    @GetMapping("/popular")
+    @Operation(summary = "Get nearby popular merchants for Discover screen")
+    public ResponseEntity<ApiResponse<PopularMerchantsResponse>> getPopularMerchants(
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false, defaultValue = "10.0") Double radiusKm,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false, defaultValue = "4.0") Double minRating,
+            @RequestParam(required = false, defaultValue = "POPULAR") String sort,
+            @RequestParam(required = false, defaultValue = "10") Integer limit,
+            @RequestParam(required = false) String cursor) {
+
+        PopularMerchantsResponse response = discoveryService.getNearbyPopularMerchants(
+                latitude, longitude, radiusKm, categoryId, minRating, sort, limit, cursor);
+
+        return ResponseEntity.ok(ApiResponse.success("Popular merchants fetched successfully", response));
+    }
+
+    @GetMapping("/newly-added")
+    @Operation(summary = "Get newly added merchants for Discover screen")
+    public ResponseEntity<ApiResponse<NewlyAddedMerchantsResponse>> getNewlyAddedMerchants(
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false, defaultValue = "10") Integer limit,
+            @RequestParam(required = false) String cursor) {
+
+        NewlyAddedMerchantsResponse response = discoveryService.getNewlyAddedMerchants(
+                latitude, longitude, limit, cursor);
+
+        return ResponseEntity.ok(ApiResponse.success("Newly added merchants fetched successfully", response));
     }
 }
