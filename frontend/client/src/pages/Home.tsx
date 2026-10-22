@@ -251,7 +251,7 @@ export default function Home() {
     });
   };
 
-  // Keyboard shortcuts (âŒ˜K for AI, âŒ˜B for sidebar)
+  // Keyboard shortcuts (⌘K for AI, ⌘B for sidebar)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -377,7 +377,7 @@ export default function Home() {
           longitude: s.longitude ? Number(s.longitude) : 79.0669,
           status: s.status || "ACTIVE",
           phone: s.contactPhone || s.phone || "",
-          operatingHours: s.openingTime && s.closingTime ? `${s.openingTime} â€“ ${s.closingTime}` : "10:00 AM â€“ 10:00 PM",
+          operatingHours: s.openingTime && s.closingTime ? `${s.openingTime} – ${s.closingTime}` : "10:00 AM – 10:00 PM",
           hasActiveOffer: true,
           createdAt: s.createdAt || new Date().toISOString(),
           storeEmail: s.contactEmail || "",
