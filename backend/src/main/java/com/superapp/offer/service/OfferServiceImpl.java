@@ -812,6 +812,9 @@ public class OfferServiceImpl implements OfferService {
                     coins, "+" + coins + " Coins"
             );
 
+            String defaultCta = "PRODUCT".equalsIgnoreCase(o.getOfferScope()) ? "Add to Cart" : "Book & Pay";
+            BigDecimal sellingPrice = o.getFlashSellingPrice() != null ? o.getFlashSellingPrice() : o.getValue();
+
             dtos.add(new NearbyServiceOfferItemDto(
                     o.getId() != null ? o.getId().toString() : null,
                     o.getTitle(),
@@ -825,8 +828,13 @@ public class OfferServiceImpl implements OfferService {
                     imgUrl,
                     o.getValidTo(),
                     rewardSummary,
-                    o.getCtaText() != null ? o.getCtaText() : "Book & Pay",
-                    "CHECK_REQUIRED"
+                    o.getCtaText() != null ? o.getCtaText() : defaultCta,
+                    "CHECK_REQUIRED",
+                    o.getOfferScope() != null ? o.getOfferScope() : "SERVICE",
+                    o.getOriginalMrp(),
+                    sellingPrice,
+                    o.getIsFlash() != null ? o.getIsFlash() : false,
+                    o.getRemainingQuantity() != null ? o.getRemainingQuantity() : 50
             ));
         }
 

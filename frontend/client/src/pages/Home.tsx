@@ -1088,29 +1088,34 @@ export default function Home() {
         throw new Error("Merchant has no stores configured");
       }
 
+      const isProduct = draft.scopeType === "PRODUCT" || draft.offerScope === "STORE_PRODUCT";
+      const resolvedValue = isProduct && draft.originalPrice && draft.dealPrice && draft.originalPrice > draft.dealPrice
+        ? (draft.type === "FLAT_AMT" ? (draft.originalPrice - draft.dealPrice) : Math.round(((draft.originalPrice - draft.dealPrice) / draft.originalPrice) * 100))
+        : (Number(draft.value) || 20);
+
       const payload: any = {
         merchantId: draft.merchantId,
         storeId: chosenStoreId,
-        title: (draft.title || "Special Deal").trim(),
-        description: draft.tagline || draft.terms || draft.description || "Offer details",
+        title: (draft.title || draft.productName || "Special Deal").trim(),
+        description: draft.tagline || draft.terms || draft.description || (isProduct ? `Special product deal at ${draft.merchantName || 'partner store'}` : "Offer details"),
         termsAndConditions: draft.terms || "",
         offerType: draft.type === "FLAT_PCT" ? "PERCENTAGE_DISCOUNT" : (draft.type === "BOGO" ? "BUY_X_GET_Y" : "FIXED_DISCOUNT"),
-        value: Number(draft.value) || 20,
+        value: resolvedValue,
         minTransactionAmount: Number(draft.minBillAmount) || 0,
-        maxDiscountAmount: draft.maxDiscount ? Number(draft.maxDiscount) : null,
+        maxDiscountAmount: draft.maxDiscount ? Number(draft.maxDiscount) : (isProduct && draft.originalPrice && draft.dealPrice ? (draft.originalPrice - draft.dealPrice) : null),
         usageLimit: Number(draft.maxTotalRedemptions) || 1000,
         perCustomerLimit: Number(draft.perUserLimit) || 1,
         validFrom: formatInstant(draft.validFrom, false),
         validTo: formatInstant(draft.validTo, true),
-        offerScope: draft.scopeType || (draft.offerScope === "STORE_PRODUCT" ? "PRODUCT" : "SERVICE"),
+        offerScope: isProduct ? "PRODUCT" : "SERVICE",
         originalMrp: draft.originalPrice ? Number(draft.originalPrice) : null,
         flashSellingPrice: draft.dealPrice ? Number(draft.dealPrice) : null,
         isFlash: Boolean(draft.isFlashDeal),
         remainingQuantity: draft.totalFlashUnits ? Number(draft.totalFlashUnits) : 50,
         bonusCoins: Number(draft.bonusCoins) || 100,
         imageUrl: draft.imageUrl || null,
-        badgeText: draft.badgeText || null,
-        ctaText: draft.ctaText || (draft.isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
+        badgeText: draft.badgeText || (isProduct && draft.originalPrice && draft.dealPrice ? `${Math.round(((draft.originalPrice - draft.dealPrice) / draft.originalPrice) * 100)}% OFF` : null),
+        ctaText: draft.ctaText || (isProduct ? "Add to Cart" : draft.isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
       };
 
       const isAdmin = store.role?.toLowerCase() === "admin" || !store.currentUser?.merchantId;

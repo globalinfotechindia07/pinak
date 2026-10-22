@@ -21,7 +21,8 @@ import {
   User,
   UtensilsCrossed,
   Store,
-  Tag
+  Tag,
+  Plus
 } from "lucide-react";
 import { Link } from "wouter";
 import apiClient from "@/api/client";
@@ -76,6 +77,19 @@ interface NearbyOffer {
     coins?: number;
     text?: string;
   };
+}
+
+interface ProductDeal {
+  id: string;
+  title: string;
+  unitOrWeight?: string;
+  dealPrice: number;
+  originalPrice?: number;
+  discountPct?: number;
+  discountBadge?: string;
+  imageUrl: string;
+  merchantName?: string;
+  storeName?: string;
 }
 
 /**
@@ -165,6 +179,7 @@ function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
 
 export default function CustomerHomePreviewPage() {
   const [offers, setOffers] = useState<NearbyOffer[]>([]);
+  const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [seconds, setSeconds] = useState(10);
@@ -193,6 +208,43 @@ export default function CustomerHomePreviewPage() {
       setOffers(list);
     } catch (err: any) {
       console.warn("Could not fetch live offers, falling back to catalog preview:", err?.message);
+    }
+
+    try {
+      const pRes = await apiClient.get("/offers/nearby", {
+        params: {
+          type: "PRODUCT",
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          radiusKm: userLocation.radiusKm,
+          limit: 10
+        }
+      });
+      const pData = pRes.data?.data;
+      const pList = Array.isArray(pData?.offers) ? pData.offers : Array.isArray(pData) ? pData : [];
+      if (pList.length > 0) {
+        setProductDeals(
+          pList.map((item: any) => {
+            const orig = item.originalMrp ? Number(item.originalMrp) : undefined;
+            const deal = item.flashSellingPrice ? Number(item.flashSellingPrice) : (Number(item.discountValue || item.value) || 0);
+            const pct = (orig && deal && orig > deal) ? Math.round(((orig - deal) / orig) * 100) : Number(item.discountValue || item.value || 0);
+            return {
+              id: item.offerId || item.id,
+              title: item.title,
+              unitOrWeight: item.subtitle || "Standard Pack",
+              dealPrice: deal,
+              originalPrice: orig,
+              discountPct: pct,
+              discountBadge: pct > 0 ? `${pct}% OFF` : (item.badgeText || "DEAL"),
+              imageUrl: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
+              merchantName: item.merchant?.name,
+              storeName: item.branch?.name
+            };
+          })
+        );
+      }
+    } catch (err: any) {
+      console.warn("Could not fetch live product deals:", err?.message);
     } finally {
       setLoading(false);
     }
@@ -287,8 +339,63 @@ export default function CustomerHomePreviewPage() {
     }
   ];
 
+  // Fallback demo product deals from code.html
+  const fallbackDemoProducts: ProductDeal[] = [
+    {
+      id: "demo-p1",
+      title: "Amul Fresh Milk",
+      unitOrWeight: "1 Litre",
+      dealPrice: 52,
+      originalPrice: 65,
+      discountPct: 20,
+      discountBadge: "20% OFF",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDs3waAQbgzW6ulcWgCbnSxbpZN_13ZJXWzm4X2qAl0vMuum2WR04QFvNkO8dtZdx7jm6Hx-4Yv-UOTJvm_T1_zP-BjcNgu-n36fI1NJbiNiDN6iATJvnTI3PZFH9s3mrPOOkbC6anaq1aeOnanPe9Jc7mJ3mhPvignPOty3w2-rM7g19DmmRog4WK1HSwTg6I3iNANpsvacjgVB8XlD2SaJ5lauRM86etGCZnk70_yZwEM-f1ui0Vd"
+    },
+    {
+      id: "demo-p2",
+      title: "India Gate Basmati Rice",
+      unitOrWeight: "5 kg",
+      dealPrice: 540,
+      originalPrice: 600,
+      discountPct: 10,
+      discountBadge: "10% OFF",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAz3pTi8RkZpVw-Mr8tM5TAVW9Dl52lt8OT816AYoIq9TJciz5RZiVqam6VcVx6sW0eHkx1AIsMU_2cJQnOVUCV_IsPb5ebrpge7RJgrt7_UolSuNwhci2MERrxPmWqzsSDf9lIz1ejVVwqN1p2Tqt7z2H8zJcBLccInJxlWFHuXUO9pdnl62dGbzHOHafQcu5_8dty0RVNA6-oxEzRekQ_W5lhkTuggAod0xEPnSZqWT2hebkFAl3V"
+    },
+    {
+      id: "demo-p3",
+      title: "Maggi 2-Min Noodles",
+      unitOrWeight: "70 g",
+      dealPrice: 28,
+      originalPrice: 32,
+      discountPct: 13,
+      discountBadge: "Buy 2 Get 1",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuD85STcU1nutJDJ0krl4bTkoIPmaJ4PD8EjDXxLt-3Wn97ov26ZRK_SgQz8XHHhygaSlXOwxm0aLDFgmOu9U2WwN_95PeXogGINTBsN7dXzUQy2oBGxucmNu9hQEbQmEHzwp5jNKXMetSnvoYnYlLJefb5wPnXog5WI-ZbK496lXs2rlF6L_D7_gM36Sat4HKXCWbX4zLOgCJftTO1Y9PBzQcX7uXfvPaYD0tsmT6Klx91ng021rARr"
+    },
+    {
+      id: "demo-p4",
+      title: "Dettol Handwash",
+      unitOrWeight: "200 ml",
+      dealPrice: 98,
+      originalPrice: 140,
+      discountPct: 30,
+      discountBadge: "30% OFF",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCT4YsSGn2-d3Ilg8GHUkjkbinPLHR9X7q1_ktSZMPpciUeZoEQEfzw0LYfSquH_5RyfBDIkaosS0Je6owvBIo-sDrn7OO0OBVdhRUVGkPxJJ0k1ju-EDmtXI5ajKvspfNIgdQctKkkZbXNRLJGJcSayNJgveLO7508KddEnkITFslKiMq3BsawnrhljZliemhFYYh4ImVZE-DuRIrI932ZwijmQEMqdv9LeTOwdA4KGdN488AuFMeH"
+    },
+    {
+      id: "demo-p5",
+      title: "Stanley Hammer",
+      unitOrWeight: "500 g",
+      dealPrice: 340,
+      originalPrice: 400,
+      discountPct: 15,
+      discountBadge: "15% OFF",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuBdLPvNB0gngUt-ujV1sfzj6KGKpuoYJ5Zy68KjG0y1lOvGHx8a_FqXWold9KzYAkdgq4NHXMBc8sSqBiejzd4WpS-SB76zcwbkGXEq9Pe3ntKM4Vmo1XR8LZLgVbm9JfSa7-E-lEf0xB2X--imbz0tIZH0LMxoQ654s5_py6rGYrbv2tE5lRD-qpawWz8Qd3Tv6xjcd2VcEeGziNoRZ-Xyfjp6WeLK6bRSxWanjCq5stC_t_0Cb6kM"
+    }
+  ];
+
   const rawOffers = offers.length > 0 ? offers : fallbackDemoOffers;
   const displayedServiceOffers = deduplicateOffersByStore(rawOffers);
+  const displayedProductDeals = productDeals.length > 0 ? productDeals : fallbackDemoProducts;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center">
@@ -637,6 +744,98 @@ export default function CustomerHomePreviewPage() {
                       </button>
                     </div>
                   </article>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ========================================================= */}
+          {/* TOP PRODUCT DEALS NEAR YOU (CONNECTED TO BACKEND API) */}
+          {/* ========================================================= */}
+          <section className="mb-5" data-purpose="product-deals-carousel">
+            <div className="flex justify-between items-center px-4 mb-2.5">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-sm font-bold text-slate-900 leading-none">
+                    Top Product Deals Near You
+                  </h2>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live Database Feed"></span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Groceries, electronics, hardware &amp; daily essentials at the best prices
+                </p>
+              </div>
+              <div className="flex items-center space-x-0.5 text-[11px] font-bold text-purple-700 cursor-pointer">
+                <span>View All ({displayedProductDeals.length})</span>
+                <ChevronRight size={13} />
+              </div>
+            </div>
+
+            {/* Horizontal Product Card Rail */}
+            <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
+              {displayedProductDeals.map((p) => {
+                const prodKey = p.id;
+                return (
+                  <div
+                    key={prodKey}
+                    className="w-36 shrink-0 bg-white rounded-xl border border-slate-100 p-2.5 shadow-sm flex flex-col justify-between relative hover:shadow-md transition-shadow"
+                  >
+                    <span className="absolute top-2 left-2 bg-rose-500 text-white font-extrabold text-[8px] px-1.5 py-0.5 rounded-md z-10 shadow-2xs">
+                      {p.discountBadge || `${p.discountPct}% OFF`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => toggleFavorite(prodKey, e)}
+                      aria-label="Favorite"
+                      className="absolute top-2 right-2 text-slate-300 hover:text-rose-500 z-10 transition-colors cursor-pointer"
+                    >
+                      <Heart
+                        size={14}
+                        className={favorites[prodKey] ? "fill-rose-500 text-rose-500" : "text-slate-300"}
+                      />
+                    </button>
+                    <div className="h-24 w-full flex items-center justify-center p-2 mb-1 bg-slate-50/50 rounded-lg">
+                      <img
+                        alt={p.title}
+                        className="max-h-full max-w-full object-contain"
+                        src={p.imageUrl}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80";
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <h4 className="text-[11px] font-bold text-slate-800 truncate" title={p.title}>
+                        {p.title}
+                      </h4>
+                      <p className="text-[9px] text-slate-400 mb-1 truncate">
+                        {p.unitOrWeight || (p.storeName ? `${p.storeName}` : "Standard Pack")}
+                      </p>
+                      <div className="flex items-baseline space-x-1 mb-2">
+                        <span className="text-xs font-black text-slate-900 font-mono">
+                          ₹{p.dealPrice}
+                        </span>
+                        {p.originalPrice && (
+                          <span className="text-[9px] text-slate-400 line-through font-mono">
+                            ₹{p.originalPrice}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toast.success(`Added "${p.title}" to cart!`, {
+                            description: `Store deal: ₹${p.dealPrice} ${p.originalPrice ? `(MRP ₹${p.originalPrice})` : ""}`
+                          });
+                        }}
+                        className="w-full py-1.5 border border-emerald-600 text-emerald-700 hover:bg-emerald-50 rounded-lg text-[10px] font-bold flex items-center justify-center space-x-1 transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                      >
+                        <Plus size={12} strokeWidth={2.5} />
+                        <span>Add to Cart</span>
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>

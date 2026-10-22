@@ -218,13 +218,20 @@ export const offerCampaignSchema = z
           message: "Percentage discount cannot exceed 100%",
         });
       }
-      if (!data.maxDiscount || data.maxDiscount <= 0) {
+      if (data.scopeType !== "PRODUCT" && (!data.maxDiscount || data.maxDiscount <= 0)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["maxDiscount"],
-          message: "Maximum discount cap (₹) is mandatory for percentage deals",
+          message: "Maximum discount cap (₹) is mandatory for percentage service deals",
         });
       }
+    }
+    if (data.scopeType === "PRODUCT" && data.originalPrice && data.dealPrice && data.dealPrice > data.originalPrice) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["dealPrice"],
+        message: "Deal price cannot be higher than original MRP",
+      });
     }
     if (data.redemptionMethod === "PROMO_CODE" && (!data.promoCode || data.promoCode.trim().length < 3)) {
       ctx.addIssue({

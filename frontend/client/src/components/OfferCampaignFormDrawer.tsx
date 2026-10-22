@@ -419,15 +419,24 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const finalTitle = title.trim() || `${type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`} at ${selectedStore?.branchName || merchantDisplayName}`;
+    const isProduct = offerScope === "STORE_PRODUCT";
+    const finalTitle = title.trim() || productName.trim() || `${type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`} at ${selectedStore?.branchName || merchantDisplayName}`;
+    const autoProductDiscount = isProduct && originalPrice && dealPrice && originalPrice > dealPrice
+      ? (type === "FLAT_PCT" ? Math.round(((originalPrice - dealPrice) / originalPrice) * 100) : (originalPrice - dealPrice))
+      : Number(value);
+    const resolvedValue = autoProductDiscount > 0 ? autoProductDiscount : (Number(value) || 20);
+    const resolvedMaxDiscount = type === "FLAT_PCT"
+      ? (maxDiscount ? Number(maxDiscount) : (isProduct && originalPrice && dealPrice ? (originalPrice - dealPrice) : 200))
+      : undefined;
+    const resolvedMinBill = isProduct ? Number(minBillAmount || 0) : Number(minBillAmount || 500);
 
     const parseResult = offerCampaignSchema.safeParse({
       title: finalTitle,
-      tagline: tagline.trim(),
+      tagline: tagline.trim() || (isProduct && originalPrice ? `MRP ₹${originalPrice} • Special Store Deal` : ""),
       type,
-      value: Number(value),
-      maxDiscount: type === "FLAT_PCT" ? Number(maxDiscount) : undefined,
-      minBillAmount: Number(minBillAmount),
+      value: resolvedValue,
+      maxDiscount: resolvedMaxDiscount,
+      minBillAmount: resolvedMinBill,
       perUserLimit: perUserLimit ? Number(perUserLimit) : undefined,
       maxTotalRedemptions: maxTotalRedemptions ? Number(maxTotalRedemptions) : undefined,
       storeScope: selectedStoreId === "all" ? "ALL" : "SPECIFIC",
@@ -441,16 +450,16 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       promoCode: redemptionMethod === "PROMO_CODE" ? promoCode.trim().toUpperCase() : undefined,
       imageUrl: imageUrl.trim(),
       terms: terms.trim(),
-      scopeType: offerScope === "STORE_PRODUCT" ? "PRODUCT" : "SERVICE",
-      productCategory: offerScope === "STORE_PRODUCT" ? productCategory : undefined,
-      originalPrice: offerScope === "STORE_PRODUCT" && originalPrice ? Number(originalPrice) : undefined,
-      dealPrice: offerScope === "STORE_PRODUCT" && dealPrice ? Number(dealPrice) : undefined,
-      isFlashDeal: offerScope === "STORE_PRODUCT" ? isFlashDeal : false,
-      flashEndTime: offerScope === "STORE_PRODUCT" && isFlashDeal ? flashEndTime : undefined,
-      totalFlashUnits: offerScope === "STORE_PRODUCT" && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
+      scopeType: isProduct ? "PRODUCT" : "SERVICE",
+      productCategory: isProduct ? productCategory : undefined,
+      originalPrice: isProduct && originalPrice ? Number(originalPrice) : undefined,
+      dealPrice: isProduct && dealPrice ? Number(dealPrice) : undefined,
+      isFlashDeal: isProduct ? isFlashDeal : false,
+      flashEndTime: isProduct && isFlashDeal ? flashEndTime : undefined,
+      totalFlashUnits: isProduct && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
       bonusCoins: Number(bonusCoins),
-      badgeText: badgeText.trim() || undefined,
-      ctaText: ctaText.trim() || (offerScope === "STORE_PRODUCT" ? "Add to Cart" : isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
+      badgeText: badgeText.trim() || (isProduct && computedProductDiscountPct ? `${computedProductDiscountPct}% OFF` : undefined),
+      ctaText: ctaText.trim() || (isProduct ? "Add to Cart" : isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
       isTableBookingEnabled: offerScope === "STORE_OFFER" ? isTableBookingEnabled : false,
       bookingType: offerScope === "STORE_OFFER" ? bookingType : undefined,
       slotTimes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? slotTimes : undefined,
@@ -489,11 +498,11 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         storeName: selectedStore?.branchName || selectedStore?.storeName || availableStoresForMerchant[0]?.branchName || "Branch Outlet",
         applicableStoreIds: [resolvedStoreId],
         title: finalTitle,
-        tagline: tagline.trim(),
+        tagline: tagline.trim() || (isProduct && originalPrice ? `MRP ₹${originalPrice} • Special Store Deal` : ""),
         type,
-        value: Number(value),
-        maxDiscount: type === "FLAT_PCT" ? Number(maxDiscount) : undefined,
-        minBillAmount: Number(minBillAmount),
+        value: resolvedValue,
+        maxDiscount: resolvedMaxDiscount,
+        minBillAmount: resolvedMinBill,
         perUserLimit: perUserLimit ? Number(perUserLimit) : undefined,
         maxTotalRedemptions: maxTotalRedemptions ? Number(maxTotalRedemptions) : undefined,
         validFrom,
@@ -506,16 +515,16 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         imageUrl: imageUrl.trim(),
         terms: terms.trim(),
         status: "ACTIVE",
-        scopeType: offerScope === "STORE_PRODUCT" ? "PRODUCT" : "SERVICE",
-        productCategory: offerScope === "STORE_PRODUCT" ? productCategory : undefined,
-        originalPrice: offerScope === "STORE_PRODUCT" && originalPrice ? Number(originalPrice) : undefined,
-        dealPrice: offerScope === "STORE_PRODUCT" && dealPrice ? Number(dealPrice) : undefined,
-        isFlashDeal: offerScope === "STORE_PRODUCT" ? isFlashDeal : false,
-        flashEndTime: offerScope === "STORE_PRODUCT" && isFlashDeal ? flashEndTime : undefined,
-        totalFlashUnits: offerScope === "STORE_PRODUCT" && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
+        scopeType: isProduct ? "PRODUCT" : "SERVICE",
+        productCategory: isProduct ? productCategory : undefined,
+        originalPrice: isProduct && originalPrice ? Number(originalPrice) : undefined,
+        dealPrice: isProduct && dealPrice ? Number(dealPrice) : undefined,
+        isFlashDeal: isProduct ? isFlashDeal : false,
+        flashEndTime: isProduct && isFlashDeal ? flashEndTime : undefined,
+        totalFlashUnits: isProduct && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
         bonusCoins: Number(bonusCoins),
-        badgeText: badgeText.trim() || undefined,
-        ctaText: ctaText.trim() || (offerScope === "STORE_PRODUCT" ? "Add to Cart" : isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
+        badgeText: badgeText.trim() || (isProduct && computedProductDiscountPct ? `${computedProductDiscountPct}% OFF` : undefined),
+        ctaText: ctaText.trim() || (isProduct ? "Add to Cart" : isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
         isTableBookingEnabled: offerScope === "STORE_OFFER" ? isTableBookingEnabled : false,
         bookingType: offerScope === "STORE_OFFER" ? bookingType : undefined,
         slotTimes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? slotTimes : undefined,
@@ -824,7 +833,9 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       onClick={() => {
                         setOfferScope("STORE_PRODUCT");
                         setIsTableBookingEnabled(false);
+                        setMinBillAmount(0);
                         if (ctaText === "Reserve Table" || ctaText === "Book & Pay") setCtaText("Add to Cart");
+                        if (!badgeText || badgeText === "DISTRICT SPECIAL") setBadgeText("STORE DEAL");
                       }}
                       className={cn(
                         "p-4 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer",
@@ -1168,7 +1179,16 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           <input
                             type="number"
                             value={originalPrice ?? ""}
-                            onChange={(e) => setOriginalPrice(e.target.value ? Number(e.target.value) : undefined)}
+                            onChange={(e) => {
+                              const orig = e.target.value ? Number(e.target.value) : undefined;
+                              setOriginalPrice(orig);
+                              if (orig && dealPrice && orig > dealPrice) {
+                                const pct = Math.round(((orig - dealPrice) / orig) * 100);
+                                setValue(pct);
+                                setMaxDiscount(orig - dealPrice);
+                                setBadgeText(`${pct}% OFF`);
+                              }
+                            }}
                             placeholder="e.g. 75"
                             className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1 font-mono font-bold"
                           />
@@ -1184,7 +1204,10 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                               const val = e.target.value ? Number(e.target.value) : undefined;
                               setDealPrice(val);
                               if (val && originalPrice && originalPrice > val) {
-                                setValue(Math.round(((originalPrice - val) / originalPrice) * 100));
+                                const pct = Math.round(((originalPrice - val) / originalPrice) * 100);
+                                setValue(pct);
+                                setMaxDiscount(originalPrice - val);
+                                setBadgeText(`${pct}% OFF`);
                               }
                             }}
                             placeholder="e.g. 56"
@@ -1733,7 +1756,9 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                             </span>
                           )}
                           <span className="text-[10px] text-slate-400 block">
-                            Min spend ₹{minBillAmount}
+                            {offerScope === "STORE_PRODUCT"
+                              ? (minBillAmount > 0 ? `Min order ₹${minBillAmount}` : "Direct Store Item")
+                              : (minBillAmount > 0 ? `Min spend ₹${minBillAmount}` : "No min bill required")}
                           </span>
                         </div>
 

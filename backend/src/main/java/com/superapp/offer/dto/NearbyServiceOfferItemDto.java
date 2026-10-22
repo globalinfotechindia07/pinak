@@ -48,8 +48,43 @@ public record NearbyServiceOfferItemDto(
         String ctaText,
 
         @Schema(description = "Customer eligibility validation status", example = "CHECK_REQUIRED")
-        String eligibilityStatus
+        String eligibilityStatus,
+
+        @Schema(description = "Offer scope (SERVICE or PRODUCT)", example = "PRODUCT")
+        String offerScope,
+
+        @Schema(description = "Original MRP for product item deals", example = "65.00")
+        BigDecimal originalMrp,
+
+        @Schema(description = "Store deal selling price for product item deals", example = "52.00")
+        BigDecimal flashSellingPrice,
+
+        @Schema(description = "Whether deal is a flash sale with stock countdown")
+        Boolean isFlash,
+
+        @Schema(description = "Remaining flash units stock")
+        Integer remainingQuantity
 ) {
+    public NearbyServiceOfferItemDto(
+            String offerId,
+            String title,
+            String subtitle,
+            String offerType,
+            BigDecimal discountValue,
+            BigDecimal maxDiscountAmount,
+            BigDecimal minimumOrderAmount,
+            MerchantSummaryDto merchant,
+            BranchSummaryDto branch,
+            String imageUrl,
+            Instant expiresAt,
+            RewardSummaryDto reward,
+            String ctaText,
+            String eligibilityStatus
+    ) {
+        this(offerId, title, subtitle, offerType, discountValue, maxDiscountAmount, minimumOrderAmount,
+             merchant, branch, imageUrl, expiresAt, reward, ctaText, eligibilityStatus,
+             "SERVICE", null, null, false, null);
+    }
     public record MerchantSummaryDto(
             String merchantId,
             String name,
