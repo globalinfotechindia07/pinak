@@ -27,6 +27,7 @@ import {
 import { Link } from "wouter";
 import apiClient from "@/api/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface NearbyOffer {
   id?: string;
