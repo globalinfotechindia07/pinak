@@ -443,12 +443,15 @@ export default function Home() {
           backendOffers.map((o: any) => {
             const matchedMerchant = store.merchants.find((m) => m.id === o.merchantId);
             const matchedStore = store.stores.find((s) => s.id === o.storeId);
+            const isChainWide = !o.storeId || o.storeId === "all";
             return {
               id: o.id,
               merchantId: o.merchantId,
               merchantName: o.merchantName || matchedMerchant?.businessName || "Partner Brand",
               storeId: o.storeId || "all",
-              storeName: o.storeName || matchedStore?.storeName || matchedStore?.branchName || "Main Branch",
+              storeName: isChainWide
+                ? "All Outlets (Brand-Wide)"
+                : (matchedStore?.storeName || matchedStore?.branchName || o.storeName || "Branch Outlet"),
               title: o.title,
               tagline: o.description || "",
               type: (o.offerType || o.type) === "PERCENTAGE_DISCOUNT" ? "FLAT_PCT" : ((o.offerType || o.type) === "BUY_X_GET_Y" ? "BOGO" : "FLAT_AMT"),

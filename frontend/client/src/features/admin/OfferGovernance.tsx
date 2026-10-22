@@ -219,23 +219,47 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     {
       header: "Merchant & Store",
       sortable: true,
-      className: "w-44 lg:w-48 min-w-0",
+      className: "w-52 lg:w-56 min-w-0",
       accessor: "merchantName",
       render: (o) => {
         const storeMatch = stores?.find((s) => s.id === o.storeId);
-        const resolvedStoreName = o.storeName || storeMatch?.branchName || storeMatch?.storeName || (o.storeId === "all" ? "All Outlets" : "Main Branch");
+        const isChainWide = !o.storeId || o.storeId === "all";
+        const branchLabel = storeMatch?.branchName || storeMatch?.storeName || o.storeName || (isChainWide ? "All Brand Outlets" : "Main Branch");
+        const cityLabel = storeMatch?.city || (storeMatch?.address ? storeMatch.address.split(",").slice(-2)[0]?.trim() : null);
+
         return (
-          <div className="min-w-0 py-1 space-y-0.5">
+          <div className="min-w-0 py-1 space-y-1">
             <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-100 text-xs truncate">
               <Building2 size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
               <span className="truncate" title={o.merchantName}>{o.merchantName || "Partner Brand"}</span>
             </div>
-            <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              <StoreIcon size={11} className="text-pink-500 shrink-0" />
-              <span className="truncate" title={resolvedStoreName}>
-                {resolvedStoreName}
+
+            {isChainWide ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                <StoreIcon size={10} />
+                <span>All Brand Outlets</span>
               </span>
-            </div>
+            ) : (
+              <div className="space-y-0.5 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <StoreIcon size={11} className="text-pink-500 shrink-0" />
+                  <span className="truncate text-[11px] text-slate-700 dark:text-slate-300 font-semibold" title={`${branchLabel} • ${storeMatch?.address || ''}`}>
+                    {branchLabel}
+                  </span>
+                  {cityLabel && (
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 shrink-0">
+                      {cityLabel}
+                    </span>
+                  )}
+                </div>
+                {storeMatch?.latitude && storeMatch?.longitude && (
+                  <div className="flex items-center gap-1 text-[9px] text-slate-400 font-mono">
+                    <MapPin size={9} className="text-pink-600 shrink-0" />
+                    <span>{Number(storeMatch.latitude).toFixed(4)}, {Number(storeMatch.longitude).toFixed(4)}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       }
@@ -850,10 +874,17 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                             <Building2 size={12} className="text-purple-500 shrink-0" />
                             <span className="truncate">{o.merchantName}</span>
                           </span>
-                          <span className="flex items-center gap-1 text-[11px] text-pink-600 dark:text-pink-400 font-bold shrink-0">
-                            <StoreIcon size={11} className="shrink-0" />
-                            <span>{o.storeName || (o.storeId === "all" ? "All Outlets" : "Branch")}</span>
-                          </span>
+                          {(() => {
+                            const storeMatch = stores?.find((s) => s.id === o.storeId);
+                            const isChainWide = !o.storeId || o.storeId === "all";
+                            const label = isChainWide ? "All Outlets" : (storeMatch?.city ? `${storeMatch.city} Branch` : (o.storeName || "Branch"));
+                            return (
+                              <span className="flex items-center gap-1 text-[11px] text-pink-600 dark:text-pink-400 font-bold shrink-0">
+                                <StoreIcon size={11} className="shrink-0" />
+                                <span>{label}</span>
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -996,6 +1027,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       {selectedOffer && (
         <OfferDetailsDrawer
           offer={selectedOffer}
+          stores={stores}
           onClose={() => setSelectedOffer(null)}
           isAdmin={true}
           onUpdateStatus={(status, reason) => {

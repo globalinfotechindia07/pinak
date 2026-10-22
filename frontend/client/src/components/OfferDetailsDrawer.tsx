@@ -21,7 +21,8 @@ import {
   Play,
   Pause,
   Armchair,
-  Utensils
+  Utensils,
+  MapPin
 } from "lucide-react";
 import { Offer, Store, AuditEvent } from "../types";
 import { Badge } from "./ui/badge";
@@ -88,11 +89,14 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
   const offerAudits = dbAudits.length > 0 ? dbAudits : storeAudits;
 
   // Map applicable store names
+  const isChainWide = !offer.storeId || offer.storeId === "all";
+  const matchedSingleStore = stores.find((s) => s.id === offer.storeId);
   const applicableStores = stores.filter(
     (s) =>
       offer.applicableStoreIds?.includes(s.id) ||
       offer.storeId === s.id
   );
+  const merchantStores = stores.filter((s) => s.merchantId === offer.merchantId);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
@@ -155,9 +159,17 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
                 {/* Banner Header Card */}
                 <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-pink-200/80 dark:border-pink-900/40 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-pink-700 dark:text-pink-300 uppercase tracking-wider">
-                      {offer.merchantName}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-pink-700 dark:text-pink-300 uppercase tracking-wider">
+                        {offer.merchantName}
+                      </span>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300">
+                        {isChainWide
+                          ? "All Brand Outlets"
+                          : (matchedSingleStore?.city ? `${matchedSingleStore.city} Branch` : (offer.storeName || "Branch"))}
+                      </span>
+                    </div>
                     <Badge
                       variant={
                         offer.status === "ACTIVE"
@@ -240,31 +252,111 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
                   </div>
                 </div>
 
-                {/* Multi-Store Outlet Scope */}
+                {/* Store / Branch Applicability Scope */}
                 <div className="space-y-2">
                   <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
                     <StoreIcon size={14} className="text-amber-500" />
                     <span>Store / Branch Applicability Scope</span>
                   </label>
-                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-semibold">Target Outlets:</span>
+                      <span className="text-slate-500 font-semibold">Deployment Scope:</span>
                       <span className="font-bold text-purple-700 dark:text-purple-300">
-                        {!offer.storeId || offer.storeId === "all"
-                          ? "All Outlets (Brand-Wide)"
-                          : `${applicableStores.length || 1} Specific Outlets`}
+                        {isChainWide ? "Chain-Wide (All Brand Outlets)" : "Specific Physical Branch"}
                       </span>
                     </div>
-                    {applicableStores.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {applicableStores.map((st) => (
-                          <span
-                            key={st.id}
-                            className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-[11px] font-medium border border-purple-200/50 dark:border-purple-800/40"
-                          >
-                            📍 {st.branchName} ({st.city})
+
+                    {isChainWide ? (
+                      <div className="p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-600 text-white uppercase tracking-wider">
+                            Brand-Wide Deal
                           </span>
-                        ))}
+                          <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300">
+                            {merchantStores.length > 0 ? `${merchantStores.length} Branches Covered` : "All Outlets"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                          This offer applies automatically across all branch outlets of <strong>{offer.merchantName}</strong>. Nearby customers anywhere within range discover this deal.
+                        </p>
+                        {merchantStores.length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                              Active Outlets in Network:
+                            </span>
+                            <div className="space-y-1.5">
+                              {merchantStores.map((st) => (
+                                <div key={st.id} className="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                                  <div className="min-w-0 pr-2">
+                                    <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">{st.storeName || st.branchName}</span>
+                                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5 truncate">
+                                      <MapPin size={10} className="text-pink-600 shrink-0" />
+                                      <span className="truncate">{st.address}</span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 block">
+                                      {st.city || st.state}
+                                    </span>
+                                    {st.latitude && st.longitude && (
+                                      <span className="text-[9px] font-mono text-slate-400 block mt-0.5">
+                                        {Number(st.latitude).toFixed(3)}, {Number(st.longitude).toFixed(3)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      // Single Specific Store Card
+                      <div className="p-3.5 rounded-xl bg-white dark:bg-slate-800 border border-pink-200 dark:border-pink-900/50 space-y-2.5 shadow-2xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="font-extrabold text-slate-900 dark:text-white text-xs block">
+                              {matchedSingleStore?.storeName || matchedSingleStore?.branchName || offer.storeName || "Branch Outlet"}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
+                              Branch ID: {offer.storeId}
+                            </span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300 shrink-0">
+                            {matchedSingleStore?.city || matchedSingleStore?.state || "Specific Branch"}
+                          </span>
+                        </div>
+
+                        {matchedSingleStore?.address && (
+                          <div className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 p-2 rounded-lg bg-slate-50 dark:bg-slate-900/40">
+                            <MapPin size={13} className="text-pink-600 shrink-0 mt-0.5" />
+                            <span>
+                              {matchedSingleStore.address}
+                              {matchedSingleStore.city ? `, ${matchedSingleStore.city}` : ""}
+                              {matchedSingleStore.state ? `, ${matchedSingleStore.state}` : ""}
+                              {matchedSingleStore.pincode ? ` - ${matchedSingleStore.pincode}` : ""}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60 text-[10px]">
+                          <div>
+                            <span className="text-slate-400 font-semibold block">GPS Coordinates:</span>
+                            <span className="font-mono text-pink-600 dark:text-pink-400 font-bold text-xs">
+                              {matchedSingleStore?.latitude && matchedSingleStore?.longitude
+                                ? `${Number(matchedSingleStore.latitude).toFixed(4)}, ${Number(matchedSingleStore.longitude).toFixed(4)}`
+                                : "Coordinates Registered"}
+                            </span>
+                          </div>
+                          {matchedSingleStore?.phone && (
+                            <div>
+                              <span className="text-slate-400 font-semibold block">Store Phone:</span>
+                              <span className="text-slate-700 dark:text-slate-300 font-mono">
+                                {matchedSingleStore.phone}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
