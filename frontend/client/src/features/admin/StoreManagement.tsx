@@ -210,6 +210,25 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
                   #{shortBid}
                 </span>
               </div>
+              {((s.menuImages && s.menuImages.length > 0) || (s.photos && s.photos.length > 0) || (s.amenities && s.amenities.length > 0)) && (
+                <div className="flex items-center gap-1.5 mt-1 text-[10px]">
+                  {s.menuImages && s.menuImages.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 font-medium">
+                      🍽️ {s.menuImages.length} {s.menuImages.length === 1 ? "page" : "pages"}
+                    </span>
+                  )}
+                  {s.photos && s.photos.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 font-medium">
+                      📸 {s.photos.length}
+                    </span>
+                  )}
+                  {s.amenities && s.amenities.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 font-medium">
+                      ✨ {s.amenities.length}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -1755,6 +1774,21 @@ function AddStoreDrawer({
     setLatitude(lat);
     setLongitude(lng);
     setOperatingHours("10:00 AM – 10:00 PM");
+    if (menuImages.length === 0) {
+      setMenuImages([
+        "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"
+      ]);
+    }
+    if (photos.length === 0) {
+      setPhotos([
+        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=800&q=80"
+      ]);
+    }
+    if (amenities.length === 0) {
+      setAmenities(["Air Conditioned", "Free High-Speed Wi-Fi", "Cards & UPI Accepted", "Valet Parking"]);
+    }
     setManagerName(`${mgrFirstName} Store Manager`);
     setManagerEmail(`${mgrFirstName.toLowerCase()}.${safeCity}@${safeBrand}.com`);
     setManagerPhone(target.ownerPhone || "9822100000");
@@ -2146,6 +2180,17 @@ function AddStoreDrawer({
             <StoreScheduleSelector
               value={operatingHours}
               onChange={(val) => setOperatingHours(val)}
+            />
+
+            {/* Store Menu Cards, Ambience Photos & Amenities */}
+            <StoreMediaAndAmenitiesSection
+              menuImages={menuImages}
+              photos={photos}
+              amenities={amenities}
+              onMenuImagesChange={setMenuImages}
+              onPhotosChange={setPhotos}
+              onAmenitiesChange={setAmenities}
+              categoryHint={selectedMerchant?.categoryName || "Dining"}
             />
 
             {/* Store Branch Manager & Login Access Credentials */}
