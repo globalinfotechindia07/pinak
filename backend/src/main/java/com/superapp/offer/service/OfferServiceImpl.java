@@ -458,16 +458,9 @@ public class OfferServiceImpl implements OfferService {
             throw new AppException("Merchant must have at least one store before creating an offer", ApiError.STORE_NOT_ELIGIBLE, 400);
         }
 
-        if (store == null) {
-            store = merchantStores.stream()
-                    .filter(s -> s.getStatus() == StoreStatus.ACTIVE && s.getApprovalStatus() == ApprovalStatus.APPROVED)
-                    .findFirst()
-                    .orElse(merchantStores.get(0));
-        }
-
         Offer offer = new Offer();
         offer.setMerchantId(merchant.getId());
-        offer.setStoreId(store.getId());
+        offer.setStoreId(request.storeId());
         offer.setCategoryId(merchant.getCategoryId());
         offer.setTitle(request.title().trim());
         offer.setDescription(request.description() != null ? request.description().trim() : null);
@@ -776,11 +769,14 @@ public class OfferServiceImpl implements OfferService {
             if (o.getStoreId() != null) {
                 store = storeRepository.findById(o.getStoreId()).orElse(null);
             } else if (o.getMerchantId() != null) {
-                // If it is an "All Branches" offer, find the closest active store of that merchant
-                store = storeRepository.findByMerchantId(o.getMerchantId()).stream()
-                        .filter(s -> s.getStatus() == StoreStatus.ACTIVE && s.getApprovalStatus() == ApprovalStatus.APPROVED)
+                // If it is an "All Branches" offer, prioritize the store nearest to the customer's coordinates
+                store = nearbyStoreList.stream()
+                        .filter(s -> o.getMerchantId().equals(s.getMerchantId()))
                         .findFirst()
-                        .orElse(null);
+                        .orElseGet(() -> storeRepository.findByMerchantId(o.getMerchantId()).stream()
+                                .filter(s -> s.getStatus() == StoreStatus.ACTIVE && s.getApprovalStatus() == ApprovalStatus.APPROVED)
+                                .findFirst()
+                                .orElse(null));
             }
             Merchant merchant = o.getMerchantId() != null ? merchantRepository.findById(o.getMerchantId()).orElse(null) : null;
 

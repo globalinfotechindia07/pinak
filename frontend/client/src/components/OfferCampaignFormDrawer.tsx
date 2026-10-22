@@ -486,17 +486,16 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     }
 
     setErrors({});
-    const resolvedStoreId = (selectedStoreId && selectedStoreId !== "all") 
-      ? selectedStoreId 
-      : (availableStoresForMerchant[0]?.id || selectedStoreId);
+    const isChainWide = selectedStoreId === "all";
+    const resolvedStoreId = isChainWide ? null : selectedStoreId;
 
     try {
       await onSave({
         merchantId: selectedMerchantId,
         merchantName: merchantDisplayName,
         storeId: resolvedStoreId,
-        storeName: selectedStore?.branchName || selectedStore?.storeName || availableStoresForMerchant[0]?.branchName || "Branch Outlet",
-        applicableStoreIds: [resolvedStoreId],
+        storeName: isChainWide ? "All Brand Outlets" : (selectedStore?.branchName || selectedStore?.storeName || "Branch Outlet"),
+        applicableStoreIds: isChainWide ? [] : (resolvedStoreId ? [resolvedStoreId] : []),
         title: finalTitle,
         tagline: tagline.trim() || (isProduct && originalPrice ? `MRP ₹${originalPrice} • Special Store Deal` : ""),
         type,
@@ -747,17 +746,22 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-bold text-slate-900 dark:text-white text-xs block truncate">
-                                {s.branchName}
+                                {s.branchName || s.storeName}
                               </span>
                               <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 shrink-0">
-                                {s.city}
+                                {s.city || s.state}
                               </span>
                             </div>
-                            <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
-                              <span className="flex items-center gap-1 truncate">
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1 flex-wrap">
+                              <span className="flex items-center gap-1 truncate max-w-[200px]">
                                 <MapPin size={10} className="shrink-0 text-pink-600" />
                                 <span className="truncate">{s.address}</span>
                               </span>
+                              {s.latitude && s.longitude && (
+                                <span className="font-mono text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded shrink-0">
+                                  {Number(s.latitude).toFixed(4)}, {Number(s.longitude).toFixed(4)}
+                                </span>
+                              )}
                               {s.phone && (
                                 <span className="flex items-center gap-1 shrink-0">
                                   <Phone size={10} className="shrink-0" />

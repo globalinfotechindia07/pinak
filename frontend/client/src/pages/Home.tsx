@@ -1079,14 +1079,12 @@ export default function Home() {
   const handleAddOffer = async (draft: any) => {
     try {
       const merchantStores = store.stores.filter((s) => s.merchantId === draft.merchantId);
-      const chosenStoreId = (draft.storeId && draft.storeId !== "all")
-        ? draft.storeId
-        : (merchantStores[0]?.id || draft.applicableStoreIds?.[0] || null);
-
-      if (!chosenStoreId && (!merchantStores || merchantStores.length === 0)) {
+      if (!merchantStores || merchantStores.length === 0) {
         toast.error("The merchant must have at least one store before creating an offer.");
         throw new Error("Merchant has no stores configured");
       }
+      // If a specific store is selected, target that store; if 'all' or empty, pass null for brand-wide / all branches
+      const chosenStoreId = (draft.storeId && draft.storeId !== "all") ? draft.storeId : null;
 
       const isProduct = draft.scopeType === "PRODUCT" || draft.offerScope === "STORE_PRODUCT";
       const resolvedValue = isProduct && draft.originalPrice && draft.dealPrice && draft.originalPrice > draft.dealPrice
