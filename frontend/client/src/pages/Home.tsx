@@ -890,6 +890,9 @@ export default function Home() {
         longitude: draft.longitude || 79.0882,
         openingTime: draft.openingTime || "09:00",
         closingTime: draft.closingTime || "22:00",
+        menuImages: draft.menuImages || [],
+        photos: draft.photos || [],
+        amenities: draft.amenities || [],
       });
 
       const storeId = createdStore?.id;
@@ -976,6 +979,9 @@ export default function Home() {
         openingTime: updates.openingTime,
         closingTime: updates.closingTime,
         operatingDays: updates.operatingDays,
+        menuImages: updates.menuImages,
+        photos: updates.photos,
+        amenities: updates.amenities,
       } as any);
       store.updateStore(id, updates);
       toast.success("Store outlet updated successfully!");

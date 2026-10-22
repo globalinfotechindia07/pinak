@@ -83,6 +83,9 @@ export const storeApi = {
         latitude: Number(payload.latitude) || 21.1458,
         longitude: Number(payload.longitude) || 79.0882,
         phone: payload.contactPhone || payload.phone || "+91 712 2550000",
+        menuImages: payload.menuImages || [],
+        photos: payload.photos || [],
+        amenities: payload.amenities || [],
       });
       return res.data?.data || (res.data as unknown as StoreDTO);
     } catch {

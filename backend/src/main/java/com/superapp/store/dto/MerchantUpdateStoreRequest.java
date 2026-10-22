@@ -2,6 +2,7 @@ package com.superapp.store.dto;
 
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
+import java.util.List;
 
 public record MerchantUpdateStoreRequest(
         @NotBlank(message = "Store name must not be blank")
@@ -46,13 +47,19 @@ public record MerchantUpdateStoreRequest(
 
         String closingTime,
 
-        String operatingDays
+        String operatingDays,
+
+        List<String> menuImages,
+
+        List<String> photos,
+
+        List<String> amenities
 ) {
     public MerchantUpdateStoreRequest(String name, String description, String addressLine1,
                                      String addressLine2, String cityId, String state,
                                      String pincode, BigDecimal latitude, BigDecimal longitude,
                                      String phone) {
         this(name, description, addressLine1, addressLine2, cityId, state, pincode,
-             latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)");
+             latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", null, null, null);
     }
 }

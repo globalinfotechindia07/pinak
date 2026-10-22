@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { StoreLocationPicker } from "../../components/StoreLocationPicker";
 import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { StoreScheduleSelector } from "../../components/StoreScheduleSelector";
+import { StoreMediaAndAmenitiesSection } from "../../components/StoreMediaAndAmenitiesSection";
 import { useAppStore } from "../../hooks/useAppStore";
 import { StoreStaffManager } from "./StoreStaffManager";
 import { storeApi } from "../../api/storeApi";
@@ -114,7 +115,10 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
             storeEmail: s.storeEmail || `${s.id}@curryleaf.in`,
             managerName: s.managerName || "Store Manager",
             createdAt: s.createdAt || new Date().toISOString(),
-            hasActiveOffer: true
+            hasActiveOffer: true,
+            menuImages: Array.isArray(s.menuImages) ? s.menuImages : [],
+            photos: Array.isArray(s.photos) ? s.photos : [],
+            amenities: Array.isArray(s.amenities) ? s.amenities : []
           }));
           setLiveStores(mapped);
         }
@@ -164,6 +168,9 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
   const [longitude, setLongitude] = useState(79.0882);
   const [storeEmail, setStoreEmail] = useState("");
   const [managerName, setManagerName] = useState("");
+  const [menuImages, setMenuImages] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [amenities, setAmenities] = useState<string[]>([]);
 
   const handleBranchNameChange = (name: string) => {
     setBranchName(name);
@@ -668,6 +675,47 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
                             <span>{s.phone}</span>
                           </div>
                         )}
+                        {/* Menu, Photos & Amenities Badges */}
+                        {((s.menuImages && s.menuImages.length > 0) || (s.photos && s.photos.length > 0) || (s.amenities && s.amenities.length > 0)) && (
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                              {s.menuImages && s.menuImages.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 text-amber-700 dark:text-amber-300 font-medium flex items-center gap-1">
+                                  <span>🍽️</span>
+                                  <span>{s.menuImages.length} {s.menuImages.length === 1 ? "Menu Page" : "Menu Pages"}</span>
+                                </span>
+                              )}
+                              {s.photos && s.photos.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800/40 text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1">
+                                  <span>📸</span>
+                                  <span>{s.photos.length} {s.photos.length === 1 ? "Photo" : "Photos"}</span>
+                                </span>
+                              )}
+                              {s.amenities && s.amenities.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1">
+                                  <span>✨</span>
+                                  <span>{s.amenities.length} Amenities</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Top Amenities Chips */}
+                            {s.amenities && s.amenities.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {s.amenities.slice(0, 3).map((am, i) => (
+                                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                    {am}
+                                  </span>
+                                ))}
+                                {s.amenities.length > 3 && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400">
+                                    +{s.amenities.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <MapPin size={14} className="text-pink-600 shrink-0" />
                           <span className="font-mono text-[11px] text-purple-600 dark:text-purple-400 font-semibold">
@@ -938,7 +986,18 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
                 </div>
               </div>
 
-              <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-2">
+              {/* Store Menu Cards, Ambience Photos & Amenities */}
+            <StoreMediaAndAmenitiesSection
+              menuImages={menuImages}
+              photos={photos}
+              amenities={amenities}
+              onMenuImagesChange={setMenuImages}
+              onPhotosChange={setPhotos}
+              onAmenitiesChange={setAmenities}
+              categoryHint="Dining"
+            />
+
+          <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-2">
                 <button
                   onClick={() => setIsAddOpen(false)}
                   className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400"
@@ -962,7 +1021,10 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
                       longitude,
                       operatingHours: hours,
                       storeEmail: storeEmail || `${branchName.toLowerCase().replace(/\s+/g, "")}@${merchantDomain}.in`,
-                      managerName: managerName || "Store Manager"
+                      managerName: managerName || "Store Manager",
+                      menuImages,
+                      photos,
+                      amenities
                     });
                     setIsAddOpen(false);
                     fetchLiveStores();
@@ -1128,6 +1190,57 @@ function ViewBranchStoreDrawer({
               </div>
             </div>
 
+            {/* Store Amenities */}
+            {store.amenities && store.amenities.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                  Amenities & Facilities ({store.amenities.length})
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-2.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40">
+                  {store.amenities.map((am, i) => (
+                    <span key={i} className="text-[11px] px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-medium">
+                      {am}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Store Menu Cards */}
+            {store.menuImages && store.menuImages.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                  Store Menu Cards ({store.menuImages.length} {store.menuImages.length === 1 ? "page" : "pages"})
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {store.menuImages.map((img, i) => (
+                    <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="relative rounded-xl overflow-hidden aspect-3/4 border border-slate-200 dark:border-slate-700 shadow-xs group">
+                      <img src={img} alt={`Menu ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-bold text-white">
+                        Page {i+1}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Store Ambience Photos */}
+            {store.photos && store.photos.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                  Ambience & Facility Photos ({store.photos.length})
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {store.photos.map((img, i) => (
+                    <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="relative rounded-xl overflow-hidden aspect-video border border-slate-200 dark:border-slate-700 shadow-xs group">
+                      <img src={img} alt={`Photo ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between">
                 <span>GPS Location Pin</span>
@@ -1189,6 +1302,9 @@ function EditBranchStoreDrawer({
   const [longitude, setLongitude] = useState(store.longitude || 79.0882);
   const [operatingHours, setOperatingHours] = useState(store.operatingHours || "10:00 AM – 10:00 PM (Daily)");
   const [status, setStatus] = useState<StoreType["status"]>(store.status || "ACTIVE");
+  const [menuImages, setMenuImages] = useState<string[]>(store.menuImages || []);
+  const [photos, setPhotos] = useState<string[]>(store.photos || []);
+  const [amenities, setAmenities] = useState<string[]>(store.amenities || []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1203,7 +1319,10 @@ function EditBranchStoreDrawer({
       latitude: Number(latitude),
       longitude: Number(longitude),
       operatingHours: operatingHours.trim(),
-      status
+      status,
+      menuImages,
+      photos,
+      amenities
     });
   };
 

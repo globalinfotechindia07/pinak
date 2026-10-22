@@ -177,7 +177,13 @@ public class DiscoveryMapper {
                 addressRef,
                 locationRef,
                 store.getPhone(),
-                store.getStatus() != null ? store.getStatus().name() : "ACTIVE"
+                store.getStatus() != null ? store.getStatus().name() : "ACTIVE",
+                store.getOpeningTime(),
+                store.getClosingTime(),
+                store.getOperatingDays(),
+                store.getMenuImages(),
+                store.getPhotos(),
+                store.getAmenities()
         );
     }
 }

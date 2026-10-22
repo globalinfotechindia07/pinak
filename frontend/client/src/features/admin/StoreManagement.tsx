@@ -52,6 +52,7 @@ import { storeBranchSchema } from "../../lib/validationSchemas";
 import { StoreLocationPicker } from "../../components/StoreLocationPicker";
 import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { StoreScheduleSelector } from "../../components/StoreScheduleSelector";
+import { StoreMediaAndAmenitiesSection } from "../../components/StoreMediaAndAmenitiesSection";
 import { staffApi, BackendStaffResponse } from "../../api/staffApi";
 import { storeApi } from "../../api/storeApi";
 
@@ -1432,6 +1433,62 @@ function StorePinDrawer({
               )}
             </div>
 
+            {/* Store Amenities, Menu & Photos in Admin Pin Drawer */}
+            {((store.amenities && store.amenities.length > 0) || (store.menuImages && store.menuImages.length > 0) || (store.photos && store.photos.length > 0)) && (
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 space-y-3 text-xs">
+                {store.amenities && store.amenities.length > 0 && (
+                  <div>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs mb-1.5 flex items-center justify-between">
+                      <span>Store Amenities</span>
+                      <span className="text-[10px] text-emerald-600 font-semibold">{store.amenities.length} active</span>
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {store.amenities.map((am, i) => (
+                        <span key={i} className="text-[11px] px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium">
+                          {am}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {store.menuImages && store.menuImages.length > 0 && (
+                  <div>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs mb-1.5 flex items-center justify-between">
+                      <span>Menu Card Pages</span>
+                      <span className="text-[10px] text-amber-600 font-semibold">{store.menuImages.length} pages</span>
+                    </span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {store.menuImages.map((img, i) => (
+                        <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="relative rounded-xl overflow-hidden aspect-3/4 border border-slate-200 dark:border-slate-700 shadow-xs group">
+                          <img src={img} alt={`Menu ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-bold text-white">
+                            Page {i+1}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {store.photos && store.photos.length > 0 && (
+                  <div>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs mb-1.5 flex items-center justify-between">
+                      <span>Ambience & Facility Photos</span>
+                      <span className="text-[10px] text-purple-600 font-semibold">{store.photos.length} photos</span>
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {store.photos.map((img, i) => (
+                        <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="relative rounded-xl overflow-hidden aspect-video border border-slate-200 dark:border-slate-700 shadow-xs group">
+                          <img src={img} alt={`Photo ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Active Promotional Offers & Mobile App Deals Section */}
             <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50/70 via-pink-50/40 to-white dark:from-purple-950/30 dark:via-pink-950/20 dark:to-[#121626] border border-purple-200/80 dark:border-purple-900/60 space-y-3">
               <div className="flex items-center justify-between">
@@ -1639,6 +1696,9 @@ function AddStoreDrawer({
   const [managerEmailNotice, setManagerEmailNotice] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [menuImages, setMenuImages] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [amenities, setAmenities] = useState<string[]>([]);
 
   const selectedMerchant = merchants.find(m => m.id === merchantId);
 
@@ -1846,6 +1906,9 @@ function AddStoreDrawer({
         managerName: managerName.trim(),
         managerEmail: managerEmail.trim(),
         managerPhone: managerPhone.trim(),
+        menuImages,
+        photos,
+        amenities,
         status: "ACTIVE"
       });
       toast.success(`Store branch "${branchName}" registered successfully!`);
@@ -2249,6 +2312,9 @@ function EditStoreDrawer({
   const [longitude, setLongitude] = useState(store.longitude || 79.0882);
   const [operatingHours, setOperatingHours] = useState(store.operatingHours || "09:00 AM – 10:00 PM (Daily)");
   const [status, setStatus] = useState<StoreType["status"]>(store.status || "ACTIVE");
+  const [menuImages, setMenuImages] = useState<string[]>(store.menuImages || []);
+  const [photos, setPhotos] = useState<string[]>(store.photos || []);
+  const [amenities, setAmenities] = useState<string[]>(store.amenities || []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2263,7 +2329,10 @@ function EditStoreDrawer({
       latitude: Number(latitude),
       longitude: Number(longitude),
       operatingHours: operatingHours.trim(),
-      status
+      status,
+      menuImages,
+      photos,
+      amenities
     });
   };
 
@@ -2382,6 +2451,17 @@ function EditStoreDrawer({
                 />
               </div>
             </div>
+
+            {/* Store Menu Cards, Ambience Photos & Amenities */}
+            <StoreMediaAndAmenitiesSection
+              menuImages={menuImages}
+              photos={photos}
+              amenities={amenities}
+              onMenuImagesChange={setMenuImages}
+              onPhotosChange={setPhotos}
+              onAmenitiesChange={setAmenities}
+              categoryHint="Dining"
+            />
 
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
               <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400">

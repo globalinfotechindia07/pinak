@@ -66,6 +66,9 @@ export interface Store {
   phone: string;
   operatingHours: string;
   hasActiveOffer: boolean;
+  menuImages?: string[];
+  photos?: string[];
+  amenities?: string[];
   createdAt: string;
   storeEmail?: string;
   storePin?: string;

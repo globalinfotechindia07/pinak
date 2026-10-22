@@ -26,6 +26,9 @@ export interface StoreDTO {
   closingTime: string; // e.g. "22:00"
   status: StoreStatus;
   activeOfferCount?: number;
+  menuImages?: string[];
+  photos?: string[];
+  amenities?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +47,9 @@ export interface CreateStoreRequest {
   openingTime?: string;
   closingTime?: string;
   status?: StoreStatus;
+  menuImages?: string[];
+  photos?: string[];
+  amenities?: string[];
 }
 
 export interface UpdateStoreRequest {

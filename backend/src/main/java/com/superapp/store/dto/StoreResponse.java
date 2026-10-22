@@ -7,6 +7,7 @@ import com.superapp.store.entity.Store;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record StoreResponse(
@@ -29,6 +30,9 @@ public record StoreResponse(
         String openingTime,
         String closingTime,
         String operatingDays,
+        List<String> menuImages,
+        List<String> photos,
+        List<String> amenities,
         String status,
         String approvalStatus,
         String rejectionReason,
@@ -72,6 +76,9 @@ public record StoreResponse(
                 store.getOpeningTime(),
                 store.getClosingTime(),
                 store.getOperatingDays(),
+                store.getMenuImages(),
+                store.getPhotos(),
+                store.getAmenities(),
                 store.getStatus() != null ? store.getStatus().name() : null,
                 store.getApprovalStatus() != null ? store.getApprovalStatus().name() : null,
                 store.getRejectionReason(),
@@ -113,7 +120,7 @@ public record StoreResponse(
         this(
                 id, merchantId, merchantName, name, storeName, description,
                 addressLine1, addressLine2, address, cityId, cityName, state, pincode,
-                latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)",
+                latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", java.util.Collections.emptyList(), java.util.Collections.emptyList(), java.util.Collections.emptyList(),
                 status, approvalStatus, rejectionReason, suspensionReason,
                 distanceMeters, approvedAt, createdAt, updatedAt
         );
@@ -144,6 +151,9 @@ public record StoreResponse(
                 "10:00",
                 "22:00",
                 "Daily (Mon - Sun)",
+                java.util.Collections.emptyList(),
+                java.util.Collections.emptyList(),
+                java.util.Collections.emptyList(),
                 status != null ? status.name() : "ACTIVE",
                 status != null ? status.name() : "PENDING_APPROVAL",
                 null,

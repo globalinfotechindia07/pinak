@@ -3,6 +3,7 @@ package com.superapp.store.dto;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.List;
 
 public record CreateStoreRequest(
         @NotNull(message = "Merchant ID must not be null")
@@ -37,10 +38,16 @@ public record CreateStoreRequest(
         BigDecimal longitude,
 
         @Pattern(regexp = "^$|^[+]?[0-9]{7,20}$", message = "Invalid contact phone number format")
-        String contactPhone
+        String contactPhone,
+
+        List<String> menuImages,
+
+        List<String> photos,
+
+        List<String> amenities
 ) {
     public CreateStoreRequest(UUID merchantId, String storeName, String address, String cityId,
                               String state, String pincode, BigDecimal latitude, BigDecimal longitude) {
-        this(merchantId, storeName, address, cityId, state, pincode, latitude, longitude, null);
+        this(merchantId, storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null);
     }
 }

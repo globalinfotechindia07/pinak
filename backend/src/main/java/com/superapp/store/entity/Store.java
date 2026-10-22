@@ -1,5 +1,6 @@
 package com.superapp.store.entity;
 
+import com.superapp.common.converter.StringListJsonConverter;
 import com.superapp.merchant.entity.ApprovalStatus;
 import com.superapp.store.enums.StoreStatus;
 import jakarta.persistence.*;
@@ -7,6 +8,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Store represents a physical branch location of a Merchant.
@@ -110,6 +113,18 @@ public class Store {
 
     @Column(name = "price_range", length = 16)
     private String priceRange = "₹₹";
+
+        @Column(name = "menu_images", columnDefinition = "JSONB")
+    @Convert(converter = StringListJsonConverter.class)
+    private List<String> menuImages = new ArrayList<>();
+
+    @Column(name = "photos", columnDefinition = "JSONB")
+    @Convert(converter = StringListJsonConverter.class)
+    private List<String> photos = new ArrayList<>();
+
+    @Column(name = "amenities", columnDefinition = "JSONB")
+    @Convert(converter = StringListJsonConverter.class)
+    private List<String> amenities = new ArrayList<>();
 
     @Column(name = "created_by", length = 100)
     private String createdBy;
@@ -424,7 +439,32 @@ public class Store {
     public String getOperatingDays() { return operatingDays; }
     public void setOperatingDays(String operatingDays) { this.operatingDays = operatingDays; }
 
-    public boolean isApproved() {
+    
+    public List<String> getMenuImages() {
+        if (menuImages == null) menuImages = new ArrayList<>();
+        return menuImages;
+    }
+    public void setMenuImages(List<String> menuImages) {
+        this.menuImages = menuImages != null ? menuImages : new ArrayList<>();
+    }
+
+    public List<String> getPhotos() {
+        if (photos == null) photos = new ArrayList<>();
+        return photos;
+    }
+    public void setPhotos(List<String> photos) {
+        this.photos = photos != null ? photos : new ArrayList<>();
+    }
+
+    public List<String> getAmenities() {
+        if (amenities == null) amenities = new ArrayList<>();
+        return amenities;
+    }
+    public void setAmenities(List<String> amenities) {
+        this.amenities = amenities != null ? amenities : new ArrayList<>();
+    }
+
+public boolean isApproved() {
         return ApprovalStatus.APPROVED.equals(this.approvalStatus);
     }
 
