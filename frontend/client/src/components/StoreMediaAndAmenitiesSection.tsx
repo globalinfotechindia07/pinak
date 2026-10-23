@@ -117,13 +117,59 @@ export const StoreMediaAndAmenitiesSection: React.FC<StoreMediaAndAmenitiesProps
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
       if (dataUrl) {
-        if (type === "menu") {
-          onMenuImagesChange([...menuImages, dataUrl]);
-          toast.success("Menu page uploaded successfully!");
-        } else {
-          onPhotosChange([...photos, dataUrl]);
-          toast.success("Ambience photo uploaded successfully!");
-        }
+        // Optimize and compress image using HTML5 Canvas for fast rendering & low memory
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            let width = img.width;
+            let height = img.height;
+            const maxDim = 1200;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressed = canvas.toDataURL("image/jpeg", 0.82);
+              if (type === "menu") {
+                onMenuImagesChange([...menuImages, compressed]);
+                toast.success("Menu page uploaded & optimized!");
+              } else {
+                onPhotosChange([...photos, compressed]);
+                toast.success("Ambience photo uploaded & optimized!");
+              }
+              return;
+            }
+          } catch (e) {
+            console.warn("Canvas compression fallback:", e);
+          }
+          if (type === "menu") {
+            onMenuImagesChange([...menuImages, dataUrl]);
+            toast.success("Menu page uploaded successfully!");
+          } else {
+            onPhotosChange([...photos, dataUrl]);
+            toast.success("Ambience photo uploaded successfully!");
+          }
+        };
+        img.onerror = () => {
+          if (type === "menu") {
+            onMenuImagesChange([...menuImages, dataUrl]);
+            toast.success("Menu page uploaded!");
+          } else {
+            onPhotosChange([...photos, dataUrl]);
+            toast.success("Ambience photo uploaded!");
+          }
+        };
+        img.src = dataUrl;
       }
     };
     reader.readAsDataURL(file);

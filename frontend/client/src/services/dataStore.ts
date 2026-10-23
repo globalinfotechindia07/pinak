@@ -381,6 +381,11 @@ export const appStore = {
         managerPhone: st.managerPhone || prev.managerPhone,
         storeEmail: st.storeEmail || prev.storeEmail,
         storePin: st.storePin || prev.storePin,
+        district: st.district || prev.district,
+        category: st.category || prev.category,
+        menuImages: (st.menuImages && st.menuImages.length > 0) ? st.menuImages : (prev.menuImages || []),
+        photos: (st.photos && st.photos.length > 0) ? st.photos : (prev.photos || []),
+        amenities: (st.amenities && st.amenities.length > 0) ? st.amenities : (prev.amenities || []),
       };
     });
     setStored(STORAGE_KEYS.STORES, merged);
@@ -413,6 +418,10 @@ export const appStore = {
       managerName: draft.managerName,
       managerEmail: draft.managerEmail,
       managerPhone: draft.managerPhone || draft.phone,
+      category: draft.category || "Dining & Restaurant",
+      menuImages: Array.isArray(draft.menuImages) ? draft.menuImages : [],
+      photos: Array.isArray(draft.photos) ? draft.photos : [],
+      amenities: Array.isArray(draft.amenities) ? draft.amenities : [],
     };
     setStored(STORAGE_KEYS.STORES, [newStore, ...all]);
 

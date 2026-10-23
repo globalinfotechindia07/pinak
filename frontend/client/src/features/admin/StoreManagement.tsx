@@ -1183,7 +1183,7 @@ function StorePinDrawer({
   const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
-  const primaryBanner = store.photos && store.photos.length > 0 ? store.photos[0] : null;
+  const primaryBanner = (store.photos && store.photos.length > 0) ? store.photos[0] : ((store.menuImages && store.menuImages.length > 0) ? store.menuImages[0] : null);
 
   useEffect(() => {
     if (store.id) {
@@ -1463,6 +1463,52 @@ function StorePinDrawer({
                     <span className="text-lg font-extrabold text-emerald-900 dark:text-emerald-100">{amenityCount}</span>
                   </div>
                 </div>
+
+                {/* Media Showcase Preview in Overview */}
+                {(menuCount > 0 || photoCount > 0) && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Camera size={13} className="text-amber-600" />
+                        <span>Uploaded Media Showcase ({menuCount + photoCount} files)</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("media")}
+                        className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline"
+                      >
+                        All Media ({menuCount + photoCount}) →
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {store.menuImages?.slice(0, 2).map((img, idx) => (
+                        <div
+                          key={`menu-${idx}`}
+                          onClick={() => setPreviewZoomImage(img)}
+                          className="relative aspect-3/4 rounded-xl overflow-hidden border border-amber-300/60 dark:border-amber-800/60 shadow-2xs group cursor-pointer"
+                        >
+                          <img src={img} alt={`Menu ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 px-1 py-0.2 rounded bg-black/75 text-[8px] font-bold text-white">
+                            Menu {idx + 1}
+                          </span>
+                        </div>
+                      ))}
+                      {store.photos?.slice(0, 2).map((img, idx) => (
+                        <div
+                          key={`photo-${idx}`}
+                          onClick={() => setPreviewZoomImage(img)}
+                          className="relative aspect-3/4 rounded-xl overflow-hidden border border-purple-300/60 dark:border-purple-800/60 shadow-2xs group cursor-pointer"
+                        >
+                          <img src={img} alt={`Ambience ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 px-1 py-0.2 rounded bg-black/75 text-[8px] font-bold text-white">
+                            Photo {idx + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Operating Schedule */}
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 space-y-2">
