@@ -58,7 +58,7 @@ import { storeBranchSchema } from "../../lib/validationSchemas";
 import { StoreLocationPicker } from "../../components/StoreLocationPicker";
 import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { StoreScheduleSelector } from "../../components/StoreScheduleSelector";
-import { StoreMediaAndAmenitiesSection } from "../../components/StoreMediaAndAmenitiesSection";
+import { StoreMediaAndAmenitiesSection, PRESET_AMENITIES } from "../../components/StoreMediaAndAmenitiesSection";
 import { FormStepper } from "../../components/FormStepper";
 import { staffApi, BackendStaffResponse } from "../../api/staffApi";
 import { storeApi } from "../../api/storeApi";
@@ -1175,7 +1175,7 @@ function StorePinDrawer({
   onClose: () => void;
   onApprove: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"overview" | "location" | "media" | "manager" | "deals">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "amenities" | "location" | "media" | "manager" | "deals">("overview");
   const [storeStaff, setStoreStaff] = useState<BackendStaffResponse[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -1284,6 +1284,23 @@ function StorePinDrawer({
               )}
             >
               📌 Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("amenities")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0 flex items-center gap-1",
+                activeTab === "amenities"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              ✨ Amenities & Facilities
+              {amenityCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                  {amenityCount}
+                </span>
+              )}
             </button>
             <button
               type="button"

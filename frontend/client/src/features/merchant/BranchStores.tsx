@@ -42,7 +42,7 @@ import { toast } from "sonner";
 import { StoreLocationPicker } from "../../components/StoreLocationPicker";
 import { IndiaAddressFields } from "../../components/IndiaAddressFields";
 import { StoreScheduleSelector } from "../../components/StoreScheduleSelector";
-import { StoreMediaAndAmenitiesSection } from "../../components/StoreMediaAndAmenitiesSection";
+import { StoreMediaAndAmenitiesSection, PRESET_AMENITIES } from "../../components/StoreMediaAndAmenitiesSection";
 import { FormStepper } from "../../components/FormStepper";
 import { useAppStore } from "../../hooks/useAppStore";
 import { StoreStaffManager } from "./StoreStaffManager";
@@ -1281,7 +1281,7 @@ function ViewBranchStoreDrawer({
   onEdit: () => void;
   onLogin: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"overview" | "location" | "media" | "manager">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "amenities" | "location" | "media" | "manager">("overview");
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
@@ -1341,6 +1341,23 @@ function ViewBranchStoreDrawer({
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab("amenities")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0 flex items-center gap-1",
+                activeTab === "amenities"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              )}
+            >
+              ✨ Amenities & Facilities
+              {amenityCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                  {amenityCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab("location")}
               className={cn(
                 "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
@@ -1361,7 +1378,7 @@ function ViewBranchStoreDrawer({
                   : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
               )}
             >
-              🍽️ Menu & Ambience
+              🍽️ Menus & Photos
               {(menuCount > 0 || photoCount > 0) && (
                 <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 text-[10px] font-bold">
                   {menuCount + photoCount}
@@ -1533,69 +1550,128 @@ function ViewBranchStoreDrawer({
                   </div>
                 </div>
 
-                {/* Media Showcase Preview in Overview */}
-                {(menuCount > 0 || photoCount > 0) && (
-                  <div className="p-3.5 rounded-2xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <Camera size={13} className="text-amber-600" />
-                        <span>Uploaded Media Showcase ({menuCount + photoCount} files)</span>
-                      </span>
+                {/* Amenities & Facilities Section in Overview */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-slate-900/50 border border-emerald-200/80 dark:border-emerald-900/60 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-base shadow-2xs">
+                        ✨
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                          Amenities & Facilities ({amenityCount})
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                          Verified customer conveniences active at this outlet
+                        </span>
+                      </div>
+                    </div>
+                    {amenityCount > 0 && (
                       <button
                         type="button"
-                        onClick={() => setActiveTab("media")}
-                        className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline"
+                        onClick={() => setActiveTab("amenities")}
+                        className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-0.5"
                       >
-                        All Media ({menuCount + photoCount}) →
+                        <span>Full List</span>
+                        <ChevronRight size={13} />
                       </button>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2">
-                      {store.menuImages?.slice(0, 2).map((img, idx) => (
-                        <div
-                          key={`menu-${idx}`}
-                          onClick={() => setPreviewZoomImage(img)}
-                          className="relative aspect-3/4 rounded-xl overflow-hidden border border-amber-300/60 dark:border-amber-800/60 shadow-2xs group cursor-pointer"
-                        >
-                          <img src={img} alt={`Menu ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          <span className="absolute bottom-1 left-1 px-1 py-0.2 rounded bg-black/75 text-[8px] font-bold text-white">
-                            Menu {idx + 1}
-                          </span>
-                        </div>
-                      ))}
-                      {store.photos?.slice(0, 2).map((img, idx) => (
-                        <div
-                          key={`photo-${idx}`}
-                          onClick={() => setPreviewZoomImage(img)}
-                          className="relative aspect-3/4 rounded-xl overflow-hidden border border-purple-300/60 dark:border-purple-800/60 shadow-2xs group cursor-pointer"
-                        >
-                          <img src={img} alt={`Ambience ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          <span className="absolute bottom-1 left-1 px-1 py-0.2 rounded bg-black/75 text-[8px] font-bold text-white">
-                            Photo {idx + 1}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    )}
                   </div>
-                )}
 
-                {/* Amenities Badges in Overview */}
-                {amenityCount > 0 ? (
-                  <div className="p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 space-y-2">
-                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
-                      Conveniences & Amenities ({amenityCount})
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {store.amenities!.map((am, i) => (
-                        <span key={i} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs">
-                          ✨ {am}
-                        </span>
-                      ))}
+                  {amenityCount > 0 ? (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {store.amenities!.map((am, i) => {
+                        const preset = PRESET_AMENITIES.find(
+                          (p) => p.id.toLowerCase() === am.toLowerCase() || p.label.toLowerCase() === am.toLowerCase()
+                        );
+                        const icon = preset?.icon || "✨";
+                        const category = preset?.category || "Convenience";
+                        return (
+                          <div
+                            key={i}
+                            className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-emerald-100 dark:border-emerald-950/60 shadow-2xs"
+                          >
+                            <span className="text-lg shrink-0">{icon}</span>
+                            <div className="min-w-0 flex-1">
+                              <span className="font-bold text-xs text-slate-900 dark:text-white block truncate">
+                                {am}
+                              </span>
+                              <span className="text-[9px] uppercase tracking-wider font-semibold text-emerald-600 dark:text-emerald-400 block">
+                                {category} • Active
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-white/60 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 text-xs">
+                      No amenities & facilities configured during outlet setup.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* DEDICATED AMENITIES & FACILITIES TAB */}
+            {activeTab === "amenities" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400" />
+                      <span>Outlet Amenities & Facilities</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      All verified customer comforts, services, and operational conveniences enabled for this branch
+                    </p>
+                  </div>
+                  <Badge variant="success" className="text-xs font-bold">
+                    {amenityCount} {amenityCount === 1 ? "Amenity" : "Amenities"}
+                  </Badge>
+                </div>
+
+                {amenityCount > 0 ? (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {store.amenities!.map((am, i) => {
+                      const preset = PRESET_AMENITIES.find(
+                        (p) => p.id.toLowerCase() === am.toLowerCase() || p.label.toLowerCase() === am.toLowerCase()
+                      );
+                      const icon = preset?.icon || "✨";
+                      const category = preset?.category || "Convenience";
+                      return (
+                        <div
+                          key={i}
+                          className="p-3 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-start gap-3"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-center text-xl shrink-0">
+                            {icon}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                              {category}
+                            </span>
+                            <h5 className="font-bold text-xs text-slate-900 dark:text-white mt-0.5 leading-snug">
+                              {am}
+                            </h5>
+                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+                              <CheckCircle2 size={11} />
+                              <span>Verified at Outlet</span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 text-center">
-                    No amenities selected during setup.
+                  <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+                    <Sparkles size={28} className="mx-auto text-slate-300 dark:text-slate-600" />
+                    <p className="font-semibold text-slate-700 dark:text-slate-300 text-xs">
+                      No Amenities & Facilities Configured
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                      Click "Edit Store" to add conveniences such as Air Conditioned, Free Wi-Fi, Valet Parking, or UPI Acceptance.
+                    </p>
                   </div>
                 )}
               </div>
