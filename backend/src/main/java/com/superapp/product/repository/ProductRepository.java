@@ -14,6 +14,8 @@ import java.util.UUID;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, UUID> {
 
+    List<Product> findByStoreIdAndIsActiveTrue(UUID storeId);
+
     @Query("SELECT p FROM Product p WHERE p.isActive = true AND p.inStock = true ORDER BY p.discountPercent DESC, p.createdAt DESC")
     Page<Product> findTopDeals(Pageable pageable);
 

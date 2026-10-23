@@ -1603,6 +1603,103 @@
               }
             }
           ]
+        },
+        {
+          "name": "🍽️ Store & Service Details (Screen 11 - The Smokehouse Grill)",
+          "item": [
+            {
+              "name": "22b. Fetch Service / Store Detail (Screen 11 - The Smokehouse Grill)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/stores/{{smokehouseStoreId}}/detail?lat=12.9716&lng=77.6412",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "stores",
+                    "{{smokehouseStoreId}}",
+                    "detail"
+                  ],
+                  "query": [
+                    {
+                      "key": "lat",
+                      "value": "12.9716",
+                      "description": "User current latitude for dynamic distance calculation"
+                    },
+                    {
+                      "key": "lng",
+                      "value": "77.6412",
+                      "description": "User current longitude for dynamic distance calculation"
+                    }
+                  ]
+                },
+                "description": "Fetches the full 1-to-1 Store and Service Detail View matching Screen 11 (The Smokehouse Grill). Returns hero carousel, 2X coin perks, segmented Pre-Booking and Walk-In offers, flash sale deals, 5 menu highlights with veg/non-veg indicator, 7-page menu scans, photo mosaic (+14 more), verified amenities, live GPS location, 24/7 concierge support, similar places, and sticky bottom bar CTAs."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response payload is successful with valid schema', function () {",
+                      "    var res = pm.response.json();",
+                      "    pm.expect(res.success).to.eql(true);",
+                      "    pm.expect(res.data).to.be.an('object');",
+                      "    pm.expect(res.data.id).to.eql('e1000000-0000-0000-0000-000000000001');",
+                      "    pm.expect(res.data.storeName).to.eql('The Smokehouse Grill');",
+                      "});",
+                      "",
+                      "pm.test('Hero photos and overview details match Screen 11', function () {",
+                      "    var data = pm.response.json().data;",
+                      "    pm.expect(data.heroPhotos.length).to.be.at.least(4);",
+                      "    pm.expect(data.cuisines).to.include('North Indian');",
+                      "    pm.expect(data.priceForTwoText).to.include('1700 for two');",
+                      "    pm.expect(data.rating).to.eql(4.8);",
+                      "    pm.expect(data.ratingCountText).to.include('ratings');",
+                      "    pm.expect(data.isOpenNow).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test('Coin perk banner returns 2X boost rewards', function () {",
+                      "    var data = pm.response.json().data;",
+                      "    pm.expect(data.coinsPerkBanner).to.be.an('object');",
+                      "    pm.expect(data.coinsPerkBanner.badgeText).to.eql('2X BOOST');",
+                      "});",
+                      "",
+                      "pm.test('Offers section has both Pre-Booking and Walk-In segmented offers', function () {",
+                      "    var offers = pm.response.json().data.offersSection;",
+                      "    pm.expect(offers.preBookOffers.length).to.be.at.least(2);",
+                      "    pm.expect(offers.walkInOffers.length).to.be.at.least(2);",
+                      "    pm.expect(offers.preBookOffers[0].title).to.include('Flat 50% off');",
+                      "});",
+                      "",
+                      "pm.test('Menu highlights and scan cards are present', function () {",
+                      "    var data = pm.response.json().data;",
+                      "    pm.expect(data.menuHighlights.length).to.be.at.least(5);",
+                      "    pm.expect(data.menuScans.length).to.be.at.least(5);",
+                      "    pm.expect(data.amenities.length).to.be.at.least(6);",
+                      "    pm.expect(data.similarPlaces.length).to.be.at.least(2);",
+                      "    pm.expect(data.bottomBar.primaryAction.label).to.eql('Pay Bill Now');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     }
@@ -1649,6 +1746,11 @@
       "value": "",
       "type": "string",
       "description": "Auto-captured long-lived refresh token for token renewal"
+    },
+    {
+      "key": "smokehouseStoreId",
+      "value": "e1000000-0000-0000-0000-000000000001",
+      "type": "string"
     }
   ]
 }

@@ -72,6 +72,10 @@ public class SecurityConfig {
                         "//api/v1/mobile/locations/**",
                         "/api/v1/mobile/location/radar-preview",
                         "//api/v1/mobile/location/radar-preview",
+                        "/api/v1/mobile/stores/*/detail",
+                        "//api/v1/mobile/stores/*/detail",
+                        "/api/v1/mobile/services/*/detail",
+                        "//api/v1/mobile/services/*/detail",
                         "/api/v1/locations/**",
                         "//api/v1/locations/**"
                 ).permitAll()

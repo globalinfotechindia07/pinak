@@ -126,6 +126,9 @@ public class Store {
     @Convert(converter = StringListJsonConverter.class)
     private List<String> amenities = new ArrayList<>();
 
+    @Column(name = "menu_highlights", columnDefinition = "JSONB")
+    private String menuHighlights;
+
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
@@ -463,6 +466,9 @@ public class Store {
     public void setAmenities(List<String> amenities) {
         this.amenities = amenities != null ? amenities : new ArrayList<>();
     }
+
+    public String getMenuHighlights() { return menuHighlights; }
+    public void setMenuHighlights(String menuHighlights) { this.menuHighlights = menuHighlights; }
 
 public boolean isApproved() {
         return ApprovalStatus.APPROVED.equals(this.approvalStatus);
