@@ -28,6 +28,7 @@ import { Link } from "wouter";
 import apiClient from "@/api/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ServiceDetailPreviewView } from "@/components/ServiceDetailPreviewView";
 
 interface NearbyOffer {
   id?: string;
@@ -288,6 +289,10 @@ function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
 }
 
 export default function CustomerHomePreviewPage() {
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const initialStoreId = searchParams?.get("storeId");
+  const [activeScreen, setActiveScreen] = useState<"home" | "detail">(initialStoreId ? "detail" : "home");
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "e1000000-0000-0000-0000-000000000001");
   const [offers, setOffers] = useState<NearbyOffer[]>([]);
   const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
   const [featuredStores, setFeaturedStores] = useState<FeaturedMerchant[]>([]);
@@ -452,10 +457,14 @@ export default function CustomerHomePreviewPage() {
     toast.success(favorites[id] ? "Removed from favorites" : "Saved to your favorites!");
   };
 
-  const handleClaimOffer = (title: string, storeName?: string) => {
-    toast.success(`Selected deal: "${title}"`, {
-      description: `Opening booking & redemption pass for ${storeName || "Partner Branch"}`
-    });
+  const handleOpenStoreDetail = (storeId?: string) => {
+    setSelectedStoreId(storeId || "e1000000-0000-0000-0000-000000000001");
+    setActiveScreen("detail");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleClaimOffer = (title: string, storeName?: string, storeId?: string) => {
+    handleOpenStoreDetail(storeId);
   };
 
   // Fallback demo cards when backend table has no service offers yet
@@ -464,11 +473,11 @@ export default function CustomerHomePreviewPage() {
       offerId: "demo-1",
       id: "demo-1",
       title: "The Smokehouse Grill",
-      imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuChrnSq1Yaf94yJfSJ5ur4cBX9zPgxfzaFFDsPdDhCidTKabd60P9K39f623JQ_oGlV5eiPB1fOJvpvCiApK6ms2dmLCzM0kWM-hM4syELjd460EHe4HKYxTHeKU9v_s5udHMvZbhsO7YeyXiZtWd7ZysQwu1cyKdgW-chLu0Pxq8BfiMm3e_rwX5FwNfcWIBNP6BnAwIYjFnu4UaiC3oo6P3pAkkIos5JeSEHTqIWbGSCOVYLS2_6A",
+      imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuB8sfPzLvi2G05SeAwuufjLXA_kvWfLUTikYVhJSvbZGuQRzNq3abJrWT1rA0qose5tdl6ncsg9hsaJPUBZJT-MSWQUacHb2Cs8an9pw-L6e1T5u8m4KzXGBhRQbcnc1rbq8PocTgITG8auwxoeOdSkxAaXjkcVccYEF2rcFXEKGE5hJKBOO2ANnbK2ABoAmGpnOcBs1R3CdExDFxNxJobZJgsHpOEavPI6G9Zz2yMGJ-xg2NO2bXOb",
       offerType: "PERCENTAGE_DISCOUNT",
       type: "PERCENTAGE_DISCOUNT",
-      discountValue: 40,
-      value: 40,
+      discountValue: 50,
+      value: 50,
       maxDiscountAmount: 500,
       minimumOrderAmount: 1000,
       minTransactionAmount: 1000,
@@ -476,8 +485,8 @@ export default function CustomerHomePreviewPage() {
       expiresAt: new Date(Date.now() + 45 * 60 * 1000).toISOString(), // 45m left
       merchant: { name: "The Smokehouse Grill", isVerified: true },
       merchantSummary: { name: "The Smokehouse Grill", isVerified: true },
-      branch: { name: "Indiranagar", distanceMeters: 400 },
-      branchSummary: { storeName: "Indiranagar", distanceMeters: 400 },
+      branch: { branchId: "e1000000-0000-0000-0000-000000000001", name: "Indiranagar", distanceMeters: 400 },
+      branchSummary: { storeId: "e1000000-0000-0000-0000-000000000001", storeName: "Indiranagar", distanceMeters: 400 },
       reward: { coins: 150, label: "+150 Coins" },
       rewardSummary: { coins: 150, text: "+150 Coins" }
     },
@@ -743,6 +752,39 @@ export default function CustomerHomePreviewPage() {
           </div>
         </div>
 
+        {/* Screen 10 / Screen 11 View Switcher */}
+        <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setActiveScreen("home")}
+            className={cn(
+              "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
+              activeScreen === "home"
+                ? "bg-purple-600 text-white shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <Compass size={13} />
+            <span>Screen 10: Discovery Feed</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedStoreId("e1000000-0000-0000-0000-000000000001");
+              setActiveScreen("detail");
+            }}
+            className={cn(
+              "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
+              activeScreen === "detail"
+                ? "bg-purple-600 text-white shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <UtensilsCrossed size={13} />
+            <span>Screen 11: Service Detail</span>
+          </button>
+        </div>
+
         <div className="flex items-center gap-3">
           {/* Location status */}
           <div className="hidden sm:flex items-center gap-1.5 text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg">
@@ -792,8 +834,15 @@ export default function CustomerHomePreviewPage() {
             </div>
           </header>
 
-          {/* Top Brand Header */}
-          <header className="px-4 pt-2 pb-2 bg-[#fbfbff]">
+          {activeScreen === "detail" ? (
+            <ServiceDetailPreviewView
+              storeId={selectedStoreId}
+              onBack={() => setActiveScreen("home")}
+            />
+          ) : (
+            <>
+              {/* Top Brand Header */}
+              <header className="px-4 pt-2 pb-2 bg-[#fbfbff]">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center space-x-2 shrink-0">
                 <div className="w-9 h-9 rounded-xl bg-purple-700 flex items-center justify-center text-white font-extrabold text-xl shadow-sm">
@@ -1032,10 +1081,13 @@ export default function CustomerHomePreviewPage() {
                 const rewardCoins = o.reward?.coins || o.rewardSummary?.coins || o.bonusCoins || 150;
                 const imageSrc = o.imageUrl || o.imgUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80";
 
+                const targetStoreId = o.branch?.branchId || o.branchSummary?.storeId || "e1000000-0000-0000-0000-000000000001";
+
                 return (
                   <article
                     key={offerKey}
-                    className="w-64 shrink-0 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow"
+                    onClick={() => handleOpenStoreDetail(targetStoreId)}
+                    className="w-64 shrink-0 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow cursor-pointer"
                   >
                     <div>
                       {/* Card Thumbnail */}
@@ -1098,7 +1150,10 @@ export default function CustomerHomePreviewPage() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => handleClaimOffer(o.title, storeName)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenStoreDetail(targetStoreId);
+                        }}
                         className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] px-3.5 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer"
                       >
                         {o.ctaText || "Book & Pay"}
@@ -1641,37 +1696,41 @@ export default function CustomerHomePreviewPage() {
               </div>
             </div>
           </section>
+            </>
+          )}
 
-          {/* Bottom Fixed Navigation Bar */}
-          <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-3 py-2 z-50 flex items-center justify-around shadow-lg">
-            <button type="button" className="flex flex-col items-center text-purple-700 space-y-0.5 min-w-[54px]">
-              <Compass size={20} />
-              <span className="text-[9px] font-bold">Discover</span>
-            </button>
-            <button type="button" className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px]">
-              <Tag size={20} />
-              <span className="text-[9px] font-medium">Deals</span>
-            </button>
-            {/* Scan & Pay Center Button */}
-            <div className="relative -top-5 flex flex-col items-center">
-              <button
-                type="button"
-                onClick={() => toast.info("Opening In-Store UPI QR Scanner")}
-                className="w-13 h-13 p-3 bg-purple-700 hover:bg-purple-800 text-white shadow-lg flex items-center justify-center rounded-xl transition-transform active:scale-95"
-              >
-                <QrCode size={24} />
+          {/* Bottom Fixed Navigation Bar (Discovery Feed only) */}
+          {activeScreen === "home" && (
+            <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-3 py-2 z-50 flex items-center justify-around shadow-lg">
+              <button type="button" className="flex flex-col items-center text-purple-700 space-y-0.5 min-w-[54px]">
+                <Compass size={20} />
+                <span className="text-[9px] font-bold">Discover</span>
               </button>
-              <span className="text-[9px] font-bold text-purple-950 mt-1">Scan & Pay</span>
-            </div>
-            <button type="button" className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px]">
-              <TicketPercent size={20} />
-              <span className="text-[9px] font-medium">Orders</span>
-            </button>
-            <button type="button" className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px]">
-              <User size={20} />
-              <span className="text-[9px] font-medium">Pocket</span>
-            </button>
-          </nav>
+              <button type="button" className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px]">
+                <Tag size={20} />
+                <span className="text-[9px] font-medium">Deals</span>
+              </button>
+              {/* Scan & Pay Center Button */}
+              <div className="relative -top-5 flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={() => toast.info("Opening In-Store UPI QR Scanner")}
+                  className="w-13 h-13 p-3 bg-purple-700 hover:bg-purple-800 text-white shadow-lg flex items-center justify-center rounded-xl transition-transform active:scale-95"
+                >
+                  <QrCode size={24} />
+                </button>
+                <span className="text-[9px] font-bold text-purple-950 mt-1">Scan & Pay</span>
+              </div>
+              <button type="button" className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px]">
+                <TicketPercent size={20} />
+                <span className="text-[9px] font-medium">Orders</span>
+              </button>
+              <button type="button" className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px]">
+                <User size={20} />
+                <span className="text-[9px] font-medium">Pocket</span>
+              </button>
+            </nav>
+          )}
         </div>
       </main>
     </div>

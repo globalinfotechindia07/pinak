@@ -37,7 +37,8 @@ import {
   ChevronLeft,
   ChevronRight,
   UtensilsCrossed,
-  Camera
+  Camera,
+  Smartphone
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -391,6 +392,13 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
                 >
                   <Eye size={14} className="text-purple-600 dark:text-purple-400" />
                   <span>View Outlet & Map</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => window.open(`/customer-preview?storeId=${s.id}`, "_blank")}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+                >
+                  <Smartphone size={14} className="text-purple-600 dark:text-purple-400" />
+                  <span>Customer App Preview</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
@@ -806,7 +814,14 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
                               >
                                 <Eye size={14} className="text-purple-600 dark:text-purple-400" />
                                 <span>View Outlet & Map</span>
-                              </DropdownMenuItem>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => window.open(`/customer-preview?storeId=${s.id}`, "_blank")}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+                >
+                  <Smartphone size={14} className="text-purple-600 dark:text-purple-400" />
+                  <span>Customer App Preview</span>
+                </DropdownMenuItem>
 
                               <DropdownMenuItem
                                 onClick={() => setStoreToEdit(s)}
@@ -1230,6 +1245,16 @@ function StorePinDrawer({
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <a
+                  href={`/customer-preview?storeId=${store.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center gap-1.5 border border-purple-200 dark:border-purple-800 shadow-2xs transition-colors"
+                  title="Open live interactive customer mobile app preview for this store"
+                >
+                  <Smartphone size={13} />
+                  <span>Customer Preview</span>
+                </a>
                 <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
                   {store.status === "ACTIVE" ? "Live on App" : "Inactive"}
                 </Badge>
