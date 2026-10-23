@@ -91,7 +91,7 @@ public class StoreServiceImpl implements StoreService {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
 
         validateCoordinates(request.latitude(), request.longitude());
-        String reqPhone = request.phone() != null ? request.phone().trim() : null;
+        String reqPhone = request.phone() != null ? request.phone().replaceAll("[\\s\\-()]", "").trim() : null;
         if (reqPhone != null && !reqPhone.isBlank()) {
             validateStorePhoneUniqueness(reqPhone, merchant.getId(), null, null);
         }
@@ -184,7 +184,7 @@ public class StoreServiceImpl implements StoreService {
         Store store = getOwnedStore(storeId, merchant.getId());
 
         validateCoordinates(request.latitude(), request.longitude());
-        String reqPhone = request.phone() != null ? request.phone().trim() : null;
+        String reqPhone = request.phone() != null ? request.phone().replaceAll("[\\s\\-()]", "").trim() : null;
         if (reqPhone != null && !reqPhone.isBlank()) {
             validateStorePhoneUniqueness(reqPhone, merchant.getId(), storeId, null);
             store.setPhone(reqPhone);
@@ -439,7 +439,7 @@ public class StoreServiceImpl implements StoreService {
         }
 
         validateCoordinates(request.latitude(), request.longitude());
-        String reqPhone = request.contactPhone() != null ? request.contactPhone().trim() : null;
+        String reqPhone = request.contactPhone() != null ? request.contactPhone().replaceAll("[\\s\\-()]", "").trim() : null;
         if (reqPhone != null && !reqPhone.isBlank()) {
             validateStorePhoneUniqueness(reqPhone, merchant.getId(), null, null);
         }
@@ -531,7 +531,7 @@ public class StoreServiceImpl implements StoreService {
         }
 
         validateCoordinates(request.latitude(), request.longitude());
-        String reqPhone = request.contactPhone() != null ? request.contactPhone().trim() : null;
+        String reqPhone = request.contactPhone() != null ? request.contactPhone().replaceAll("[\\s\\-()]", "").trim() : null;
         if (reqPhone != null && !reqPhone.isBlank()) {
             validateStorePhoneUniqueness(reqPhone, merchant.getId(), id, null);
             store.setPhone(reqPhone);
@@ -785,11 +785,7 @@ public class StoreServiceImpl implements StoreService {
             for (Merchant m : duplicateMerchants) {
                 if (targetMerchantId == null || !m.getId().equals(targetMerchantId)) {
                     throw new AppException(
-                            "Phone number " + phone + " is already registered as the business contact for merchant brand \"" + m.getBusinessName() + "\".",
-                            ApiError.DUPLICATE_RESOURCE, 400);
-                } else {
-                    throw new AppException(
-                            "Phone number " + phone + " is already registered as the main Merchant HQ contact for \"" + m.getBusinessName() + "\". For store operations, please provide a dedicated branch phone number.",
+                            "Phone number " + phone + " is already registered as the business contact for another merchant brand \"" + m.getBusinessName() + "\".",
                             ApiError.DUPLICATE_RESOURCE, 400);
                 }
             }

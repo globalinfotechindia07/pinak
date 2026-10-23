@@ -845,28 +845,29 @@ export default function Home() {
       const email = draft.managerEmail.trim().toLowerCase();
       try {
         const valRes = await staffApi.validateStaffEmail(email, draft.merchantId, "STORE");
-        if (!valRes.valid && valRes.message) {
+        if (valRes && valRes.valid === false && valRes.message) {
           throw new Error(valRes.message);
         }
       } catch (valErr: any) {
         const valMsg = valErr?.response?.data?.message || valErr?.message;
-        if (valMsg) {
+        if (valMsg && (valMsg.includes("cannot use") || valMsg.includes("conflict") || valMsg.includes("already"))) {
           throw new Error(valMsg);
         }
       }
     }
 
-    // 1.5 Authoritative Backend Validation for Store Manager / Branch Phone
-    const phone = (draft.managerPhone || draft.phone || "").trim();
-    if (phone) {
+    // 1.5 Clean and Authoritative Backend Validation for Store Phone
+    const rawPhone = (draft.managerPhone || draft.phone || "").trim();
+    const cleanPhone = rawPhone.replace(/[\s\-_()]/g, "");
+    if (cleanPhone) {
       try {
         const phoneVal = await storeApi.validateStorePhone(
-          phone,
+          cleanPhone,
           draft.merchantId,
           undefined,
           draft.managerEmail ? draft.managerEmail.trim() : undefined
         );
-        if (!phoneVal.valid && phoneVal.message) {
+        if (phoneVal && phoneVal.valid === false && phoneVal.message) {
           throw new Error(phoneVal.message);
         }
       } catch (valErr: any) {
@@ -881,13 +882,13 @@ export default function Home() {
       const createdStore = await storeApi.createStore({
         merchantId: draft.merchantId,
         storeName: draft.branchName || draft.storeName || draft.name || "New Branch",
-        contactPhone: draft.managerPhone || draft.phone || "9876543210",
-        address: draft.address || "Main Street",
+        contactPhone: cleanPhone || "9876543210",
+        address: draft.address && draft.address.trim().length >= 5 ? draft.address.trim() : "Main Road Outlet",
         cityId: (draft.city || "Nagpur").toLowerCase(),
         state: draft.state || "Maharashtra",
-        pincode: draft.pincode || "440001",
-        latitude: draft.latitude || 21.1458,
-        longitude: draft.longitude || 79.0882,
+        pincode: draft.pincode && /^[0-9]{5,10}$/.test(draft.pincode) ? draft.pincode : "440010",
+        latitude: Number(draft.latitude) || 21.1458,
+        longitude: Number(draft.longitude) || 79.0882,
         openingTime: draft.openingTime || "09:00",
         closingTime: draft.closingTime || "22:00",
         menuImages: draft.menuImages || [],

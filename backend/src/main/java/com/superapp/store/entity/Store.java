@@ -1,6 +1,7 @@
 package com.superapp.store.entity;
 
-import com.superapp.common.converter.StringListJsonConverter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import com.superapp.merchant.entity.ApprovalStatus;
 import com.superapp.store.enums.StoreStatus;
 import jakarta.persistence.*;
@@ -61,6 +62,9 @@ public class Store {
     @Column(name = "location")
     private String location;
 
+    @Column(name = "location_type", nullable = false, length = 20)
+    private String locationType = "POINT";
+
     @Column(name = "phone", length = 20)
     private String phone;
 
@@ -115,17 +119,18 @@ public class Store {
     private String priceRange = "₹₹";
 
         @Column(name = "menu_images", columnDefinition = "JSONB")
-    @Convert(converter = StringListJsonConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     private List<String> menuImages = new ArrayList<>();
 
     @Column(name = "photos", columnDefinition = "JSONB")
-    @Convert(converter = StringListJsonConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     private List<String> photos = new ArrayList<>();
 
     @Column(name = "amenities", columnDefinition = "JSONB")
-    @Convert(converter = StringListJsonConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     private List<String> amenities = new ArrayList<>();
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "menu_highlights", columnDefinition = "JSONB")
     private String menuHighlights;
 
@@ -327,6 +332,14 @@ public class Store {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getLocationType() {
+        return locationType;
+    }
+
+    public void setLocationType(String locationType) {
+        this.locationType = locationType;
     }
 
     public String getPhone() {

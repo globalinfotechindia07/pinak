@@ -37,7 +37,7 @@ public record CreateStoreRequest(
         @DecimalMax(value = "180.0", message = "Longitude must be between -180 and 180")
         BigDecimal longitude,
 
-        @Pattern(regexp = "^$|^[+]?[0-9]{7,20}$", message = "Invalid contact phone number format")
+        @Pattern(regexp = "^$|^[+]?[0-9\\s\\-()]{7,25}$", message = "Invalid contact phone number format")
         String contactPhone,
 
         List<String> menuImages,

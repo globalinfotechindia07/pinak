@@ -1101,8 +1101,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
         <AddStoreDrawer
           merchants={merchants}
           onClose={() => setIsAddOpen(false)}
-          onSave={(draft) => {
-            onAddStore(draft);
+          onSave={async (draft) => {
+            await onAddStore(draft);
             setIsAddOpen(false);
           }}
         />
@@ -1756,7 +1756,7 @@ function AddStoreDrawer({
   const [latitude, setLatitude] = useState(21.1458);
   const [longitude, setLongitude] = useState(79.0882);
   const [operatingHours, setOperatingHours] = useState("10:00 AM – 10:00 PM");
-  const [phone, setPhone] = useState("+91 712 2550000");
+  const [phone, setPhone] = useState("+917122550000");
   const [managerName, setManagerName] = useState("");
   const [managerEmail, setManagerEmail] = useState("");
   const [managerPhone, setManagerPhone] = useState("");
@@ -1817,6 +1817,7 @@ function AddStoreDrawer({
     const mgrFirstName = brand.split(" ")[0] || "Branch";
     const safeBrand = brand.toLowerCase().replace(/[^a-z0-9]/g, "") || "retail";
     const safeCity = mCity.toLowerCase().replace(/[^a-z0-9]/g, "") || "central";
+    const cleanFirstName = brand.split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g, "") || "manager";
 
     setBranchName(`${brand} – ${mCity} Flagship`);
     setAddress(mAddress);
@@ -1827,7 +1828,7 @@ function AddStoreDrawer({
     setLatitude(lat);
     setLongitude(lng);
     setOperatingHours("10:00 AM – 10:00 PM");
-    setPhone(target.ownerPhone || "+91 712 2550000");
+    setPhone(target.ownerPhone ? target.ownerPhone.replace(/[\s\-_()]/g, "") : "+917122550000");
 
     if (menuImages.length === 0) {
       setMenuImages([
@@ -1846,8 +1847,8 @@ function AddStoreDrawer({
     }
 
     setManagerName(`${mgrFirstName} Store Manager`);
-    setManagerEmail(`${mgrFirstName.toLowerCase()}.${safeCity}@${safeBrand}.com`);
-    setManagerPhone(target.ownerPhone || "9822100000");
+    setManagerEmail(`${cleanFirstName}.${safeCity}@${safeBrand}.com`);
+    setManagerPhone(target.ownerPhone ? target.ownerPhone.replace(/[\s\-_()]/g, "") : "9822100000");
     setErrors({});
 
     toast.success(`Auto-filled branch details & manager credentials from "${brand}"!`, {
@@ -1909,8 +1910,8 @@ function AddStoreDrawer({
         merchantName: selectedMerchant?.businessName || "Unknown Brand",
         branchName: branchName.trim(),
         storeName: branchName.trim(),
-        phone: phone.trim(),
-        contactPhone: phone.trim(),
+        phone: phone.replace(/[\s\-_()]/g, "").trim(),
+        contactPhone: phone.replace(/[\s\-_()]/g, "").trim(),
         address: address.trim(),
         state: state.trim(),
         district: district.trim(),
@@ -1921,7 +1922,7 @@ function AddStoreDrawer({
         operatingHours: operatingHours.trim(),
         managerName: managerName.trim(),
         managerEmail: managerEmail.trim(),
-        managerPhone: managerPhone.trim(),
+        managerPhone: managerPhone.replace(/[\s\-_()]/g, "").trim(),
         menuImages,
         photos,
         amenities,
