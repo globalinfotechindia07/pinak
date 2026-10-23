@@ -513,10 +513,25 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
                     </div>
 
                     <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
-                      <span className="text-slate-500 block mb-1">Terms & Conditions:</span>
-                      <p className="text-slate-700 dark:text-slate-300 italic text-[11px] leading-relaxed">
-                        {offer.terms || "Standard offer rules apply."}
-                      </p>
+                      <span className="text-slate-500 block mb-1 font-semibold">Terms & Fine Print:</span>
+                      {offer.terms && (offer.terms.includes("\n") || offer.terms.includes("•")) ? (
+                        <ul className="space-y-1 text-slate-700 dark:text-slate-300 text-[11px] leading-relaxed">
+                          {offer.terms
+                            .split(/\n|•/)
+                            .map((t) => t.trim())
+                            .filter((t) => t.length > 2)
+                            .map((term, i) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <span className="text-purple-600 font-bold shrink-0">•</span>
+                                <span>{term}</span>
+                              </li>
+                            ))}
+                        </ul>
+                      ) : (
+                        <p className="text-slate-700 dark:text-slate-300 italic text-[11px] leading-relaxed">
+                          {offer.terms || "Standard offer rules apply."}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

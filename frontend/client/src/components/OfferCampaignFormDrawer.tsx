@@ -24,16 +24,16 @@ import {
   Calculator,
   AlertCircle,
   MapPin,
-  Phone,
-  Scissors,
-  Dumbbell,
-  Car,
-  Gamepad2,
-  Stethoscope,
-  Shirt,
-  HeartPulse,
-  Package,
-  Upload
+  Upload,
+  Trash2,
+  ListChecks,
+  FileText,
+  CheckCircle2,
+  Info,
+  Sliders,
+  DollarSign,
+  ShieldCheck,
+  Bookmark
 } from "lucide-react";
 import { Offer, Store, Merchant } from "../types";
 import { offerCampaignSchema } from "../lib/validationSchemas";
@@ -76,16 +76,6 @@ const SEATING_AREA_OPTIONS = [
   "Lounge / Bar Counter"
 ];
 
-const PRODUCT_CATEGORIES = [
-  { key: "GROCERY", label: "Grocery & Staples", icon: ShoppingBag },
-  { key: "ELECTRONICS", label: "Electronics & Tech", icon: Zap },
-  { key: "FASHION", label: "Fashion & Apparel", icon: Shirt },
-  { key: "WELLNESS", label: "Pharmacy & Nutrition", icon: HeartPulse },
-  { key: "HOME", label: "Home & Kitchen", icon: Package },
-  { key: "BEAUTY", label: "Beauty & Cosmetics", icon: Sparkles },
-  { key: "BAKERY", label: "Bakery & Treats", icon: Utensils }
-];
-
 const CURATED_IMAGES = {
   STORE_DINING: [
     { label: "Luxury Dining", url: "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80" },
@@ -103,65 +93,33 @@ const CURATED_IMAGES = {
     { label: "Amul Fresh Milk", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuDs3waAQbgzW6ulcWgCbnSxbpZN_13ZJXWzm4X2qAl0vMuum2WR04QFvNkO8dtZdx7jm6Hx-4Yv-UOTJvm_T1_zP-BjcNgu-n36fI1NJbiNiDN6iATJvnTI3PZFH9s3mrPOOkbC6anaq1aeOnanPe9Jc7mJ3mhPvignPOty3w2-rM7g19DmmRog4WK1HSwTg6I3iNANpsvacjgVB8XlD2SaJ5lauRM86etGCZnk70_yZwEM-f1ui0Vd" },
     { label: "Basmati Rice", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuAz3pTi8RkZpVw-Mr8tM5TAVW9Dl52lt8OT816AYoIq9TJciz5RZiVqam6VcVx6sW0eHkx1AIsMU_2cJQnOVUCV_IsPb5ebrpge7RJgrt7_UolSuNwhci2MERrxPmWqzsSDf9lIz1ejVVwqN1p2Tqt7z2H8zJcBLccInJxlWFHuXUO9pdnl62dGbzHOHafQcu5_8dty0RVNA6-oxEzRekQ_W5lhkTuggAod0xEPnSZqWT2hebkFAl3V" },
     { label: "Maggi Noodles", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD85STcU1nutJDJ0krl4bTkoIPmaJ4PD8EjDXxLt-3Wn97ov26ZRK_SgQz8XHHhygaSlXOwxm0aLDFgmOu9U2WwN_95PeXogGINTBsN7dXzUQy2oBGxucmNu9hQEbQmEHzwp5jNKXMetSnvoYnYlLJefb5wPnXog5WI-ZbK496lXs2rlF6L_D7_gM36Sat4HKXCWbX4zLOgCJftTO1Y9PBzQcX7uXfvPaYD0tsmT6Klx91ng021rARr" },
-    { label: "Dettol Handwash", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCT4YsSGn2-d3Ilg8GHUkjkbinPLHR9X7q1_ktSZMPpciUeZoEQEfzw0LYfSquH_5RyfBDIkaosS0Je6owvBIo-sDrn7OO0OBVdhRUVGkPxJJ0k1ju-EDmtXI5ajKvspfNIgdQctKkkZbXNRLJGJcSayNJgveLO7508KddEnkITFslKiMq3BsawnrhljZliemhFYYh4ImVZE-DuRIrI932ZwijmQEMqdv9LeTOwdA4KGdN488AuFMeH" },
-    { label: "Stanley Hammer", url: "https://lh3.googleusercontent.com/aida-public/AB6AXuBdLPvNB0gngUt-ujV1sfzj6KGKpuoYJ5Zy68KjG0y1lOvGHx8a_FqXWold9KzYAkdgq4NHXMBc8sSqBiejzd4WpS-SB76zcwbkGXEq9Pe3ntKM4Vmo1XR8LZLgVbm9JfSa7-E-lEf0xB2X--imbz0tIZH0LMxoQ654s5_py6rGYrbv2tE5lRD-qpawWz8Qd3Tv6xjcd2VcEeGziNoRZ-Xyfjp6WeLK6bRSxWanjCq5stC_t_0Cb6kM" },
-    { label: "Grocery Ration", url: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80" },
-    { label: "ANC Earbuds", url: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80" },
-    { label: "Cotton Tees", url: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80" }
+    { label: "Grocery Essentials", url: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80" }
   ]
 };
 
-const PRODUCT_PRESETS = [
-  {
-    label: "Amul Fresh Milk",
-    name: "Amul Fresh Milk",
-    unit: "1 Litre",
-    mrp: 65,
-    deal: 52,
-    badge: "20% OFF",
-    cat: "DAIRY",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuDs3waAQbgzW6ulcWgCbnSxbpZN_13ZJXWzm4X2qAl0vMuum2WR04QFvNkO8dtZdx7jm6Hx-4Yv-UOTJvm_T1_zP-BjcNgu-n36fI1NJbiNiDN6iATJvnTI3PZFH9s3mrPOOkbC6anaq1aeOnanPe9Jc7mJ3mhPvignPOty3w2-rM7g19DmmRog4WK1HSwTg6I3iNANpsvacjgVB8XlD2SaJ5lauRM86etGCZnk70_yZwEM-f1ui0Vd"
-  },
-  {
-    label: "India Gate Basmati Rice",
-    name: "India Gate Basmati Rice",
-    unit: "5 kg",
-    mrp: 600,
-    deal: 540,
-    badge: "10% OFF",
-    cat: "GROCERY",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuAz3pTi8RkZpVw-Mr8tM5TAVW9Dl52lt8OT816AYoIq9TJciz5RZiVqam6VcVx6sW0eHkx1AIsMU_2cJQnOVUCV_IsPb5ebrpge7RJgrt7_UolSuNwhci2MERrxPmWqzsSDf9lIz1ejVVwqN1p2Tqt7z2H8zJcBLccInJxlWFHuXUO9pdnl62dGbzHOHafQcu5_8dty0RVNA6-oxEzRekQ_W5lhkTuggAod0xEPnSZqWT2hebkFAl3V"
-  },
-  {
-    label: "Maggi 2-Min Noodles",
-    name: "Maggi 2-Min Noodles",
-    unit: "70 g",
-    mrp: 32,
-    deal: 28,
-    badge: "Buy 2 Get 1",
-    cat: "PACKAGED_FOOD",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD85STcU1nutJDJ0krl4bTkoIPmaJ4PD8EjDXxLt-3Wn97ov26ZRK_SgQz8XHHhygaSlXOwxm0aLDFgmOu9U2WwN_95PeXogGINTBsN7dXzUQy2oBGxucmNu9hQEbQmEHzwp5jNKXMetSnvoYnYlLJefb5wPnXog5WI-ZbK496lXs2rlF6L_D7_gM36Sat4HKXCWbX4zLOgCJftTO1Y9PBzQcX7uXfvPaYD0tsmT6Klx91ng021rARr"
-  },
-  {
-    label: "Dettol Handwash",
-    name: "Dettol Handwash",
-    unit: "200 ml",
-    mrp: 140,
-    deal: 98,
-    badge: "30% OFF",
-    cat: "PERSONAL_CARE",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCT4YsSGn2-d3Ilg8GHUkjkbinPLHR9X7q1_ktSZMPpciUeZoEQEfzw0LYfSquH_5RyfBDIkaosS0Je6owvBIo-sDrn7OO0OBVdhRUVGkPxJJ0k1ju-EDmtXI5ajKvspfNIgdQctKkkZbXNRLJGJcSayNJgveLO7508KddEnkITFslKiMq3BsawnrhljZliemhFYYh4ImVZE-DuRIrI932ZwijmQEMqdv9LeTOwdA4KGdN488AuFMeH"
-  },
-  {
-    label: "Stanley Hammer",
-    name: "Stanley Hammer",
-    unit: "500 g",
-    mrp: 400,
-    deal: 340,
-    badge: "15% OFF",
-    cat: "HARDWARE",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuBdLPvNB0gngUt-ujV1sfzj6KGKpuoYJ5Zy68KjG0y1lOvGHx8a_FqXWold9KzYAkdgq4NHXMBc8sSqBiejzd4WpS-SB76zcwbkGXEq9Pe3ntKM4Vmo1XR8LZLgVbm9JfSa7-E-lEf0xB2X--imbz0tIZH0LMxoQ654s5_py6rGYrbv2tE5lRD-qpawWz8Qd3Tv6xjcd2VcEeGziNoRZ-Xyfjp6WeLK6bRSxWanjCq5stC_t_0Cb6kM"
-  }
+const PRESET_DISCOUNTS = [
+  { label: "15% OFF", type: "FLAT_PCT" as const, val: 15, minBill: 400, maxDisc: 150 },
+  { label: "20% OFF", type: "FLAT_PCT" as const, val: 20, minBill: 500, maxDisc: 200 },
+  { label: "30% OFF", type: "FLAT_PCT" as const, val: 30, minBill: 750, maxDisc: 300 },
+  { label: "40% OFF", type: "FLAT_PCT" as const, val: 40, minBill: 800, maxDisc: 400 },
+  { label: "50% OFF", type: "FLAT_PCT" as const, val: 50, minBill: 1000, maxDisc: 500 },
+  { label: "₹100 Flat", type: "FLAT_AMT" as const, val: 100, minBill: 500, maxDisc: 100 },
+  { label: "Buy 1 Get 1", type: "BOGO" as const, val: 50, minBill: 600, maxDisc: 300 }
+];
+
+const PRESET_TERMS = [
+  "Valid for Dine-in only at participating brand outlets",
+  "Valid on Pre-booked table reservations only",
+  "Cannot be clubbed with other offers, card deals, or combos",
+  "Valid on total bill including food and soft beverages",
+  "Not applicable on alcoholic beverages and tobacco products",
+  "One voucher redeemable per table / bill",
+  "Taxes and applicable government service charges extra",
+  "Prior reservation / pre-booking recommended during peak rush hours",
+  "Table held for up to 15 minutes past scheduled slot time",
+  "Must present voucher / bill code prior to final billing",
+  "Valid across all participating brand outlets",
+  "Valid only during specified operating days and hours"
 ];
 
 export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = ({
@@ -174,8 +132,11 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   onClose,
   onSave
 }) => {
-  // Wizard Steps (1: Merchant & Store -> 2: Offer Scope -> 3: Rules & Pricing -> 4: Merchandising & Preview)
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  // Logical 3-Step Streamlined Sequence:
+  // Step 1: Offer Essentials & Store (Who, Target, Title & Visual)
+  // Step 2: Deal, Pricing & Validity (Discount, Slots, Dates, Schedule)
+  // Step 3: Terms & Fine Print + Preview & Publish (Terms Manager, Live Preview & Publish)
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   // STEP 1: MERCHANT & STORE SELECTION
   const [selectedMerchantId, setSelectedMerchantId] = useState<string>(
@@ -215,38 +176,50 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     return availableStoresForMerchant.find((s) => s.id === selectedStoreId);
   }, [availableStoresForMerchant, selectedStoreId]);
 
-  // STEP 2: OFFER SCOPE & TARGET
-  // "SERVICE" = Store-level offer / Table Booking / Dine-in discount
-  // "PRODUCT" = Specific product sold at this store
-  const [offerScope, setOfferScope] = useState<"STORE_OFFER" | "STORE_PRODUCT">(
-    initialData?.scopeType === "PRODUCT" ? "STORE_PRODUCT" : "STORE_OFFER"
+  // OFFER TARGET FORMAT
+  // "PRE_BOOK" = Pre-booking Table Reservation
+  // "WALK_IN" = Instant Walk-in Bill Discount
+  // "STORE_PRODUCT" = Specific retail product bargain
+  const [offerScope, setOfferScope] = useState<"PRE_BOOK" | "WALK_IN" | "STORE_PRODUCT">(
+    initialData?.scopeType === "PRODUCT"
+      ? "STORE_PRODUCT"
+      : initialData?.isTableBookingEnabled
+      ? "PRE_BOOK"
+      : "WALK_IN"
   );
 
-  // For Store Product Deals
-  const [productName, setProductName] = useState<string>(
-    initialData?.scopeType === "PRODUCT" ? initialData.title || "" : ""
+  // Offer Titles & Visuals
+  const [title, setTitle] = useState<string>(initialData?.title || "");
+  const [tagline, setTagline] = useState<string>(initialData?.tagline || "");
+  const [badgeText, setBadgeText] = useState<string>(
+    initialData?.badgeText || (offerScope === "STORE_PRODUCT" ? "STORE FLASH" : "PINAK EXCLUSIVE")
   );
-  const [unitOrWeight, setUnitOrWeight] = useState<string>(
-    initialData?.unitOrWeight || (initialData?.scopeType === "PRODUCT" ? (initialData.tagline || "") : "")
+  const [ctaText, setCtaText] = useState<string>(
+    initialData?.ctaText || (offerScope === "STORE_PRODUCT" ? "Add to Cart" : offerScope === "PRE_BOOK" ? "Reserve Table" : "Book & Pay")
   );
-  const [productCategory, setProductCategory] = useState<string>(
-    initialData?.productCategory || "GROCERY"
+  const [imageUrl, setImageUrl] = useState<string>(
+    initialData?.imageUrl || "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80"
   );
-  const [originalPrice, setOriginalPrice] = useState<number | undefined>(initialData?.originalPrice);
-  const [dealPrice, setDealPrice] = useState<number | undefined>(initialData?.dealPrice);
-  const [isFlashDeal, setIsFlashDeal] = useState<boolean>(initialData?.isFlashDeal || false);
-  const [flashEndTime, setFlashEndTime] = useState<string>(
-    initialData?.flashEndTime || new Date(Date.now() + 24 * 3600000).toISOString().slice(0, 16)
-  );
-  const [totalFlashUnits, setTotalFlashUnits] = useState<number | undefined>(initialData?.totalFlashUnits ?? 50);
 
-  // For Store Table / Slot Booking Engine
-  const [isTableBookingEnabled, setIsTableBookingEnabled] = useState<boolean>(
-    initialData?.isTableBookingEnabled ?? true
+  // STEP 2: DEAL RULES & PRICING
+  const [type, setType] = useState<"FLAT_PCT" | "FLAT_AMT" | "BOGO">(
+    initialData?.type || "FLAT_PCT"
   );
-  const [bookingType, setBookingType] = useState<"TABLE_RESERVATION" | "APPOINTMENT_SLOT">(
-    initialData?.bookingType || "TABLE_RESERVATION"
+  const [value, setValue] = useState<number>(initialData?.value ?? 50);
+  const [minBillAmount, setMinBillAmount] = useState<number>(initialData?.minBillAmount ?? 1000);
+  const [maxDiscount, setMaxDiscount] = useState<number | undefined>(initialData?.maxDiscount ?? 500);
+  const [bonusCoins, setBonusCoins] = useState<number>(initialData?.bonusCoins ?? 100);
+  const [perUserLimit, setPerUserLimit] = useState<number | undefined>(initialData?.perUserLimit ?? 1);
+  const [maxTotalRedemptions, setMaxTotalRedemptions] = useState<number | undefined>(
+    initialData?.maxTotalRedemptions ?? 500
   );
+
+  const [redemptionMethod, setRedemptionMethod] = useState<"AUTO_APPLIED" | "PROMO_CODE">(
+    initialData?.redemptionMethod || "AUTO_APPLIED"
+  );
+  const [promoCode, setPromoCode] = useState<string>(initialData?.promoCode || "PINAK50");
+
+  // Pre-booking specific settings
   const [slotTimes, setSlotTimes] = useState<string[]>(
     initialData?.slotTimes || [
       "12:30 PM",
@@ -272,45 +245,24 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   const [gracePeriodMinutes, setGracePeriodMinutes] = useState<number>(
     initialData?.gracePeriodMinutes ?? 15
   );
-  const [instantConfirmation, setInstantConfirmation] = useState<boolean>(
-    initialData?.instantConfirmation ?? true
-  );
   const [newSlotInput, setNewSlotInput] = useState<string>("");
 
-  // STEP 3: DEAL RULES & PRICING
-  const [type, setType] = useState<"FLAT_PCT" | "FLAT_AMT" | "BOGO">(
-    initialData?.type || "FLAT_PCT"
+  // Product specific settings
+  const [productName, setProductName] = useState<string>(
+    initialData?.scopeType === "PRODUCT" ? initialData.title || "" : ""
   );
-  const [value, setValue] = useState<number>(initialData?.value ?? 40);
-  const [minBillAmount, setMinBillAmount] = useState<number>(initialData?.minBillAmount ?? 500);
-  const [maxDiscount, setMaxDiscount] = useState<number | undefined>(initialData?.maxDiscount ?? 200);
-  const [bonusCoins, setBonusCoins] = useState<number>(initialData?.bonusCoins ?? 100);
-  const [perUserLimit, setPerUserLimit] = useState<number | undefined>(initialData?.perUserLimit ?? 1);
-  const [maxTotalRedemptions, setMaxTotalRedemptions] = useState<number | undefined>(
-    initialData?.maxTotalRedemptions ?? 500
+  const [unitOrWeight, setUnitOrWeight] = useState<string>(
+    initialData?.unitOrWeight || ""
   );
+  const [productCategory, setProductCategory] = useState<string>(
+    initialData?.productCategory || "GROCERY"
+  );
+  const [originalPrice, setOriginalPrice] = useState<number | undefined>(initialData?.originalPrice);
+  const [dealPrice, setDealPrice] = useState<number | undefined>(initialData?.dealPrice);
+  const [isFlashDeal, setIsFlashDeal] = useState<boolean>(initialData?.isFlashDeal || false);
+  const [totalFlashUnits, setTotalFlashUnits] = useState<number | undefined>(initialData?.totalFlashUnits ?? 50);
 
-  const [redemptionMethod, setRedemptionMethod] = useState<"AUTO_APPLIED" | "PROMO_CODE">(
-    initialData?.redemptionMethod || "AUTO_APPLIED"
-  );
-  const [promoCode, setPromoCode] = useState<string>(initialData?.promoCode || "DISTRICT40");
-
-  const [redemptionType, setRedemptionType] = useState<"WALK_IN" | "PRE_BOOK" | "BOTH">(
-    initialData?.redemptionType || "BOTH"
-  );
-  const [minAdvanceHours, setMinAdvanceHours] = useState<number>(
-    initialData?.minAdvanceHours ?? (initialData?.redemptionType === "PRE_BOOK" ? 2 : 0)
-  );
-
-  // STEP 4: MERCHANDISING & SCHEDULE
-  const [title, setTitle] = useState<string>(initialData?.title || "");
-  const [tagline, setTagline] = useState<string>(initialData?.tagline || "");
-  const [badgeText, setBadgeText] = useState<string>(
-    initialData?.badgeText || (offerScope === "STORE_PRODUCT" ? "STORE FLASH" : "DISTRICT SPECIAL")
-  );
-  const [ctaText, setCtaText] = useState<string>(
-    initialData?.ctaText || (offerScope === "STORE_PRODUCT" ? "Add to Cart" : isTableBookingEnabled ? "Reserve Table" : "Book & Pay")
-  );
+  // Validity Dates & Schedule
   const [validFrom, setValidFrom] = useState(
     initialData?.validFrom ? initialData.validFrom.split("T")[0] : new Date().toISOString().split("T")[0]
   );
@@ -323,12 +275,31 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   const [enableHappyHours, setEnableHappyHours] = useState(!!initialData?.startTime);
   const [startTime, setStartTime] = useState(initialData?.startTime || "12:00");
   const [endTime, setEndTime] = useState(initialData?.endTime || "22:00");
-  const [imageUrl, setImageUrl] = useState<string>(
-    initialData?.imageUrl || "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80"
-  );
-  const [terms, setTerms] = useState<string>(
-    initialData?.terms || "Valid on dine-in bill and confirmed table reservations."
-  );
+
+  // STEP 3: TERMS & FINE PRINT
+  const [termsList, setTermsList] = useState<string[]>(() => {
+    if (initialData?.terms && initialData.terms.trim()) {
+      return initialData.terms
+        .split(/\n|•/)
+        .map((t) => t.trim())
+        .filter((t) => t.length > 2);
+    }
+    return [
+      "Valid for Dine-in only at participating brand outlets",
+      "Available on Mon-Sun • Valid on minimum bill ₹1,000",
+      "Cannot be clubbed with existing in-store promotions or corporate cards",
+      "Auto-applied at checkout on PINAK bill payment"
+    ];
+  });
+  const [customTermInput, setCustomTermInput] = useState<string>("");
+  const [showRawTerms, setShowRawTerms] = useState<boolean>(false);
+  const [rawTermsText, setRawTermsText] = useState<string>("");
+  const [isPreviewTermsOpen, setIsPreviewTermsOpen] = useState<boolean>(false);
+
+  // Sync termsList to raw text when termsList changes
+  useEffect(() => {
+    setRawTermsText(termsList.map((t) => `• ${t}`).join("\n"));
+  }, [termsList]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -340,167 +311,133 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     return null;
   }, [originalPrice, dealPrice]);
 
-  // Sync title when in product mode if title is empty
+  // Set default title if empty when switching store or discount
   useEffect(() => {
-    if (offerScope === "STORE_PRODUCT" && productName && !title) {
-      setTitle(`${productName} - Special Store Deal`);
-    }
-  }, [productName, offerScope, title]);
-
-  const handleApplyProductPreset = (preset: typeof PRODUCT_PRESETS[0]) => {
-    setProductName(preset.name);
-    setUnitOrWeight(preset.unit);
-    setOriginalPrice(preset.mrp);
-    setDealPrice(preset.deal);
-    setBadgeText(preset.badge);
-    setProductCategory(preset.cat);
-    setImageUrl(preset.url);
-    setTitle(preset.name);
-    setTagline(preset.unit);
-    const calculatedDiscount = Math.round(((preset.mrp - preset.deal) / preset.mrp) * 100);
-    setValue(calculatedDiscount);
-    setMaxDiscount(preset.mrp - preset.deal);
-    toast.success(`Loaded "${preset.name}" product template!`);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        toast.error("Image file size must be less than 3MB");
-        return;
+    if (!title && !isEdit) {
+      const storeLabel = selectedStore ? selectedStore.branchName : "All Branches";
+      if (offerScope === "STORE_PRODUCT") {
+        setTitle(`Special Store Deal @ ${storeLabel}`);
+      } else {
+        const disc = type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`;
+        const exp = offerScope === "PRE_BOOK" ? "on Pre-Booking & Bill" : "on Total Bill";
+        setTitle(`Flat ${disc} ${exp}`);
+        setTagline(`Available on Mon-Sun • Valid on minimum bill ₹${minBillAmount}`);
       }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (typeof event.target?.result === "string") {
-          setImageUrl(event.target.result);
-          toast.success("Product image uploaded successfully!");
-        }
-      };
-      reader.readAsDataURL(file);
     }
-  };
+  }, [offerScope, selectedStore, type, value, minBillAmount, isEdit]);
 
-  // Helper actions
-  const toggleSlot = (slot: string) => {
-    setSlotTimes((prev) =>
-      prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]
-    );
-  };
-
-  const addCustomSlot = () => {
-    const val = newSlotInput.trim().toUpperCase();
-    if (!val) return;
-    if (!slotTimes.includes(val)) {
-      setSlotTimes((prev) => [...prev, val]);
-      setNewSlotInput("");
-      toast.success(`Added slot: ${val}`);
-    } else {
-      toast.error("Slot already exists");
-    }
-  };
-
-  const toggleSeatingArea = (area: string) => {
-    setSeatingAreas((prev) =>
-      prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]
-    );
-  };
-
-  const toggleDay = (day: string) => {
+  // Toggle Day of Week
+  const handleToggleDay = (day: string) => {
     setActiveDays((prev) =>
       prev.includes(day) ? (prev.length > 1 ? prev.filter((d) => d !== day) : prev) : [...prev, day]
     );
   };
 
-  // 1-Click Auto Title Generator based on Merchant, Store and Discount
+  // Fast Validity Presets (+7, +14, +30, +90 days)
+  const handleSetDurationDays = (days: number) => {
+    const from = new Date(validFrom || Date.now());
+    const to = new Date(from.getTime() + days * 86400000);
+    setValidTo(to.toISOString().split("T")[0]);
+    toast.success(`Validity extended by ${days} days!`);
+  };
+
+  // 1-Click Auto Title Generator
   const handleGenerateTitle = () => {
     const storeLabel = selectedStore ? selectedStore.branchName : "All Branches";
     if (offerScope === "STORE_PRODUCT") {
-      const pName = productName.trim() || "Retail Product";
+      const pName = productName.trim() || "Retail Item";
       const disc = computedProductDiscountPct ? `${computedProductDiscountPct}% OFF` : `Special Deal`;
-      setTitle(`${pName} @ ${disc} (${storeLabel})`);
-      setTagline(`Exclusive store bargain at ${merchantDisplayName} • Limited stock available`);
+      setTitle(`${pName} (${disc}) @ ${storeLabel}`);
+      setTagline(`Special retail store bargain • Limited express counter stock`);
     } else {
-      const disc = type === "FLAT_PCT" ? `${value}% OFF` : type === "FLAT_AMT" ? `Flat ₹${value} OFF` : "Buy 1 Get 1 FREE";
-      const exp = isTableBookingEnabled ? "Table Reservation" : "Dine-in Experience";
-      setTitle(`${disc} ${exp} @ ${storeLabel}`);
-      setTagline(`Enjoy confirmed table booking & exclusive bill savings at ${merchantDisplayName}`);
+      const disc = type === "FLAT_PCT" ? `${value}% off` : type === "FLAT_AMT" ? `Flat ₹${value} off` : "Buy 1 Get 1 Free";
+      const exp = offerScope === "PRE_BOOK" ? "on Table Pre-Booking" : "on Total Bill";
+      setTitle(`Flat ${disc} ${exp}`);
+      setTagline(`Available on ${activeDays.length === 7 ? "Mon-Sun" : activeDays.join(", ")} • Valid on minimum bill ₹${minBillAmount}`);
     }
-    toast.success("Generated title & tagline based on store details!");
+    toast.success("Generated clean title & tagline!");
   };
 
-  // 1-Click Standard Terms & Conditions Generator
+  // 1-Click Auto Terms Generator (populates structured bullets)
   const handleGenerateTerms = () => {
     const storeLabel = selectedStore ? selectedStore.branchName : "all participating brand outlets";
-    const parts: string[] = [];
-    parts.push(`Offer valid exclusively at ${merchantDisplayName} (${storeLabel}).`);
-    if (offerScope === "STORE_OFFER" && isTableBookingEnabled) {
-      parts.push(`Table held up to ${gracePeriodMinutes} minutes from booked slot arrival.`);
-      parts.push(`Valid for party size of ${minPartySize} to ${maxPartySize} guests.`);
+    const newItems: string[] = [];
+
+    newItems.push(`Offer valid exclusively at ${merchantDisplayName} (${storeLabel}).`);
+
+    if (offerScope === "PRE_BOOK") {
+      newItems.push(`Table held up to ${gracePeriodMinutes} minutes from booked reservation arrival.`);
+      newItems.push(`Applicable for party size of ${minPartySize} to ${maxPartySize} guests.`);
       if (coverChargeAmount > 0) {
-        parts.push(`Cover charge deposit of ₹${coverChargeAmount} will be adjusted against the final bill.`);
+        newItems.push(`Cover charge deposit of ₹${coverChargeAmount} will be adjusted against the final bill.`);
       }
-    }
-    if (offerScope === "STORE_PRODUCT") {
-      parts.push(`Product item must be collected at store express billing counter.`);
-      if (isFlashDeal && totalFlashUnits) {
-        parts.push(`Limited flash stock of ${totalFlashUnits} units only.`);
-      }
-    }
-    if (type === "FLAT_PCT") {
-      parts.push(`Discount of ${value}% applied up to maximum ₹${maxDiscount || 'unlimited'} on bills of ₹${minBillAmount} & above.`);
-    } else if (type === "FLAT_AMT") {
-      parts.push(`Flat discount of ₹${value} applied on minimum bill of ₹${minBillAmount}.`);
+    } else if (offerScope === "WALK_IN") {
+      newItems.push(`Valid on walk-in dining and instant billing.`);
     } else {
-      parts.push(`Buy 1 Get 1 free applicable on item of equal or lesser value.`);
+      newItems.push(`Product must be collected at store express billing counter.`);
+      if (isFlashDeal && totalFlashUnits) {
+        newItems.push(`Limited flash stock of ${totalFlashUnits} units per customer.`);
+      }
     }
-    parts.push(`Cannot be clubbed with existing in-store promotions or corporate cards.`);
-    setTerms(parts.join(" "));
-    toast.success("Standard store terms generated!");
+
+    if (type === "FLAT_PCT") {
+      newItems.push(`Discount of ${value}% applied up to maximum ₹${maxDiscount || 500} on bills of ₹${minBillAmount} & above.`);
+    } else if (type === "FLAT_AMT") {
+      newItems.push(`Flat discount of ₹${value} applied on minimum bill of ₹${minBillAmount}.`);
+    } else {
+      newItems.push(`Buy 1 Get 1 free applicable on item of equal or lesser value.`);
+    }
+
+    newItems.push(`Cannot be clubbed with other existing in-store promotions, combos, or corporate cards.`);
+    newItems.push(`Taxes and government service charges applicable extra as per invoice.`);
+
+    setTermsList(newItems);
+    toast.success("Generated tailored terms and conditions bullets!");
   };
 
-  // 1-Click Promo Code Generator
-  const handleGeneratePromo = () => {
-    const prefix = offerScope === "STORE_PRODUCT" ? "PROD" : "STORE";
-    const num = type === "FLAT_PCT" ? value : type === "FLAT_AMT" ? value : "50";
-    const code = `${prefix}${num}${Math.floor(100 + Math.random() * 900)}`;
-    setPromoCode(code);
-    toast.success(`Generated Code: ${code}`);
+  // Add individual custom term
+  const handleAddCustomTerm = () => {
+    const trimmed = customTermInput.trim();
+    if (!trimmed) return;
+    if (termsList.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error("This term is already included.");
+      return;
+    }
+    setTermsList((prev) => [...prev, trimmed]);
+    setCustomTermInput("");
+    toast.success("Added custom condition to terms!");
+  };
+
+  // Remove term
+  const handleRemoveTerm = (index: number) => {
+    setTermsList((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Toggle Preset Term Chip
+  const handleTogglePresetTerm = (presetText: string) => {
+    if (termsList.some((t) => t.toLowerCase() === presetText.toLowerCase())) {
+      setTermsList((prev) => prev.filter((t) => t.toLowerCase() !== presetText.toLowerCase()));
+    } else {
+      setTermsList((prev) => [...prev, presetText]);
+    }
   };
 
   // Step Validation & Navigation
   const handleNextStep = () => {
     if (currentStep === 1) {
       if (!selectedMerchantId) {
-        toast.error("Please select a partner merchant brand.");
+        toast.error("Please select a merchant brand.");
         return;
       }
       if (availableStoresForMerchant.length === 0) {
-        toast.error("This merchant has no registered stores. A merchant must have at least one store before creating an offer.");
+        toast.error("This merchant has no registered stores. Please create a store branch first.");
         return;
       }
-      if (!selectedStoreId || selectedStoreId === "all") {
-        setSelectedStoreId(availableStoresForMerchant[0].id);
+      if (!title.trim()) {
+        handleGenerateTitle();
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      if (offerScope === "STORE_PRODUCT") {
-        if (!productName.trim()) {
-          toast.error("Please enter the product name sold at this store.");
-          return;
-        }
-        if (!dealPrice || dealPrice <= 0) {
-          toast.error("Please enter a valid deal price for this product.");
-          return;
-        }
-      } else {
-        if (isTableBookingEnabled && slotTimes.length === 0) {
-          toast.error("Please select at least one time slot for table reservation.");
-          return;
-        }
-      }
-      setCurrentStep(3);
-    } else if (currentStep === 3) {
       if (!value || Number(value) <= 0) {
         toast.error("Please enter a valid discount value.");
         return;
@@ -509,32 +446,44 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         toast.error("Please enter a valid minimum spend requirement.");
         return;
       }
-      // If title is not set yet, auto-generate it before step 4
-      if (!title.trim()) {
-        handleGenerateTitle();
+      if (offerScope === "PRE_BOOK" && slotTimes.length === 0) {
+        toast.error("Please select at least one time slot for pre-booking.");
+        return;
       }
-      setCurrentStep(4);
+      if (offerScope === "STORE_PRODUCT" && !productName.trim()) {
+        toast.error("Please enter the product name sold at this store.");
+        return;
+      }
+      if (!validTo) {
+        toast.error("Please select a campaign end date.");
+        return;
+      }
+      setCurrentStep(3);
     }
   };
 
   // Form Submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
     const isProduct = offerScope === "STORE_PRODUCT";
-    const finalTitle = title.trim() || productName.trim() || `${type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`} at ${selectedStore?.branchName || merchantDisplayName}`;
+    const finalTitle = title.trim() || `${type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`} at ${selectedStore?.branchName || merchantDisplayName}`;
     const autoProductDiscount = isProduct && originalPrice && dealPrice && originalPrice > dealPrice
       ? (type === "FLAT_PCT" ? Math.round(((originalPrice - dealPrice) / originalPrice) * 100) : (originalPrice - dealPrice))
       : Number(value);
     const resolvedValue = autoProductDiscount > 0 ? autoProductDiscount : (Number(value) || 20);
     const resolvedMaxDiscount = type === "FLAT_PCT"
-      ? (maxDiscount ? Number(maxDiscount) : (isProduct && originalPrice && dealPrice ? (originalPrice - dealPrice) : 200))
+      ? (maxDiscount ? Number(maxDiscount) : 500)
       : undefined;
-    const resolvedMinBill = isProduct ? Number(minBillAmount || 0) : Number(minBillAmount || 500);
+    const resolvedMinBill = Number(minBillAmount || 500);
+
+    const compiledTerms = showRawTerms
+      ? rawTermsText.trim()
+      : termsList.map((t) => `• ${t}`).join("\n");
 
     const parseResult = offerCampaignSchema.safeParse({
       title: finalTitle,
-      tagline: tagline.trim() || (isProduct && originalPrice ? `MRP ₹${originalPrice} • Special Store Deal` : ""),
+      tagline: tagline.trim() || `Available on Mon-Sun • Valid on minimum bill ₹${resolvedMinBill}`,
       type,
       value: resolvedValue,
       maxDiscount: resolvedMaxDiscount,
@@ -550,30 +499,29 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       endTime: enableHappyHours ? endTime : undefined,
       redemptionMethod,
       promoCode: redemptionMethod === "PROMO_CODE" ? promoCode.trim().toUpperCase() : undefined,
-      redemptionType,
-      minAdvanceHours: redemptionType === "WALK_IN" ? 0 : Number(minAdvanceHours || 0),
+      redemptionType: offerScope === "PRE_BOOK" ? "PRE_BOOK" : offerScope === "WALK_IN" ? "WALK_IN" : "BOTH",
+      minAdvanceHours: offerScope === "PRE_BOOK" ? 2 : 0,
       imageUrl: imageUrl.trim(),
-      terms: terms.trim(),
+      terms: compiledTerms,
       scopeType: isProduct ? "PRODUCT" : "SERVICE",
       productCategory: isProduct ? productCategory : undefined,
       originalPrice: isProduct && originalPrice ? Number(originalPrice) : undefined,
       dealPrice: isProduct && dealPrice ? Number(dealPrice) : undefined,
       isFlashDeal: isProduct ? isFlashDeal : false,
-      flashEndTime: isProduct && isFlashDeal ? flashEndTime : undefined,
       totalFlashUnits: isProduct && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
       bonusCoins: Number(bonusCoins),
-      badgeText: badgeText.trim() || (isProduct && computedProductDiscountPct ? `${computedProductDiscountPct}% OFF` : undefined),
-      ctaText: ctaText.trim() || (isProduct ? "Add to Cart" : isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
-      isTableBookingEnabled: offerScope === "STORE_OFFER" ? isTableBookingEnabled : false,
-      bookingType: offerScope === "STORE_OFFER" ? bookingType : undefined,
-      slotTimes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? slotTimes : undefined,
-      minPartySize: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(minPartySize) : undefined,
-      maxPartySize: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(maxPartySize) : undefined,
-      availableTablesPerSlot: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(availableTablesPerSlot) : undefined,
-      seatingAreas: offerScope === "STORE_OFFER" && isTableBookingEnabled ? seatingAreas : undefined,
-      coverChargeAmount: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(coverChargeAmount) : undefined,
-      gracePeriodMinutes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(gracePeriodMinutes) : undefined,
-      instantConfirmation: offerScope === "STORE_OFFER" && isTableBookingEnabled ? instantConfirmation : undefined,
+      badgeText: badgeText.trim() || "PINAK EXCLUSIVE",
+      ctaText: ctaText.trim() || (isProduct ? "Add to Cart" : offerScope === "PRE_BOOK" ? "Reserve Table" : "Book & Pay"),
+      isTableBookingEnabled: offerScope === "PRE_BOOK",
+      bookingType: offerScope === "PRE_BOOK" ? "TABLE_RESERVATION" : undefined,
+      slotTimes: offerScope === "PRE_BOOK" ? slotTimes : undefined,
+      minPartySize: offerScope === "PRE_BOOK" ? Number(minPartySize) : undefined,
+      maxPartySize: offerScope === "PRE_BOOK" ? Number(maxPartySize) : undefined,
+      availableTablesPerSlot: offerScope === "PRE_BOOK" ? Number(availableTablesPerSlot) : undefined,
+      seatingAreas: offerScope === "PRE_BOOK" ? seatingAreas : undefined,
+      coverChargeAmount: offerScope === "PRE_BOOK" ? Number(coverChargeAmount) : undefined,
+      gracePeriodMinutes: offerScope === "PRE_BOOK" ? Number(gracePeriodMinutes) : undefined,
+      instantConfirmation: true,
     });
 
     if (!parseResult.success) {
@@ -601,7 +549,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         storeName: isChainWide ? "All Brand Outlets" : (selectedStore?.branchName || selectedStore?.storeName || "Branch Outlet"),
         applicableStoreIds: isChainWide ? [] : (resolvedStoreId ? [resolvedStoreId] : []),
         title: finalTitle,
-        tagline: isProduct && unitOrWeight ? unitOrWeight.trim() : (tagline.trim() || (isProduct && originalPrice ? `MRP ₹${originalPrice} • Special Store Deal` : "")),
+        tagline: tagline.trim() || `Available on Mon-Sun • Valid on minimum bill ₹${resolvedMinBill}`,
         unitOrWeight: isProduct && unitOrWeight ? unitOrWeight.trim() : undefined,
         type,
         value: resolvedValue,
@@ -616,65 +564,67 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         endTime: enableHappyHours ? endTime : undefined,
         redemptionMethod,
         promoCode: redemptionMethod === "PROMO_CODE" ? promoCode.trim().toUpperCase() : undefined,
-        redemptionType,
-        minAdvanceHours: redemptionType === "WALK_IN" ? 0 : Number(minAdvanceHours || 0),
+        redemptionType: offerScope === "PRE_BOOK" ? "PRE_BOOK" : offerScope === "WALK_IN" ? "WALK_IN" : "BOTH",
+        minAdvanceHours: offerScope === "PRE_BOOK" ? 2 : 0,
         imageUrl: imageUrl.trim(),
-        terms: terms.trim(),
+        terms: compiledTerms,
         status: "ACTIVE",
         scopeType: isProduct ? "PRODUCT" : "SERVICE",
         productCategory: isProduct ? productCategory : undefined,
         originalPrice: isProduct && originalPrice ? Number(originalPrice) : undefined,
         dealPrice: isProduct && dealPrice ? Number(dealPrice) : undefined,
         isFlashDeal: isProduct ? isFlashDeal : false,
-        flashEndTime: isProduct && isFlashDeal ? flashEndTime : undefined,
         totalFlashUnits: isProduct && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
         bonusCoins: Number(bonusCoins),
-        badgeText: badgeText.trim() || (isProduct && computedProductDiscountPct ? `${computedProductDiscountPct}% OFF` : undefined),
-        ctaText: ctaText.trim() || (isProduct ? "Add to Cart" : isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
-        isTableBookingEnabled: offerScope === "STORE_OFFER" ? isTableBookingEnabled : false,
-        bookingType: offerScope === "STORE_OFFER" ? bookingType : undefined,
-        slotTimes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? slotTimes : undefined,
-        minPartySize: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(minPartySize) : undefined,
-        maxPartySize: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(maxPartySize) : undefined,
-        availableTablesPerSlot: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(availableTablesPerSlot) : undefined,
-        seatingAreas: offerScope === "STORE_OFFER" && isTableBookingEnabled ? seatingAreas : undefined,
-        coverChargeAmount: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(coverChargeAmount) : undefined,
-        gracePeriodMinutes: offerScope === "STORE_OFFER" && isTableBookingEnabled ? Number(gracePeriodMinutes) : undefined,
-        instantConfirmation: offerScope === "STORE_OFFER" && isTableBookingEnabled ? instantConfirmation : undefined,
+        badgeText: badgeText.trim() || "PINAK EXCLUSIVE",
+        ctaText: ctaText.trim() || (isProduct ? "Add to Cart" : offerScope === "PRE_BOOK" ? "Reserve Table" : "Book & Pay"),
+        isTableBookingEnabled: offerScope === "PRE_BOOK",
+        bookingType: offerScope === "PRE_BOOK" ? "TABLE_RESERVATION" : undefined,
+        slotTimes: offerScope === "PRE_BOOK" ? slotTimes : undefined,
+        minPartySize: offerScope === "PRE_BOOK" ? Number(minPartySize) : undefined,
+        maxPartySize: offerScope === "PRE_BOOK" ? Number(maxPartySize) : undefined,
+        availableTablesPerSlot: offerScope === "PRE_BOOK" ? Number(availableTablesPerSlot) : undefined,
+        seatingAreas: offerScope === "PRE_BOOK" ? seatingAreas : undefined,
+        coverChargeAmount: offerScope === "PRE_BOOK" ? Number(coverChargeAmount) : undefined,
+        gracePeriodMinutes: offerScope === "PRE_BOOK" ? Number(gracePeriodMinutes) : undefined,
+        instantConfirmation: true,
       });
 
       onClose();
     } catch {
-      // Backend error already displayed via toast; keep form open for correction
+      // Error handled by parent toast
     }
   };
 
+  const STEPS_NAV = [
+    { id: 1, title: "1. Brand & Format", subtitle: "Outlet & Offer Type" },
+    { id: 2, title: "2. Deal & Schedule", subtitle: "Discount & Validity" },
+    { id: 3, title: "3. Terms & Publish", subtitle: "Fine Print & Live Preview" }
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <aside className="w-screen max-w-2xl sm:max-w-3xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col justify-between border-l border-slate-100 dark:border-slate-800">
+    <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+        <aside className="w-screen max-w-2xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
           {/* Header */}
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 text-white flex items-center justify-center font-bold shadow-md">
-                <TicketPercent size={20} />
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-pink-100 dark:bg-pink-950/60 text-pink-600 flex items-center justify-center font-bold">
+                <TicketPercent size={18} />
               </div>
               <div>
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-                  {isEdit ? "Edit Campaign Offer" : "Create Store Offer & Table Booking"}
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  {isEdit ? "Edit Offer Campaign" : "Create Store Offer"}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-                  <span className="text-pink-600 font-bold">{merchantDisplayName}</span>
-                  <span>•</span>
-                  <span>{selectedStore ? selectedStore.branchName : "All Outlets"}</span>
+                <p className="text-[11px] text-slate-400">
+                  Step {currentStep} of 3 • {STEPS_NAV[currentStep - 1]?.title}
                 </p>
               </div>
             </div>
-
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              title="Close drawer"
+              className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -682,21 +632,16 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
 
           {/* Stepper Progress Bar */}
           <div className="px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { step: 1, title: "1. Merchant & Store" },
-                { step: 2, title: "2. Offer Target" },
-                { step: 3, title: "3. Rules & Pricing" },
-                { step: 4, title: "4. Preview & Publish" }
-              ].map(({ step, title: sTitle }) => {
-                const isActive = currentStep === step;
-                const isPassed = currentStep > step;
+            <div className="grid grid-cols-3 gap-2">
+              {STEPS_NAV.map(({ id: stepId, title: sTitle, subtitle }) => {
+                const isActive = currentStep === stepId;
+                const isPassed = currentStep > stepId;
                 return (
                   <button
-                    key={step}
+                    key={stepId}
                     type="button"
                     onClick={() => {
-                      if (isPassed || step === 1) setCurrentStep(step as 1 | 2 | 3 | 4);
+                      if (isPassed || stepId === 1) setCurrentStep(stepId as 1 | 2 | 3);
                     }}
                     className={cn(
                       "flex items-center gap-2 p-2 rounded-xl text-left transition-all cursor-pointer",
@@ -717,990 +662,198 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                       )}
                     >
-                      {isPassed ? <Check size={11} /> : step}
+                      {isPassed ? <Check size={11} /> : stepId}
                     </div>
-                    <span
-                      className={cn(
-                        "text-[11px] font-bold truncate hidden sm:inline",
-                        isActive
-                          ? "text-pink-600 dark:text-pink-400"
-                          : isPassed
-                          ? "text-slate-700 dark:text-slate-200"
-                          : "text-slate-400"
-                      )}
-                    >
-                      {sTitle}
-                    </span>
+                    <div className="min-w-0 hidden sm:block">
+                      <span
+                        className={cn(
+                          "text-[11px] font-bold truncate block",
+                          isActive
+                            ? "text-pink-600 dark:text-pink-400"
+                            : isPassed
+                            ? "text-slate-700 dark:text-slate-200"
+                            : "text-slate-400"
+                        )}
+                      >
+                        {sTitle}
+                      </span>
+                      <span className="text-[9px] text-slate-400 block truncate">{subtitle}</span>
+                    </div>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Form Content */}
-          <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6 text-xs flex-1">
+          {/* Form Scroll Area */}
+          <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
             {/* ========================================================================= */}
-            {/* STEP 1: SELECT MERCHANT & SELECT STORE */}
+            {/* STEP 1: OFFER ESSENTIALS & STORE IDENTITY */}
             {/* ========================================================================= */}
             {currentStep === 1 && (
-              <div className="space-y-6 animate-in fade-in duration-150">
-                {/* 1. Select Merchant Brand */}
-                <div className="space-y-2">
+              <div className="space-y-5 animate-in fade-in duration-150">
+                {/* Brand & Outlet Selection */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <Building2 size={14} className="text-pink-600" />
-                      <span>Select Merchant Brand *</span>
-                    </label>
-                    <span className="text-[10px] text-slate-400">Step 1 of 2 in Store Targeting</span>
-                  </div>
-
-                  <select
-                    value={selectedMerchantId}
-                    onChange={(e) => setSelectedMerchantId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold shadow-2xs focus:ring-1 focus:ring-pink-500"
-                  >
-                    {merchants.length === 0 ? (
-                      <option value="">No Merchants Available</option>
-                    ) : (
-                      merchants.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.businessName} • {m.categoryName || "General"} ({m.city || "Headquarters"})
-                        </option>
-                      ))
-                    )}
-                  </select>
-
-                  {selectedMerchant && (
-                    <div className="p-3 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 flex items-center justify-between">
-                      <div>
-                        <span className="font-bold text-slate-800 dark:text-slate-200 text-xs block">
-                          {selectedMerchant.businessName}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">
-                          Owner: {selectedMerchant.ownerName} • {selectedMerchant.city}
-                        </span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                        {selectedMerchant.categoryName || "Merchant"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. Select Store / Branch for this Merchant */}
-                <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <label className="font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
-                      <StoreIcon size={14} className="text-pink-600" />
-                      <span>Select Target Store Branch *</span>
-                    </label>
-                    <span className="text-[10px] font-bold text-pink-600 bg-pink-50 dark:bg-pink-950/40 px-2 py-0.5 rounded-md">
-                      {availableStoresForMerchant.length} Branches Available
+                      <span>Select Merchant Brand & Outlet *</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-400">
+                      {availableStoresForMerchant.length} branch(es) found
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-slate-500">
-                    Choose which physical store branch this campaign will be deployed to, or apply to all branches.
-                  </p>
-
-                  <div className="space-y-2">
-                    {/* All Outlets Option */}
-                    <label
-                      className={cn(
-                        "flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all cursor-pointer",
-                        selectedStoreId === "all"
-                          ? "border-pink-500 bg-pink-50/50 dark:bg-pink-950/20 ring-1 ring-pink-500/40"
-                          : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="storeBranchOption"
-                        checked={selectedStoreId === "all"}
-                        onChange={() => setSelectedStoreId("all")}
-                        className="mt-1 w-4 h-4 accent-pink-600 cursor-pointer"
-                      />
-                      <div>
-                        <span className="font-bold text-slate-900 dark:text-white text-xs block">
-                          All Brand Outlets (Chain-Wide Deal)
-                        </span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">
-                          Applies across all {availableStoresForMerchant.length} branch locations of {merchantDisplayName}
-                        </span>
-                      </div>
-                    </label>
-
-                    {/* Specific Store Branch Cards */}
-                    {availableStoresForMerchant.map((s) => {
-                      const isSelected = selectedStoreId === s.id;
-                      return (
-                        <label
-                          key={s.id}
-                          className={cn(
-                            "flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all cursor-pointer",
-                            isSelected
-                              ? "border-pink-500 bg-pink-50/50 dark:bg-pink-950/20 ring-1 ring-pink-500/40"
-                              : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            name="storeBranchOption"
-                            checked={isSelected}
-                            onChange={() => setSelectedStoreId(s.id)}
-                            className="mt-1 w-4 h-4 accent-pink-600 cursor-pointer"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-bold text-slate-900 dark:text-white text-xs block truncate">
-                                {s.branchName || s.storeName}
-                              </span>
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 shrink-0">
-                                {s.city || s.state}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1 flex-wrap">
-                              <span className="flex items-center gap-1 truncate max-w-[200px]">
-                                <MapPin size={10} className="shrink-0 text-pink-600" />
-                                <span className="truncate">{s.address}</span>
-                              </span>
-                              {s.latitude && s.longitude && (
-                                <span className="font-mono text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded shrink-0">
-                                  {Number(s.latitude).toFixed(4)}, {Number(s.longitude).toFixed(4)}
-                                </span>
-                              )}
-                              {s.phone && (
-                                <span className="flex items-center gap-1 shrink-0">
-                                  <Phone size={10} className="shrink-0" />
-                                  <span>{s.phone}</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </label>
-                      );
-                    })}
-
-                    {availableStoresForMerchant.length === 0 && (
-                      <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 flex items-center gap-2.5 text-amber-800 dark:text-amber-300 text-xs">
-                        <AlertCircle size={16} className="shrink-0" />
-                        <div>
-                          <p className="font-bold">No individual store branches found for this merchant.</p>
-                          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
-                            Campaign will be set as brand-wide. You can also add stores in the Store Management tab.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ========================================================================= */}
-            {/* STEP 2: OFFER TARGET (STORE EXPERIENCE vs STORE PRODUCT) */}
-            {/* ========================================================================= */}
-            {currentStep === 2 && (
-              <div className="space-y-6 animate-in fade-in duration-150">
-                <div className="space-y-2">
-                  <label className="font-extrabold text-slate-800 dark:text-slate-200 block text-xs">
-                    Choose What You Are Offering for {selectedStore?.branchName || merchantDisplayName} *
-                  </label>
-                  <p className="text-[11px] text-slate-500">
-                    Will this deal apply to the store's dine-in / table reservation / visit, or to a specific product sold in this store?
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    {/* Option 1: Store Offer / Table Booking */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOfferScope("STORE_OFFER");
-                        if (ctaText === "Add to Cart") setCtaText(isTableBookingEnabled ? "Reserve Table" : "Book & Pay");
-                      }}
-                      className={cn(
-                        "p-4 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer",
-                        offerScope === "STORE_OFFER"
-                          ? "border-pink-500 bg-pink-50/50 dark:bg-pink-950/20 ring-1 ring-pink-500/40 shadow-xs"
-                          : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                      )}
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                        <Utensils size={20} />
-                      </div>
-                      <div>
-                        <span className="font-extrabold text-slate-900 dark:text-white text-xs block">
-                          Store-Level Deal / Table Booking
-                        </span>
-                        <span className="text-[10px] text-slate-500 block mt-1 leading-snug">
-                          Bill discount on store visits, dining table reservation slots, salon chairs, service bays.
-                        </span>
-                      </div>
-                    </button>
-
-                    {/* Option 2: Store Product Deal */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOfferScope("STORE_PRODUCT");
-                        setIsTableBookingEnabled(false);
-                        setMinBillAmount(0);
-                        if (ctaText === "Reserve Table" || ctaText === "Book & Pay") setCtaText("Add to Cart");
-                        if (!badgeText || badgeText === "DISTRICT SPECIAL") setBadgeText("STORE DEAL");
-                      }}
-                      className={cn(
-                        "p-4 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer",
-                        offerScope === "STORE_PRODUCT"
-                          ? "border-pink-500 bg-pink-50/50 dark:bg-pink-950/20 ring-1 ring-pink-500/40 shadow-xs"
-                          : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                      )}
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                        <ShoppingBag size={20} />
-                      </div>
-                      <div>
-                        <span className="font-extrabold text-slate-900 dark:text-white text-xs block">
-                          Store Product Item Deal
-                        </span>
-                        <span className="text-[10px] text-slate-500 block mt-1 leading-snug">
-                          Bargain discount on a specific product item (e.g. Atta combo, Milk, Earbuds, Tees, Protein).
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Sub-Section 1: Store Table & Slot Reservation Engine (When STORE_OFFER) */}
-                {offerScope === "STORE_OFFER" && (
-                  <div className="p-4 rounded-3xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
-                          <Armchair size={16} />
-                        </div>
-                        <div>
-                          <span className="font-extrabold text-slate-900 dark:text-white text-xs block">
-                            District-Style Table Reservation & Time Slots
-                          </span>
-                          <span className="text-[10px] text-slate-500">
-                            Allow consumers to book confirmed tables / appointment slots with deal discount
-                          </span>
-                        </div>
-                      </div>
-
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isTableBookingEnabled}
-                          onChange={(e) => setIsTableBookingEnabled(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  {merchants.length > 0 && (
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-500 block mb-1">
+                        Parent Brand
                       </label>
+                      <select
+                        value={selectedMerchantId}
+                        onChange={(e) => setSelectedMerchantId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                      >
+                        {merchants.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.businessName} ({m.city || "Nagpur"})
+                          </option>
+                        ))}
+                      </select>
                     </div>
+                  )}
 
-                    {isTableBookingEnabled && (
-                      <div className="space-y-4 pt-2 border-t border-indigo-100 dark:border-indigo-900/40">
-                        {/* Booking Vertical Mode */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setBookingType("TABLE_RESERVATION");
-                              setCtaText("Reserve Table");
-                            }}
-                            className={cn(
-                              "p-2.5 rounded-xl border text-center transition-all cursor-pointer flex items-center justify-center gap-2",
-                              bookingType === "TABLE_RESERVATION"
-                                ? "border-indigo-600 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-bold shadow-xs"
-                                : "border-slate-200 dark:border-slate-800 text-slate-500"
-                            )}
-                          >
-                            <Utensils size={14} />
-                            <span>Dining Table Booking</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setBookingType("APPOINTMENT_SLOT");
-                              setCtaText("Book Slot");
-                            }}
-                            className={cn(
-                              "p-2.5 rounded-xl border text-center transition-all cursor-pointer flex items-center justify-center gap-2",
-                              bookingType === "APPOINTMENT_SLOT"
-                                ? "border-indigo-600 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-bold shadow-xs"
-                                : "border-slate-200 dark:border-slate-800 text-slate-500"
-                            )}
-                          >
-                            <Clock size={14} />
-                            <span>Service Appointment Slot</span>
-                          </button>
-                        </div>
-
-                        {/* Available Time Slots with Quick Click Pills */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                              <Clock size={12} className="text-indigo-600" />
-                              <span>Live Time Slots at Store ({slotTimes.length} active)</span>
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => setSlotTimes(["12:00 PM", "12:30 PM", "01:00 PM", "01:30 PM", "02:00 PM"])}
-                                className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 hover:bg-amber-100 cursor-pointer"
-                              >
-                                ☀️ Lunch
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSlotTimes(["07:00 PM", "07:30 PM", "08:00 PM", "08:30 PM", "09:00 PM", "09:30 PM"])}
-                                className="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 hover:bg-indigo-100 cursor-pointer"
-                              >
-                                🌙 Dinner
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSlotTimes(STANDARD_SLOTS)}
-                                className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 hover:bg-slate-200 cursor-pointer"
-                              >
-                                ⚡ All
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-1.5">
-                            {STANDARD_SLOTS.map((slot) => {
-                              const isSelected = slotTimes.includes(slot);
-                              return (
-                                <button
-                                  key={slot}
-                                  type="button"
-                                  onClick={() => toggleSlot(slot)}
-                                  className={cn(
-                                    "px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer",
-                                    isSelected
-                                      ? "bg-indigo-600 text-white font-bold shadow-2xs"
-                                      : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
-                                  )}
-                                >
-                                  {slot}
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {/* Add Custom Slot */}
-                          <div className="flex items-center gap-2 pt-1">
-                            <input
-                              type="text"
-                              value={newSlotInput}
-                              onChange={(e) => setNewSlotInput(e.target.value)}
-                              placeholder="Add custom slot e.g. 03:00 PM"
-                              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs flex-1"
-                            />
-                            <button
-                              type="button"
-                              onClick={addCustomSlot}
-                              className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
-                            >
-                              <Plus size={12} />
-                              <span>Add</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Party Size & Tables Per Slot */}
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
-                              Min Guests
-                            </span>
-                            <input
-                              type="number"
-                              min={1}
-                              value={minPartySize}
-                              onChange={(e) => setMinPartySize(Number(e.target.value))}
-                              className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold font-mono mt-1"
-                            />
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
-                              Max Guests
-                            </span>
-                            <input
-                              type="number"
-                              min={1}
-                              value={maxPartySize}
-                              onChange={(e) => setMaxPartySize(Number(e.target.value))}
-                              className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold font-mono mt-1"
-                            />
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
-                              Tables Per Slot
-                            </span>
-                            <input
-                              type="number"
-                              min={1}
-                              value={availableTablesPerSlot}
-                              onChange={(e) => setAvailableTablesPerSlot(Number(e.target.value))}
-                              className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold font-mono mt-1"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Seating Areas */}
-                        <div className="space-y-1.5">
-                          <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                            Allowed Seating Sections:
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {SEATING_AREA_OPTIONS.map((area) => {
-                              const isSelected = seatingAreas.includes(area);
-                              return (
-                                <button
-                                  key={area}
-                                  type="button"
-                                  onClick={() => toggleSeatingArea(area)}
-                                  className={cn(
-                                    "px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1",
-                                    isSelected
-                                      ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800 font-bold"
-                                      : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300"
-                                  )}
-                                >
-                                  {isSelected && <Check size={11} />}
-                                  <span>{area}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Cover charge & grace period */}
-                        <div className="grid grid-cols-3 gap-2.5 p-3 rounded-2xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                          <div>
-                            <span className="text-[10px] text-slate-500 block">Cover / Deposit</span>
-                            <select
-                              value={coverChargeAmount}
-                              onChange={(e) => setCoverChargeAmount(Number(e.target.value))}
-                              className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs mt-0.5"
-                            >
-                              <option value={0}>Free (₹0)</option>
-                              <option value={100}>₹100 (Adjusted in Bill)</option>
-                              <option value={200}>₹200 (Adjusted in Bill)</option>
-                              <option value={500}>₹500 (Cover Deposit)</option>
-                            </select>
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-slate-500 block">Holding Grace</span>
-                            <select
-                              value={gracePeriodMinutes}
-                              onChange={(e) => setGracePeriodMinutes(Number(e.target.value))}
-                              className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs mt-0.5"
-                            >
-                              <option value={10}>10 Mins</option>
-                              <option value={15}>15 Mins (Standard)</option>
-                              <option value={20}>20 Mins</option>
-                              <option value={30}>30 Mins</option>
-                            </select>
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-slate-500 block">Confirmation</span>
-                            <select
-                              value={instantConfirmation ? "INSTANT" : "MANUAL"}
-                              onChange={(e) => setInstantConfirmation(e.target.value === "INSTANT")}
-                              className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs mt-0.5"
-                            >
-                              <option value="INSTANT">Instant Auto</option>
-                              <option value="MANUAL">Manager Approval</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Sub-Section 2: Store Product Details (When STORE_PRODUCT) */}
-                {offerScope === "STORE_PRODUCT" && (
-                  <div className="p-4 rounded-3xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
-                        <ShoppingBag size={16} />
-                      </div>
-                      <div>
-                        <span className="font-extrabold text-slate-900 dark:text-white text-xs block">
-                          Product Specifications for {selectedStore?.branchName || merchantDisplayName}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          Define the retail product, MRP, and special deal price
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 pt-1">
-                      {/* 1-Click Popular Product Presets from code.html */}
-                      <div className="space-y-1.5 pb-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
-                            <Sparkles size={12} className="text-amber-500" />
-                            <span>1-Click Popular Catalog Products (from App Design)</span>
-                          </span>
-                          <span className="text-[9px] text-slate-400">Loads photo, MRP & pack size</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {PRODUCT_PRESETS.map((p, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => handleApplyProductPreset(p)}
-                              className="px-2 py-1 rounded-xl text-[11px] font-semibold bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 hover:border-emerald-600 hover:bg-emerald-50 text-slate-700 dark:text-slate-200 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs group"
-                            >
-                              <img src={p.url} alt={p.name} className="w-4 h-4 object-contain rounded" />
-                              <span className="group-hover:text-emerald-700 dark:group-hover:text-emerald-400 font-bold">{p.label}</span>
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-mono font-bold">{p.badge}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                            Product Item Name *
-                          </label>
-                          <input
-                            type="text"
-                            value={productName}
-                            onChange={(e) => setProductName(e.target.value)}
-                            placeholder="e.g. Amul Fresh Milk"
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold mt-1"
-                          />
-                        </div>
-                        <div>
-                          <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                            Pack Size / Unit (e.g. 1 Litre, 5 kg) *
-                          </label>
-                          <input
-                            type="text"
-                            value={unitOrWeight}
-                            onChange={(e) => setUnitOrWeight(e.target.value)}
-                            placeholder="e.g. 1 Litre, 5 kg, 200 ml, 70 g"
-                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium mt-1"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Product Department / Category Pills */}
-                      <div className="space-y-1.5">
-                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                          Product Department *
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {PRODUCT_CATEGORIES.map((cat) => {
-                            const isSelected = productCategory === cat.key;
-                            return (
-                              <button
-                                key={cat.key}
-                                type="button"
-                                onClick={() => setProductCategory(cat.key)}
-                                className={cn(
-                                  "px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1",
-                                  isSelected
-                                    ? "bg-emerald-600 text-white font-bold shadow-2xs"
-                                    : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
-                                )}
-                              >
-                                <span>{cat.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Pricing: MRP vs Deal Price */}
-                      <div className="grid grid-cols-2 gap-3 pt-1">
-                        <div>
-                          <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                            Original MRP (₹)
-                          </label>
-                          <input
-                            type="number"
-                            value={originalPrice ?? ""}
-                            onChange={(e) => {
-                              const orig = e.target.value ? Number(e.target.value) : undefined;
-                              setOriginalPrice(orig);
-                              if (orig && dealPrice && orig > dealPrice) {
-                                const pct = Math.round(((orig - dealPrice) / orig) * 100);
-                                setValue(pct);
-                                setMaxDiscount(orig - dealPrice);
-                                setBadgeText(`${pct}% OFF`);
-                              }
-                            }}
-                            placeholder="e.g. 75"
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1 font-mono font-bold"
-                          />
-                        </div>
-                        <div>
-                          <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                            Store Deal Price (₹) *
-                          </label>
-                          <input
-                            type="number"
-                            value={dealPrice ?? ""}
-                            onChange={(e) => {
-                              const val = e.target.value ? Number(e.target.value) : undefined;
-                              setDealPrice(val);
-                              if (val && originalPrice && originalPrice > val) {
-                                const pct = Math.round(((originalPrice - val) / originalPrice) * 100);
-                                setValue(pct);
-                                setMaxDiscount(originalPrice - val);
-                                setBadgeText(`${pct}% OFF`);
-                              }
-                            }}
-                            placeholder="e.g. 56"
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1 font-mono font-bold text-emerald-600"
-                          />
-                        </div>
-                      </div>
-
-                      {computedProductDiscountPct && (
-                        <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/60 border border-emerald-200/80 flex items-center justify-between text-xs">
-                          <span className="text-slate-500 font-medium">Calculated Consumer Savings:</span>
-                          <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                            {computedProductDiscountPct}% Instant Discount
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Flash Deal Countdown Toggle */}
-                      <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-900/60 flex items-center justify-between">
-                        <div>
-                          <span className="font-bold text-slate-800 dark:text-slate-200 text-xs block">
-                            Enable Flash Deal Countdown
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            Shows urgency badge and live countdown timer in consumer app
-                          </span>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={isFlashDeal}
-                          onChange={(e) => setIsFlashDeal(e.target.checked)}
-                          className="w-4 h-4 accent-pink-600 rounded cursor-pointer"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ========================================================================= */}
-            {/* STEP 3: DEAL RULES, PRICING & MARGIN SAFEGUARDS */}
-            {/* ========================================================================= */}
-            {currentStep === 3 && (
-              <div className="space-y-5 animate-in fade-in duration-150">
-                {/* Discount Type Selector */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                    Discount Structure *
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { key: "FLAT_PCT", label: "Percentage %", desc: "e.g. 40% OFF" },
-                      { key: "FLAT_AMT", label: "Flat Amount ₹", desc: "e.g. ₹200 OFF" },
-                      { key: "BOGO", label: "Buy 1 Get 1 (BOGO)", desc: "1+1 on Menu / Pass" }
-                    ].map((m) => (
+                  {/* Branch Outlet Selector Chips */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
+                      Applicable Store Branch
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
                       <button
-                        key={m.key}
                         type="button"
-                        onClick={() => setType(m.key as any)}
+                        onClick={() => setSelectedStoreId("all")}
                         className={cn(
-                          "p-2.5 rounded-xl border text-center transition-all cursor-pointer",
-                          type === m.key
-                            ? "border-pink-500 bg-pink-50/50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 font-bold shadow-2xs"
-                            : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                          "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition",
+                          selectedStoreId === "all"
+                            ? "bg-pink-600 text-white border-pink-600 shadow-xs"
+                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
                         )}
                       >
-                        <span className="block text-xs">{m.label}</span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">{m.desc}</span>
+                        <Building2 size={12} />
+                        <span>All Brand Outlets</span>
                       </button>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Values & Limits Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                      {type === "FLAT_PCT" ? "Discount Percentage (%) *" : "Discount Value (₹) *"}
-                    </label>
-                    <input
-                      type="number"
-                      value={value}
-                      onChange={(e) => setValue(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1 font-mono font-bold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                      Minimum Spend Requirement (₹) *
-                    </label>
-                    <input
-                      type="number"
-                      value={minBillAmount}
-                      onChange={(e) => setMinBillAmount(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1 font-mono font-bold"
-                    />
-                  </div>
-                </div>
-
-                {type === "FLAT_PCT" && (
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                        Maximum Discount Cap (₹)
-                      </label>
-                      <span className="text-[10px] text-slate-400">Protects store margin on large bills</span>
-                    </div>
-                    <input
-                      type="number"
-                      value={maxDiscount ?? ""}
-                      onChange={(e) => setMaxDiscount(e.target.value ? Number(e.target.value) : undefined)}
-                      placeholder="e.g. 200 (Leave empty for no upper limit)"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1 font-mono"
-                    />
-                  </div>
-                )}
-
-                {/* Loyalty Bonus Coins */}
-                <div className="p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/60 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Coins size={16} className="text-amber-600" />
-                    <div>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 text-xs block">
-                        Loyalty Bonus Coins for Customers
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        Coins credited to user wallet after this store deal is redeemed
-                      </span>
+                      {availableStoresForMerchant.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setSelectedStoreId(s.id)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition",
+                            selectedStoreId === s.id
+                              ? "bg-pink-600 text-white border-pink-600 shadow-xs"
+                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                          )}
+                        >
+                          <StoreIcon size={12} />
+                          <span>{s.branchName || s.storeName}</span>
+                          <span className="text-[10px] opacity-75 font-normal">({s.city || "Nagpur"})</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                  <input
-                    type="number"
-                    value={bonusCoins}
-                    onChange={(e) => setBonusCoins(Number(e.target.value))}
-                    className="w-24 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold text-right"
-                  />
                 </div>
 
-                {/* Fulfillment Mode: Walk-In vs Pre-Booking */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs flex items-center gap-1.5">
-                      <Users size={14} className="text-pink-600" />
-                      <span>Fulfillment & Redemption Mode *</span>
-                    </label>
-                    <span className="text-[11px] text-slate-400 font-medium">Walk-in vs Pre-book</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRedemptionType("BOTH")}
-                      className={cn(
-                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1",
-                        redemptionType === "BOTH"
-                          ? "border-pink-500 bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 font-bold shadow-2xs"
-                          : "border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300"
-                      )}
-                    >
-                      <Sparkles size={16} className="text-pink-600" />
-                      <span className="text-xs">Both Accepted</span>
-                      <span className="text-[9px] opacity-75 font-normal">Walk-in & Reserved</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRedemptionType("WALK_IN");
-                        setMinAdvanceHours(0);
-                      }}
-                      className={cn(
-                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1",
-                        redemptionType === "WALK_IN"
-                          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold shadow-2xs"
-                          : "border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300"
-                      )}
-                    >
-                      <StoreIcon size={16} className="text-emerald-600" />
-                      <span className="text-xs">Walk-In Only</span>
-                      <span className="text-[9px] opacity-75 font-normal">Instant in-store</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRedemptionType("PRE_BOOK");
-                        if (!minAdvanceHours) setMinAdvanceHours(2);
-                      }}
-                      className={cn(
-                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1",
-                        redemptionType === "PRE_BOOK"
-                          ? "border-purple-500 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold shadow-2xs"
-                          : "border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300"
-                      )}
-                    >
-                      <Calendar size={16} className="text-purple-600" />
-                      <span className="text-xs">Pre-Book Only</span>
-                      <span className="text-[9px] opacity-75 font-normal">Requires slot booking</span>
-                    </button>
-                  </div>
-
-                  {/* Advance notice requirement when Pre-Booking is active */}
-                  {(redemptionType === "PRE_BOOK" || redemptionType === "BOTH") && (
-                    <div className="p-3 rounded-xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-900/40 flex items-center justify-between mt-2">
-                      <div className="space-y-0.5">
-                        <span className="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
-                          <Clock size={13} className="text-purple-600" />
-                          <span>Minimum Advance Notice</span>
-                        </span>
-                        <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
-                          {redemptionType === "PRE_BOOK" 
-                            ? "Must reserve at least this much in advance:" 
-                            : "For pre-booking reservations, min notice:"}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {[1, 2, 4, 12, 24].map((hrs) => (
-                          <button
-                            key={hrs}
-                            type="button"
-                            onClick={() => setMinAdvanceHours(hrs)}
-                            className={cn(
-                              "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                              minAdvanceHours === hrs
-                                ? "bg-purple-600 text-white shadow-xs"
-                                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-purple-400"
-                            )}
-                          >
-                            {hrs}h
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Redemption Trigger (Auto-Applied vs Promo Code) */}
+                {/* Offer Category / Format Selection */}
                 <div className="space-y-2">
                   <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                    Redemption Trigger Mode *
+                    Offer Type & Experience Format *
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {/* Pre-Booking Offer */}
                     <button
                       type="button"
-                      onClick={() => setRedemptionMethod("AUTO_APPLIED")}
+                      onClick={() => setOfferScope("PRE_BOOK")}
                       className={cn(
-                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer",
-                        redemptionMethod === "AUTO_APPLIED"
-                          ? "border-pink-500 bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 font-bold shadow-2xs"
-                          : "border-slate-200 dark:border-slate-800 text-slate-500"
+                        "p-3 rounded-2xl border text-left transition-all cursor-pointer relative",
+                        offerScope === "PRE_BOOK"
+                          ? "bg-pink-50/70 dark:bg-pink-950/40 border-pink-500 shadow-sm ring-1 ring-pink-500"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
                       )}
                     >
-                      <Zap size={14} className="mx-auto mb-1 text-pink-600" />
-                      <span>Auto-Applied on Bill</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRedemptionMethod("PROMO_CODE")}
-                      className={cn(
-                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer",
-                        redemptionMethod === "PROMO_CODE"
-                          ? "border-pink-500 bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 font-bold shadow-2xs"
-                          : "border-slate-200 dark:border-slate-800 text-slate-500"
-                      )}
-                    >
-                      <Tag size={14} className="mx-auto mb-1 text-purple-600" />
-                      <span>Requires Promo Code</span>
-                    </button>
-                  </div>
-
-                  {redemptionMethod === "PROMO_CODE" && (
-                    <div className="flex items-center gap-2 pt-1">
-                      <input
-                        type="text"
-                        value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                        placeholder="e.g. DISTRICT40"
-                        className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold uppercase flex-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleGeneratePromo}
-                        className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                      >
-                        <Wand2 size={12} />
-                        <span>Generate</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Real-time Economics & Margin Safeguard Card */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
-                      <Calculator size={14} className="text-pink-600" />
-                      <span>Economics Breakdown for Store: {selectedStore?.branchName || merchantDisplayName}</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400">Sample Order: ₹{Math.max(minBillAmount, 1000)}</span>
-                  </div>
-
-                  {(() => {
-                    const sampleSpend = Math.max(minBillAmount, 1000);
-                    let sampleDiscount = 0;
-                    if (type === "FLAT_PCT") {
-                      sampleDiscount = (sampleSpend * value) / 100;
-                      if (maxDiscount) sampleDiscount = Math.min(sampleDiscount, maxDiscount);
-                    } else if (type === "FLAT_AMT") {
-                      sampleDiscount = value;
-                    } else {
-                      sampleDiscount = Math.min(sampleSpend * 0.5, maxDiscount || sampleSpend * 0.5);
-                    }
-                    const customerPays = Math.max(0, sampleSpend - sampleDiscount);
-                    return (
-                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-center">
-                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                          <span className="text-[10px] text-slate-400 block">Customer Saves</span>
-                          <span className="text-sm font-extrabold text-emerald-600 font-mono">₹{sampleDiscount.toFixed(0)}</span>
-                        </div>
-                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                          <span className="text-[10px] text-slate-400 block">Store Receives</span>
-                          <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 font-mono">₹{customerPays.toFixed(0)}</span>
-                        </div>
-                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                          <span className="text-[10px] text-slate-400 block">Loyalty Inflow</span>
-                          <span className="text-sm font-extrabold text-amber-500 font-mono">+{bonusCoins} Coins</span>
-                        </div>
+                      <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 flex items-center justify-center mb-2 font-bold">
+                        <Armchair size={16} />
                       </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            )}
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">
+                        Pre-Booking Offer
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        Table booking & confirmed slot bill discount
+                      </div>
+                      {offerScope === "PRE_BOOK" && (
+                        <div className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-pink-600 text-white flex items-center justify-center">
+                          <Check size={10} />
+                        </div>
+                      )}
+                    </button>
 
-            {/* ========================================================================= */}
-            {/* STEP 4: MERCHANDISING, LIVE MOBILE PREVIEW & PUBLISH */}
-            {/* ========================================================================= */}
-            {currentStep === 4 && (
-              <div className="space-y-5 animate-in fade-in duration-150">
-                {/* Titles & Tagline with Auto-Generate Helper */}
+                    {/* Walk-in Offer */}
+                    <button
+                      type="button"
+                      onClick={() => setOfferScope("WALK_IN")}
+                      className={cn(
+                        "p-3 rounded-2xl border text-left transition-all cursor-pointer relative",
+                        offerScope === "WALK_IN"
+                          ? "bg-pink-50/70 dark:bg-pink-950/40 border-pink-500 shadow-sm ring-1 ring-pink-500"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 flex items-center justify-center mb-2 font-bold">
+                        <Utensils size={16} />
+                      </div>
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">
+                        Walk-in Offer
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        Instant dine-in bill scan savings at outlet
+                      </div>
+                      {offerScope === "WALK_IN" && (
+                        <div className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-pink-600 text-white flex items-center justify-center">
+                          <Check size={10} />
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Store Retail Product */}
+                    <button
+                      type="button"
+                      onClick={() => setOfferScope("STORE_PRODUCT")}
+                      className={cn(
+                        "p-3 rounded-2xl border text-left transition-all cursor-pointer relative",
+                        offerScope === "STORE_PRODUCT"
+                          ? "bg-pink-50/70 dark:bg-pink-950/40 border-pink-500 shadow-sm ring-1 ring-pink-500"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center mb-2 font-bold">
+                        <ShoppingBag size={16} />
+                      </div>
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">
+                        Product Deal
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        Express billing counter item deal
+                      </div>
+                      {offerScope === "STORE_PRODUCT" && (
+                        <div className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-pink-600 text-white flex items-center justify-center">
+                          <Check size={10} />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Offer Title & Tagline with Auto-Generate */}
                 <div className="space-y-3">
                   <div>
                     <div className="flex items-center justify-between">
@@ -1710,36 +863,40 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       <button
                         type="button"
                         onClick={handleGenerateTitle}
-                        className="flex items-center gap-1 text-[10px] font-bold text-pink-600 hover:text-pink-700 cursor-pointer"
+                        className="flex items-center gap-1 text-[11px] font-bold text-pink-600 hover:text-pink-700 cursor-pointer"
                       >
-                        <Wand2 size={11} />
-                        <span>Auto-Generate from Store</span>
+                        <Wand2 size={12} />
+                        <span>Auto-Generate</span>
                       </button>
                     </div>
                     <input
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g. Flat 40% OFF Table Reservation @ Bandra West"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold mt-1"
+                      placeholder={
+                        offerScope === "PRE_BOOK"
+                          ? "e.g. Flat 50% off on Pre-Booking & Bill"
+                          : "e.g. Flat 50% off on Total Bill"
+                      }
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold mt-1 shadow-xs"
                     />
                   </div>
 
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                      Mobile Subtitle / Tagline
+                      Subtitle / Tagline (Appears on Mobile Card)
                     </label>
                     <input
                       type="text"
                       value={tagline}
                       onChange={(e) => setTagline(e.target.value)}
-                      placeholder="e.g. Savor multi-cuisine delicacies with instant bill discount"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1"
+                      placeholder="e.g. Available on Mon-Sun • Valid on minimum bill ₹1,000"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1 shadow-xs"
                     />
                   </div>
                 </div>
 
-                {/* Badge Text & Call To Action */}
+                {/* Badge Text & Call to Action */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
@@ -1749,108 +906,48 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       type="text"
                       value={badgeText}
                       onChange={(e) => setBadgeText(e.target.value)}
-                      placeholder="e.g. DISTRICT SPECIAL"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1 font-bold text-pink-600 uppercase"
+                      placeholder="e.g. PINAK EXCLUSIVE"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-pink-600 dark:text-pink-400 font-extrabold uppercase mt-1"
                     />
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                      Mobile CTA Button Label
+                      Mobile CTA Button
                     </label>
                     <input
                       type="text"
                       value={ctaText}
                       onChange={(e) => setCtaText(e.target.value)}
-                      placeholder="e.g. Reserve Table / Add to Cart"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1 font-bold"
+                      placeholder="e.g. Reserve Table / Book & Pay"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white mt-1"
                     />
                   </div>
                 </div>
 
-                {/* Dates & Schedule */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 text-xs">
-                      <Calendar size={13} className="text-pink-600" />
-                      <span>Valid From *</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={validFrom}
-                      onChange={(e) => setValidFrom(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 text-xs">
-                      <Calendar size={13} className="text-pink-600" />
-                      <span>Valid To *</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={validTo}
-                      onChange={(e) => setValidTo(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white mt-1"
-                    />
-                  </div>
-                </div>
-
-                {/* Days of Week */}
-                <div className="space-y-1.5">
-                  <span className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                    Active Days
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {ALL_DAYS.map((day) => (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => toggleDay(day)}
-                        className={cn(
-                          "px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer",
-                          activeDays.includes(day)
-                            ? "bg-pink-600 text-white shadow-2xs font-bold"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800"
-                        )}
-                      >
-                        {day}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Banner Photo Gallery */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
-                      <ImageIcon size={13} className="text-pink-600" />
-                      <span>Choose Banner Photo (1-Click Select)</span>
-                    </label>
-                    <span className="text-[10px] text-slate-400">High-Resolution HD</span>
-                  </div>
-
+                {/* Visual Banner / Photo Selector */}
+                <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                    Banner Cover Photo
+                  </label>
                   <div className="grid grid-cols-4 gap-2">
-                    {(offerScope === "STORE_PRODUCT" ? CURATED_IMAGES.STORE_PRODUCT : CURATED_IMAGES.STORE_DINING).map((img, i) => (
+                    {(CURATED_IMAGES[offerScope === "STORE_PRODUCT" ? "STORE_PRODUCT" : "STORE_DINING"] || []).map((img, i) => (
                       <button
                         key={i}
                         type="button"
-                        onClick={() => {
-                          setImageUrl(img.url);
-                          toast.success(`Selected banner: ${img.label}`);
-                        }}
+                        onClick={() => setImageUrl(img.url)}
                         className={cn(
-                          "relative rounded-xl overflow-hidden aspect-video border-2 transition-all cursor-pointer group",
+                          "relative rounded-xl overflow-hidden aspect-video border-2 transition cursor-pointer group",
                           imageUrl === img.url
-                            ? "border-pink-600 ring-2 ring-pink-500/30 scale-[1.02]"
-                            : "border-slate-200 dark:border-slate-700 opacity-80 hover:opacity-100 hover:border-pink-400"
+                            ? "border-pink-600 ring-2 ring-pink-500/30"
+                            : "border-transparent opacity-75 hover:opacity-100"
                         )}
                       >
                         <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
-                        <span className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[9px] font-bold px-1 py-0.5 truncate text-center">
+                        <span className="absolute inset-x-0 bottom-0 bg-black/70 text-white text-[9px] font-bold p-1 truncate text-center">
                           {img.label}
                         </span>
                         {imageUrl === img.url && (
-                          <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-pink-600 text-white flex items-center justify-center shadow-xs">
+                          <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-pink-600 text-white flex items-center justify-center">
                             <Check size={10} />
                           </div>
                         )}
@@ -1858,196 +955,682 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mt-2">
                     <input
-                      type="url"
+                      type="text"
                       value={imageUrl}
                       onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="https://... or paste image URL / upload from computer"
-                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                      placeholder="Or enter custom image URL"
+                      className="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] text-slate-900 dark:text-white font-mono"
                     />
-                    <label className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0">
-                      <Upload size={13} className="text-pink-600" />
-                      <span>Upload Photo</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                    </label>
                   </div>
-                  {imageUrl && (
-                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                      <img
-                        src={imageUrl}
-                        alt="Preview"
-                        className="w-12 h-12 object-contain rounded-lg bg-white border border-slate-200 dark:border-slate-700 p-0.5"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80";
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 2: DEAL RULES, PRICING & VALIDITY */}
+            {/* ========================================================================= */}
+            {currentStep === 2 && (
+              <div className="space-y-5 animate-in fade-in duration-150">
+                {/* 1-Click Fast Discount Presets */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
+                    <Zap size={14} className="text-amber-500" />
+                    <span>Quick Discount Presets (Click to Auto-Fill)</span>
+                  </label>
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                    {PRESET_DISCOUNTS.map((p, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setType(p.type);
+                          setValue(p.val);
+                          setMinBillAmount(p.minBill);
+                          setMaxDiscount(p.maxDisc);
+                          toast.success(`Applied ${p.label} preset!`);
                         }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 block truncate">
-                          Image Connected to Offer
-                        </span>
-                        <span className="text-[9px] text-slate-400 block truncate font-mono">
-                          {imageUrl.startsWith("data:") ? "Local Upload (Data URL)" : imageUrl}
+                        className={cn(
+                          "py-2 px-1 rounded-xl border text-center font-bold text-xs transition cursor-pointer",
+                          type === p.type && value === p.val
+                            ? "bg-pink-600 text-white border-pink-600 shadow-xs"
+                            : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100"
+                        )}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Core Discount Metrics */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block text-[11px] mb-1">
+                        Discount Type *
+                      </label>
+                      <select
+                        value={type}
+                        onChange={(e) => setType(e.target.value as any)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                      >
+                        <option value="FLAT_PCT">Percentage (% OFF)</option>
+                        <option value="FLAT_AMT">Flat Amount (₹ OFF)</option>
+                        <option value="BOGO">Buy 1 Get 1 (BOGO)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block text-[11px] mb-1">
+                        {type === "FLAT_PCT" ? "Discount (%) *" : "Discount (₹) *"}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={value}
+                          onChange={(e) => setValue(Number(e.target.value))}
+                          min={1}
+                          max={type === "FLAT_PCT" ? 100 : 100000}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-extrabold text-slate-900 dark:text-white"
+                        />
+                        <span className="absolute right-3 top-2 font-bold text-slate-400">
+                          {type === "FLAT_PCT" ? "%" : "₹"}
                         </span>
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block text-[11px] mb-1">
+                        Minimum Bill Spend *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={minBillAmount}
+                          onChange={(e) => setMinBillAmount(Number(e.target.value))}
+                          min={0}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-extrabold text-slate-900 dark:text-white"
+                        />
+                        <span className="absolute right-3 top-2 font-bold text-slate-400">₹</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {type === "FLAT_PCT" && (
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
+                          Maximum Discount Cap (₹) *
+                        </span>
+                        <span className="text-[10px] text-slate-400">Protects store margin on large bills</span>
+                      </div>
+                      <div className="relative w-36">
+                        <input
+                          type="number"
+                          value={maxDiscount ?? 500}
+                          onChange={(e) => setMaxDiscount(Number(e.target.value))}
+                          min={10}
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-extrabold text-slate-900 dark:text-white text-right pr-6"
+                        />
+                        <span className="absolute right-2.5 top-1.5 font-bold text-slate-400 text-xs">₹</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Live Calculation Feedback */}
+                  <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                      <Calculator size={13} />
+                      <span>
+                        Example: On a ₹1,000 bill, customer pays{" "}
+                        <strong className="underline">
+                          ₹{Math.max(1000 - Math.min((1000 * value) / 100, maxDiscount || 1000), 0)}
+                        </strong>{" "}
+                        (Saves ₹{Math.min((1000 * value) / 100, maxDiscount || 1000)})
+                      </span>
+                    </span>
+                    <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
+                      Auto-Applied
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pre-Booking Specific Table Slot Settings */}
+                {offerScope === "PRE_BOOK" && (
+                  <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/50 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-purple-900 dark:text-purple-300 text-xs flex items-center gap-1.5">
+                        <Clock size={13} />
+                        <span>Pre-Booking Time Slots & Capacity</span>
+                      </span>
+                      <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">
+                        {slotTimes.length} slots active
+                      </span>
+                    </div>
+
+                    {/* Slot Chips */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {STANDARD_SLOTS.map((s) => {
+                        const isSelected = slotTimes.includes(s);
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => {
+                              setSlotTimes((prev) =>
+                                prev.includes(s)
+                                  ? (prev.length > 1 ? prev.filter((x) => x !== s) : prev)
+                                  : [...prev, s]
+                              );
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer",
+                              isSelected
+                                ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                                : "bg-white dark:bg-slate-800 border-purple-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-purple-100"
+                            )}
+                          >
+                            {s}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Party Size & Grace Period */}
+                    <div className="grid grid-cols-3 gap-2.5 pt-2 border-t border-purple-100 dark:border-purple-900">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                          Party Size
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            value={minPartySize}
+                            onChange={(e) => setMinPartySize(Number(e.target.value))}
+                            min={1}
+                            className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-center"
+                          />
+                          <span className="text-slate-400">to</span>
+                          <input
+                            type="number"
+                            value={maxPartySize}
+                            onChange={(e) => setMaxPartySize(Number(e.target.value))}
+                            min={minPartySize}
+                            className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-center"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                          Grace Period
+                        </label>
+                        <select
+                          value={gracePeriodMinutes}
+                          onChange={(e) => setGracePeriodMinutes(Number(e.target.value))}
+                          className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                        >
+                          <option value={10}>10 Minutes</option>
+                          <option value={15}>15 Minutes</option>
+                          <option value={20}>20 Minutes</option>
+                          <option value={30}>30 Minutes</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                          Cover Charge (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={coverChargeAmount}
+                          onChange={(e) => setCoverChargeAmount(Number(e.target.value))}
+                          min={0}
+                          placeholder="0 (Free)"
+                          className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-center"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Retail Product Deals Specific Settings */}
+                {offerScope === "STORE_PRODUCT" && (
+                  <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 space-y-3">
+                    <span className="font-bold text-emerald-900 dark:text-emerald-300 text-xs block">
+                      Retail Product Details & Pricing
+                    </span>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                          Product Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={productName}
+                          onChange={(e) => setProductName(e.target.value)}
+                          placeholder="e.g. Amul Fresh Milk 1L"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                          Unit / Pack Size
+                        </label>
+                        <input
+                          type="text"
+                          value={unitOrWeight}
+                          onChange={(e) => setUnitOrWeight(e.target.value)}
+                          placeholder="e.g. 500g, 1L, Pack of 2"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                          Original MRP (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={originalPrice || ""}
+                          onChange={(e) => setOriginalPrice(Number(e.target.value))}
+                          placeholder="100"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                          Deal Price (₹) *
+                        </label>
+                        <input
+                          type="number"
+                          value={dealPrice || ""}
+                          onChange={(e) => setDealPrice(Number(e.target.value))}
+                          placeholder="70"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-extrabold text-pink-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                          Stock Quantity
+                        </label>
+                        <input
+                          type="number"
+                          value={totalFlashUnits || 50}
+                          onChange={(e) => setTotalFlashUnits(Number(e.target.value))}
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campaign Schedule & Validity */}
+                <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                      <Calendar size={14} className="text-pink-600" />
+                      <span>Campaign Schedule & Duration *</span>
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {[7, 14, 30, 90].map((days) => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => handleSetDurationDays(days)}
+                          className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-pink-100 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:text-pink-600 transition cursor-pointer"
+                        >
+                          +{days}d
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-500 block mb-1">
+                        Valid From Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={validFrom}
+                        onChange={(e) => setValidFrom(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-500 block mb-1">
+                        Valid To Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={validTo}
+                        onChange={(e) => setValidTo(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Active Days */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-semibold text-slate-500">Active Days of Week</span>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setActiveDays(ALL_DAYS)}
+                          className="text-[10px] font-bold text-pink-600 hover:underline cursor-pointer"
+                        >
+                          All Days
+                        </button>
+                        <span className="text-slate-300">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveDays(["Mon", "Tue", "Wed", "Thu", "Fri"])}
+                          className="text-[10px] font-bold text-slate-500 hover:underline cursor-pointer"
+                        >
+                          Weekdays
+                        </button>
+                        <span className="text-slate-300">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveDays(["Sat", "Sun"])}
+                          className="text-[10px] font-bold text-slate-500 hover:underline cursor-pointer"
+                        >
+                          Weekends
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {ALL_DAYS.map((day) => {
+                        const active = activeDays.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => handleToggleDay(day)}
+                            className={cn(
+                              "py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer text-center",
+                              active
+                                ? "bg-pink-600 text-white border-pink-600 shadow-xs"
+                                : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100"
+                            )}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STEP 3: TERMS & FINE PRINT + PREVIEW & PUBLISH */}
+            {/* ========================================================================= */}
+            {currentStep === 3 && (
+              <div className="space-y-5 animate-in fade-in duration-150">
+                {/* HERO SECTION: TERMS & FINE PRINT */}
+                <div className="p-4 rounded-3xl bg-slate-50/80 dark:bg-slate-900/60 border border-purple-200/80 dark:border-purple-900/50 space-y-3.5 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600 flex items-center justify-center font-bold">
+                        <ListChecks size={16} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 dark:text-white text-xs">
+                          Terms & Fine Print *
+                        </h4>
+                        <p className="text-[10px] text-slate-400">
+                          {termsList.length} condition(s) attached • Add only the terms you need
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleGenerateTerms}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200 text-[10px] font-bold cursor-pointer transition"
+                      >
+                        <Wand2 size={11} />
+                        <span>Auto-Generate T&C</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowRawTerms(!showRawTerms)}
+                        className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer"
+                      >
+                        <FileText size={11} />
+                        <span>{showRawTerms ? "Bullet Mode" : "Raw Text"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 1-Click Fast Add Preset Term Chips */}
+                  {!showRawTerms && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Quick-Add Standard Store Conditions (Click to Add / Remove):
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PRESET_TERMS.map((pt, i) => {
+                          const isAdded = termsList.some((t) => t.toLowerCase() === pt.toLowerCase());
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => handleTogglePresetTerm(pt)}
+                              className={cn(
+                                "px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition cursor-pointer flex items-center gap-1.5",
+                                isAdded
+                                  ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                              )}
+                            >
+                              {isAdded ? <Check size={10} /> : <Plus size={10} />}
+                              <span>{pt}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Terms List Manager */}
+                  {!showRawTerms ? (
+                    <div className="space-y-2">
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        {termsList.map((term, index) => (
+                          <div
+                            key={index}
+                            className="flex items-start justify-between gap-2 p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group shadow-2xs"
+                          >
+                            <div className="flex items-start gap-2 min-w-0">
+                              <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-600 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                                •
+                              </span>
+                              <span className="text-[11px] text-slate-800 dark:text-slate-200 leading-snug">
+                                {term}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTerm(index)}
+                              className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition cursor-pointer shrink-0 opacity-60 group-hover:opacity-100"
+                              title="Remove condition"
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        ))}
+
+                        {termsList.length === 0 && (
+                          <div className="p-3 text-center text-slate-400 text-xs italic bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                            No terms added yet. Click preset chips above or type a custom term below.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add Custom Term Input */}
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <input
+                          type="text"
+                          value={customTermInput}
+                          onChange={(e) => setCustomTermInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddCustomTerm();
+                            }
+                          }}
+                          placeholder="Type a custom condition & press Enter (e.g. Valid on birthday celebrations)"
+                          className="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] text-slate-900 dark:text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCustomTerm}
+                          disabled={!customTermInput.trim()}
+                          className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer transition shrink-0"
+                        >
+                          <Plus size={12} />
+                          <span>Add Term</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Raw Textarea Mode */
+                    <div className="space-y-1.5">
+                      <textarea
+                        rows={5}
+                        value={rawTermsText}
+                        onChange={(e) => {
+                          setRawTermsText(e.target.value);
+                          setTermsList(
+                            e.target.value
+                              .split(/\n|•/)
+                              .map((t) => t.trim())
+                              .filter((t) => t.length > 2)
+                          );
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-mono"
+                        placeholder="• Type each term on a new line..."
+                      />
+                      <span className="text-[10px] text-slate-400 block">
+                        Tip: Start each line with • for automatic bullet point display on mobile.
+                      </span>
                     </div>
                   )}
                 </div>
 
-                {/* Terms and Conditions */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
-                      Terms & Fine Print
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleGenerateTerms}
-                      className="flex items-center gap-1 text-[10px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 cursor-pointer"
-                    >
-                      <Wand2 size={11} />
-                      <span>Auto-Generate Store T&C</span>
-                    </button>
+                {/* Offer Summary Overview */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-slate-900 dark:text-white block">
+                      {merchantDisplayName}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      {selectedStore ? selectedStore.branchName : "All Brand Outlets"} • {validFrom} to {validTo}
+                    </span>
                   </div>
-                  <textarea
-                    rows={2}
-                    value={terms}
-                    onChange={(e) => setTerms(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
-                  />
+                  <div className="text-right">
+                    <span className="font-extrabold text-pink-600 text-sm block">
+                      {type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`}
+                    </span>
+                    <span className="text-[10px] text-slate-400">Min spend: ₹{minBillAmount}</span>
+                  </div>
                 </div>
 
-                {/* LIVE CONSUMER MOBILE SCREEN PREVIEW */}
-                <div className="p-4 rounded-3xl bg-slate-100 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-3">
+                {/* LIVE CONSUMER MOBILE SCREEN PREVIEW (Matching code.html) */}
+                <div className="p-4 rounded-3xl bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                      <Eye size={13} className="text-pink-600" />
+                      <Eye size={14} className="text-pink-600" />
                       <span>Live Consumer Mobile Card Preview</span>
                     </span>
                     <span className="text-[10px] text-pink-600 font-bold bg-pink-50 dark:bg-pink-950 px-2 py-0.5 rounded-md">
-                      {selectedStore ? selectedStore.branchName : "All Outlets"}
+                      {offerScope === "PRE_BOOK" ? "Pre-booking offer" : "Walk-in offer"}
                     </span>
                   </div>
 
-                  <div className="max-w-sm mx-auto bg-white dark:bg-[#121626] rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl">
+                  {/* Exact Mobile Card as Rendered on PINAK App */}
+                  <div className="max-w-sm mx-auto bg-white dark:bg-[#121626] rounded-2xl overflow-hidden border border-purple-200 dark:border-purple-900/60 shadow-lg">
                     {/* Visual Card Image */}
-                    <div className="relative aspect-video w-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                      {imageUrl ? (
-                        <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-400">
-                          <ImageIcon size={32} />
-                        </div>
-                      )}
+                    <div className="relative aspect-video w-full bg-slate-900 overflow-hidden">
+                      <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                       {badgeText && (
-                        <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-pink-600 text-white shadow-md">
+                        <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-700 text-white shadow-xs">
                           {badgeText}
                         </span>
                       )}
-                      {offerScope === "STORE_OFFER" && isTableBookingEnabled && (
-                        <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-emerald-600 text-white shadow-md flex items-center gap-1">
-                          <Armchair size={10} className="fill-white" />
-                          <span>Confirmed Table</span>
-                        </span>
-                      )}
+                      <span className="absolute bottom-2.5 left-2.5 text-white font-extrabold text-sm drop-shadow-md">
+                        {merchantDisplayName}
+                      </span>
                     </div>
 
-                    {/* Card Body */}
-                    <div className="p-4 space-y-3">
+                    {/* Deal Body with Voucher Border */}
+                    <div className="p-4 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-purple-600 dark:text-purple-400">
-                          {merchantDisplayName} • {selectedStore?.branchName || "All Outlets"}
-                        </span>
-                        <span className="text-[10px] text-amber-600 font-extrabold flex items-center gap-0.5">
-                          <Coins size={11} />
-                          <span>+{bonusCoins} Coins</span>
-                        </span>
-                      </div>
-
-                      <div>
-                        <h4 className="font-extrabold text-slate-900 dark:text-white text-sm line-clamp-1">
-                          {title || "Campaign Offer Title"}
-                        </h4>
-                        {tagline && (
-                          <p className="text-[11px] text-slate-500 line-clamp-1 italic mt-0.5">
-                            "{tagline}"
-                          </p>
-                        )}
-                      </div>
-
-                      {/* District Table Slots Preview Widget */}
-                      {offerScope === "STORE_OFFER" && isTableBookingEnabled && slotTimes.length > 0 && (
-                        <div className="p-2.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 space-y-2">
-                          <div className="flex items-center justify-between text-[10px]">
-                            <span className="font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1">
-                              <Clock size={11} className="text-indigo-600" />
-                              <span>Select Time Slot ({type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`})</span>
-                            </span>
-                            <span className="text-indigo-600 font-bold">{minPartySize}-{maxPartySize} Guests</span>
-                          </div>
-
-                          <div className="flex gap-1.5 overflow-x-auto pb-1">
-                            {slotTimes.slice(0, 4).map((slot, idx) => (
-                              <span
-                                key={slot}
-                                className={cn(
-                                  "px-2 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap shrink-0",
-                                  idx === 0
-                                    ? "bg-indigo-600 text-white shadow-2xs"
-                                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                                )}
-                              >
-                                {slot}
-                              </span>
-                            ))}
-                          </div>
-
-                          <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-indigo-200/40">
-                            <span>{seatingAreas[0] || "Indoor Dining"}</span>
-                            <span>{gracePeriodMinutes}m grace period</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <div>
-                          {offerScope === "STORE_PRODUCT" && dealPrice ? (
-                            <div className="flex items-baseline gap-1.5">
-                              <span className="text-base font-black text-emerald-600 font-mono">
-                                ₹{dealPrice}
-                              </span>
-                              {originalPrice && (
-                                <span className="text-xs text-slate-400 line-through">
-                                  ₹{originalPrice}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-base font-black text-pink-600 font-mono">
-                              {type === "FLAT_AMT"
-                                ? `₹${value} FLAT`
-                                : type === "FLAT_PCT"
-                                ? `${value}% OFF`
-                                : "BOGO"}
-                            </span>
-                          )}
-                          <span className="text-[10px] text-slate-400 block">
-                            {offerScope === "STORE_PRODUCT"
-                              ? (minBillAmount > 0 ? `Min order ₹${minBillAmount}` : "Direct Store Item")
-                              : (minBillAmount > 0 ? `Min spend ₹${minBillAmount}` : "No min bill required")}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-extrabold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded uppercase border border-purple-200">
+                            PINAK Deal
+                          </span>
+                          <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded uppercase border border-amber-200">
+                            Special Deal
                           </span>
                         </div>
-
-                        <span className="px-4 py-2 rounded-xl bg-pink-600 text-white font-bold text-xs shadow-xs">
-                          {ctaText}
+                        <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                          <Zap size={10} /> Instant
                         </span>
                       </div>
+
+                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                        {title || `Flat ${value}% off on Total Bill`}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        {tagline || `Available on Mon-Sun • Valid on minimum bill ₹${minBillAmount}`}
+                      </p>
+
+                      <div className="h-[1px] w-full border-b border-dashed border-slate-200 dark:border-slate-800 my-2" />
+
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-600 dark:text-slate-400 text-[11px] font-medium">
+                          Auto-applied at checkout
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsPreviewTermsOpen(!isPreviewTermsOpen)}
+                          className="text-purple-600 dark:text-purple-400 font-bold text-[11px] hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>{isPreviewTermsOpen ? "Hide T&C" : "View T&C"}</span>
+                          <ChevronRight size={11} className={cn("transition-transform", isPreviewTermsOpen && "rotate-90")} />
+                        </button>
+                      </div>
+
+                      {/* Interactive View T&C Bottom Sheet / Popup Preview */}
+                      {isPreviewTermsOpen && (
+                        <div className="mt-2.5 p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 space-y-2 animate-in fade-in duration-150">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-purple-950 dark:text-purple-200 text-[11px] flex items-center gap-1">
+                              <ShieldCheck size={12} />
+                              <span>Terms & Conditions ({termsList.length})</span>
+                            </span>
+                          </div>
+                          <ul className="space-y-1 text-[10px] text-slate-700 dark:text-slate-300">
+                            {termsList.map((t, idx) => (
+                              <li key={idx} className="flex items-start gap-1.5 leading-snug">
+                                <span className="text-purple-600 font-bold shrink-0">•</span>
+                                <span>{t}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2056,7 +1639,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
           </form>
 
           {/* Stepper Footer Controls */}
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-3">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between gap-3">
             {currentStep > 1 ? (
               <button
                 type="button"
@@ -2078,9 +1661,9 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
 
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-                Step {currentStep} of 4
+                Step {currentStep} of 3
               </span>
-              {currentStep < 4 ? (
+              {currentStep < 3 ? (
                 <button
                   type="button"
                   onClick={handleNextStep}
@@ -2092,7 +1675,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
               ) : (
                 <button
                   type="button"
-                  onClick={handleSubmit}
+                  onClick={() => handleSubmit()}
                   className="btn-gradient flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-white font-extrabold text-xs shadow-md cursor-pointer"
                 >
                   <Sparkles size={14} />
