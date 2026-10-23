@@ -1362,42 +1362,16 @@ function StorePinDrawer({
             {/* TAB 1: OVERVIEW */}
             {activeTab === "overview" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                {/* Hero Ambience Banner (if uploaded) */}
-                {primaryBanner && (
-                  <div className="relative h-32 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs group">
-                    <img
-                      src={primaryBanner}
-                      alt={store.branchName}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex items-end p-3.5">
-                      <div className="flex items-center justify-between w-full">
-                        <div>
-                          <span className="text-[10px] uppercase font-bold text-amber-300 tracking-wider block">
-                            Dining & Retail
-                          </span>
-                          <span className="text-sm font-bold text-white drop-shadow-xs">
-                            {store.branchName}
-                          </span>
-                        </div>
-                        <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
-                          {store.status === "ACTIVE" ? "Active on App" : store.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                )}
+
 
                 <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
                       Branch Identity & Store Info
                     </span>
-                    {!primaryBanner && (
-                      <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
-                        {store.status === "ACTIVE" ? "Active on App" : "Needs Review"}
-                      </Badge>
-                    )}
+                    <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                      {store.status === "ACTIVE" ? "Active on Discovery" : "Needs Review"}
+                    </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
@@ -2106,6 +2080,7 @@ function AddStoreDrawer({
         managerName: managerName.trim(),
         managerEmail: managerEmail.trim(),
         managerPhone: managerPhone.replace(/[\s\-_()]/g, "").trim(),
+        category: "Dining & Retail",
         menuImages,
         photos,
         amenities,

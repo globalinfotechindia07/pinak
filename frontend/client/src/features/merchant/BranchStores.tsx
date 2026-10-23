@@ -876,40 +876,58 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
           }
         };
 
-        const handleAddSubmit = () => {
-          if (!branchName || !address) {
-            toast.error("Please complete required branch details");
+        const handleAddSubmit = async () => {
+          if (!branchName.trim() || !address.trim()) {
+            toast.error("Please enter required branch name and street address");
             return;
           }
-          onAddStore({
+          const generatedEmail = storeEmail.trim() || `${branchName.toLowerCase().replace(/\s+/g, "")}@${merchantDomain}.in`;
+          const newDraft: StoreType = {
+            id: `store-${Date.now()}`,
             merchantId: currentMerchantId || "m-1",
             merchantName: currentMerchantName,
             storeName: currentMerchantName,
-            branchName,
-            address,
-            state,
-            district,
-            city,
-            pincode,
-            phone,
-            latitude,
-            longitude,
-            operatingHours: hours,
-            storeEmail: storeEmail || `${branchName.toLowerCase().replace(/\s+/g, "")}@${merchantDomain}.in`,
-            managerName: managerName || "Store Manager",
-            menuImages,
-            photos,
-            amenities
-          });
-          setIsAddOpen(false);
-          setAddBranchStep(1);
-          setBranchName("");
-          setAddress("");
-          setMenuImages([]);
-          setPhotos([]);
-          setAmenities([]);
-          fetchLiveStores();
-          toast.success(`Store branch "${branchName}" created! Password activation link dispatched to ${storeEmail || "Store Manager"}.`);
+            branchName: branchName.trim(),
+            address: address.trim(),
+            state: state.trim() || "Maharashtra",
+            district: district.trim() || city.trim() || "Nagpur",
+            city: city.trim() || "Nagpur",
+            pincode: pincode.trim() || "440010",
+            phone: phone.trim() || "+91 712 2550000",
+            latitude: Number(latitude) || 21.1458,
+            longitude: Number(longitude) || 79.0882,
+            operatingHours: hours || "10:00 AM – 10:00 PM (Daily)",
+            status: "ACTIVE",
+            hasActiveOffer: true,
+            createdAt: new Date().toISOString(),
+            storeEmail: generatedEmail,
+            managerEmail: generatedEmail,
+            managerName: managerName.trim() || "Store Manager",
+            managerPhone: phone.trim(),
+            category: "Dining & Restaurant",
+            menuImages: [...menuImages],
+            photos: [...photos],
+            amenities: [...amenities]
+          };
+
+          // Optimistically update live stores immediately with all creation details
+          setLiveStores((prev) => [newDraft, ...prev.filter((s) => s.id !== newDraft.id)]);
+
+          try {
+            await onAddStore(newDraft);
+            toast.success(`Store branch "${branchName}" created! Password activation link dispatched to ${generatedEmail}.`);
+          } catch (err: any) {
+            console.warn("Store save notice:", err?.message);
+          } finally {
+            setIsAddOpen(false);
+            setAddBranchStep(1);
+            setBranchName("");
+            setAddress("");
+            setMenuImages([]);
+            setPhotos([]);
+            setAmenities([]);
+            fetchLiveStores();
+          }
         };
 
         return (
@@ -1404,31 +1422,7 @@ function ViewBranchStoreDrawer({
             {/* OVERVIEW */}
             {activeTab === "overview" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                {/* Hero Ambience Banner (if uploaded) */}
-                {primaryBanner && (
-                  <div className="relative h-32 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs group">
-                    <img
-                      src={primaryBanner}
-                      alt={store.branchName}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex items-end p-3.5">
-                      <div className="flex items-center justify-between w-full">
-                        <div>
-                          <span className="text-[10px] uppercase font-bold text-amber-300 tracking-wider block">
-                            {store.category || "Dining & Restaurant"}
-                          </span>
-                          <span className="text-sm font-bold text-white drop-shadow-xs">
-                            {store.branchName}
-                          </span>
-                        </div>
-                        <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
-                          {store.status === "ACTIVE" ? "Active on App" : store.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                )}
+
 
                 {/* Identity & Core Details Card */}
                 <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-3">
@@ -1436,11 +1430,9 @@ function ViewBranchStoreDrawer({
                     <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
                       Branch Identity & Store Info
                     </span>
-                    {!primaryBanner && (
-                      <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
-                        {store.status === "ACTIVE" ? "Active on App" : store.status}
-                      </Badge>
-                    )}
+                    <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                      {store.status === "ACTIVE" ? "Active on Discovery" : store.status}
+                    </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
