@@ -47,7 +47,9 @@ public class OfferMapper {
                 offer.getBonusCoins() != null ? offer.getBonusCoins() : 100,
                 offer.getImageUrl(),
                 offer.getBadgeText(),
-                offer.getCtaText() != null ? offer.getCtaText() : "Book & Pay"
+                offer.getCtaText() != null ? offer.getCtaText() : "Book & Pay",
+                offer.getRedemptionType() != null ? offer.getRedemptionType() : "BOTH",
+                offer.getMinAdvanceHours() != null ? offer.getMinAdvanceHours() : 0
         );
     }
 
@@ -74,7 +76,9 @@ public class OfferMapper {
                 offer.getMaxDiscountAmount(),
                 offer.getValidFrom(),
                 offer.getValidTo(),
-                offer.getStatus() != null ? offer.getStatus().name() : null
+                offer.getStatus() != null ? offer.getStatus().name() : null,
+                offer.getRedemptionType() != null ? offer.getRedemptionType() : "BOTH",
+                offer.getMinAdvanceHours() != null ? offer.getMinAdvanceHours() : 0
         );
     }
 

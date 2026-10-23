@@ -39,8 +39,50 @@ public record MerchantOfferResponse(
         Integer bonusCoins,
         String imageUrl,
         String badgeText,
-        String ctaText
+        String ctaText,
+        String redemptionType,
+        Integer minAdvanceHours
 ) implements Serializable {
+
+    // 29-argument backwards-compatible constructor
+    public MerchantOfferResponse(
+            String id,
+            String storeId,
+            String storeName,
+            String merchantId,
+            String categoryId,
+            String title,
+            String description,
+            String offerType,
+            BigDecimal value,
+            BigDecimal minTransactionAmount,
+            BigDecimal maxDiscountAmount,
+            Integer usageLimit,
+            Integer perCustomerLimit,
+            Instant validFrom,
+            Instant validTo,
+            String status,
+            String approvalStatus,
+            String rejectionReason,
+            Instant approvedAt,
+            Instant createdAt,
+            Instant updatedAt,
+            String offerScope,
+            BigDecimal originalMrp,
+            BigDecimal flashSellingPrice,
+            Boolean isFlash,
+            Integer remainingQuantity,
+            Integer bonusCoins,
+            String imageUrl,
+            String badgeText,
+            String ctaText
+    ) {
+        this(id, storeId, storeName, merchantId, categoryId, title, description, offerType, value,
+             minTransactionAmount, maxDiscountAmount, usageLimit, perCustomerLimit, validFrom, validTo,
+             status, approvalStatus, rejectionReason, approvedAt, createdAt, updatedAt,
+             offerScope, originalMrp, flashSellingPrice, isFlash, remainingQuantity, bonusCoins, imageUrl, badgeText, ctaText,
+             "BOTH", 0);
+    }
 
     // 21-argument backwards-compatible constructor for existing tests
     public MerchantOfferResponse(
@@ -69,6 +111,6 @@ public record MerchantOfferResponse(
         this(id, storeId, storeName, merchantId, categoryId, title, description, offerType, value,
              minTransactionAmount, maxDiscountAmount, usageLimit, perCustomerLimit, validFrom, validTo,
              status, approvalStatus, rejectionReason, approvedAt, createdAt, updatedAt,
-             "SERVICE", null, null, false, 50, 100, null, null, "Book & Pay");
+             "SERVICE", null, null, false, 50, 100, null, null, "Book & Pay", "BOTH", 0);
     }
 }

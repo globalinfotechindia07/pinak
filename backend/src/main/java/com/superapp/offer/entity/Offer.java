@@ -114,6 +114,12 @@ public class Offer {
     @Column(name = "flash_selling_price", precision = 10, scale = 2)
     private BigDecimal flashSellingPrice;
 
+    @Column(name = "redemption_type", length = 32)
+    private String redemptionType = "BOTH";
+
+    @Column(name = "min_advance_hours")
+    private Integer minAdvanceHours = 0;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -399,6 +405,12 @@ public class Offer {
 
     public BigDecimal getFlashSellingPrice() { return flashSellingPrice; }
     public void setFlashSellingPrice(BigDecimal flashSellingPrice) { this.flashSellingPrice = flashSellingPrice; }
+
+    public String getRedemptionType() { return redemptionType != null ? redemptionType : "BOTH"; }
+    public void setRedemptionType(String redemptionType) { this.redemptionType = redemptionType; }
+
+    public Integer getMinAdvanceHours() { return minAdvanceHours != null ? minAdvanceHours : 0; }
+    public void setMinAdvanceHours(Integer minAdvanceHours) { this.minAdvanceHours = minAdvanceHours; }
 
     @Override
     public boolean equals(Object o) {

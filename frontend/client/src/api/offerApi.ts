@@ -35,6 +35,8 @@ export interface OfferDTO {
   activeDays?: string[];
   happyHoursStart?: string;
   happyHoursEnd?: string;
+  redemptionType?: "WALK_IN" | "PRE_BOOK" | "BOTH";
+  minAdvanceHours?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -59,6 +61,8 @@ export interface CreateOfferPayload {
   activeDays?: string[];
   happyHoursStart?: string;
   happyHoursEnd?: string;
+  redemptionType?: "WALK_IN" | "PRE_BOOK" | "BOTH";
+  minAdvanceHours?: number;
   termsAndConditions?: string;
 }
 

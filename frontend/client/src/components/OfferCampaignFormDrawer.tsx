@@ -295,6 +295,13 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   );
   const [promoCode, setPromoCode] = useState<string>(initialData?.promoCode || "DISTRICT40");
 
+  const [redemptionType, setRedemptionType] = useState<"WALK_IN" | "PRE_BOOK" | "BOTH">(
+    initialData?.redemptionType || "BOTH"
+  );
+  const [minAdvanceHours, setMinAdvanceHours] = useState<number>(
+    initialData?.minAdvanceHours ?? (initialData?.redemptionType === "PRE_BOOK" ? 2 : 0)
+  );
+
   // STEP 4: MERCHANDISING & SCHEDULE
   const [title, setTitle] = useState<string>(initialData?.title || "");
   const [tagline, setTagline] = useState<string>(initialData?.tagline || "");
@@ -543,6 +550,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       endTime: enableHappyHours ? endTime : undefined,
       redemptionMethod,
       promoCode: redemptionMethod === "PROMO_CODE" ? promoCode.trim().toUpperCase() : undefined,
+      redemptionType,
+      minAdvanceHours: redemptionType === "WALK_IN" ? 0 : Number(minAdvanceHours || 0),
       imageUrl: imageUrl.trim(),
       terms: terms.trim(),
       scopeType: isProduct ? "PRODUCT" : "SERVICE",
@@ -607,6 +616,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         endTime: enableHappyHours ? endTime : undefined,
         redemptionMethod,
         promoCode: redemptionMethod === "PROMO_CODE" ? promoCode.trim().toUpperCase() : undefined,
+        redemptionType,
+        minAdvanceHours: redemptionType === "WALK_IN" ? 0 : Number(minAdvanceHours || 0),
         imageUrl: imageUrl.trim(),
         terms: terms.trim(),
         status: "ACTIVE",
@@ -1485,6 +1496,105 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     onChange={(e) => setBonusCoins(Number(e.target.value))}
                     className="w-24 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold text-right"
                   />
+                </div>
+
+                {/* Fulfillment Mode: Walk-In vs Pre-Booking */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs flex items-center gap-1.5">
+                      <Users size={14} className="text-pink-600" />
+                      <span>Fulfillment & Redemption Mode *</span>
+                    </label>
+                    <span className="text-[11px] text-slate-400 font-medium">Walk-in vs Pre-book</span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRedemptionType("BOTH")}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1",
+                        redemptionType === "BOTH"
+                          ? "border-pink-500 bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 font-bold shadow-2xs"
+                          : "border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300"
+                      )}
+                    >
+                      <Sparkles size={16} className="text-pink-600" />
+                      <span className="text-xs">Both Accepted</span>
+                      <span className="text-[9px] opacity-75 font-normal">Walk-in & Reserved</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRedemptionType("WALK_IN");
+                        setMinAdvanceHours(0);
+                      }}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1",
+                        redemptionType === "WALK_IN"
+                          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold shadow-2xs"
+                          : "border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300"
+                      )}
+                    >
+                      <StoreIcon size={16} className="text-emerald-600" />
+                      <span className="text-xs">Walk-In Only</span>
+                      <span className="text-[9px] opacity-75 font-normal">Instant in-store</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRedemptionType("PRE_BOOK");
+                        if (!minAdvanceHours) setMinAdvanceHours(2);
+                      }}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1",
+                        redemptionType === "PRE_BOOK"
+                          ? "border-purple-500 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold shadow-2xs"
+                          : "border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300"
+                      )}
+                    >
+                      <Calendar size={16} className="text-purple-600" />
+                      <span className="text-xs">Pre-Book Only</span>
+                      <span className="text-[9px] opacity-75 font-normal">Requires slot booking</span>
+                    </button>
+                  </div>
+
+                  {/* Advance notice requirement when Pre-Booking is active */}
+                  {(redemptionType === "PRE_BOOK" || redemptionType === "BOTH") && (
+                    <div className="p-3 rounded-xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-900/40 flex items-center justify-between mt-2">
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                          <Clock size={13} className="text-purple-600" />
+                          <span>Minimum Advance Notice</span>
+                        </span>
+                        <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
+                          {redemptionType === "PRE_BOOK" 
+                            ? "Must reserve at least this much in advance:" 
+                            : "For pre-booking reservations, min notice:"}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 4, 12, 24].map((hrs) => (
+                          <button
+                            key={hrs}
+                            type="button"
+                            onClick={() => setMinAdvanceHours(hrs)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                              minAdvanceHours === hrs
+                                ? "bg-purple-600 text-white shadow-xs"
+                                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-purple-400"
+                            )}
+                          >
+                            {hrs}h
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Redemption Trigger (Auto-Applied vs Promo Code) */}

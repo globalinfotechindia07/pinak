@@ -45,5 +45,37 @@ public record AdminCreateOfferRequest(
         Integer bonusCoins,
         String imageUrl,
         String badgeText,
-        String ctaText
-) {}
+        String ctaText,
+        String redemptionType,
+        Integer minAdvanceHours
+) {
+    public AdminCreateOfferRequest(
+            UUID merchantId,
+            UUID storeId,
+            String title,
+            String description,
+            String termsAndConditions,
+            OfferType offerType,
+            BigDecimal value,
+            BigDecimal minTransactionAmount,
+            BigDecimal maxDiscountAmount,
+            Integer usageLimit,
+            Integer perCustomerLimit,
+            Instant validFrom,
+            Instant validTo,
+            String offerScope,
+            BigDecimal originalMrp,
+            BigDecimal flashSellingPrice,
+            Boolean isFlash,
+            Integer remainingQuantity,
+            Integer bonusCoins,
+            String imageUrl,
+            String badgeText,
+            String ctaText
+    ) {
+        this(merchantId, storeId, title, description, termsAndConditions, offerType, value,
+             minTransactionAmount, maxDiscountAmount, usageLimit, perCustomerLimit, validFrom, validTo,
+             offerScope, originalMrp, flashSellingPrice, isFlash, remainingQuantity, bonusCoins, imageUrl, badgeText, ctaText,
+             "BOTH", 0);
+    }
+}

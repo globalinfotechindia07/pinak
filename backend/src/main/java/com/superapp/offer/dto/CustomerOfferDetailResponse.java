@@ -19,5 +19,24 @@ public record CustomerOfferDetailResponse(
         BigDecimal maxDiscountAmount,
         Instant validFrom,
         Instant validTo,
-        String status
-) implements Serializable {}
+        String status,
+        String redemptionType,
+        Integer minAdvanceHours
+) implements Serializable {
+    public CustomerOfferDetailResponse(
+            String id,
+            StoreSummaryRef store,
+            MerchantSummaryRef merchant,
+            String title,
+            String description,
+            String offerType,
+            BigDecimal value,
+            BigDecimal minTransactionAmount,
+            BigDecimal maxDiscountAmount,
+            Instant validFrom,
+            Instant validTo,
+            String status
+    ) {
+        this(id, store, merchant, title, description, offerType, value, minTransactionAmount, maxDiscountAmount, validFrom, validTo, status, "BOTH", 0);
+    }
+}

@@ -66,8 +66,42 @@ public record NearbyServiceOfferItemDto(
         Integer remainingQuantity,
 
         @Schema(description = "Deal badge text", example = "20% OFF")
-        String badgeText
+        String badgeText,
+
+        @Schema(description = "Redemption fulfillment mode: WALK_IN, PRE_BOOK, or BOTH", example = "BOTH")
+        String redemptionType,
+
+        @Schema(description = "Minimum advance notice hours required for pre-booking", example = "2")
+        Integer minAdvanceHours
 ) {
+    public NearbyServiceOfferItemDto(
+            String offerId,
+            String title,
+            String subtitle,
+            String offerType,
+            BigDecimal discountValue,
+            BigDecimal maxDiscountAmount,
+            BigDecimal minimumOrderAmount,
+            MerchantSummaryDto merchant,
+            BranchSummaryDto branch,
+            String imageUrl,
+            Instant expiresAt,
+            RewardSummaryDto reward,
+            String ctaText,
+            String eligibilityStatus,
+            String offerScope,
+            BigDecimal originalMrp,
+            BigDecimal flashSellingPrice,
+            Boolean isFlash,
+            Integer remainingQuantity,
+            String badgeText
+    ) {
+        this(offerId, title, subtitle, offerType, discountValue, maxDiscountAmount, minimumOrderAmount,
+             merchant, branch, imageUrl, expiresAt, reward, ctaText, eligibilityStatus,
+             offerScope, originalMrp, flashSellingPrice, isFlash, remainingQuantity, badgeText,
+             "BOTH", 0);
+    }
+
     public NearbyServiceOfferItemDto(
             String offerId,
             String title,
@@ -86,7 +120,7 @@ public record NearbyServiceOfferItemDto(
     ) {
         this(offerId, title, subtitle, offerType, discountValue, maxDiscountAmount, minimumOrderAmount,
              merchant, branch, imageUrl, expiresAt, reward, ctaText, eligibilityStatus,
-             "SERVICE", null, null, false, null, null);
+             "SERVICE", null, null, false, null, null, "BOTH", 0);
     }
     public record MerchantSummaryDto(
             String merchantId,

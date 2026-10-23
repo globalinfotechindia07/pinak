@@ -215,6 +215,36 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
                   </div>
                 </div>
 
+                {/* Fulfillment & Redemption Mode */}
+                <div className="p-3 rounded-xl border space-y-1.5 bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Users size={12} className="text-pink-600" />
+                      <span>Fulfillment Mode</span>
+                    </span>
+                    {offer.redemptionType === "WALK_IN" ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                        <StoreIcon size={11} /> Walk-In Only
+                      </span>
+                    ) : offer.redemptionType === "PRE_BOOK" ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800 flex items-center gap-1">
+                        <Calendar size={11} /> Pre-Booking Only ({offer.minAdvanceHours || 2}h Prior)
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800 flex items-center gap-1">
+                        <Sparkles size={11} /> Walk-In & Pre-Book
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {offer.redemptionType === "WALK_IN"
+                      ? "Guests can redeem this offer instantly upon arrival or bill payment without reserving in advance."
+                      : offer.redemptionType === "PRE_BOOK"
+                      ? `Guests must reserve a slot or table at least ${offer.minAdvanceHours || 2} hours in advance through the app.`
+                      : "Flexible redemption: Available for both instant walk-in guests and scheduled slot reservations."}
+                  </p>
+                </div>
+
                 {/* Financial & Fraud Protection Caps */}
                 <div className="space-y-2">
                   <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">

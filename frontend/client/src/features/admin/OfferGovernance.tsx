@@ -192,6 +192,18 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
               )}>
                 {o.scopeType === "PRODUCT" ? "Retail" : o.isTableBookingEnabled ? "Table" : "Service"}
               </span>
+              {o.redemptionType && (
+                <span className={cn(
+                  "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shrink-0",
+                  o.redemptionType === "WALK_IN"
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40"
+                    : o.redemptionType === "PRE_BOOK"
+                    ? "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40"
+                    : "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40"
+                )}>
+                  {o.redemptionType === "WALK_IN" ? "🚶 Walk-In" : o.redemptionType === "PRE_BOOK" ? `📅 Pre-Book (${o.minAdvanceHours || 2}h)` : "✨ Walk-In & Book"}
+                </span>
+              )}
               {o.isFlashDeal && (
                 <span className="px-1 py-0.5 rounded text-[8px] font-black uppercase bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 shrink-0 flex items-center gap-0.5">
                   <Zap size={8} /> Flash

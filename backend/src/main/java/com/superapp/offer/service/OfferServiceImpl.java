@@ -140,6 +140,8 @@ public class OfferServiceImpl implements OfferService {
         if (request.imageUrl() != null) offer.setImageUrl(request.imageUrl());
         if (request.badgeText() != null) offer.setBadgeText(request.badgeText());
         if (request.ctaText() != null) offer.setCtaText(request.ctaText());
+        if (request.redemptionType() != null) offer.setRedemptionType(request.redemptionType());
+        if (request.minAdvanceHours() != null) offer.setMinAdvanceHours(request.minAdvanceHours());
         offer.setStatus(OfferStatus.CREATED);
         offer.setApprovalStatus(OfferApprovalStatus.DRAFT);
         offer.setCreatedBy(currentUserId.toString());
@@ -250,6 +252,8 @@ public class OfferServiceImpl implements OfferService {
         if (request.imageUrl() != null) offer.setImageUrl(request.imageUrl());
         if (request.badgeText() != null) offer.setBadgeText(request.badgeText());
         if (request.ctaText() != null) offer.setCtaText(request.ctaText());
+        if (request.redemptionType() != null) offer.setRedemptionType(request.redemptionType());
+        if (request.minAdvanceHours() != null) offer.setMinAdvanceHours(request.minAdvanceHours());
 
         // If offer was previously approved, modifying it requires re-approval
         if (offer.getApprovalStatus() == OfferApprovalStatus.APPROVED || offer.getStatus() == OfferStatus.ACTIVE) {
@@ -484,6 +488,8 @@ public class OfferServiceImpl implements OfferService {
         offer.setBonusCoins(request.bonusCoins() != null ? request.bonusCoins() : 100);
         offer.setImageUrl(request.imageUrl());
         offer.setBadgeText(request.badgeText());
+        if (request.redemptionType() != null) offer.setRedemptionType(request.redemptionType());
+        if (request.minAdvanceHours() != null) offer.setMinAdvanceHours(request.minAdvanceHours());
         String defaultCta = "PRODUCT".equalsIgnoreCase(offer.getOfferScope()) ? "Add to Cart" : "Book & Pay";
         offer.setCtaText(request.ctaText() != null ? request.ctaText() : defaultCta);
 
@@ -834,7 +840,9 @@ public class OfferServiceImpl implements OfferService {
                     sellingPrice,
                     o.getIsFlash() != null ? o.getIsFlash() : false,
                     o.getRemainingQuantity() != null ? o.getRemainingQuantity() : 50,
-                    o.getBadgeText()
+                    o.getBadgeText(),
+                    o.getRedemptionType() != null ? o.getRedemptionType() : "BOTH",
+                    o.getMinAdvanceHours() != null ? o.getMinAdvanceHours() : 0
             ));
         }
 

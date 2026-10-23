@@ -120,7 +120,9 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
           bonusCoins: o.bonusCoins || 100,
           badgeText: o.badgeText,
           ctaText: o.ctaText,
-          imageUrl: o.imageUrl
+          imageUrl: o.imageUrl,
+          redemptionType: (o as any).redemptionType || "BOTH",
+          minAdvanceHours: (o as any).minAdvanceHours ?? 0
         }));
         setLiveOffers(mappedOffers);
       } else if (initialOffers && initialOffers.length > 0) {
@@ -240,7 +242,9 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
           bonusCoins: draft.bonusCoins,
           badgeText: draft.badgeText,
           ctaText: draft.ctaText,
-          imageUrl: draft.imageUrl
+          imageUrl: draft.imageUrl,
+          redemptionType: draft.redemptionType || "BOTH",
+          minAdvanceHours: draft.minAdvanceHours || 0
         };
         await offerApi.updateOffer(editingOffer.id, payload);
         toast.info(
@@ -268,7 +272,9 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
           validFrom: draft.validFrom || new Date().toISOString(),
           validTo: draft.validTo || new Date(Date.now() + 30 * 86400000).toISOString(),
           perCustomerLimit: draft.perUserLimit,
-          usageLimit: draft.maxTotalRedemptions
+          usageLimit: draft.maxTotalRedemptions,
+          redemptionType: draft.redemptionType || "BOTH",
+          minAdvanceHours: draft.minAdvanceHours || 0
         };
         const created = await offerApi.createOffer(payload);
         toast.success(`Offer campaign "${draft.title}" created successfully!`);
@@ -402,7 +408,21 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
             <TicketPercent size={17} />
           </div>
           <div>
-            <p className="font-bold text-slate-900 dark:text-white leading-tight">{o.title}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="font-bold text-slate-900 dark:text-white leading-tight">{o.title}</p>
+              {o.redemptionType && (
+                <span className={cn(
+                  "px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider shrink-0",
+                  o.redemptionType === "WALK_IN"
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40"
+                    : o.redemptionType === "PRE_BOOK"
+                    ? "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40"
+                    : "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40"
+                )}>
+                  {o.redemptionType === "WALK_IN" ? "?? Walk-In" : o.redemptionType === "PRE_BOOK" ? `?? Pre-Book (${o.minAdvanceHours || 2}h)` : "? Both"}
+                </span>
+              )}
+            </div>
             {o.tagline && <p className="text-[11px] text-pink-600 dark:text-pink-400 font-medium truncate max-w-xs">{o.tagline}</p>}
             <p className="text-[11px] text-slate-400 mt-0.5">Min spend: ₹{o.minBillAmount}</p>
           </div>

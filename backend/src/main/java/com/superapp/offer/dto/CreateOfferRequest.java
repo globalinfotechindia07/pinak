@@ -52,8 +52,39 @@ public record CreateOfferRequest(
         Integer bonusCoins,
         String imageUrl,
         String badgeText,
-        String ctaText
+        String ctaText,
+        String redemptionType,
+        Integer minAdvanceHours
 ) {
+    // 20-argument constructor for backwards compatibility
+    public CreateOfferRequest(
+            UUID storeId,
+            String title,
+            String description,
+            OfferType offerType,
+            BigDecimal value,
+            BigDecimal minTransactionAmount,
+            BigDecimal maxDiscountAmount,
+            Integer usageLimit,
+            Integer perCustomerLimit,
+            Instant validFrom,
+            Instant validTo,
+            String offerScope,
+            BigDecimal originalMrp,
+            BigDecimal flashSellingPrice,
+            Boolean isFlash,
+            Integer remainingQuantity,
+            Integer bonusCoins,
+            String imageUrl,
+            String badgeText,
+            String ctaText
+    ) {
+        this(storeId, title, description, offerType, value, minTransactionAmount, maxDiscountAmount,
+             usageLimit, perCustomerLimit, validFrom, validTo,
+             offerScope, originalMrp, flashSellingPrice, isFlash, remainingQuantity, bonusCoins, imageUrl, badgeText, ctaText,
+             "BOTH", 0);
+    }
+
     // 11-argument backwards-compatible constructor for existing test suites
     public CreateOfferRequest(
             UUID storeId,
@@ -70,6 +101,6 @@ public record CreateOfferRequest(
     ) {
         this(storeId, title, description, offerType, value, minTransactionAmount, maxDiscountAmount,
              usageLimit, perCustomerLimit, validFrom, validTo,
-             "SERVICE", null, null, false, 50, 100, null, null, "Book & Pay");
+             "SERVICE", null, null, false, 50, 100, null, null, "Book & Pay", "BOTH", 0);
     }
 }

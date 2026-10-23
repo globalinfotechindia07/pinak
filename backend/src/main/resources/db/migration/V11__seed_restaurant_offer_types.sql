@@ -9,6 +9,102 @@
 -- 6. First-Visit / New Diner Welcome Offers
 -- ============================================================================
 
+-- Ensure demo dining merchants exist
+INSERT INTO merchants (
+    id, owner_user_id, business_name, legal_name, description, category_id,
+    phone, email, website, commission_rate, state, city, pincode, address,
+    status, approval_status, kyc_status, is_featured
+) VALUES
+(
+    '5cf81b28-f8b9-46ee-b1f4-11eab495472b',
+    'd0000000-0000-0000-0000-000000000001',
+    'Haldiram''s Sweets & Restaurant',
+    'Haldiram Foods International Pvt Ltd',
+    'Iconic Indian heritage dining, pure ghee sweets, royal thalis and chat delicacies.',
+    '11111111-1111-1111-1111-111111111101',
+    '+919880011221',
+    'haldirams.indiranagar@pinak.app',
+    'https://www.haldirams.com',
+    5.00,
+    'Karnataka',
+    'Bengaluru',
+    '560038',
+    '100 Feet Road, HAL 2nd Stage, Indiranagar',
+    'ACTIVE',
+    'APPROVED',
+    'VERIFIED',
+    TRUE
+),
+(
+    '678f1bb7-0b19-4322-a3a1-17b12419d64c',
+    'd0000000-0000-0000-0000-000000000001',
+    'The Bombay Canteen',
+    'Hunger Inc Hospitality Pvt Ltd',
+    'Contemporary regional Indian dining, innovative tasting menus and handcrafted cocktails.',
+    '11111111-1111-1111-1111-111111111101',
+    '+919880011222',
+    'bombaycanteen@pinak.app',
+    'https://thebombaycanteen.com',
+    7.50,
+    'Karnataka',
+    'Bengaluru',
+    '560038',
+    '12th Main Rd, Indiranagar',
+    'ACTIVE',
+    'APPROVED',
+    'VERIFIED',
+    TRUE
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Ensure demo dining store outlets exist
+INSERT INTO stores (
+    id, merchant_id, store_name, description, address, state, pincode,
+    latitude, longitude, phone, opening_time, closing_time, operating_days,
+    status, approval_status, cuisine_or_category, price_range, image_url
+) VALUES
+(
+    'cac68ee2-f6c6-4103-b276-208c56569691',
+    '5cf81b28-f8b9-46ee-b1f4-11eab495472b',
+    'Haldiram''s - Indiranagar',
+    'Flagship multi-cuisine pure-veg dining and artisanal sweet boutique.',
+    '432, 100 Feet Rd, Indiranagar, Bengaluru, Karnataka 560038',
+    'Karnataka',
+    '560038',
+    12.9715987,
+    77.6411543,
+    '+919880011221',
+    '09:00',
+    '23:00',
+    'Daily (Mon - Sun)',
+    'ACTIVE',
+    'APPROVED',
+    'North Indian, Street Food, Thalis',
+    '??',
+    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80'
+),
+(
+    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
+    '678f1bb7-0b19-4322-a3a1-17b12419d64c',
+    'The Bombay Canteen - Indiranagar',
+    'Award-winning contemporary dining destination celebrating India''s regional recipes.',
+    'Plot 120, 12th Main Road, Indiranagar, Bengaluru, Karnataka 560038',
+    'Karnataka',
+    '560038',
+    12.9698124,
+    77.6432109,
+    '+919880011222',
+    '12:00',
+    '00:30',
+    'Daily (Mon - Sun)',
+    'ACTIVE',
+    'APPROVED',
+    'Modern Indian, Craft Bar, Gourmet',
+    '???',
+    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80'
+)
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO offers (
     id,
     merchant_id,
@@ -290,8 +386,8 @@ INSERT INTO offers (
 -- 7. Dine-In Total Bill Discount
 (
     'd1000000-0000-0000-0000-000000000007',
-    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '678f1bb7-0b19-4322-a3a1-17b12419d64c',
+    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '11111111-1111-1111-1111-111111111101',
     'Flat 20% OFF on Contemporary Indian Dining Experience',
     'Experience modern regional Indian dining with progressive cocktails and chef seasonal menu. Valid on total food & beverage bill above ₹1,200.',
@@ -328,8 +424,8 @@ INSERT INTO offers (
 -- 8. Craft Cocktail Happy Hours
 (
     'd1000000-0000-0000-0000-000000000008',
-    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '678f1bb7-0b19-4322-a3a1-17b12419d64c',
+    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '11111111-1111-1111-1111-111111111101',
     'Craft Cocktail Happy Hours: 1+1 on Artisanal Drinks (4 PM - 7:30 PM)',
     'Buy one handcrafted cocktail or draft beer and get the second complimentary. Valid Tuesday through Friday from 4:00 PM to 7:30 PM.',
@@ -366,8 +462,8 @@ INSERT INTO offers (
 -- 9. Chef's 5-Course Signature Tasting Menu Pass
 (
     'd1000000-0000-0000-0000-000000000009',
-    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '678f1bb7-0b19-4322-a3a1-17b12419d64c',
+    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '11111111-1111-1111-1111-111111111101',
     'Chefs 5-Course Signature Tasting Menu @ ₹1,299 (Save ₹600)',
     'An immersive culinary journey celebrating indigenous Indian ingredients across 5 courses curated by our executive chef. Original value ₹1,899.',
@@ -404,8 +500,8 @@ INSERT INTO offers (
 -- 10. Small Plates Pairing Deal
 (
     'd1000000-0000-0000-0000-000000000010',
-    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '678f1bb7-0b19-4322-a3a1-17b12419d64c',
+    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '11111111-1111-1111-1111-111111111101',
     'Small Plates Pairing: Order 2 Starters, Get 1 Dessert Free',
     'Pair any two regional small plates (like Malabari Sukka or Arbi Tuk) and conclude your dining with a complimentary Dark Chocolate Gujiya or Mango Kulfi.',
@@ -442,8 +538,8 @@ INSERT INTO offers (
 -- 11. Group Celebration Pack
 (
     'd1000000-0000-0000-0000-000000000011',
-    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '678f1bb7-0b19-4322-a3a1-17b12419d64c',
+    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '11111111-1111-1111-1111-111111111101',
     'Celebration Pack: Flat ₹600 OFF on Tables of 4+ (Bill ₹3,000+)',
     'Special occasion dinner package with prioritized patio seating, customized celebration dessert, and ₹600 flat discount on total table bill.',
@@ -480,8 +576,8 @@ INSERT INTO offers (
 -- 12. First Table Welcome
 (
     'd1000000-0000-0000-0000-000000000012',
-    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '678f1bb7-0b19-4322-a3a1-17b12419d64c',
+    'a3808b38-d047-43eb-a4b2-de7a32e85de7',
     '11111111-1111-1111-1111-111111111101',
     'First Table Welcome: Complimentary Amuse-Bouche + 20% OFF',
     'Welcome to The Bombay Canteen Nagpur. Enjoy a chef welcome amuse-bouche and 20% discount on your first dine-in reservation through PINAK.',

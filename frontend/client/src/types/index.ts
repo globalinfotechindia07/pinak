@@ -132,6 +132,8 @@ export interface Offer {
   // District-style Table & Slot Booking Engine
   isTableBookingEnabled?: boolean;
   bookingType?: "TABLE_RESERVATION" | "APPOINTMENT_SLOT";
+  redemptionType?: "WALK_IN" | "PRE_BOOK" | "BOTH";
+  minAdvanceHours?: number;
   slotTimes?: string[];
   minPartySize?: number;
   maxPartySize?: number;
