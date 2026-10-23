@@ -107,6 +107,7 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
             storeName: s.storeName || s.name || "Store Location",
             branchName: s.storeName || s.name || "Store Location",
             address: s.address || s.addressLine1 || "",
+            district: s.district || s.addressLine2 || "",
             city: s.cityName || s.cityId || s.city || "Nagpur",
             state: s.state || "Maharashtra",
             pincode: s.pincode || "",
@@ -119,8 +120,10 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
               (s.openingTime && s.closingTime
                 ? `${s.openingTime} – ${s.closingTime} (${s.operatingDays || "Daily"})`
                 : "10:00 AM – 10:00 PM (Daily)"),
-            storeEmail: s.storeEmail || `${s.id}@curryleaf.in`,
+            storeEmail: s.storeEmail || s.managerEmail || `${s.id}@${merchantDomain}.in`,
             managerName: s.managerName || "Store Manager",
+            managerEmail: s.managerEmail || s.storeEmail || `${s.id}@${merchantDomain}.in`,
+            managerPhone: s.managerPhone || s.phone || s.contactPhone || "",
             createdAt: s.createdAt || new Date().toISOString(),
             hasActiveOffer: true,
             menuImages: Array.isArray(s.menuImages) ? s.menuImages : [],
@@ -1280,29 +1283,44 @@ function ViewBranchStoreDrawer({
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "location" | "media" | "manager">("overview");
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
 
   const menuCount = store.menuImages?.length || 0;
   const photoCount = store.photos?.length || 0;
   const amenityCount = store.amenities?.length || 0;
+  const primaryBanner = store.photos && store.photos.length > 0 ? store.photos[0] : null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
         <aside className="w-screen max-w-xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
-          {/* Header */}
+          {/* Header with All Key Identifiers */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/40 shrink-0">
                 <Store size={20} />
               </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{store.branchName}</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">{store.city}, {store.state}</p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
+                    {store.branchName}
+                  </h3>
+                  <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                    {store.status === "ACTIVE" ? "Active" : store.status}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  <span className="font-semibold text-purple-600 dark:text-purple-400">
+                    {store.merchantName || store.storeName}
+                  </span>
+                  {" • "}
+                  <span>{store.city}, {store.state} {store.pincode ? `(${store.pincode})` : ""}</span>
+                </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+            <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0">
               <X size={18} />
             </button>
           </div>
@@ -1369,39 +1387,154 @@ function ViewBranchStoreDrawer({
             {/* OVERVIEW */}
             {activeTab === "overview" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800">
-                  <span className="font-bold text-slate-700 dark:text-slate-300">Operational Status</span>
-                  <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
-                    {store.status === "ACTIVE" ? "Active & Discoverable on App" : store.status}
-                  </Badge>
+                {/* Hero Ambience Banner (if uploaded) */}
+                {primaryBanner && (
+                  <div className="relative h-32 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs group">
+                    <img
+                      src={primaryBanner}
+                      alt={store.branchName}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex items-end p-3.5">
+                      <div className="flex items-center justify-between w-full">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-amber-300 tracking-wider block">
+                            {store.category || "Dining & Restaurant"}
+                          </span>
+                          <span className="text-sm font-bold text-white drop-shadow-xs">
+                            {store.branchName}
+                          </span>
+                        </div>
+                        <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                          {store.status === "ACTIVE" ? "Active on App" : store.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Identity & Core Details Card */}
+                <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
+                      Branch Identity & Store Info
+                    </span>
+                    {!primaryBanner && (
+                      <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                        {store.status === "ACTIVE" ? "Active on App" : store.status}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Merchant Brand:</span>
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {store.merchantName || store.storeName || "Brand Merchant"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Outlet Category:</span>
+                      <span className="font-semibold text-purple-700 dark:text-purple-300">
+                        {store.category || "Dining & Restaurant"}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Contact Phone:</span>
+                      {store.phone ? (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <a
+                            href={`tel:${store.phone}`}
+                            className="font-bold font-mono text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                          >
+                            <Phone size={11} />
+                            <span>{store.phone}</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(store.phone);
+                              setCopiedPhone(true);
+                              toast.success("Phone number copied!");
+                              setTimeout(() => setCopiedPhone(false), 2000);
+                            }}
+                            className="p-0.5 text-slate-400 hover:text-slate-600"
+                            title="Copy Phone"
+                          >
+                            {copiedPhone ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic">Not specified</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Store Email:</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                        {store.storeEmail || `${store.id}@pinak.app`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Registered Physical Address */}
+                  <div className="pt-2 border-t border-purple-200/50 dark:border-purple-900/50 text-xs">
+                    <span className="text-slate-400 block text-[11px]">Registered Address:</span>
+                    <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5 leading-relaxed">
+                      {store.address}
+                      {store.district ? `, ${store.district}` : ""}
+                      {store.city ? `, ${store.city}` : ""}
+                      {store.state ? `, ${store.state}` : ""}
+                      {store.pincode ? ` - ${store.pincode}` : ""}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Operating Schedule */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} className="text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase block">
+                        Operating Hours & Days
+                      </span>
+                      <span className="font-bold text-amber-950 dark:text-amber-100">
+                        {store.operatingHours || "10:00 AM – 10:00 PM (Daily)"}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                    Open for Customers
+                  </span>
                 </div>
 
                 {/* Quick Metrics */}
                 <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40">
-                    <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase block">Menu Pages</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("media")}
+                    className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 hover:bg-amber-100/60 transition-colors"
+                  >
+                    <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase block">Menu Cards</span>
                     <span className="text-lg font-extrabold text-amber-900 dark:text-amber-100">{menuCount}</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40">
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("media")}
+                    className="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40 hover:bg-purple-100/60 transition-colors"
+                  >
                     <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase block">Ambience Photos</span>
                     <span className="text-lg font-extrabold text-purple-900 dark:text-purple-100">{photoCount}</span>
-                  </div>
+                  </button>
                   <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40">
                     <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold uppercase block">Amenities</span>
                     <span className="text-lg font-extrabold text-emerald-900 dark:text-emerald-100">{amenityCount}</span>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Operating Hours</label>
-                  <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/60 flex items-center gap-2 text-amber-800 dark:text-amber-200 font-semibold">
-                    <Clock size={14} className="text-amber-600" />
-                    <span>{store.operatingHours || "10:00 AM – 10:00 PM (Daily)"}</span>
-                  </div>
-                </div>
-
                 {/* Amenities Badges in Overview */}
-                {amenityCount > 0 && (
+                {amenityCount > 0 ? (
                   <div className="p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 space-y-2">
                     <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
                       Conveniences & Amenities ({amenityCount})
@@ -1409,10 +1542,14 @@ function ViewBranchStoreDrawer({
                     <div className="flex flex-wrap gap-1.5">
                       {store.amenities!.map((am, i) => (
                         <span key={i} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs">
-                          {am}
+                          ✨ {am}
                         </span>
                       ))}
                     </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 text-center">
+                    No amenities selected during setup.
                   </div>
                 )}
               </div>
@@ -1421,31 +1558,12 @@ function ViewBranchStoreDrawer({
             {/* LOCATION */}
             {activeTab === "location" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Address</label>
-                  <p className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                    {store.address}, {store.city}, {store.state} - {store.pincode}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Latitude</span>
-                    <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
-                      {store.latitude?.toFixed(6)}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 font-semibold uppercase">Longitude</span>
-                    <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
-                      {store.longitude?.toFixed(6)}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between">
-                    <span>GPS Location Pin</span>
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                      <MapPin size={15} className="text-pink-600" />
+                      <span>Physical Store Address</span>
+                    </span>
                     <a
                       href={`https://www.google.com/maps?q=${store.latitude},${store.longitude}`}
                       target="_blank"
@@ -1455,6 +1573,47 @@ function ViewBranchStoreDrawer({
                       <span>Google Maps</span>
                       <ExternalLink size={11} />
                     </a>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Street / Building:</span>
+                      <p className="font-bold text-slate-900 dark:text-white mt-0.5">{store.address}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">District / Region:</span>
+                      <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5">{store.district || store.city}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">City & State:</span>
+                      <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5">{store.city}, {store.state}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Postal Pincode:</span>
+                      <p className="font-mono font-bold text-purple-700 dark:text-purple-300 mt-0.5">{store.pincode}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">GPS Latitude</span>
+                    <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                      {store.latitude?.toFixed(6)}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase">GPS Longitude</span>
+                    <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                      {store.longitude?.toFixed(6)}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between">
+                    <span>Store Pin on Map</span>
+                    <span className="text-[11px] text-slate-400 font-normal">Exact discovery location</span>
                   </label>
                   <StoreLocationPicker
                     latitude={store.latitude || 21.1458}
@@ -1536,23 +1695,45 @@ function ViewBranchStoreDrawer({
               <div className="space-y-4 animate-in fade-in duration-200">
                 <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/80 space-y-3">
                   <div className="flex items-center justify-between text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                    <span>Assigned Store Manager</span>
+                    <span>Assigned Store Manager & Access</span>
                     <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                       <Lock size={10} />
-                      Password Access
+                      Staff Credentials
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 font-mono text-purple-700 dark:text-purple-300 font-bold text-xs">
-                    <Mail size={12} />
-                    <span>{store.storeEmail || `${store.id}@curryleaf.in`}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] pt-2 border-t border-purple-100 dark:border-purple-900/50">
-                    <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
-                      <UserCheck size={12} className="text-purple-500" />
-                      <span className="font-semibold">{store.managerName || "Store Manager"}</span>
-                    </span>
 
+                  <div className="space-y-2 pt-1 text-xs">
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-purple-100 dark:border-purple-900/40">
+                      <span className="text-slate-500">Manager Name:</span>
+                      <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <UserCheck size={13} className="text-purple-600" />
+                        {store.managerName || "Store Manager"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-purple-100 dark:border-purple-900/40">
+                      <span className="text-slate-500">Store Portal Email:</span>
+                      <span className="font-mono font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                        <Mail size={12} />
+                        {store.storeEmail || `${store.id}@pinak.app`}
+                      </span>
+                    </div>
+
+                    {store.phone && (
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-purple-100 dark:border-purple-900/40">
+                        <span className="text-slate-500">Store Phone:</span>
+                        <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                          <Phone size={12} />
+                          {store.phone}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] pt-2 border-t border-purple-100 dark:border-purple-900/50">
+                    <span className="text-slate-500">Password Activation Link:</span>
                     <button
+                      type="button"
                       onClick={() => {
                         const token = `mgr_inv_${store.id}_${Date.now().toString(36)}`;
                         const inviteUrl = `${window.location.origin}/accept-invite?token=${encodeURIComponent(token)}`;
@@ -1571,7 +1752,6 @@ function ViewBranchStoreDrawer({
               </div>
             )}
           </div>
-
           {/* Footer */}
           <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-2">
             <button

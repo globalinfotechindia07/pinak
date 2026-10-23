@@ -899,24 +899,27 @@ export default function Home() {
       const storeId = createdStore?.id;
 
       // Save branch locally with manager details
+      const assignedStoreEmail = (draft.storeEmail || draft.managerEmail || "").trim();
+      const assignedManagerPhone = (draft.managerPhone || draft.phone || "").trim();
       store.addStore({
         ...draft,
         id: storeId || draft.id,
-        phone: draft.managerPhone || draft.phone || "9876543210",
-        storeEmail: draft.managerEmail,
-        managerEmail: draft.managerEmail,
-        managerName: draft.managerName,
-        managerPhone: draft.managerPhone,
+        phone: assignedManagerPhone || "9876543210",
+        storeEmail: assignedStoreEmail || undefined,
+        managerEmail: assignedStoreEmail || undefined,
+        managerName: draft.managerName || "Store Manager",
+        managerPhone: assignedManagerPhone || undefined,
+        district: draft.district,
         storePin: draft.posPin,
       });
 
       // If store manager email was provided, dispatch unified staff invitation!
-      if (draft.managerEmail && draft.managerEmail.trim()) {
+      if (assignedStoreEmail) {
         try {
           await staffApi.inviteMerchantStaff({
             name: draft.managerName?.trim() || `${draft.branchName || "Store"} Manager`,
-            email: draft.managerEmail.trim().toLowerCase(),
-            phone: draft.managerPhone?.trim() || draft.phone,
+            email: assignedStoreEmail.toLowerCase(),
+            phone: assignedManagerPhone || draft.phone,
             roleId: "STORE_MANAGER",
             scope: "STORE",
             merchantId: draft.merchantId,
@@ -924,7 +927,7 @@ export default function Home() {
             posPin: draft.posPin?.trim() || undefined,
           });
           toast.success(
-            `Branch "${draft.branchName || "Outlet"}" created! Password setup invitation dispatched to ${draft.managerEmail.trim()}.`
+            `Branch "${draft.branchName || "Outlet"}" created! Password setup invitation dispatched to ${assignedStoreEmail}.`
           );
         } catch (inviteErr: any) {
           const inviteMsg = inviteErr?.response?.data?.message || inviteErr.message;

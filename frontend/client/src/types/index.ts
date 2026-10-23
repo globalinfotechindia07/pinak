@@ -75,6 +75,7 @@ export interface Store {
   managerName?: string;
   managerEmail?: string;
   managerPhone?: string;
+  category?: string;
 }
 
 export interface RoleDefinition {

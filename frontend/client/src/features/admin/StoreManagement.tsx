@@ -1181,6 +1181,9 @@ function StorePinDrawer({
   const [isResending, setIsResending] = useState(false);
   const [drawerDealsView, setDrawerDealsView] = useState<"list" | "cards">("cards");
   const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
+  const primaryBanner = store.photos && store.photos.length > 0 ? store.photos[0] : null;
 
   useEffect(() => {
     if (store.id) {
@@ -1240,7 +1243,7 @@ function StorePinDrawer({
                     <span>·</span>
                     <span className="truncate max-w-[140px] text-purple-700 dark:text-purple-300 font-semibold">{store.merchantName}</span>
                     <span>·</span>
-                    <span>{store.city}</span>
+                    <span>{store.city}, {store.state} {store.pincode ? `(${store.pincode})` : ""}</span>
                   </div>
                 </div>
               </div>
@@ -1342,24 +1345,106 @@ function StorePinDrawer({
             {/* TAB 1: OVERVIEW */}
             {activeTab === "overview" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-2">
+                {/* Hero Ambience Banner (if uploaded) */}
+                {primaryBanner && (
+                  <div className="relative h-32 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs group">
+                    <img
+                      src={primaryBanner}
+                      alt={store.branchName}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex items-end p-3.5">
+                      <div className="flex items-center justify-between w-full">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-amber-300 tracking-wider block">
+                            Dining & Retail
+                          </span>
+                          <span className="text-sm font-bold text-white drop-shadow-xs">
+                            {store.branchName}
+                          </span>
+                        </div>
+                        <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                          {store.status === "ACTIVE" ? "Active on App" : store.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
-                      Branch Identity
+                      Branch Identity & Store Info
                     </span>
-                    <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
-                      {store.status === "ACTIVE" ? "Active on App" : "Needs Review"}
-                    </Badge>
+                    {!primaryBanner && (
+                      <Badge variant={store.status === "ACTIVE" ? "success" : "warning"}>
+                        {store.status === "ACTIVE" ? "Active on App" : "Needs Review"}
+                      </Badge>
+                    )}
                   </div>
-                  <h4 className="text-base font-extrabold text-slate-900 dark:text-white font-['Manrope']">
-                    {store.branchName}
-                  </h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    {store.address}, {store.city} - {store.pincode}
-                  </p>
-                  <div className="pt-2 border-t border-purple-200/50 dark:border-purple-900/50 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500">Merchant Brand:</span>
-                    <span className="font-bold text-purple-700 dark:text-purple-300">{store.merchantName}</span>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Merchant Brand:</span>
+                      <span className="font-bold text-purple-700 dark:text-purple-300">
+                        {store.merchantName || store.storeName || "Brand Merchant"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Outlet Category:</span>
+                      <span className="font-semibold text-purple-700 dark:text-purple-300">
+                        Dining & Retail
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Contact Phone:</span>
+                      {store.phone ? (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <a
+                            href={`tel:${store.phone}`}
+                            className="font-bold font-mono text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                          >
+                            <Phone size={11} />
+                            <span>{store.phone}</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(store.phone);
+                              setCopiedPhone(true);
+                              toast.success("Phone number copied!");
+                              setTimeout(() => setCopiedPhone(false), 2000);
+                            }}
+                            className="p-0.5 text-slate-400 hover:text-slate-600"
+                            title="Copy Phone"
+                          >
+                            {copiedPhone ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic">Not specified</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Store Email:</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                        {store.storeEmail || store.managerEmail || `${store.id}@pinak.app`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Registered Physical Address */}
+                  <div className="pt-2 border-t border-purple-200/50 dark:border-purple-900/50 text-xs">
+                    <span className="text-slate-400 block text-[11px]">Registered Address:</span>
+                    <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5 leading-relaxed">
+                      {store.address}
+                      {store.district ? `, ${store.district}` : ""}
+                      {store.city ? `, ${store.city}` : ""}
+                      {store.state ? `, ${store.state}` : ""}
+                      {store.pincode ? ` - ${store.pincode}` : ""}
+                    </p>
                   </div>
                 </div>
 
@@ -1417,11 +1502,11 @@ function StorePinDrawer({
             {/* TAB 2: LOCATION & MAP */}
             {activeTab === "location" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <MapPin size={14} className="text-pink-600" />
-                      <span>Registered Physical Address</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                      <MapPin size={15} className="text-pink-600" />
+                      <span>Physical Store Address</span>
                     </span>
                     <a
                       href={`https://www.google.com/maps?q=${store.latitude},${store.longitude}`}
@@ -1433,9 +1518,25 @@ function StorePinDrawer({
                       <ExternalLink size={11} />
                     </a>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    {store.address}, {store.city}, {store.state} - {store.pincode}
-                  </p>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Street / Building:</span>
+                      <p className="font-bold text-slate-900 dark:text-white mt-0.5">{store.address}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">District / Region:</span>
+                      <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5">{store.district || store.city}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">City & State:</span>
+                      <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5">{store.city}, {store.state}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Postal Pincode:</span>
+                      <p className="font-mono font-bold text-purple-700 dark:text-purple-300 mt-0.5">{store.pincode}</p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* GPS Coordinates */}
@@ -1629,6 +1730,25 @@ function StorePinDrawer({
                         </span>
                       </div>
                     )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] pt-2 border-t border-purple-100 dark:border-purple-900/50">
+                    <span className="text-slate-500">Password Activation Link:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const token = `mgr_inv_${store.id}_${Date.now().toString(36)}`;
+                        const inviteUrl = `${window.location.origin}/accept-invite?token=${encodeURIComponent(token)}`;
+                        navigator.clipboard.writeText(inviteUrl);
+                        setCopiedLink(true);
+                        toast.success("Manager password setup link copied!");
+                        setTimeout(() => setCopiedLink(false), 2500);
+                      }}
+                      className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-bold hover:underline"
+                    >
+                      {copiedLink ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                      <span>{copiedLink ? "Copied Link!" : "Copy Setup Link"}</span>
+                    </button>
                   </div>
                 </div>
               </div>
