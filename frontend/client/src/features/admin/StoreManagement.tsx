@@ -1175,7 +1175,7 @@ function StorePinDrawer({
   onClose: () => void;
   onApprove: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"overview" | "amenities" | "location" | "media" | "manager" | "deals">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "location" | "media" | "manager" | "deals">("overview");
   const [storeStaff, setStoreStaff] = useState<BackendStaffResponse[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -1183,7 +1183,6 @@ function StorePinDrawer({
   const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
-  const primaryBanner = (store.photos && store.photos.length > 0) ? store.photos[0] : ((store.menuImages && store.menuImages.length > 0) ? store.menuImages[0] : null);
 
   useEffect(() => {
     if (store.id) {
@@ -1287,23 +1286,6 @@ function StorePinDrawer({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("amenities")}
-              className={cn(
-                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0 flex items-center gap-1",
-                activeTab === "amenities"
-                  ? "bg-purple-600 text-white shadow-xs"
-                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
-              )}
-            >
-              ✨ Amenities & Facilities
-              {amenityCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
-                  {amenityCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
               onClick={() => setActiveTab("location")}
               className={cn(
                 "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
@@ -1324,7 +1306,7 @@ function StorePinDrawer({
                   : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
               )}
             >
-              🍽️ Menus & Photos
+              🍽️ Menu & Photos
               {(menuCount > 0 || photoCount > 0) && (
                 <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 text-[10px] font-bold">
                   {menuCount + photoCount}
@@ -1441,65 +1423,27 @@ function StorePinDrawer({
 
                 {/* Quick Metrics */}
                 <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("media")}
+                    className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 hover:bg-amber-100/60 transition-colors"
+                  >
                     <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase block">Menu Cards</span>
                     <span className="text-lg font-extrabold text-amber-900 dark:text-amber-100">{menuCount}</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40">
-                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase block">Ambience Photos</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("media")}
+                    className="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40 hover:bg-purple-100/60 transition-colors"
+                  >
+                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase block">Store Photos</span>
                     <span className="text-lg font-extrabold text-purple-900 dark:text-purple-100">{photoCount}</span>
-                  </div>
+                  </button>
                   <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40">
                     <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold uppercase block">Amenities</span>
                     <span className="text-lg font-extrabold text-emerald-900 dark:text-emerald-100">{amenityCount}</span>
                   </div>
                 </div>
-
-                {/* Media Showcase Preview in Overview */}
-                {(menuCount > 0 || photoCount > 0) && (
-                  <div className="p-3.5 rounded-2xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <Camera size={13} className="text-amber-600" />
-                        <span>Uploaded Media Showcase ({menuCount + photoCount} files)</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("media")}
-                        className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline"
-                      >
-                        All Media ({menuCount + photoCount}) →
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2">
-                      {store.menuImages?.slice(0, 2).map((img, idx) => (
-                        <div
-                          key={`menu-${idx}`}
-                          onClick={() => setPreviewZoomImage(img)}
-                          className="relative aspect-3/4 rounded-xl overflow-hidden border border-amber-300/60 dark:border-amber-800/60 shadow-2xs group cursor-pointer"
-                        >
-                          <img src={img} alt={`Menu ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          <span className="absolute bottom-1 left-1 px-1 py-0.2 rounded bg-black/75 text-[8px] font-bold text-white">
-                            Menu {idx + 1}
-                          </span>
-                        </div>
-                      ))}
-                      {store.photos?.slice(0, 2).map((img, idx) => (
-                        <div
-                          key={`photo-${idx}`}
-                          onClick={() => setPreviewZoomImage(img)}
-                          className="relative aspect-3/4 rounded-xl overflow-hidden border border-purple-300/60 dark:border-purple-800/60 shadow-2xs group cursor-pointer"
-                        >
-                          <img src={img} alt={`Ambience ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          <span className="absolute bottom-1 left-1 px-1 py-0.2 rounded bg-black/75 text-[8px] font-bold text-white">
-                            Photo {idx + 1}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Operating Schedule */}
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 space-y-2">
@@ -1510,19 +1454,13 @@ function StorePinDrawer({
                       {store.operatingHours || "10:00 AM – 10:00 PM (Daily)"}
                     </span>
                   </div>
-                  {store.phone && (
-                    <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200/60 dark:border-slate-800">
-                      <span className="text-slate-500">Contact Phone:</span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{store.phone}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Amenities Badges in Overview */}
                 {amenityCount > 0 && (
                   <div className="p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 space-y-2">
                     <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
-                      Conveniences & Amenities ({amenityCount})
+                      Amenities & Facilities ({amenityCount})
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {store.amenities!.map((am, i) => (
@@ -1615,18 +1553,15 @@ function StorePinDrawer({
               </div>
             )}
 
-            {/* TAB 3: MENUS & AMBIENCE PHOTOS */}
+            {/* TAB 3: MENUS & STORE PHOTOS */}
             {activeTab === "media" && (
               <div className="space-y-5 animate-in fade-in duration-200">
                 {/* Menu Cards */}
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
-                      <UtensilsCrossed size={14} className="text-amber-500" />
-                      <span>Store Menu Cards ({menuCount} {menuCount === 1 ? "page" : "pages"})</span>
-                    </h5>
-                    <span className="text-[10px] text-slate-400">Click to view full image</span>
-                  </div>
+                  <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                    <UtensilsCrossed size={14} className="text-amber-500" />
+                    <span>Store Menu Cards ({menuCount})</span>
+                  </h5>
 
                   {menuCount > 0 ? (
                     <div className="grid grid-cols-3 gap-3">
@@ -1652,20 +1587,17 @@ function StorePinDrawer({
                     </div>
                   ) : (
                     <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400">
-                      No menu cards uploaded for this outlet.
+                      No menu cards uploaded.
                     </div>
                   )}
                 </div>
 
-                {/* Ambience Photos */}
+                {/* Store Photos */}
                 <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
-                      <Camera size={14} className="text-purple-500" />
-                      <span>Ambience & Facility Photos ({photoCount})</span>
-                    </h5>
-                    <span className="text-[10px] text-slate-400">Click to view full photo</span>
-                  </div>
+                  <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                    <Camera size={14} className="text-purple-500" />
+                    <span>Store Photos ({photoCount})</span>
+                  </h5>
 
                   {photoCount > 0 ? (
                     <div className="grid grid-cols-2 gap-3">
@@ -1688,7 +1620,7 @@ function StorePinDrawer({
                     </div>
                   ) : (
                     <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400">
-                      No ambience photos uploaded for this outlet.
+                      No store photos uploaded.
                     </div>
                   )}
                 </div>

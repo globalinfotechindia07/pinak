@@ -1299,7 +1299,7 @@ function ViewBranchStoreDrawer({
   onEdit: () => void;
   onLogin: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"overview" | "amenities" | "location" | "media" | "manager">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "location" | "media" | "manager">("overview");
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
@@ -1307,7 +1307,6 @@ function ViewBranchStoreDrawer({
   const menuCount = store.menuImages?.length || 0;
   const photoCount = store.photos?.length || 0;
   const amenityCount = store.amenities?.length || 0;
-  const primaryBanner = (store.photos && store.photos.length > 0) ? store.photos[0] : ((store.menuImages && store.menuImages.length > 0) ? store.menuImages[0] : null);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
@@ -1359,23 +1358,6 @@ function ViewBranchStoreDrawer({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("amenities")}
-              className={cn(
-                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0 flex items-center gap-1",
-                activeTab === "amenities"
-                  ? "bg-purple-600 text-white shadow-xs"
-                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
-              )}
-            >
-              ✨ Amenities & Facilities
-              {amenityCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
-                  {amenityCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
               onClick={() => setActiveTab("location")}
               className={cn(
                 "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
@@ -1396,7 +1378,7 @@ function ViewBranchStoreDrawer({
                   : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
               )}
             >
-              🍽️ Menus & Photos
+              🍽️ Menu & Photos
               {(menuCount > 0 || photoCount > 0) && (
                 <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 text-[10px] font-bold">
                   {menuCount + photoCount}
@@ -1533,7 +1515,7 @@ function ViewBranchStoreDrawer({
                     onClick={() => setActiveTab("media")}
                     className="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40 hover:bg-purple-100/60 transition-colors"
                   >
-                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase block">Ambience Photos</span>
+                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase block">Store Photos</span>
                     <span className="text-lg font-extrabold text-purple-900 dark:text-purple-100">{photoCount}</span>
                   </button>
                   <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40">
@@ -1544,30 +1526,18 @@ function ViewBranchStoreDrawer({
 
                 {/* Amenities & Facilities Section in Overview */}
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-slate-900/50 border border-emerald-200/80 dark:border-emerald-900/60 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-base shadow-2xs">
-                        ✨
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                          Amenities & Facilities ({amenityCount})
-                        </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                          Verified customer conveniences active at this outlet
-                        </span>
-                      </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-base shadow-2xs">
+                      ✨
                     </div>
-                    {amenityCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("amenities")}
-                        className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-0.5"
-                      >
-                        <span>Full List</span>
-                        <ChevronRight size={13} />
-                      </button>
-                    )}
+                    <div>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                        Amenities & Facilities ({amenityCount})
+                      </span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Verified customer conveniences active at this outlet
+                      </span>
+                    </div>
                   </div>
 
                   {amenityCount > 0 ? (
@@ -1602,70 +1572,6 @@ function ViewBranchStoreDrawer({
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* DEDICATED AMENITIES & FACILITIES TAB */}
-            {activeTab === "amenities" && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400" />
-                      <span>Outlet Amenities & Facilities</span>
-                    </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      All verified customer comforts, services, and operational conveniences enabled for this branch
-                    </p>
-                  </div>
-                  <Badge variant="success" className="text-xs font-bold">
-                    {amenityCount} {amenityCount === 1 ? "Amenity" : "Amenities"}
-                  </Badge>
-                </div>
-
-                {amenityCount > 0 ? (
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {store.amenities!.map((am, i) => {
-                      const preset = PRESET_AMENITIES.find(
-                        (p) => p.id.toLowerCase() === am.toLowerCase() || p.label.toLowerCase() === am.toLowerCase()
-                      );
-                      const icon = preset?.icon || "✨";
-                      const category = preset?.category || "Convenience";
-                      return (
-                        <div
-                          key={i}
-                          className="p-3 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-start gap-3"
-                        >
-                          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-center text-xl shrink-0">
-                            {icon}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 dark:text-emerald-400 block">
-                              {category}
-                            </span>
-                            <h5 className="font-bold text-xs text-slate-900 dark:text-white mt-0.5 leading-snug">
-                              {am}
-                            </h5>
-                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
-                              <CheckCircle2 size={11} />
-                              <span>Verified at Outlet</span>
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
-                    <Sparkles size={28} className="mx-auto text-slate-300 dark:text-slate-600" />
-                    <p className="font-semibold text-slate-700 dark:text-slate-300 text-xs">
-                      No Amenities & Facilities Configured
-                    </p>
-                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                      Click "Edit Store" to add conveniences such as Air Conditioned, Free Wi-Fi, Valet Parking, or UPI Acceptance.
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 
@@ -1778,7 +1684,7 @@ function ViewBranchStoreDrawer({
                 <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
                     <Camera size={14} className="text-purple-500" />
-                    <span>Ambience & Facility Photos ({photoCount})</span>
+                    <span>Store Photos ({photoCount})</span>
                   </h5>
                   {photoCount > 0 ? (
                     <div className="grid grid-cols-2 gap-3">
@@ -1797,7 +1703,7 @@ function ViewBranchStoreDrawer({
                     </div>
                   ) : (
                     <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400">
-                      No ambience photos uploaded.
+                      No store photos uploaded.
                     </div>
                   )}
                 </div>

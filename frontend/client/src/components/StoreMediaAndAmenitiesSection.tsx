@@ -331,7 +331,7 @@ export const StoreMediaAndAmenitiesSection: React.FC<StoreMediaAndAmenitiesProps
         </div>
       </div>
 
-      {/* 2. Store & Ambience Photos Section */}
+      {/* 2. Store Photos Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -340,13 +340,13 @@ export const StoreMediaAndAmenitiesSection: React.FC<StoreMediaAndAmenitiesProps
             </div>
             <div>
               <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>Store Ambience & Facility Photos</span>
+                <span>Store Photos</span>
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-purple-300 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
                   {photos.length} {photos.length === 1 ? "photo" : "photos"}
                 </Badge>
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Showcase seating, dining hall, entrance, interior lighting, and vibe
+                Showcase seating, entrance, interior lighting, and storefront vibe
               </p>
             </div>
           </div>
@@ -356,7 +356,7 @@ export const StoreMediaAndAmenitiesSection: React.FC<StoreMediaAndAmenitiesProps
               type="button"
               onClick={() => {
                 onPhotosChange(SAMPLE_PHOTO_PRESETS.map((p) => p.url));
-                toast.success("Loaded 4 sample ambience photos!");
+                toast.success("Loaded 4 sample store photos!");
               }}
               className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
             >
