@@ -461,11 +461,14 @@ export default function Home() {
                 ? "All Outlets (Brand-Wide)"
                 : (matchedStore?.storeName || matchedStore?.branchName || o.storeName || "Branch Outlet"),
               title: o.title,
-              type: (o.offerType || o.type) === "PERCENTAGE_DISCOUNT"
+              type: ((o.offerType || o.type) === "PERCENTAGE_DISCOUNT" || (o.offerType || o.type) === "FLAT_PCT" || (o.offerType || o.type) === "PERCENTAGE")
                 ? "FLAT_PCT"
-                : ((o.offerType || o.type) === "BUY_X_GET_Y" || (o.offerType || o.type) === "BOGO"
+                : ((o.offerType || o.type) === "BUY_X_GET_Y" || (o.offerType || o.type) === "BOGO" || (o.offerType || o.type) === "BUY_ONE_GET_ONE"
                   ? "BOGO"
                   : ((o.offerType || o.type) === "CASHBACK" ? "CASHBACK" : "FLAT_AMT")),
+              value: Number(o.value) || 0,
+              buyQuantity: o.buyQuantity ? Number(o.buyQuantity) : 1,
+              getQuantity: o.getQuantity ? Number(o.getQuantity) : 1,
               maxDiscount: o.maxDiscountAmount ? Number(o.maxDiscountAmount) : 0,
               minBillAmount: o.minTransactionAmount ? Number(o.minTransactionAmount) : 0,
               validFrom: o.validFrom ? o.validFrom.split("T")[0] : new Date().toISOString().split("T")[0],
@@ -484,7 +487,17 @@ export default function Home() {
               imageUrl: o.imageUrl || "",
               badgeText: o.badgeText || "",
               ctaText: o.ctaText || "Book & Pay",
-              isTableBookingEnabled: o.offerScope === "TABLE" || o.ctaText === "Reserve Table",
+              isTableBookingEnabled: Boolean(o.isTableBookingEnabled || o.offerScope === "TABLE" || o.ctaText === "Reserve Table"),
+              bookingType: o.bookingType || (o.isTableBookingEnabled ? "TABLE_RESERVATION" : undefined),
+              redemptionType: o.redemptionType || "BOTH",
+              minAdvanceHours: o.minAdvanceHours != null ? Number(o.minAdvanceHours) : 0,
+              minPartySize: o.minPartySize ? Number(o.minPartySize) : undefined,
+              maxPartySize: o.maxPartySize ? Number(o.maxPartySize) : undefined,
+              availableTablesPerSlot: o.availableTablesPerSlot ? Number(o.availableTablesPerSlot) : undefined,
+              coverChargeAmount: o.coverChargeAmount ? Number(o.coverChargeAmount) : undefined,
+              gracePeriodMinutes: o.gracePeriodMinutes ? Number(o.gracePeriodMinutes) : undefined,
+              slotTimes: o.slotTimes ? (typeof o.slotTimes === 'string' && o.slotTimes.startsWith('[') ? JSON.parse(o.slotTimes) : o.slotTimes) : undefined,
+              seatingAreas: o.seatingAreas ? (typeof o.seatingAreas === 'string' && o.seatingAreas.startsWith('[') ? JSON.parse(o.seatingAreas) : o.seatingAreas) : undefined,
               perUserLimit: o.perCustomerLimit || 1,
               maxTotalRedemptions: o.usageLimit || 1000,
             };
@@ -1149,6 +1162,19 @@ export default function Home() {
         imageUrl: draft.imageUrl || null,
         badgeText: draft.badgeText || (isProduct && draft.originalPrice && draft.dealPrice ? `${Math.round(((draft.originalPrice - draft.dealPrice) / draft.originalPrice) * 100)}% OFF` : null),
         ctaText: draft.ctaText || (isProduct ? "Add to Cart" : draft.isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
+        buyQuantity: draft.type === "BOGO" ? Number(draft.buyQuantity || 1) : 1,
+        getQuantity: draft.type === "BOGO" ? Number(draft.getQuantity || 1) : 1,
+        isTableBookingEnabled: Boolean(draft.isTableBookingEnabled),
+        bookingType: draft.bookingType || (draft.isTableBookingEnabled ? "TABLE_RESERVATION" : undefined),
+        minPartySize: draft.minPartySize ? Number(draft.minPartySize) : undefined,
+        maxPartySize: draft.maxPartySize ? Number(draft.maxPartySize) : undefined,
+        availableTablesPerSlot: draft.availableTablesPerSlot ? Number(draft.availableTablesPerSlot) : undefined,
+        coverChargeAmount: draft.coverChargeAmount ? Number(draft.coverChargeAmount) : undefined,
+        gracePeriodMinutes: draft.gracePeriodMinutes ? Number(draft.gracePeriodMinutes) : undefined,
+        slotTimes: draft.slotTimes || undefined,
+        seatingAreas: draft.seatingAreas || undefined,
+        redemptionType: draft.redemptionType || (draft.offerScope === "PRE_BOOK" ? "PRE_BOOK" : draft.offerScope === "WALK_IN" ? "WALK_IN" : "BOTH"),
+        minAdvanceHours: draft.minAdvanceHours ? Number(draft.minAdvanceHours) : 0,
       };
 
       const isAdmin = store.role?.toLowerCase() === "admin" || !store.currentUser?.merchantId;

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Offer, Store, AuditEvent } from "../types";
 import { Badge } from "./ui/badge";
+import { getOfferBenefitInfo } from "../lib/offerBenefitHelper";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
 
@@ -48,6 +49,7 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
   onClose,
   onUpdateStatus
 }) => {
+  const benefit = getOfferBenefitInfo(offer);
   const [activeTab, setActiveTab] = useState<"overview" | "history">("overview");
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
@@ -199,23 +201,18 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
                     </p>
                   )}
 
-                  <div className="pt-2 border-t border-pink-200/50 dark:border-pink-900/50 flex items-center justify-between">
-                    <span className="text-xl font-extrabold text-pink-600 dark:text-pink-400 font-['Manrope']">
-                      {offer.type === "FLAT_AMT"
-                        ? `Flat ₹${offer.value} Off`
-                        : offer.type === "FLAT_PCT"
-                        ? `${offer.value}% Off`
-                        : offer.type === "CASHBACK"
-                        ? `${offer.value}% Wallet Cashback`
-                        : (offer.buyQuantity && offer.getQuantity
-                            ? `Buy ${offer.buyQuantity} Get ${offer.getQuantity} Free`
-                            : "Buy 1 Get 1 Free")}
-                    </span>
-                    {offer.maxDiscount && (
-                      <span className="px-2.5 py-1 rounded-lg bg-pink-100 text-pink-800 dark:bg-pink-950/80 dark:text-pink-300 text-[11px] font-bold">
-                        Max Cap: ₹{offer.maxDiscount}
+                  <div className="pt-2 border-t border-pink-200/50 dark:border-pink-900/50 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border", benefit.badgeClass)}>
+                        {benefit.structureName}
                       </span>
-                    )}
+                      <span className="text-xl font-extrabold text-pink-600 dark:text-pink-400 font-['Manrope']">
+                        {benefit.dealBadge}
+                      </span>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg bg-pink-100 text-pink-800 dark:bg-pink-950/80 dark:text-pink-300 text-[11px] font-bold">
+                      {benefit.capLabel}
+                    </span>
                   </div>
                 </div>
 
@@ -255,7 +252,14 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
                     <ShieldCheck size={14} className="text-purple-600" />
                     <span>Financial & Fraud Protection Controls</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                      <span className="text-[10px] text-slate-400 font-semibold uppercase">Benefit Structure</span>
+                      <p className="font-mono text-xs font-bold text-slate-900 dark:text-white mt-0.5 truncate">
+                        {benefit.structureName}
+                      </p>
+                    </div>
+
                     <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
                       <span className="text-[10px] text-slate-400 font-semibold uppercase">Min Spend Required</span>
                       <p className="font-mono text-sm font-bold text-slate-900 dark:text-white mt-0.5">

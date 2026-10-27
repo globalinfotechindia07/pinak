@@ -120,6 +120,48 @@ public class Offer {
     @Column(name = "min_advance_hours")
     private Integer minAdvanceHours = 0;
 
+    @Column(name = "buy_quantity")
+    private Integer buyQuantity = 1;
+
+    @Column(name = "get_quantity")
+    private Integer getQuantity = 1;
+
+    @Column(name = "is_table_booking_enabled")
+    private Boolean isTableBookingEnabled = false;
+
+    @Column(name = "booking_type", length = 64)
+    private String bookingType;
+
+    @Column(name = "min_party_size")
+    private Integer minPartySize = 1;
+
+    @Column(name = "max_party_size")
+    private Integer maxPartySize = 6;
+
+    @Column(name = "available_tables_per_slot")
+    private Integer availableTablesPerSlot = 5;
+
+    @Column(name = "cover_charge_amount", precision = 10, scale = 2)
+    private BigDecimal coverChargeAmount = BigDecimal.ZERO;
+
+    @Column(name = "grace_period_minutes")
+    private Integer gracePeriodMinutes = 15;
+
+    @Column(name = "slot_times", columnDefinition = "TEXT")
+    private String slotTimes;
+
+    @Column(name = "seating_areas", columnDefinition = "TEXT")
+    private String seatingAreas;
+
+    @Column(name = "active_days", columnDefinition = "TEXT")
+    private String activeDays;
+
+    @Column(name = "start_time", length = 16)
+    private String startTime;
+
+    @Column(name = "end_time", length = 16)
+    private String endTime;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -411,6 +453,48 @@ public class Offer {
 
     public Integer getMinAdvanceHours() { return minAdvanceHours != null ? minAdvanceHours : 0; }
     public void setMinAdvanceHours(Integer minAdvanceHours) { this.minAdvanceHours = minAdvanceHours; }
+
+    public Integer getBuyQuantity() { return buyQuantity != null ? buyQuantity : 1; }
+    public void setBuyQuantity(Integer buyQuantity) { this.buyQuantity = buyQuantity; }
+
+    public Integer getGetQuantity() { return getQuantity != null ? getQuantity : 1; }
+    public void setGetQuantity(Integer getQuantity) { this.getQuantity = getQuantity; }
+
+    public Boolean getIsTableBookingEnabled() { return isTableBookingEnabled != null ? isTableBookingEnabled : false; }
+    public void setIsTableBookingEnabled(Boolean isTableBookingEnabled) { this.isTableBookingEnabled = isTableBookingEnabled; }
+
+    public String getBookingType() { return bookingType; }
+    public void setBookingType(String bookingType) { this.bookingType = bookingType; }
+
+    public Integer getMinPartySize() { return minPartySize != null ? minPartySize : 1; }
+    public void setMinPartySize(Integer minPartySize) { this.minPartySize = minPartySize; }
+
+    public Integer getMaxPartySize() { return maxPartySize != null ? maxPartySize : 6; }
+    public void setMaxPartySize(Integer maxPartySize) { this.maxPartySize = maxPartySize; }
+
+    public Integer getAvailableTablesPerSlot() { return availableTablesPerSlot != null ? availableTablesPerSlot : 5; }
+    public void setAvailableTablesPerSlot(Integer availableTablesPerSlot) { this.availableTablesPerSlot = availableTablesPerSlot; }
+
+    public BigDecimal getCoverChargeAmount() { return coverChargeAmount != null ? coverChargeAmount : BigDecimal.ZERO; }
+    public void setCoverChargeAmount(BigDecimal coverChargeAmount) { this.coverChargeAmount = coverChargeAmount; }
+
+    public Integer getGracePeriodMinutes() { return gracePeriodMinutes != null ? gracePeriodMinutes : 15; }
+    public void setGracePeriodMinutes(Integer gracePeriodMinutes) { this.gracePeriodMinutes = gracePeriodMinutes; }
+
+    public String getSlotTimes() { return slotTimes; }
+    public void setSlotTimes(String slotTimes) { this.slotTimes = slotTimes; }
+
+    public String getSeatingAreas() { return seatingAreas; }
+    public void setSeatingAreas(String seatingAreas) { this.seatingAreas = seatingAreas; }
+
+    public String getActiveDays() { return activeDays; }
+    public void setActiveDays(String activeDays) { this.activeDays = activeDays; }
+
+    public String getStartTime() { return startTime; }
+    public void setStartTime(String startTime) { this.startTime = startTime; }
+
+    public String getEndTime() { return endTime; }
+    public void setEndTime(String endTime) { this.endTime = endTime; }
 
     @Override
     public boolean equals(Object o) {

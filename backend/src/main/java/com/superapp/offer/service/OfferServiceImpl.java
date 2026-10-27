@@ -83,6 +83,16 @@ public class OfferServiceImpl implements OfferService {
         this.cacheManager = cacheManager;
     }
 
+    private String formatJsonOrString(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof String s) return s;
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
+        } catch (Exception e) {
+            return obj.toString();
+        }
+    }
+
     // =========================================================================
     // Merchant Operations
     // =========================================================================
@@ -142,6 +152,20 @@ public class OfferServiceImpl implements OfferService {
         if (request.ctaText() != null) offer.setCtaText(request.ctaText());
         if (request.redemptionType() != null) offer.setRedemptionType(request.redemptionType());
         if (request.minAdvanceHours() != null) offer.setMinAdvanceHours(request.minAdvanceHours());
+        if (request.buyQuantity() != null) offer.setBuyQuantity(request.buyQuantity());
+        if (request.getQuantity() != null) offer.setGetQuantity(request.getQuantity());
+        if (request.isTableBookingEnabled() != null) offer.setIsTableBookingEnabled(request.isTableBookingEnabled());
+        if (request.bookingType() != null) offer.setBookingType(request.bookingType());
+        if (request.minPartySize() != null) offer.setMinPartySize(request.minPartySize());
+        if (request.maxPartySize() != null) offer.setMaxPartySize(request.maxPartySize());
+        if (request.availableTablesPerSlot() != null) offer.setAvailableTablesPerSlot(request.availableTablesPerSlot());
+        if (request.coverChargeAmount() != null) offer.setCoverChargeAmount(request.coverChargeAmount());
+        if (request.gracePeriodMinutes() != null) offer.setGracePeriodMinutes(request.gracePeriodMinutes());
+        if (request.slotTimes() != null) offer.setSlotTimes(formatJsonOrString(request.slotTimes()));
+        if (request.seatingAreas() != null) offer.setSeatingAreas(formatJsonOrString(request.seatingAreas()));
+        if (request.activeDays() != null) offer.setActiveDays(formatJsonOrString(request.activeDays()));
+        if (request.startTime() != null) offer.setStartTime(request.startTime());
+        if (request.endTime() != null) offer.setEndTime(request.endTime());
         offer.setStatus(OfferStatus.CREATED);
         offer.setApprovalStatus(OfferApprovalStatus.DRAFT);
         offer.setCreatedBy(currentUserId.toString());
@@ -254,6 +278,20 @@ public class OfferServiceImpl implements OfferService {
         if (request.ctaText() != null) offer.setCtaText(request.ctaText());
         if (request.redemptionType() != null) offer.setRedemptionType(request.redemptionType());
         if (request.minAdvanceHours() != null) offer.setMinAdvanceHours(request.minAdvanceHours());
+        if (request.buyQuantity() != null) offer.setBuyQuantity(request.buyQuantity());
+        if (request.getQuantity() != null) offer.setGetQuantity(request.getQuantity());
+        if (request.isTableBookingEnabled() != null) offer.setIsTableBookingEnabled(request.isTableBookingEnabled());
+        if (request.bookingType() != null) offer.setBookingType(request.bookingType());
+        if (request.minPartySize() != null) offer.setMinPartySize(request.minPartySize());
+        if (request.maxPartySize() != null) offer.setMaxPartySize(request.maxPartySize());
+        if (request.availableTablesPerSlot() != null) offer.setAvailableTablesPerSlot(request.availableTablesPerSlot());
+        if (request.coverChargeAmount() != null) offer.setCoverChargeAmount(request.coverChargeAmount());
+        if (request.gracePeriodMinutes() != null) offer.setGracePeriodMinutes(request.gracePeriodMinutes());
+        if (request.slotTimes() != null) offer.setSlotTimes(formatJsonOrString(request.slotTimes()));
+        if (request.seatingAreas() != null) offer.setSeatingAreas(formatJsonOrString(request.seatingAreas()));
+        if (request.activeDays() != null) offer.setActiveDays(formatJsonOrString(request.activeDays()));
+        if (request.startTime() != null) offer.setStartTime(request.startTime());
+        if (request.endTime() != null) offer.setEndTime(request.endTime());
 
         // If offer was previously approved, modifying it requires re-approval
         if (offer.getApprovalStatus() == OfferApprovalStatus.APPROVED || offer.getStatus() == OfferStatus.ACTIVE) {
@@ -490,6 +528,20 @@ public class OfferServiceImpl implements OfferService {
         offer.setBadgeText(request.badgeText());
         if (request.redemptionType() != null) offer.setRedemptionType(request.redemptionType());
         if (request.minAdvanceHours() != null) offer.setMinAdvanceHours(request.minAdvanceHours());
+        if (request.buyQuantity() != null) offer.setBuyQuantity(request.buyQuantity());
+        if (request.getQuantity() != null) offer.setGetQuantity(request.getQuantity());
+        if (request.isTableBookingEnabled() != null) offer.setIsTableBookingEnabled(request.isTableBookingEnabled());
+        if (request.bookingType() != null) offer.setBookingType(request.bookingType());
+        if (request.minPartySize() != null) offer.setMinPartySize(request.minPartySize());
+        if (request.maxPartySize() != null) offer.setMaxPartySize(request.maxPartySize());
+        if (request.availableTablesPerSlot() != null) offer.setAvailableTablesPerSlot(request.availableTablesPerSlot());
+        if (request.coverChargeAmount() != null) offer.setCoverChargeAmount(request.coverChargeAmount());
+        if (request.gracePeriodMinutes() != null) offer.setGracePeriodMinutes(request.gracePeriodMinutes());
+        if (request.slotTimes() != null) offer.setSlotTimes(formatJsonOrString(request.slotTimes()));
+        if (request.seatingAreas() != null) offer.setSeatingAreas(formatJsonOrString(request.seatingAreas()));
+        if (request.activeDays() != null) offer.setActiveDays(formatJsonOrString(request.activeDays()));
+        if (request.startTime() != null) offer.setStartTime(request.startTime());
+        if (request.endTime() != null) offer.setEndTime(request.endTime());
         String defaultCta = "PRODUCT".equalsIgnoreCase(offer.getOfferScope()) ? "Add to Cart" : "Book & Pay";
         offer.setCtaText(request.ctaText() != null ? request.ctaText() : defaultCta);
 

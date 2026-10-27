@@ -53,6 +53,8 @@ interface NearbyOffer {
   bonusCoins?: number;
   badgeText?: string;
   offerScope?: string;
+  buyQuantity?: number;
+  getQuantity?: number;
   redemptionType?: string;
   merchant?: {
     merchantId?: string;
@@ -841,7 +843,7 @@ export default function CustomerHomePreviewPage() {
                 if (rawType.includes("PERCENT") || rawType === "FLAT_PCT") {
                   discountBadge = discountVal > 0 ? `${discountVal}% OFF` : "DISCOUNT";
                 } else if (rawType.includes("BOGO") || rawType.includes("BUY_X_GET_Y")) {
-                  discountBadge = "BUY 1 GET 1";
+                  discountBadge = (o.buyQuantity && o.getQuantity) ? `BUY ${o.buyQuantity} GET ${o.getQuantity}` : "BUY 1 GET 1";
                 } else if (rawType.includes("CASHBACK")) {
                   discountBadge = discountVal > 0 ? `₹${discountVal} CASHBACK` : "CASHBACK";
                 } else {

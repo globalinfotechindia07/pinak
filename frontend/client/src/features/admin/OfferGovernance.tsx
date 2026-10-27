@@ -47,6 +47,7 @@ import { toast } from "sonner";
 import { useAppStore } from "../../hooks/useAppStore";
 import { OfferCampaignFormDrawer } from "../../components/OfferCampaignFormDrawer";
 import { OfferDetailsDrawer } from "../../components/OfferDetailsDrawer";
+import { getOfferBenefitInfo } from "../../lib/offerBenefitHelper";
 
 interface OfferGovernanceProps {
   offers: Offer[];
@@ -278,27 +279,29 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       }
     },
     {
-      header: "Discount",
+      header: "Benefit Structure & Value",
       sortable: true,
-      className: "w-28 lg:w-32 whitespace-nowrap",
+      className: "w-36 lg:w-48 min-w-0",
       accessor: "value",
-      render: (o) => (
-        <div className="min-w-0 py-1 space-y-0.5">
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border border-pink-200/70 dark:border-pink-900/40 font-mono text-xs font-black">
-            <Tag size={10} className="shrink-0 text-pink-600" />
-            <span className="whitespace-nowrap">
-              {o.type === "FLAT_AMT"
-                ? `Flat ₹${o.value} OFF`
-                : o.type === "FLAT_PCT"
-                ? `${o.value}% OFF`
-                : "Buy 1 Get 1"}
-            </span>
+      render: (o) => {
+        const benefit = getOfferBenefitInfo(o);
+        return (
+          <div className="min-w-0 py-1 space-y-1">
+            <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border font-mono text-xs font-black shadow-2xs", benefit.badgeClass)}>
+              {benefit.iconName === "Tag" && <Tag size={11} className="shrink-0 text-pink-600" />}
+              {benefit.iconName === "Coins" && <Coins size={11} className="shrink-0 text-emerald-600" />}
+              {benefit.iconName === "Sparkles" && <Sparkles size={11} className="shrink-0 text-amber-500" />}
+              {benefit.iconName === "Zap" && <Zap size={11} className="shrink-0 text-purple-600" />}
+              <span className="whitespace-nowrap">{benefit.dealBadge}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+              <span className="font-bold text-slate-700 dark:text-slate-300">{benefit.structureName}</span>
+              <span>•</span>
+              <span className="truncate">{benefit.capLabel}</span>
+            </div>
           </div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {o.maxDiscount ? `Cap ₹${o.maxDiscount}` : "No discount cap"}
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
       header: "Claims",
@@ -922,20 +925,26 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                             )}
                           </div>
                         ) : (
-                          <div className="flex items-baseline justify-between">
-                            <span className="text-lg font-extrabold text-pink-600 dark:text-pink-400 font-mono">
-                              {o.type === "FLAT_AMT"
-                                ? `Flat ₹${o.value} OFF`
-                                : o.type === "FLAT_PCT"
-                                ? `${o.value}% OFF`
-                                : "Buy 1 Get 1"}
-                            </span>
-                            {o.maxDiscount && (
-                              <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold">
-                                Cap: ₹{o.maxDiscount}
-                              </span>
-                            )}
-                          </div>
+                          (() => {
+                            const benefit = getOfferBenefitInfo(o);
+                            return (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border", benefit.badgeClass)}>
+                                    {benefit.structureName}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                                    {benefit.capLabel}
+                                  </span>
+                                </div>
+                                <div className="flex items-baseline justify-between">
+                                  <span className="text-lg font-extrabold text-pink-600 dark:text-pink-400 font-mono">
+                                    {benefit.dealBadge}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()
                         )}
 
                         <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/40 dark:border-slate-800/60">

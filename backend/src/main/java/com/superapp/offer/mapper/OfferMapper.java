@@ -49,7 +49,21 @@ public class OfferMapper {
                 offer.getBadgeText(),
                 offer.getCtaText() != null ? offer.getCtaText() : "Book & Pay",
                 offer.getRedemptionType() != null ? offer.getRedemptionType() : "BOTH",
-                offer.getMinAdvanceHours() != null ? offer.getMinAdvanceHours() : 0
+                offer.getMinAdvanceHours() != null ? offer.getMinAdvanceHours() : 0,
+                offer.getBuyQuantity(),
+                offer.getGetQuantity(),
+                offer.getIsTableBookingEnabled(),
+                offer.getBookingType(),
+                offer.getMinPartySize(),
+                offer.getMaxPartySize(),
+                offer.getAvailableTablesPerSlot(),
+                offer.getCoverChargeAmount(),
+                offer.getGracePeriodMinutes(),
+                offer.getSlotTimes(),
+                offer.getSeatingAreas(),
+                offer.getActiveDays(),
+                offer.getStartTime(),
+                offer.getEndTime()
         );
     }
 

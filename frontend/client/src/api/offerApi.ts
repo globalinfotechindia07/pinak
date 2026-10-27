@@ -37,6 +37,25 @@ export interface OfferDTO {
   happyHoursEnd?: string;
   redemptionType?: "WALK_IN" | "PRE_BOOK" | "BOTH";
   minAdvanceHours?: number;
+  buyQuantity?: number;
+  getQuantity?: number;
+  isTableBookingEnabled?: boolean;
+  bookingType?: string;
+  minPartySize?: number;
+  maxPartySize?: number;
+  availableTablesPerSlot?: number;
+  coverChargeAmount?: number;
+  gracePeriodMinutes?: number;
+  slotTimes?: string[] | string;
+  seatingAreas?: string[] | string;
+  bonusCoins?: number;
+  badgeText?: string;
+  ctaText?: string;
+  imageUrl?: string;
+  scopeType?: string;
+  originalPrice?: number;
+  dealPrice?: number;
+  isFlashDeal?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -65,6 +84,26 @@ export interface CreateOfferPayload {
   redemptionType?: "WALK_IN" | "PRE_BOOK" | "BOTH";
   minAdvanceHours?: number;
   termsAndConditions?: string;
+  buyQuantity?: number;
+  getQuantity?: number;
+  isTableBookingEnabled?: boolean;
+  bookingType?: string;
+  minPartySize?: number;
+  maxPartySize?: number;
+  availableTablesPerSlot?: number;
+  coverChargeAmount?: number;
+  gracePeriodMinutes?: number;
+  slotTimes?: any;
+  seatingAreas?: any;
+  bonusCoins?: number;
+  badgeText?: string;
+  ctaText?: string;
+  imageUrl?: string;
+  scopeType?: string;
+  originalMrp?: number;
+  flashSellingPrice?: number;
+  isFlash?: boolean;
+  remainingQuantity?: number;
 }
 
 export const offerApi = {

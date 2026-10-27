@@ -37,6 +37,7 @@ import { OfferCampaignFormDrawer } from "../../components/OfferCampaignFormDrawe
 import { OfferDetailsDrawer } from "../../components/OfferDetailsDrawer";
 import { offerApi, OfferDTO } from "../../api/offerApi";
 import { storeApi } from "../../api/storeApi";
+import { getOfferBenefitInfo } from "../../lib/offerBenefitHelper";
 
 interface OfferStudioProps {
   offers?: Offer[];
@@ -451,22 +452,19 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
       header: "Discount Value & Caps",
       sortable: true,
       accessor: "value",
-      render: (o) => (
-        <div>
-          <span className="font-extrabold text-pink-600 dark:text-pink-400 font-mono text-xs block">
-            {o.type === "FLAT_AMT"
-              ? `Flat ₹${o.value} Off`
-              : o.type === "FLAT_PCT"
-              ? `${o.value}% Off`
-              : "Buy 1 Get 1"}
-          </span>
-          {o.maxDiscount && (
-            <span className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold block">
-              Max cap: ₹{o.maxDiscount}
+      render: (o) => {
+        const benefit = getOfferBenefitInfo(o);
+        return (
+          <div className="space-y-0.5">
+            <span className="font-extrabold text-pink-600 dark:text-pink-400 font-mono text-xs block">
+              {benefit.dealBadge}
             </span>
-          )}
-        </div>
-      )
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold block">
+              {benefit.structureName} • {benefit.capLabel}
+            </span>
+          </div>
+        );
+      }
     },
     {
       header: "Usage Protection",
@@ -729,20 +727,24 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
                       "{o.tagline}"
                     </p>
                   )}
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-xl font-extrabold text-pink-600 dark:text-pink-400 font-['Manrope']">
-                      {o.type === "FLAT_AMT"
-                        ? `Flat ₹${o.value} Off`
-                        : o.type === "FLAT_PCT"
-                        ? `${o.value}% Off`
-                        : "Buy 1 Get 1"}
-                    </span>
-                    {o.maxDiscount && (
-                      <span className="text-xs text-purple-600 dark:text-purple-400 font-bold">
-                        (max cap ₹{o.maxDiscount})
-                      </span>
-                    )}
-                  </div>
+                  {(() => {
+                    const benefit = getOfferBenefitInfo(o);
+                    return (
+                      <div className="mt-1 space-y-0.5">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xl font-extrabold text-pink-600 dark:text-pink-400 font-['Manrope']">
+                            {benefit.dealBadge}
+                          </span>
+                          <span className="text-xs text-purple-600 dark:text-purple-400 font-bold">
+                            ({benefit.capLabel})
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                          {benefit.structureName}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <p className="text-xs text-slate-500 mt-0.5">
                     Min bill requirement: ₹{o.minBillAmount}
                   </p>
