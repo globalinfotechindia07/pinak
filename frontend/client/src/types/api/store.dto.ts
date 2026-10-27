@@ -29,6 +29,10 @@ export interface StoreDTO {
   menuImages?: string[];
   photos?: string[];
   amenities?: string[];
+  cashbackPercentage?: number;
+  maxCashbackAmount?: number;
+  minTransactionForCashback?: number;
+  isCashbackEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +54,10 @@ export interface CreateStoreRequest {
   menuImages?: string[];
   photos?: string[];
   amenities?: string[];
+  cashbackPercentage?: number;
+  maxCashbackAmount?: number;
+  minTransactionForCashback?: number;
+  isCashbackEnabled?: boolean;
 }
 
 export interface UpdateStoreRequest {
@@ -65,6 +73,13 @@ export interface UpdateStoreRequest {
   openingTime?: string;
   closingTime?: string;
   status?: StoreStatus;
+  menuImages?: string[];
+  photos?: string[];
+  amenities?: string[];
+  cashbackPercentage?: number;
+  maxCashbackAmount?: number;
+  minTransactionForCashback?: number;
+  isCashbackEnabled?: boolean;
 }
 
 export interface UpdateStoreStatusRequest {

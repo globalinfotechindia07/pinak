@@ -134,6 +134,18 @@ public class Store {
     @Column(name = "menu_highlights", columnDefinition = "JSONB")
     private String menuHighlights;
 
+    @Column(name = "cashback_percentage", precision = 5, scale = 2)
+    private BigDecimal cashbackPercentage = new BigDecimal("5.00");
+
+    @Column(name = "max_cashback_amount", precision = 10, scale = 2)
+    private BigDecimal maxCashbackAmount = new BigDecimal("150.00");
+
+    @Column(name = "min_transaction_for_cashback", precision = 10, scale = 2)
+    private BigDecimal minTransactionForCashback = new BigDecimal("100.00");
+
+    @Column(name = "is_cashback_enabled")
+    private Boolean isCashbackEnabled = true;
+
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
@@ -482,6 +494,34 @@ public class Store {
 
     public String getMenuHighlights() { return menuHighlights; }
     public void setMenuHighlights(String menuHighlights) { this.menuHighlights = menuHighlights; }
+
+    public BigDecimal getCashbackPercentage() {
+        return cashbackPercentage != null ? cashbackPercentage : new BigDecimal("5.00");
+    }
+    public void setCashbackPercentage(BigDecimal cashbackPercentage) {
+        this.cashbackPercentage = cashbackPercentage;
+    }
+
+    public BigDecimal getMaxCashbackAmount() {
+        return maxCashbackAmount != null ? maxCashbackAmount : new BigDecimal("150.00");
+    }
+    public void setMaxCashbackAmount(BigDecimal maxCashbackAmount) {
+        this.maxCashbackAmount = maxCashbackAmount;
+    }
+
+    public BigDecimal getMinTransactionForCashback() {
+        return minTransactionForCashback != null ? minTransactionForCashback : new BigDecimal("100.00");
+    }
+    public void setMinTransactionForCashback(BigDecimal minTransactionForCashback) {
+        this.minTransactionForCashback = minTransactionForCashback;
+    }
+
+    public Boolean getIsCashbackEnabled() {
+        return isCashbackEnabled != null ? isCashbackEnabled : true;
+    }
+    public void setIsCashbackEnabled(Boolean isCashbackEnabled) {
+        this.isCashbackEnabled = isCashbackEnabled;
+    }
 
 public boolean isApproved() {
         return ApprovalStatus.APPROVED.equals(this.approvalStatus);

@@ -16,6 +16,7 @@ import {
   Layers,
   AlertCircle,
   Trash2,
+  Coins,
   Download,
   Power,
   PowerOff,
@@ -290,6 +291,17 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
 
         return <span className="text-slate-400 italic text-xs">Unassigned</span>;
       }
+    },
+    {
+      header: "Txn Cashback",
+      sortable: false,
+      className: "w-28 text-center whitespace-nowrap",
+      render: (s) => (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 shadow-2xs">
+          <Coins size={12} className="text-amber-600 dark:text-amber-400" />
+          <span>{s.cashbackPercentage || 5}% on Bill</span>
+        </span>
+      )
     },
     {
       header: "Live Deals",
@@ -1346,7 +1358,45 @@ function StorePinDrawer({
               <div className="space-y-4 animate-in fade-in duration-200">
 
 
-                <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-3">
+                
+                {/* Store Transaction Cashback Configuration Card */}
+                <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/60 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold">
+                        <Coins size={16} />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-amber-950 dark:text-amber-200 text-xs">
+                          Transaction Cashback on Bill Pay
+                        </h4>
+                        <p className="text-[10px] text-amber-700/80 dark:text-amber-400">
+                          Loyalty coins earned by diners on UPI bill payment at this outlet
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-200/80 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
+                      💰 {store.cashbackPercentage || 5}% on Bill
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-amber-200/50 dark:border-amber-900/40 text-[11px]">
+                    <div>
+                      <span className="text-slate-400 text-[10px] block">Cashback Rate:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{store.cashbackPercentage || 5}%</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] block">Max Cap per Txn:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">₹{store.maxCashbackAmount || 150}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] block">Min Spend Req:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">₹{store.minTransactionForCashback || 100}</span>
+                    </div>
+                  </div>
+                </div>
+
+<div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
                       Branch Identity & Store Info

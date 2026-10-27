@@ -1,9 +1,11 @@
 package com.superapp.store.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record UpdateStoreRequest(
         @NotBlank(message = "Store name must not be blank")
         @Size(min = 2, max = 255, message = "Store name must be between 2 and 255 characters")
@@ -40,10 +42,14 @@ public record UpdateStoreRequest(
 
         List<String> photos,
 
-        List<String> amenities
+        List<String> amenities,
+        BigDecimal cashbackPercentage,
+        BigDecimal maxCashbackAmount,
+        BigDecimal minTransactionForCashback,
+        Boolean isCashbackEnabled
 ) {
     public UpdateStoreRequest(String storeName, String address, String cityId, String state,
                               String pincode, BigDecimal latitude, BigDecimal longitude) {
-        this(storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null);
+        this(storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null, null, null, null, null);
     }
 }

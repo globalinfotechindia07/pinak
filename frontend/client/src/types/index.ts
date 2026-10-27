@@ -76,6 +76,30 @@ export interface Store {
   managerEmail?: string;
   managerPhone?: string;
   category?: string;
+  cashbackPercentage?: number;
+  maxCashbackAmount?: number;
+  minTransactionForCashback?: number;
+  isCashbackEnabled?: boolean;
+}
+
+export interface CashbackSetting {
+  enabled: boolean;
+  defaultPercentage: number;
+  maxCashbackPerTransaction: number;
+  minTransactionAmount: number;
+  rewardMode: string;
+  cashbackName: string;
+  applyToAllStores?: boolean;
+}
+
+export interface StoreCashback {
+  storeId: string;
+  storeName: string;
+  cityName?: string;
+  cashbackPercentage: number;
+  maxCashbackAmount: number;
+  minTransactionForCashback: number;
+  isCashbackEnabled: boolean;
 }
 
 export interface RoleDefinition {

@@ -40,7 +40,11 @@ public record StoreResponse(
         Double distanceMeters,
         Instant approvedAt,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        BigDecimal cashbackPercentage,
+        BigDecimal maxCashbackAmount,
+        BigDecimal minTransactionForCashback,
+        Boolean isCashbackEnabled
 ) {
     public static StoreResponse fromEntity(Store store) {
         return fromEntity(store, null, null, null);
@@ -86,7 +90,11 @@ public record StoreResponse(
                 distanceMeters,
                 store.getApprovedAt(),
                 store.getCreatedAt(),
-                store.getUpdatedAt()
+                store.getUpdatedAt(),
+                store.getCashbackPercentage(),
+                store.getMaxCashbackAmount(),
+                store.getMinTransactionForCashback(),
+                store.getIsCashbackEnabled()
         );
     }
 
@@ -122,7 +130,8 @@ public record StoreResponse(
                 addressLine1, addressLine2, address, cityId, cityName, state, pincode,
                 latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", java.util.Collections.emptyList(), java.util.Collections.emptyList(), java.util.Collections.emptyList(),
                 status, approvalStatus, rejectionReason, suspensionReason,
-                distanceMeters, approvedAt, createdAt, updatedAt
+                distanceMeters, approvedAt, createdAt, updatedAt,
+                BigDecimal.valueOf(5.00), BigDecimal.valueOf(150.00), BigDecimal.valueOf(100.00), true
         );
     }
 
@@ -161,7 +170,8 @@ public record StoreResponse(
                 distanceMeters,
                 null,
                 createdAt,
-                updatedAt
+                updatedAt,
+                BigDecimal.valueOf(5.00), BigDecimal.valueOf(150.00), BigDecimal.valueOf(100.00), true
         );
     }
 }

@@ -132,6 +132,7 @@ public class StoreServiceImpl implements StoreService {
         if (request.amenities() != null) {
             store.setAmenities(request.amenities());
         }
+
         store.setCreatedBy(currentUserId.toString());
         store.setUpdatedBy(currentUserId.toString());
 
@@ -478,6 +479,18 @@ public class StoreServiceImpl implements StoreService {
         if (request.amenities() != null) {
             store.setAmenities(request.amenities());
         }
+        if (request.cashbackPercentage() != null) {
+            store.setCashbackPercentage(request.cashbackPercentage());
+        }
+        if (request.maxCashbackAmount() != null) {
+            store.setMaxCashbackAmount(request.maxCashbackAmount());
+        }
+        if (request.minTransactionForCashback() != null) {
+            store.setMinTransactionForCashback(request.minTransactionForCashback());
+        }
+        if (request.isCashbackEnabled() != null) {
+            store.setIsCashbackEnabled(request.isCashbackEnabled());
+        }
         store.setCreatedBy(currentUserId.toString());
         store.setUpdatedBy(currentUserId.toString());
 
@@ -552,6 +565,18 @@ public class StoreServiceImpl implements StoreService {
         }
         if (request.amenities() != null) {
             store.setAmenities(request.amenities());
+        }
+        if (request.cashbackPercentage() != null) {
+            store.setCashbackPercentage(request.cashbackPercentage());
+        }
+        if (request.maxCashbackAmount() != null) {
+            store.setMaxCashbackAmount(request.maxCashbackAmount());
+        }
+        if (request.minTransactionForCashback() != null) {
+            store.setMinTransactionForCashback(request.minTransactionForCashback());
+        }
+        if (request.isCashbackEnabled() != null) {
+            store.setIsCashbackEnabled(request.isCashbackEnabled());
         }
 
         Store updated = storeRepository.save(store);

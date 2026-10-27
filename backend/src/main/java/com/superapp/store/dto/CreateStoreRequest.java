@@ -1,10 +1,12 @@
 package com.superapp.store.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record CreateStoreRequest(
         @NotNull(message = "Merchant ID must not be null")
         UUID merchantId,
@@ -44,10 +46,14 @@ public record CreateStoreRequest(
 
         List<String> photos,
 
-        List<String> amenities
+        List<String> amenities,
+        BigDecimal cashbackPercentage,
+        BigDecimal maxCashbackAmount,
+        BigDecimal minTransactionForCashback,
+        Boolean isCashbackEnabled
 ) {
     public CreateStoreRequest(UUID merchantId, String storeName, String address, String cityId,
                               String state, String pincode, BigDecimal latitude, BigDecimal longitude) {
-        this(merchantId, storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null);
+        this(merchantId, storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null, null, null, null, null);
     }
 }

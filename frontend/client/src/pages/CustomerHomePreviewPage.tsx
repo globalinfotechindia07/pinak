@@ -297,12 +297,14 @@ export default function CustomerHomePreviewPage() {
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const initialStoreId = searchParams?.get("storeId");
   const [activeScreen, setActiveScreen] = useState<"home" | "detail">(initialStoreId ? "detail" : "home");
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "e1000000-0000-0000-0000-000000000001");
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "97aabe53-9349-439d-952e-40f723bb8f51");
   const [offers, setOffers] = useState<NearbyOffer[]>([]);
   const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
   const [featuredStores, setFeaturedStores] = useState<FeaturedMerchant[]>([]);
   const [collections, setCollections] = useState<PopularCollection[]>([]);
   const [flashDeals, setFlashDeals] = useState<FlashDealItem[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedItem[]>([]);
+  const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -348,8 +350,15 @@ export default function CustomerHomePreviewPage() {
       const data = res.data?.data;
       const list = Array.isArray(data?.offers) ? data.offers : Array.isArray(data) ? data : [];
       setOffers(list);
+      if (list.length > 0 && !searchParams?.get("storeId")) {
+        const firstStore = list[0].branch?.branchId || list[0].branchSummary?.storeId;
+        if (firstStore) {
+          setSelectedStoreId(firstStore);
+        }
+      }
     } catch (err: any) {
-      console.warn("Could not fetch live offers, falling back to catalog preview:", err?.message);
+      console.warn("Could not fetch live service offers:", err?.message);
+      setOffers([]);
     }
 
     try {
@@ -364,29 +373,28 @@ export default function CustomerHomePreviewPage() {
       });
       const pData = pRes.data?.data;
       const pList = Array.isArray(pData?.offers) ? pData.offers : Array.isArray(pData) ? pData : [];
-      if (pList.length > 0) {
-        setProductDeals(
-          pList.map((item: any) => {
-            const orig = item.originalMrp ? Number(item.originalMrp) : undefined;
-            const deal = item.flashSellingPrice ? Number(item.flashSellingPrice) : (Number(item.discountValue || item.value) || 0);
-            const pct = (orig && deal && orig > deal) ? Math.round(((orig - deal) / orig) * 100) : Number(item.discountValue || item.value || 0);
-            return {
-              id: item.offerId || item.id,
-              title: item.title,
-              unitOrWeight: item.subtitle || "Standard Pack",
-              dealPrice: deal,
-              originalPrice: orig,
-              discountPct: pct,
-              discountBadge: item.badgeText || (pct > 0 ? `${pct}% OFF` : "DEAL"),
-              imageUrl: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
-              merchantName: item.merchant?.name,
-              storeName: item.branch?.name
-            };
-          })
-        );
-      }
+      setProductDeals(
+        pList.map((item: any) => {
+          const orig = item.originalMrp ? Number(item.originalMrp) : undefined;
+          const deal = item.flashSellingPrice ? Number(item.flashSellingPrice) : (Number(item.discountValue || item.value) || 0);
+          const pct = (orig && deal && orig > deal) ? Math.round(((orig - deal) / orig) * 100) : Number(item.discountValue || item.value || 0);
+          return {
+            id: item.offerId || item.id,
+            title: item.title,
+            unitOrWeight: item.subtitle || "Standard Pack",
+            dealPrice: deal,
+            originalPrice: orig,
+            discountPct: pct,
+            discountBadge: item.badgeText || (pct > 0 ? `${pct}% OFF` : "DEAL"),
+            imageUrl: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
+            merchantName: item.merchant?.name,
+            storeName: item.branch?.name
+          };
+        })
+      );
     } catch (err: any) {
       console.warn("Could not fetch live product deals:", err?.message);
+      setProductDeals([]);
     }
 
     try {
@@ -399,11 +407,10 @@ export default function CustomerHomePreviewPage() {
       });
       const fData = fRes.data?.data;
       const fList = Array.isArray(fData?.merchants) ? fData.merchants : [];
-      if (fList.length > 0) {
-        setFeaturedStores(fList);
-      }
+      setFeaturedStores(fList);
     } catch (err: any) {
       console.warn("Could not fetch live featured merchants:", err?.message);
+      setFeaturedStores([]);
     }
 
     try {
@@ -417,11 +424,10 @@ export default function CustomerHomePreviewPage() {
       });
       const cData = cRes.data?.data;
       const cList = Array.isArray(cData?.collections) ? cData.collections : [];
-      if (cList.length > 0) {
-        setCollections(cList);
-      }
+      setCollections(cList);
     } catch (err: any) {
       console.warn("Could not fetch popular collections:", err?.message);
+      setCollections([]);
     }
 
     try {
@@ -434,11 +440,34 @@ export default function CustomerHomePreviewPage() {
       });
       const fData = fRes.data?.data;
       const fList = Array.isArray(fData?.deals) ? fData.deals : [];
-      if (fList.length > 0) {
-        setFlashDeals(fList);
-      }
+      setFlashDeals(fList);
     } catch (err: any) {
       console.warn("Could not fetch live flash deals:", err?.message);
+      setFlashDeals([]);
+    }
+
+    try {
+      const rvRes = await apiClient.get("/users/me/recently-viewed", { params: { limit: 10 } });
+      const rvData = rvRes.data?.data;
+      const rvList = Array.isArray(rvData?.items) ? rvData.items : [];
+      setRecentlyViewed(rvList);
+    } catch {
+      setRecentlyViewed([]);
+    }
+
+    try {
+      const recRes = await apiClient.get("/recommendations", {
+        params: {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          limit: 10
+        }
+      });
+      const recData = recRes.data?.data;
+      const recList = Array.isArray(recData?.recommendations) ? recData.recommendations : [];
+      setRecommendations(recList);
+    } catch {
+      setRecommendations([]);
     } finally {
       setLoading(false);
     }
@@ -463,7 +492,7 @@ export default function CustomerHomePreviewPage() {
   };
 
   const handleOpenStoreDetail = (storeId?: string) => {
-    setSelectedStoreId(storeId || "e1000000-0000-0000-0000-000000000001");
+    setSelectedStoreId(storeId || "97aabe53-9349-439d-952e-40f723bb8f51");
     setActiveScreen("detail");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -472,275 +501,10 @@ export default function CustomerHomePreviewPage() {
     handleOpenStoreDetail(storeId);
   };
 
-  // Fallback demo cards when backend table has no service offers yet
-  const fallbackDemoOffers: NearbyOffer[] = [
-    {
-      offerId: "demo-1",
-      id: "demo-1",
-      title: "The Smokehouse Grill",
-      imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuB8sfPzLvi2G05SeAwuufjLXA_kvWfLUTikYVhJSvbZGuQRzNq3abJrWT1rA0qose5tdl6ncsg9hsaJPUBZJT-MSWQUacHb2Cs8an9pw-L6e1T5u8m4KzXGBhRQbcnc1rbq8PocTgITG8auwxoeOdSkxAaXjkcVccYEF2rcFXEKGE5hJKBOO2ANnbK2ABoAmGpnOcBs1R3CdExDFxNxJobZJgsHpOEavPI6G9Zz2yMGJ-xg2NO2bXOb",
-      offerType: "PERCENTAGE_DISCOUNT",
-      type: "PERCENTAGE_DISCOUNT",
-      discountValue: 50,
-      value: 50,
-      maxDiscountAmount: 500,
-      minimumOrderAmount: 1000,
-      minTransactionAmount: 1000,
-      ctaText: "Book & Pay",
-      expiresAt: new Date(Date.now() + 45 * 60 * 1000).toISOString(), // 45m left
-      merchant: { name: "The Smokehouse Grill", isVerified: true },
-      merchantSummary: { name: "The Smokehouse Grill", isVerified: true },
-      branch: { branchId: "e1000000-0000-0000-0000-000000000001", name: "Indiranagar", distanceMeters: 400 },
-      branchSummary: { storeId: "e1000000-0000-0000-0000-000000000001", storeName: "Indiranagar", distanceMeters: 400 },
-      reward: { coins: 150, label: "+150 Coins" },
-      rewardSummary: { coins: 150, text: "+150 Coins" }
-    },
-    {
-      offerId: "demo-2",
-      id: "demo-2",
-      title: "Toni & Guy Salon",
-      subtitle: "On all hair styling, cuts & blowouts",
-      imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAehSDVlzhdQ16LCD3SUe6-wxhHUsmZUUY-JmmKUaqH4ghRz4GRc5y8SKK-KUlwsumUiEhYY5_oBm0qvi0z_25GMG_Ia1eCvVn_8hAAo0SfaqVIM6ylnv46yGbRKidvcQpsUTRzx76zmddVa4cgq7k5M1oOaDI5Inq7GIUwpYx8Qa6Fm6b6MiRi7svrYl3zVvUkBWfwCJdaynuQOq__J_hcLaWDaNmNdxHAtrpv9uoxzGBOCof7iUZB",
-      offerType: "BUY_X_GET_Y",
-      type: "BUY_X_GET_Y",
-      discountValue: 100,
-      value: 100,
-      ctaText: "Claim Offer",
-      expiresAt: new Date(Date.now() + 3 * 3600 * 1000).toISOString(), // 3h left
-      merchant: { name: "Toni & Guy Salon", isVerified: true },
-      merchantSummary: { name: "Toni & Guy Salon", isVerified: true },
-      branch: { name: "12th Main", distanceMeters: 650 },
-      branchSummary: { storeName: "12th Main", distanceMeters: 650 },
-      reward: { coins: 100, label: "+100 Coins" },
-      rewardSummary: { coins: 100, text: "+100 Coins" }
-    },
-    {
-      offerId: "demo-3",
-      id: "demo-3",
-      title: "Third Wave Coffee",
-      subtitle: "+ 2X Coins on PINAK UPI scan",
-      imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuClpqS39UuLowTW3Hh-y9Tt5My-4zYZMJ3FYAg9S_V091zs2kZoz4YfYCFBZ9zbIQZj7MtacljzmCmkYPAXX3cD013fNOHUyVBehRTd5kHMDg0jUfPa3Ciy54ForaHAL0MxrnJDA1ItPq9sqMAwgYdDNxdlh0CFmQZAokEFziCj4MY3PRcK2wiwapuMQqFn9w9UUmQ5Pj5aJasCGB1Hy4UTNbEE0X9LhaIc6dZhoIMxkAgXIR6B_wtU",
-      offerType: "FIXED_DISCOUNT",
-      type: "FIXED_DISCOUNT",
-      discountValue: 150,
-      value: 150,
-      maxDiscountAmount: 200,
-      minimumOrderAmount: 500,
-      ctaText: "Claim Offer",
-      expiresAt: new Date(Date.now() + 4 * 86400 * 1000).toISOString(), // Till <Day>
-      merchant: { name: "Third Wave Coffee", isVerified: true },
-      merchantSummary: { name: "Third Wave Coffee", isVerified: true },
-      branch: { name: "Main Branch", distanceMeters: 300 },
-      branchSummary: { storeName: "Main Branch", distanceMeters: 300 },
-      reward: { coins: 200, label: "+200 Coins" },
-      rewardSummary: { coins: 200, text: "+200 Coins" }
-    }
-  ];
-
-  // Fallback demo product deals from code.html
-  const fallbackDemoProducts: ProductDeal[] = [
-    {
-      id: "demo-p1",
-      title: "Amul Fresh Milk",
-      unitOrWeight: "1 Litre",
-      dealPrice: 52,
-      originalPrice: 65,
-      discountPct: 20,
-      discountBadge: "20% OFF",
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDs3waAQbgzW6ulcWgCbnSxbpZN_13ZJXWzm4X2qAl0vMuum2WR04QFvNkO8dtZdx7jm6Hx-4Yv-UOTJvm_T1_zP-BjcNgu-n36fI1NJbiNiDN6iATJvnTI3PZFH9s3mrPOOkbC6anaq1aeOnanPe9Jc7mJ3mhPvignPOty3w2-rM7g19DmmRog4WK1HSwTg6I3iNANpsvacjgVB8XlD2SaJ5lauRM86etGCZnk70_yZwEM-f1ui0Vd"
-    },
-    {
-      id: "demo-p2",
-      title: "India Gate Basmati Rice",
-      unitOrWeight: "5 kg",
-      dealPrice: 540,
-      originalPrice: 600,
-      discountPct: 10,
-      discountBadge: "10% OFF",
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAz3pTi8RkZpVw-Mr8tM5TAVW9Dl52lt8OT816AYoIq9TJciz5RZiVqam6VcVx6sW0eHkx1AIsMU_2cJQnOVUCV_IsPb5ebrpge7RJgrt7_UolSuNwhci2MERrxPmWqzsSDf9lIz1ejVVwqN1p2Tqt7z2H8zJcBLccInJxlWFHuXUO9pdnl62dGbzHOHafQcu5_8dty0RVNA6-oxEzRekQ_W5lhkTuggAod0xEPnSZqWT2hebkFAl3V"
-    },
-    {
-      id: "demo-p3",
-      title: "Maggi 2-Min Noodles",
-      unitOrWeight: "70 g",
-      dealPrice: 28,
-      originalPrice: 32,
-      discountPct: 13,
-      discountBadge: "Buy 2 Get 1",
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuD85STcU1nutJDJ0krl4bTkoIPmaJ4PD8EjDXxLt-3Wn97ov26ZRK_SgQz8XHHhygaSlXOwxm0aLDFgmOu9U2WwN_95PeXogGINTBsN7dXzUQy2oBGxucmNu9hQEbQmEHzwp5jNKXMetSnvoYnYlLJefb5wPnXog5WI-ZbK496lXs2rlF6L_D7_gM36Sat4HKXCWbX4zLOgCJftTO1Y9PBzQcX7uXfvPaYD0tsmT6Klx91ng021rARr"
-    },
-    {
-      id: "demo-p4",
-      title: "Dettol Handwash",
-      unitOrWeight: "200 ml",
-      dealPrice: 98,
-      originalPrice: 140,
-      discountPct: 30,
-      discountBadge: "30% OFF",
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCT4YsSGn2-d3Ilg8GHUkjkbinPLHR9X7q1_ktSZMPpciUeZoEQEfzw0LYfSquH_5RyfBDIkaosS0Je6owvBIo-sDrn7OO0OBVdhRUVGkPxJJ0k1ju-EDmtXI5ajKvspfNIgdQctKkkZbXNRLJGJcSayNJgveLO7508KddEnkITFslKiMq3BsawnrhljZliemhFYYh4ImVZE-DuRIrI932ZwijmQEMqdv9LeTOwdA4KGdN488AuFMeH"
-    },
-    {
-      id: "demo-p5",
-      title: "Stanley Hammer",
-      unitOrWeight: "500 g",
-      dealPrice: 340,
-      originalPrice: 400,
-      discountPct: 15,
-      discountBadge: "15% OFF",
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuBdLPvNB0gngUt-ujV1sfzj6KGKpuoYJ5Zy68KjG0y1lOvGHx8a_FqXWold9KzYAkdgq4NHXMBc8sSqBiejzd4WpS-SB76zcwbkGXEq9Pe3ntKM4Vmo1XR8LZLgVbm9JfSa7-E-lEf0xB2X--imbz0tIZH0LMxoQ654s5_py6rGYrbv2tE5lRD-qpawWz8Qd3Tv6xjcd2VcEeGziNoRZ-Xyfjp6WeLK6bRSxWanjCq5stC_t_0Cb6kM"
-    }
-  ];
-
-  // Fallback demo featured stores from code.html
-  const fallbackFeaturedStores: FeaturedMerchant[] = [
-    {
-      merchantId: "a1111111-1111-1111-1111-111111111101",
-      name: "BigBasket",
-      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDpywPVartWEpSPnrIqJ1fh271avfu6p7sqwKBxw3XBO_XZVFOrecXycpjLxoKWgLURGtfURISdqZldiRMsfNWNjiEGrdOxsnV9AUV8gLIB2giL2oXuL2lvzqEtpAWgK2gpPvUjNuz-hIC617u_1JLe65ZjEhCwKHSZSGqaA3655Cnw2cW8v6ZptHiJhETagFmz92tlrfQ_QnLwt6ax9cdOq8ALs-kbrCFP9MXzRpHqxsPtyJqUbcYn",
-      categoryName: "Supermarket",
-      rating: { average: 4.6, count: 1200 },
-      distanceMeters: 800,
-      bestOffer: { label: "10% off on select items" },
-      isVerified: true
-    },
-    {
-      merchantId: "a1111111-1111-1111-1111-111111111102",
-      name: "Reliance Fresh",
-      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCO5gXpRpjf8te01togUL-QPKYmCCQR71RnYMfy9GTE5Fd7MS4J1ZCiBy9ANigvj8tSWYe_rDg113vvdk7_kIPfeRjFypYicZ4D7JbNrw0uQJ9vidqFXPQoS0kmv6QNlNZiiSxnMn475kBBcV55qLV6ObkKUEq-ll_Xr1Mj47HSQaG1WlZh4iU8wcYhhdlE4og04O0iW_noithDS6cmsWUWlAzsyyPSkFf7-grB6uVCwc9j-qK-nvin",
-      categoryName: "Supermarket",
-      rating: { average: 4.4, count: 1200 },
-      distanceMeters: 1200,
-      bestOffer: { label: "Flat ₹100 off on ₹1,000+" },
-      isVerified: true
-    },
-    {
-      merchantId: "a1111111-1111-1111-1111-111111111103",
-      name: "Sharma Kirana Store",
-      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAY5mmetrbn8RyNFJem02htY14un3y2sTrwETInC-zBXecoT0uMNmktEE2eMtjDBn1C0qbUYBsqdTYKhwy2taVrUWzH40IvG6f5Ie68eUfgrhjs4JfY6gdh199RSbCQP79r_BCiGR0HKDpKvksLp-Z4a7vtHkqPKBSb_OqXXKLK_p_783yGo-dlGgSgYlE0ynS6pHfb5_-gIh_RDQe5pcvwMzllgxTqtAi-G-FEYoc3V9SwWXiUoG5O",
-      categoryName: "Kirana & Daily Needs",
-      rating: { average: 4.5, count: 1200 },
-      distanceMeters: 900,
-      bestOffer: { label: "Free delivery above ₹299" },
-      isVerified: true
-    },
-    {
-      merchantId: "a1111111-1111-1111-1111-111111111104",
-      name: "More Supermarket",
-      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuANYyKD7SnBu1JTaFAPSa6XnxWAZDVFZoLpeEKcjj3tdXQoyCzuuiWJj7INQSTeLK8fsWArMDPHN4d6i97-G2CasE1ufVtrBKW7MfDoRJtPWhyQQvi2JR8hklyw-wrLP7oesvK37V_M-kzV5HpV5zV16wdRcH46bRnHzSoTAWaD8_fr50wooKq1hko3H1hMZil584XQam6XP5cXRTRKIb4DojxpA7aM0A9anaEffgdlwHfTaw9f7aVW",
-      categoryName: "Supermarket",
-      rating: { average: 4.3, count: 1200 },
-      distanceMeters: 1600,
-      bestOffer: { label: "Up to 20% off" },
-      isVerified: true
-    }
-  ];
-
-  const fallbackCollections: PopularCollection[] = [
-    {
-      id: "11111111-1111-1111-1111-111111111103",
-      title: "Supermarket",
-      subtitle: "BigBasket, Reliance Fresh & more",
-      badgeText: "Up to 50% OFF",
-      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDpywPVartWEpSPnrIqJ1fh271avfu6p7sqwKBxw3XBO_XZVFOrecXycpjLxoKWgLURGtfURISdqZldiRMsfNWNjiEGrdOxsnV9AUV8gLIB2giL2oXuL2lvzqEtpAWgK2gpPvUjNuz-hIC617u_1JLe65ZjEhCwKHSZSGqaA3655Cnw2cW8v6ZptHiJhETagFmz92tlrfQ_QnLwt6ax9cdOq8ALs-kbrCFP9MXzRpHqxsPtyJqUbcYn"
-    },
-    {
-      id: "11111111-1111-1111-1111-111111111101",
-      title: "Dining",
-      subtitle: "The Bombay Canteen & Haldiram's Sweets & Snacks",
-      badgeText: "Up to 40% OFF",
-      coverImageUrl: "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&q=80"
-    },
-    {
-      id: "11111111-1111-1111-1111-111111111104",
-      title: "Kirana",
-      subtitle: "Sharma Kirana Store",
-      badgeText: "Up to 30% OFF",
-      coverImageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAY5mmetrbn8RyNFJem02htY14un3y2sTrwETInC-zBXecoT0uMNmktEE2eMtjDBn1C0qbUYBsqdTYKhwy2taVrUWzH40IvG6f5Ie68eUfgrhjs4JfY6gdh199RSbCQP79r_BCiGR0HKDpKvksLp-Z4a7vtHkqPKBSb_OqXXKLK_p_783yGo-dlGgSgYlE0ynS6pHfb5_-gIh_RDQe5pcvwMzllgxTqtAi-G-FEYoc3V9SwWXiUoG5O"
-    }
-  ];
-
-  const recentlyViewedItems: RecentlyViewedItem[] = [
-    {
-      id: "rv-1",
-      title: "Amul Fresh Milk",
-      unit: "1 Litre",
-      dealPrice: 52,
-      originalPrice: 65,
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuD_2XWCwUR-vNhnMYRogZE5BxOHD5tvFlIBEroQwTtHW3782cxy3J_gj1vQTpSKBJdMvqjy8uGwEfKsoub8Bz6B8zfkWU010CQQBmjfTVf3Q8UBUn6ZDjBFmV3VcD_86Hefg9c320lIlYsgoSCNfrJStXvebXbHLAj99C3p95gcc1NhXnR7X95qHgvmTGMAvTrjPA_nWw1AbqYLLRn7yA5-zw3SnXA0sQe1GsvonrO_tei27BYpopNq"
-    },
-    {
-      id: "rv-2",
-      title: "India 2-Min Noodles",
-      unit: "5 kg",
-      dealPrice: 28,
-      originalPrice: 32,
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuA6vFoAVk9qn4U7jVocOqgf-OGHkvKwvAogRWwRsWlCXowre5wTXmYAsFUwZaBqzUIB7aRjL4pF9ldDmoP3TrF8SpoivTaORak-zj8nIF0Ree480KEmjCuN_p002Ydor_34SMTq2YDAo0vO68NnXliOmDjnKPmo5UfUQgMosCnRoFrRLmV-Kboty0mEDhFC-gc6aybP9rI7NnLHWHYqXZg20k64AVVsqB1h7xsCnmAQACFP6kkizXBq"
-    },
-    {
-      id: "rv-3",
-      title: "Dettol Handwash",
-      unit: "700 ml",
-      dealPrice: 98,
-      originalPrice: 140,
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCreckqKusFoa5QW945b8RNx-6g_J9zlNcL9EOpa5N5sPX5_W0rirzxZLyn-ixoc70h5zgY4EtEVnAxAfIQ5VZ2nGNKdq72htR9Im24ymP7LxhYhCPxgXk3GHlkEz9ZkOItbTrn-D_WWyEzAbm6CDjpKK9hNKT2OLONmbrQHovAbR0oiYdU53t9-vnirA6GNZvUHzpwqoXjbruXIjecq58ZC0ZWtbxJtwyCdJRJSPol0fsRIhjdyx8s"
-    },
-    {
-      id: "rv-4",
-      title: "Stanley Hammer",
-      unit: "500 g",
-      dealPrice: 340,
-      originalPrice: 380,
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCoomq9l_nkiSS9_QY0zNOH9cSglU5ygxqQawl4XJF2SqdQ-YSZFMeqVNNpvygzzyAoGNT-a7Rpu5ZllgM3aLOTVFOvDw7FrjxFI9Bk7sVHr9ASdECHTJOKvxEDtD9PgDdA-UHUq7t8xu77vNVZtWofLdkR4lCWLw4HhvkGC26c8ljqtFNQvwJzK94a_Zw_TtTkQ7Sg9AOpfNDOf2QqyTDV0UXsh8Q28kf5BVAsNseqJZ9-_2pdyr2U"
-    },
-    {
-      id: "rv-5",
-      title: "India Gate Rice",
-      unit: "500 g",
-      dealPrice: 540,
-      originalPrice: 680,
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuABQbLqPxidkIWnahYpif8R4SXTzjTE4XR_muh0lM5OWwTckJrBPA7m5pb2HOoNdYQLLhSRfm-qxhgUcf9fnxYvVInulnossCNVC8C9zornP9VGa3bwBjffcXCgQSz9QyKtMZr-q8x0hp0VibXIG42zTwybQWJXQwOHY79cWHksPUbkfjpHAy_rIfgVQJCPh5tNNwkcorkxwR-wKKevEj2Y3OyxoHwP4Z2nqVLy19xi1jh5Oc_O6trw"
-    }
-  ];
-
-  const recommendedItems: RecommendationItem[] = [
-    {
-      id: "rec-1",
-      title: "Truffles Burgers",
-      badge: "Based on your dining visits",
-      distanceCategory: "800m • Burgers & Shakes",
-      discountBadge: "Flat 25% OFF",
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAcQ6yo-UlptTXMC1ZgJc7hzg7i2kJi0aq51wlapezX3go7pXLpHBd2K9ID3IlqNyKHpUVeQJwwZi0CyX2y88MhTwn91rZBqSlvs1ohhREGDsl9A0wTmG-Mn944GPpAkIiTBRZHTN-7xpZzfJlfsvCfx6i_H_ogkun3JgU5gv-Xf0gndDNOPPpxiZWaZqpYGhR1ZFNCmz-1ekyF9Dj7hhEEAZ4hM_9P5a8XAkZbItSGLuNmq3paGSf8"
-    },
-    {
-      id: "rec-2",
-      title: "Cult.Fit Pro",
-      badge: "Trending near you",
-      distanceCategory: "850m • Fitness & Gym",
-      discountBadge: "3-Day Pass + 25% Off",
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCAPF7nqQbm0sCbVW2LHPauye1ipsfVDS4mWNvDclJS_1YTH56g-pAlUbVg8eVHveT2czNkeEssn0ylzRKh2lE0yRBQKdBkZZY7WtDU-5Aio_DW5qhmx27ndpkUmFQqDylI7CACtvC0lkrBDKqce6hWHTmWfl265XymEkX1IZBlOUIeSIom5CY2IrVNLETtJgsiPLA-ThyJRE211fiVvYgtLnZo4ab5P8UqFQI64v_JBZoRBl7iZBEh"
-    },
-    {
-      id: "rec-3",
-      title: "Bodycraft Spa",
-      badge: "Similar to your interests",
-      distanceCategory: "1.2km • Salon & Wellness",
-      discountBadge: "Flat 30% Off Mon-Thu",
-      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCfT45o6_G73TaXK_SHKiFckXQlmqa39zYZirk-zH-YMAN_sJLP5kWGJnJsgwX6jI3n_Yg75yIA1U4RqnO7s1KLF4bWr0-xrQyHoAGV4LZZTshdZGJ_EcSHZG7oQXzDB9G2bJXoE4JZ3KyOhsk6ihz9JwnXOwp7EyEd65us_X9RyfAZmLAcVaiZlDcO75PfGKC3zL0_hg0-kJB1Y5i-v6LGfOgVtfzB742B8je0OiAolc6PDUAZHRC7"
-    }
-  ];
-
-  const rawOffers = offers.length > 0
-    ? [
-        ...offers,
-        ...fallbackDemoOffers.filter(
-          (f) => !offers.some((o) => (o.branch?.name && f.branch?.name && o.branch.name.toLowerCase() === f.branch.name.toLowerCase()) || o.title === f.title)
-        )
-      ]
-    : fallbackDemoOffers;
-  const displayedServiceOffers = deduplicateOffersByStore(rawOffers);
-  const displayedProductDeals = productDeals.length > 0 ? productDeals : fallbackDemoProducts;
-  const displayedFeaturedStores = featuredStores.length > 0 ? featuredStores : fallbackFeaturedStores;
-  const displayedCollections = collections.length > 0 ? collections : fallbackCollections;
+  const displayedServiceOffers = deduplicateOffersByStore(offers);
+  const displayedProductDeals = productDeals;
+  const displayedFeaturedStores = featuredStores;
+  const displayedCollections = collections;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center">
@@ -1045,8 +809,19 @@ export default function CustomerHomePreviewPage() {
             </div>
 
             {/* Horizontal Service Cards Rail */}
-            <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
-              {displayedServiceOffers.map((o) => {
+            {displayedServiceOffers.length === 0 ? (
+              <div className="mx-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-xs text-center">
+                <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-2">
+                  <TicketPercent size={18} />
+                </div>
+                <p className="text-xs font-bold text-slate-800">No Service Offers Nearby</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  There are no active service deals in this location right now.
+                </p>
+              </div>
+            ) : (
+              <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
+                {displayedServiceOffers.map((o) => {
                 const offerKey = o.offerId || o.id || Math.random().toString();
                 const branchName = o.branch?.name || o.branchSummary?.storeName;
                 const merchantName = o.merchant?.name || o.merchantSummary?.name;
@@ -1244,6 +1019,7 @@ export default function CustomerHomePreviewPage() {
                 );
               })}
             </div>
+            )}
           </section>
 
           {/* ========================================================= */}
@@ -1268,9 +1044,20 @@ export default function CustomerHomePreviewPage() {
               </div>
             </div>
 
-            {/* Horizontal Product Card Rail */}
-            <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
-              {displayedProductDeals.map((p) => {
+            {/* Horizontal Product Card Rail or Empty State */}
+            {displayedProductDeals.length === 0 ? (
+              <div className="mx-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-xs text-center">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+                  <ShoppingBag size={18} />
+                </div>
+                <p className="text-xs font-bold text-slate-800">No Product Deals Nearby</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  No retail product deals are active in this area right now.
+                </p>
+              </div>
+            ) : (
+              <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
+                {displayedProductDeals.map((p) => {
                 const prodKey = p.id;
                 const qty = cart[prodKey] || 0;
                 const isBogo = p.discountBadge?.toLowerCase().includes("buy") || p.discountBadge?.toLowerCase().includes("bogo");
@@ -1352,6 +1139,7 @@ export default function CustomerHomePreviewPage() {
                 );
               })}
             </div>
+            )}
           </section>
 
           {/* ========================================================= */}
@@ -1378,9 +1166,20 @@ export default function CustomerHomePreviewPage() {
               </button>
             </div>
 
-            {/* Horizontal Stores Rail */}
-            <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
-              {displayedFeaturedStores.map((store) => {
+            {/* Horizontal Stores Rail or Empty State */}
+            {displayedFeaturedStores.length === 0 ? (
+              <div className="mx-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-xs text-center">
+                <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-2">
+                  <Store size={18} />
+                </div>
+                <p className="text-xs font-bold text-slate-800">No Featured Stores Nearby</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Partner stores will appear here once registered and verified.
+                </p>
+              </div>
+            ) : (
+              <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
+                {displayedFeaturedStores.map((store) => {
                 const storeKey = store.merchantId;
                 const { initials, bg: brandBg } = getStoreInitialsAndColor(store.name);
                 const { text: badgeText, bg: badgeBg } = getStoreBadgeTextAndBg(store.bestOffer?.label);
@@ -1452,6 +1251,7 @@ export default function CustomerHomePreviewPage() {
                 );
               })}
             </div>
+            )}
           </section>
 
           {/* ========================================================= */}
@@ -1478,9 +1278,20 @@ export default function CustomerHomePreviewPage() {
               </button>
             </div>
 
-            {/* Horizontal Cards for Curated Collections */}
-            <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
-              {displayedCollections.map((col) => {
+            {/* Horizontal Cards for Curated Collections or Empty State */}
+            {displayedCollections.length === 0 ? (
+              <div className="mx-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-xs text-center">
+                <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-2">
+                  <Sparkles size={18} />
+                </div>
+                <p className="text-xs font-bold text-slate-800">No Collections Available</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Curated collections will appear here once configured.
+                </p>
+              </div>
+            ) : (
+              <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
+                {displayedCollections.map((col) => {
                 const { bg, text } = getCollectionGradient(col.title);
                 return (
                   <div
@@ -1515,188 +1326,193 @@ export default function CustomerHomePreviewPage() {
                 );
               })}
             </div>
+            )}
           </section>
 
           {/* ========================================================= */}
-          {/* RECENTLY VIEWED (FROM CODE.HTML) */}
+          {/* RECENTLY VIEWED (LIVE USER HISTORY) */}
           {/* ========================================================= */}
-          <section className="mb-5" data-purpose="recently-viewed">
-            <div className="flex justify-between items-center px-4 mb-2.5">
-              <div className="flex items-center space-x-1.5">
-                <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
-                  🕒
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900 leading-none">Recently Viewed</h2>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Continue shopping or explore similar products</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => toast.info("Showing your recent item browsing history")}
-                className="text-[11px] font-bold text-purple-700 hover:text-purple-800 flex items-center space-x-0.5 cursor-pointer"
-              >
-                <span>View All</span>
-                <ChevronRight size={13} />
-              </button>
-            </div>
-
-            {/* Horizontal Mini Items Rail */}
-            <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
-              {recentlyViewedItems.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => toast.info(`Selected "${item.title}"`, { description: `Store price: ₹${item.dealPrice}` })}
-                  className="w-32 shrink-0 bg-white rounded-xl border border-slate-100 p-2 shadow-2xs relative hover:shadow-sm transition-shadow group cursor-pointer"
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => toggleFavorite(item.id, e)}
-                    aria-label="Favorite"
-                    className="absolute top-1.5 right-1.5 text-slate-300 hover:text-rose-500 transition-colors cursor-pointer"
-                  >
-                    <Heart
-                      size={12}
-                      className={favorites[item.id] ? "fill-rose-500 text-rose-500" : "text-slate-300"}
-                    />
-                  </button>
-                  <div className="h-16 w-full flex items-center justify-center p-1 mb-1">
-                    <img
-                      alt={item.title}
-                      className="max-h-full max-w-full object-contain transition-transform group-hover:scale-105"
-                      src={item.imageUrl}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80";
-                      }}
-                    />
-                  </div>
-                  <h5 className="text-[10px] font-bold text-slate-800 truncate">{item.title}</h5>
-                  <p className="text-[8px] text-slate-400 truncate">{item.unit}</p>
-                  <div className="flex items-baseline space-x-1 mt-0.5">
-                    <span className="text-[11px] font-bold text-slate-900 font-mono">₹{item.dealPrice}</span>
-                    <span className="text-[8px] text-slate-400 line-through font-mono">₹{item.originalPrice}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* ========================================================= */}
-          {/* RECOMMENDED FOR YOU (FROM CODE.HTML) */}
-          {/* ========================================================= */}
-          <section className="mb-5" data-purpose="recommended-for-you">
-            <div className="flex justify-between items-center px-4 mb-2.5">
-              <div className="flex items-center space-x-1.5">
-                <div className="w-6 h-6 rounded-md bg-pink-100 text-pink-600 flex items-center justify-center text-xs">
-                  ❤️
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900 leading-none">Recommended for You</h2>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Based on your interests and nearby availability</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => toast.info("Opening personalized recommendations")}
-                className="text-[11px] font-bold text-purple-700 hover:text-purple-800 flex items-center space-x-0.5 cursor-pointer"
-              >
-                <span>View All</span>
-                <ChevronRight size={13} />
-              </button>
-            </div>
-
-            {/* Recommendation Cards */}
-            <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
-              {recommendedItems.map((rec) => (
-                <div
-                  key={rec.id}
-                  onClick={() => toast.success(`Selected ${rec.title}`, { description: rec.discountBadge })}
-                  className="w-56 shrink-0 bg-white rounded-xl border border-slate-100 overflow-hidden shadow-xs hover:shadow-md transition-shadow group cursor-pointer"
-                >
-                  <div className="relative h-24">
-                    <img
-                      alt={rec.title}
-                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                      src={rec.imageUrl}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&q=80";
-                      }}
-                    />
-                    <span className="absolute top-2 left-2 bg-indigo-900/80 backdrop-blur-xs text-white text-[8px] font-semibold px-2 py-0.5 rounded-md">
-                      {rec.badge}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => toggleFavorite(rec.id, e)}
-                      aria-label="Favorite"
-                      className="absolute top-2 right-2 text-white/90 hover:text-rose-500 transition-colors drop-shadow-sm cursor-pointer"
-                    >
-                      <Heart
-                        size={14}
-                        className={favorites[rec.id] ? "fill-rose-500 text-rose-500" : "text-white"}
-                      />
-                    </button>
-                  </div>
-                  <div className="p-2.5">
-                    <h4 className="text-xs font-bold text-slate-900 truncate">{rec.title}</h4>
-                    <p className="text-[9px] text-slate-500 mb-2 truncate">{rec.distanceCategory}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center">
-                        🏷️ {rec.discountBadge}
-                      </span>
-                      <button className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 text-xs shrink-0 cursor-pointer">
-                        <ChevronRight size={12} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Flash Deals Ending Soon Block */}
-          <section className="px-4 mb-5">
-            <div className="bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-700 p-4 text-white shadow-md relative overflow-hidden rounded-xl">
-              <div className="flex items-center space-x-2 mb-1">
-                <span className="text-amber-300 text-lg">⚡</span>
-                <h3 className="text-sm font-extrabold tracking-tight">Flash Deals Ending Soon!</h3>
-              </div>
-              <p className="text-[10px] text-purple-200 mb-3">Grab these offers before they're gone</p>
-
-              {/* Timer Row */}
-              <div className="flex items-center justify-between mb-4">
+          {recentlyViewed.length > 0 && (
+            <section className="mb-5" data-purpose="recently-viewed">
+              <div className="flex justify-between items-center px-4 mb-2.5">
                 <div className="flex items-center space-x-1.5">
-                  <div className="bg-black/35 backdrop-blur-xs rounded-lg px-2 py-1 text-center min-w-[34px]">
-                    <span className="text-xs font-black block leading-none">04</span>
-                    <span className="text-[7px] text-purple-200 font-medium">Hours</span>
+                  <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
+                    🕒
                   </div>
-                  <span className="font-bold text-xs">:</span>
-                  <div className="bg-black/35 backdrop-blur-xs rounded-lg px-2 py-1 text-center min-w-[34px]">
-                    <span className="text-xs font-black block leading-none">32</span>
-                    <span className="text-[7px] text-purple-200 font-medium">Mins</span>
-                  </div>
-                  <span className="font-bold text-xs">:</span>
-                  <div className="bg-black/35 backdrop-blur-xs rounded-lg px-2 py-1 text-center min-w-[34px]">
-                    <span className="text-xs font-black block leading-none">
-                      {seconds < 10 ? `0${seconds}` : seconds}
-                    </span>
-                    <span className="text-[7px] text-purple-200 font-medium">Secs</span>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900 leading-none">Recently Viewed</h2>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Continue shopping or explore similar products</p>
                   </div>
                 </div>
-
                 <button
                   type="button"
-                  onClick={() => toast.info(`Viewing all ${flashDeals.length} live flash deals`)}
-                  className="bg-white text-purple-950 text-[10px] font-extrabold px-3 py-1.5 flex items-center space-x-1 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                  onClick={() => toast.info("Showing your recent item browsing history")}
+                  className="text-[11px] font-bold text-purple-700 hover:text-purple-800 flex items-center space-x-0.5 cursor-pointer"
                 >
-                  <span>View All Deals</span>
+                  <span>View All</span>
+                  <ChevronRight size={13} />
                 </button>
               </div>
 
-              {/* Live Flash Deal Cards Rail */}
-              {flashDeals.length > 0 && (
+              {/* Horizontal Mini Items Rail */}
+              <div className="flex space-x-3 overflow-x-auto no-scrollbar px-4 py-1">
+                {recentlyViewed.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => toast.info(`Selected "${item.title}"`, { description: `Store price: ₹${item.dealPrice}` })}
+                    className="w-32 shrink-0 bg-white rounded-xl border border-slate-100 p-2 shadow-2xs relative hover:shadow-sm transition-shadow group cursor-pointer"
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => toggleFavorite(item.id, e)}
+                      aria-label="Favorite"
+                      className="absolute top-1.5 right-1.5 text-slate-300 hover:text-rose-500 transition-colors cursor-pointer"
+                    >
+                      <Heart
+                        size={12}
+                        className={favorites[item.id] ? "fill-rose-500 text-rose-500" : "text-slate-300"}
+                      />
+                    </button>
+                    <div className="h-16 w-full flex items-center justify-center p-1 mb-1">
+                      <img
+                        alt={item.title}
+                        className="max-h-full max-w-full object-contain transition-transform group-hover:scale-105"
+                        src={item.imageUrl}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80";
+                        }}
+                      />
+                    </div>
+                    <h5 className="text-[10px] font-bold text-slate-800 truncate">{item.title}</h5>
+                    <p className="text-[8px] text-slate-400 truncate">{item.unit}</p>
+                    <div className="flex items-baseline space-x-1 mt-0.5">
+                      <span className="text-[11px] font-bold text-slate-900 font-mono">₹{item.dealPrice}</span>
+                      <span className="text-[8px] text-slate-400 line-through font-mono">₹{item.originalPrice}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ========================================================= */}
+          {/* RECOMMENDED FOR YOU (LIVE API RECOMMENDATIONS) */}
+          {/* ========================================================= */}
+          {recommendations.length > 0 && (
+            <section className="mb-5" data-purpose="recommended-for-you">
+              <div className="flex justify-between items-center px-4 mb-2.5">
+                <div className="flex items-center space-x-1.5">
+                  <div className="w-6 h-6 rounded-md bg-pink-100 text-pink-600 flex items-center justify-center text-xs">
+                    ❤️
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900 leading-none">Recommended for You</h2>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Based on your interests and nearby availability</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toast.info("Opening personalized recommendations")}
+                  className="text-[11px] font-bold text-purple-700 hover:text-purple-800 flex items-center space-x-0.5 cursor-pointer"
+                >
+                  <span>View All</span>
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+
+              {/* Recommendation Cards */}
+              <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
+                {recommendations.map((rec) => (
+                  <div
+                    key={rec.id}
+                    onClick={() => toast.success(`Selected ${rec.title}`, { description: rec.discountBadge })}
+                    className="w-56 shrink-0 bg-white rounded-xl border border-slate-100 overflow-hidden shadow-xs hover:shadow-md transition-shadow group cursor-pointer"
+                  >
+                    <div className="relative h-24">
+                      <img
+                        alt={rec.title}
+                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        src={rec.imageUrl}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&q=80";
+                        }}
+                      />
+                      <span className="absolute top-2 left-2 bg-indigo-900/80 backdrop-blur-xs text-white text-[8px] font-semibold px-2 py-0.5 rounded-md">
+                        {rec.badge}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => toggleFavorite(rec.id, e)}
+                        aria-label="Favorite"
+                        className="absolute top-2 right-2 text-white/90 hover:text-rose-500 transition-colors drop-shadow-sm cursor-pointer"
+                      >
+                        <Heart
+                          size={14}
+                          className={favorites[rec.id] ? "fill-rose-500 text-rose-500" : "text-white"}
+                        />
+                      </button>
+                    </div>
+                    <div className="p-2.5">
+                      <h4 className="text-xs font-bold text-slate-900 truncate">{rec.title}</h4>
+                      <p className="text-[9px] text-slate-500 mb-2 truncate">{rec.distanceCategory}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center">
+                          🏷️ {rec.discountBadge}
+                        </span>
+                        <button className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 text-xs shrink-0 cursor-pointer">
+                          <ChevronRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Flash Deals Ending Soon Block */}
+          {flashDeals.length > 0 && (
+            <section className="px-4 mb-5">
+              <div className="bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-700 p-4 text-white shadow-md relative overflow-hidden rounded-xl">
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="text-amber-300 text-lg">⚡</span>
+                  <h3 className="text-sm font-extrabold tracking-tight">Flash Deals Ending Soon!</h3>
+                </div>
+                <p className="text-[10px] text-purple-200 mb-3">Grab these offers before they're gone</p>
+
+                {/* Timer Row */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-1.5">
+                    <div className="bg-black/35 backdrop-blur-xs rounded-lg px-2 py-1 text-center min-w-[34px]">
+                      <span className="text-xs font-black block leading-none">04</span>
+                      <span className="text-[7px] text-purple-200 font-medium">Hours</span>
+                    </div>
+                    <span className="font-bold text-xs">:</span>
+                    <div className="bg-black/35 backdrop-blur-xs rounded-lg px-2 py-1 text-center min-w-[34px]">
+                      <span className="text-xs font-black block leading-none">32</span>
+                      <span className="text-[7px] text-purple-200 font-medium">Mins</span>
+                    </div>
+                    <span className="font-bold text-xs">:</span>
+                    <div className="bg-black/35 backdrop-blur-xs rounded-lg px-2 py-1 text-center min-w-[34px]">
+                      <span className="text-xs font-black block leading-none">
+                        {seconds < 10 ? `0${seconds}` : seconds}
+                      </span>
+                      <span className="text-[7px] text-purple-200 font-medium">Secs</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toast.info(`Viewing all ${flashDeals.length} live flash deals`)}
+                    className="bg-white text-purple-950 text-[10px] font-extrabold px-3 py-1.5 flex items-center space-x-1 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                  >
+                    <span>View All Deals</span>
+                  </button>
+                </div>
+
+                {/* Live Flash Deal Cards Rail */}
                 <div className="flex space-x-2.5 overflow-x-auto no-scrollbar pt-1 pb-1">
                   {flashDeals.map((deal) => (
                     <div
@@ -1743,9 +1559,9 @@ export default function CustomerHomePreviewPage() {
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          </section>
+              </div>
+            </section>
+          )}
 
           {/* Trust Badges */}
           <section className="px-4 mb-4">
