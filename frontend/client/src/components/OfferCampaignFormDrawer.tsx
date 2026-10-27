@@ -200,6 +200,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   const [imageUrl, setImageUrl] = useState<string>(
     initialData?.imageUrl || "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80"
   );
+  const [showTitleSuggestions, setShowTitleSuggestions] = useState<boolean>(false);
+  const [titleCycleIndex, setTitleCycleIndex] = useState<number>(-1);
 
   // STEP 2: DEAL RULES & PRICING
   const [type, setType] = useState<"FLAT_PCT" | "FLAT_AMT" | "BOGO" | "CASHBACK">(
@@ -343,27 +345,254 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     toast.success(`Validity extended by ${days} days!`);
   };
 
-  // 1-Click Auto Title Generator
-  const handleGenerateTitle = () => {
+  // Dynamic Auto Data Title Presets
+  const titlePresets = useMemo(() => {
     const storeLabel = selectedStore ? selectedStore.branchName : "All Branches";
+    const brand = merchantDisplayName || "Partner Brand";
+    const daysLabel = activeDays.length === 7 ? "Mon-Sun" : activeDays.join(", ");
+    const minBill = minBillAmount || 500;
+    const cap = maxDiscount || 500;
+
     if (offerScope === "STORE_PRODUCT") {
-      const pName = productName.trim() || "Retail Item";
+      const pName = productName.trim() || "Retail Product";
       const prodDisc = computedProductDiscountPct ? `${computedProductDiscountPct}% OFF` : `Special Deal`;
-      setTitle(`${pName} (${prodDisc}) @ ${storeLabel}`);
-      setTagline(`Special retail store bargain • Limited express counter stock`);
-    } else {
-      const disc = type === "FLAT_PCT"
-        ? `${value}% off`
+      return [
+        {
+          category: "Best Value",
+          title: `${pName} (${prodDisc}) @ ${storeLabel}`,
+          tagline: "Special retail bargain • Express store counter pickup",
+        },
+        {
+          category: "Store Flash",
+          title: `Flash Deal: ${pName} at Just ₹${dealPrice || value}`,
+          tagline: "Limited units remaining • Instant counter checkout",
+        },
+        {
+          category: "Discount",
+          title: `Flat ${prodDisc} on ${pName} @ ${brand}`,
+          tagline: "Verified genuine stock • Special outlet pricing",
+        },
+        {
+          category: "Member Special",
+          title: `PINAK Exclusive: ${pName} Retail Bargain`,
+          tagline: "Exclusive member savings on premium store inventory",
+        },
+        {
+          category: "Combo / Bulk",
+          title: `Mega Saver: ${pName} Special Offer`,
+          tagline: `Save big on daily essentials at ${storeLabel}`,
+        },
+      ];
+    }
+
+    if (offerScope === "PRE_BOOK") {
+      const benefitText = type === "FLAT_PCT"
+        ? `${value}% OFF`
         : type === "FLAT_AMT"
-        ? `Flat ₹${value} off`
+        ? `Flat ₹${value} OFF`
         : type === "CASHBACK"
         ? `${value}% Cashback`
         : `Buy ${buyQuantity} Get ${getQuantity} Free`;
-      const exp = offerScope === "PRE_BOOK" ? "on Table Pre-Booking" : "on Total Bill";
-      setTitle(type === "BOGO" ? `${disc} ${exp}` : `Flat ${disc} ${exp}`);
-      setTagline(`Available on ${activeDays.length === 7 ? "Mon-Sun" : activeDays.join(", ")} • Valid on minimum bill ₹${minBillAmount}`);
+
+      return [
+        {
+          category: "Table Pre-Booking",
+          title: `Table Reservation Special: ${benefitText} on Total Bill`,
+          tagline: `Reserve table 2h in advance • Priority seating & guaranteed table at ${storeLabel}`,
+        },
+        {
+          category: "VIP Dining",
+          title: `VIP Dining Reservation: ${benefitText} @ ${brand}`,
+          tagline: `Skip the wait • Confirmed seating for party of ${minPartySize} to ${maxPartySize} guests`,
+        },
+        {
+          category: "Weekend Feast",
+          title: `Weekend Table Feast: ${benefitText} on Advance Booking`,
+          tagline: `Book your preferred slot & save ${benefitText} on delicious food & drinks`,
+        },
+        {
+          category: "Chef's Table",
+          title: `Chef's Curated Dining: ${benefitText} on Reservation`,
+          tagline: `Pre-book table online & enjoy exclusive dining experience at ${storeLabel}`,
+        },
+        {
+          category: "Celebration",
+          title: `Grand Celebration Dining: ${benefitText} @ ${storeLabel}`,
+          tagline: `Guaranteed AC dining seats with instant confirmation on PINAK app`,
+        },
+      ];
     }
-    toast.success("Generated clean title & tagline!");
+
+    if (type === "BOGO") {
+      const bQty = buyQuantity || 1;
+      const gQty = getQuantity || 1;
+      return [
+        {
+          category: "Top Pick",
+          title: `Buy ${bQty} Get ${gQty} Free on Dining @ ${storeLabel}`,
+          tagline: `Order ${bQty} and receive ${gQty} complimentary • Valid on ${daysLabel}`,
+        },
+        {
+          category: "Double Delight",
+          title: `Double Delight: Buy ${bQty} Get ${gQty} Free @ ${brand}`,
+          tagline: `Auto-applied at checkout on PINAK bill payment • Min bill ₹${minBill}`,
+        },
+        {
+          category: "Combo Feast",
+          title: `Mega Feast Combo: Buy ${bQty} & Get ${gQty} Free`,
+          tagline: `Perfect for friends & family dining • Valid at ${storeLabel}`,
+        },
+        {
+          category: "Chef's Special",
+          title: `Chef's Special BOGO: Buy ${bQty} Get ${gQty} Complimentary`,
+          tagline: `Enjoy complimentary gourmet treats on every ${bQty} ordered`,
+        },
+        {
+          category: "Happy Hours",
+          title: `Happy Hours Treat: Buy ${bQty} Get ${gQty} Free`,
+          tagline: `Exclusive celebration offer available at ${storeLabel}`,
+        },
+        {
+          category: "Weekend Bonanza",
+          title: `Weekend BOGO Bonanza: Buy ${bQty} Get ${gQty} Free`,
+          tagline: "Celebrate the weekend with complimentary dishes & beverages",
+        },
+      ];
+    }
+
+    if (type === "CASHBACK") {
+      return [
+        {
+          category: "Top Pick",
+          title: `Flat ${value}% Instant Wallet Cashback @ ${storeLabel}`,
+          tagline: `Earn reward coins credited instantly to PINAK wallet • Min bill ₹${minBill}`,
+        },
+        {
+          category: "Coin Rush",
+          title: `Super Coin Rush: ${value}% Cashback up to ₹${cap}`,
+          tagline: "100% redeemable on future orders across the PINAK network",
+        },
+        {
+          category: "Brand Loyalty",
+          title: `${brand} Loyalty Reward: ${value}% Wallet Cashback`,
+          tagline: "Auto-credited to PINAK coins balance upon bill payment",
+        },
+        {
+          category: "Festive Bonus",
+          title: `Festive Coin Rush: ${value}% Cashback on Bill Pay`,
+          tagline: `Celebrate with bonus wallet rewards on minimum spend ₹${minBill}`,
+        },
+        {
+          category: "VIP Exclusive",
+          title: `VIP Member Delight: ${value}% Cashback on Every Order`,
+          tagline: `Exclusive rewards tier benefit for loyal diners at ${storeLabel}`,
+        },
+        {
+          category: "Weekend Bonanza",
+          title: `Weekend Coin Bonanza: ${value}% Cashback on Total Bill`,
+          tagline: `Valid on all table orders & takeaways above ₹${minBill}`,
+        },
+      ];
+    }
+
+    if (type === "FLAT_AMT") {
+      return [
+        {
+          category: "Top Pick",
+          title: `Flat ₹${value} OFF on Total Bill @ ${storeLabel}`,
+          tagline: `Instant cash discount deducted directly from final bill • Min bill ₹${minBill}`,
+        },
+        {
+          category: "Brand Special",
+          title: `${brand} Special: Flat ₹${value} Cash Discount`,
+          tagline: `Pay via PINAK app to unlock instant ₹${value} flat savings`,
+        },
+        {
+          category: "Dining Treat",
+          title: `Dining Bonanza: Flat ₹${value} OFF on Food & Drinks`,
+          tagline: `Available on ${daysLabel} • Valid for dine-in guests`,
+        },
+        {
+          category: "Celebration",
+          title: `Grand Celebration Deal: Flat ₹${value} Instant Savings`,
+          tagline: `Dine with friends & family and save flat ₹${value} on min spend ₹${minBill}`,
+        },
+        {
+          category: "Counter Express",
+          title: `Express Bill Discount: Flat ₹${value} OFF at Counter`,
+          tagline: "Simply scan QR code and pay to claim instant cash off",
+        },
+        {
+          category: "Family Treat",
+          title: `Family Dining Delight: Flat ₹${value} OFF`,
+          tagline: `Valid on all orders above ₹${minBill} at ${storeLabel}`,
+        },
+      ];
+    }
+
+    // Default: FLAT_PCT
+    return [
+      {
+        category: "Top Pick",
+        title: `Flat ${value}% OFF on Total Bill @ ${storeLabel}`,
+        tagline: `Valid on minimum spend ₹${minBill} • Max discount up to ₹${cap}`,
+      },
+      {
+        category: "Brand Exclusive",
+        title: `${brand} Exclusive: Flat ${value}% OFF on Bill`,
+        tagline: "Auto-applied discount on paying through PINAK app",
+      },
+      {
+        category: "Grand Feast",
+        title: `Grand Dining Feast: Flat ${value}% OFF (Up to ₹${cap})`,
+        tagline: `Enjoy exquisite cuisine with guaranteed ${value}% savings on ${daysLabel}`,
+      },
+      {
+        category: "Happy Hours",
+        title: `Happy Hours Celebration: ${value}% OFF on Selected Menu`,
+        tagline: `Special limited-hours discount at ${storeLabel}`,
+      },
+      {
+        category: "Weekend Special",
+        title: `Weekend Family Feast: Flat ${value}% OFF on Total Bill`,
+        tagline: `Special family dining treat on minimum spend ₹${minBill}`,
+      },
+      {
+        category: "Chef's Table",
+        title: `Chef's Table Special: ${value}% OFF on Food Bill`,
+        tagline: `Save ${value}% instantly on your entire bill at ${storeLabel}`,
+      },
+    ];
+  }, [
+    offerScope,
+    selectedStore,
+    merchantDisplayName,
+    activeDays,
+    minBillAmount,
+    maxDiscount,
+    productName,
+    computedProductDiscountPct,
+    dealPrice,
+    value,
+    type,
+    buyQuantity,
+    getQuantity,
+    minPartySize,
+    maxPartySize
+  ]);
+
+  // 1-Click Auto Title Generator (Cycles presets and reveals auto data list)
+  const handleGenerateTitle = () => {
+    if (!titlePresets || titlePresets.length === 0) return;
+    const nextIdx = (titleCycleIndex + 1) % titlePresets.length;
+    setTitleCycleIndex(nextIdx);
+    const chosen = titlePresets[nextIdx];
+    setTitle(chosen.title);
+    setTagline(chosen.tagline);
+    setShowTitleSuggestions(true);
+    toast.success(`Applied: "${chosen.title}"`, {
+      description: `Option ${nextIdx + 1} of ${titlePresets.length}. Pick any title from the list below!`
+    });
   };
 
   // 1-Click Auto Terms Generator (populates structured bullets)
@@ -872,14 +1101,24 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
                         Campaign Title *
                       </label>
-                      <button
-                        type="button"
-                        onClick={handleGenerateTitle}
-                        className="flex items-center gap-1 text-[11px] font-bold text-pink-600 hover:text-pink-700 cursor-pointer"
-                      >
-                        <Wand2 size={12} />
-                        <span>Auto-Generate</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowTitleSuggestions(!showTitleSuggestions)}
+                          className="flex items-center gap-1 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 cursor-pointer"
+                        >
+                          <Sparkles size={12} />
+                          <span>Browse Titles ({titlePresets.length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleGenerateTitle}
+                          className="flex items-center gap-1 text-[11px] font-bold text-pink-600 hover:text-pink-700 cursor-pointer bg-pink-50 dark:bg-pink-950/40 px-2 py-0.5 rounded-lg border border-pink-200 dark:border-pink-800"
+                        >
+                          <Wand2 size={12} />
+                          <span>Auto-Generate</span>
+                        </button>
+                      </div>
                     </div>
                     <input
                       type="text"
@@ -887,11 +1126,83 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder={
                         offerScope === "PRE_BOOK"
-                          ? "e.g. Flat 50% off on Pre-Booking & Bill"
-                          : "e.g. Flat 50% off on Total Bill"
+                          ? "e.g. Table Reservation Special: Flat 50% OFF on Total Bill"
+                          : "e.g. Flat 50% OFF on Total Bill"
                       }
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold mt-1 shadow-xs"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-bold mt-1 shadow-xs focus:ring-2 focus:ring-pink-500/30"
                     />
+
+                    {/* Auto-Generate Title Presets List */}
+                    <div className="mt-2 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => setShowTitleSuggestions(!showTitleSuggestions)}
+                          className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-pink-600 cursor-pointer"
+                        >
+                          <Sparkles size={12} className="text-pink-500" />
+                          <span>
+                            {showTitleSuggestions ? "Hide Title Suggestions" : `✨ Quick Auto Data Titles (${titlePresets.length} suggestions ready)`}
+                          </span>
+                          <span className="px-1.5 py-0.2 rounded-full bg-pink-100 dark:bg-pink-900/60 text-pink-700 dark:text-pink-300 text-[9px] font-black">
+                            {titlePresets.length} options
+                          </span>
+                        </button>
+                        {showTitleSuggestions && (
+                          <span className="text-[10px] text-slate-400 font-medium">Click any title to apply</span>
+                        )}
+                      </div>
+
+                      {showTitleSuggestions && (
+                        <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 space-y-1.5 max-h-56 overflow-y-auto no-scrollbar shadow-inner">
+                          {titlePresets.map((preset, idx) => {
+                            const isSelected = title === preset.title;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setTitle(preset.title);
+                                  setTagline(preset.tagline);
+                                  setTitleCycleIndex(idx);
+                                  toast.success(`Selected: "${preset.title}"`);
+                                }}
+                                className={cn(
+                                  "w-full text-left p-2 rounded-lg border transition-all cursor-pointer flex items-start justify-between gap-2",
+                                  isSelected
+                                    ? "bg-pink-50 dark:bg-pink-950/50 border-pink-500 ring-1 ring-pink-500 shadow-2xs"
+                                    : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700 hover:border-pink-300 dark:hover:border-pink-800 hover:bg-pink-50/30"
+                                )}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">
+                                      {preset.category}
+                                    </span>
+                                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                      {preset.title}
+                                    </p>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                    {preset.tagline}
+                                  </p>
+                                </div>
+                                <span
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-colors",
+                                    isSelected
+                                      ? "bg-pink-600 text-white"
+                                      : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-pink-100 hover:text-pink-700"
+                                  )}
+                                >
+                                  {isSelected ? "Active" : "+ Use"}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div>
