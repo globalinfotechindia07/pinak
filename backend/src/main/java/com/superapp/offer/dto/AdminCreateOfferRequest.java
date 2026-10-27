@@ -1,5 +1,11 @@
 package com.superapp.offer.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.superapp.common.converter.FlexibleInstantDeserializer;
+import com.superapp.common.converter.FlexibleUuidDeserializer;
 import com.superapp.offer.enums.OfferType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -10,8 +16,12 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record AdminCreateOfferRequest(
+        @JsonDeserialize(using = FlexibleUuidDeserializer.class)
         UUID merchantId,
+
+        @JsonDeserialize(using = FlexibleUuidDeserializer.class)
         UUID storeId,
 
         @NotBlank(message = "Title is required")
@@ -19,22 +29,37 @@ public record AdminCreateOfferRequest(
         String title,
 
         @Size(max = 2000, message = "Description cannot exceed 2000 characters")
+        @JsonAlias({"tagline", "terms"})
         String description,
 
+        @JsonAlias({"terms", "terms_and_conditions"})
         String termsAndConditions,
 
         @NotNull(message = "Offer type is required")
+        @JsonProperty("offerType")
+        @JsonAlias({"type", "offer_type"})
         OfferType offerType,
 
         @NotNull(message = "Offer value is required")
         @DecimalMin(value = "0.01", message = "Offer value must be greater than 0")
         BigDecimal value,
 
+        @JsonAlias({"minBillAmount", "min_transaction_amount"})
         BigDecimal minTransactionAmount,
+
+        @JsonAlias({"maxDiscount", "max_discount_amount"})
         BigDecimal maxDiscountAmount,
+
+        @JsonAlias({"maxTotalRedemptions", "usage_limit"})
         Integer usageLimit,
+
+        @JsonAlias({"perUserLimit", "per_customer_limit"})
         Integer perCustomerLimit,
+
+        @JsonDeserialize(using = FlexibleInstantDeserializer.class)
         Instant validFrom,
+
+        @JsonDeserialize(using = FlexibleInstantDeserializer.class)
         Instant validTo,
 
         String offerScope,

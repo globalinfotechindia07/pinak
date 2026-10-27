@@ -197,6 +197,8 @@ export const offerCampaignSchema = z
     bonusCoins: z.number().min(0, "Bonus coins cannot be negative").optional(),
     badgeText: z.string().optional(),
     ctaText: z.string().optional(),
+    buyQuantity: z.number().min(1).optional(),
+    getQuantity: z.number().min(1).optional(),
     // District-style Table & Slot Booking Engine
     isTableBookingEnabled: z.boolean().optional(),
     bookingType: z.enum(["TABLE_RESERVATION", "APPOINTMENT_SLOT"]).optional(),

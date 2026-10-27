@@ -95,7 +95,7 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
           applicableStoreIds: o.applicableStoreIds || (o.storeId ? [o.storeId] : []),
           title: o.title,
           tagline: o.tagline || (o.description ? o.description.substring(0, 60) : ""),
-          type: (o.type === "FLAT_PCT" ? "FLAT_PCT" : o.type === "FLAT_AMT" ? "FLAT_AMT" : "BOGO") as any,
+          type: (o.type === "FLAT_PCT" ? "FLAT_PCT" : "FLAT_AMT") as any,
           value: Number(o.value || 0),
           maxDiscount: o.maxDiscountAmount || o.maxDiscount,
           minBillAmount: Number(o.minTransactionAmount || o.minBillAmount || 0),
@@ -219,30 +219,46 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
 
   // Action: Handle Save (Create or Update)
   const handleSaveOffer = async (draft: Partial<Offer>) => {
+    const formatInstant = (val?: string | null, isEnd: boolean = false): string => {
+      if (!val) {
+        return isEnd
+          ? new Date(Date.now() + 90 * 86400000).toISOString()
+          : new Date().toISOString();
+      }
+      const clean = String(val).trim();
+      if (clean.includes("T")) {
+        return clean.endsWith("Z") ? clean : `${clean}Z`;
+      }
+      return `${clean}T${isEnd ? "23:59:59" : "00:00:00"}Z`;
+    };
+
+    const rawType = String(draft.type || "").toUpperCase();
+    const resolvedOfferType = rawType === "FLAT_PCT" || rawType === "PERCENTAGE" || rawType === "PERCENTAGE_DISCOUNT"
+      ? "PERCENTAGE_DISCOUNT"
+      : (rawType === "BOGO" || rawType === "BUY_ONE_GET_ONE" || rawType === "BUY_X_GET_Y"
+        ? "BOGO"
+        : (rawType === "CASHBACK" ? "CASHBACK" : "FIXED_DISCOUNT"));
+
+    const chosenStoreId = (draft.storeId && draft.storeId !== "all" && String(draft.storeId).trim() !== "") ? draft.storeId : undefined;
+    const resolvedValue = Number(draft.value) || 20;
+    const resolvedMinBill = Math.max(Number(draft.minBillAmount) || 0, draft.type === "FLAT_AMT" ? resolvedValue : 0);
+    const resolvedDescription = draft.tagline || draft.terms || (draft as any).description || "Offer details";
+
     if (editingOffer) {
       try {
         const payload: any = {
-          title: draft.title,
-          description: draft.tagline || draft.terms,
-          type: draft.type,
-          value: draft.value,
-          minTransactionAmount: draft.minBillAmount,
-          maxDiscountAmount: draft.maxDiscount,
-          validFrom: draft.validFrom,
-          validTo: draft.validTo,
-          perCustomerLimit: draft.perUserLimit,
-          usageLimit: draft.maxTotalRedemptions,
-          applicableStoreIds: draft.applicableStoreIds,
-          scopeType: draft.scopeType,
-          originalPrice: draft.originalPrice,
-          dealPrice: draft.dealPrice,
-          isFlashDeal: draft.isFlashDeal,
-          flashEndTime: draft.flashEndTime,
-          totalFlashUnits: draft.totalFlashUnits,
-          bonusCoins: draft.bonusCoins,
-          badgeText: draft.badgeText,
-          ctaText: draft.ctaText,
-          imageUrl: draft.imageUrl,
+          storeId: chosenStoreId,
+          title: draft.title?.trim() || "Special Deal",
+          description: resolvedDescription,
+          type: resolvedOfferType,
+          offerType: resolvedOfferType,
+          value: resolvedValue,
+          minTransactionAmount: resolvedMinBill,
+          maxDiscountAmount: draft.maxDiscount ? Number(draft.maxDiscount) : undefined,
+          validFrom: formatInstant(draft.validFrom, false),
+          validTo: formatInstant(draft.validTo, true),
+          perCustomerLimit: Number(draft.perUserLimit) || 1,
+          usageLimit: Number(draft.maxTotalRedemptions) || 1000,
           redemptionType: draft.redemptionType || "BOTH",
           minAdvanceHours: draft.minAdvanceHours || 0
         };
@@ -253,8 +269,9 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
         );
         fetchMerchantData();
       } catch (err: any) {
-        toast.info("Offer updated and resubmitted for admin review.");
-        fetchMerchantData();
+        console.error("Failed to update offer:", err?.response?.data || err.message);
+        const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err.message || "Failed to update offer";
+        toast.error(errorMsg);
       } finally {
         setEditingOffer(null);
       }
@@ -262,17 +279,18 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
       try {
         const payload: any = {
           merchantId: currentMerchantId,
-          storeId: draft.storeId === "all" ? undefined : draft.storeId,
-          title: draft.title,
-          description: draft.tagline || draft.terms,
-          type: draft.type,
-          value: draft.value,
-          minTransactionAmount: draft.minBillAmount,
-          maxDiscountAmount: draft.maxDiscount,
-          validFrom: draft.validFrom || new Date().toISOString(),
-          validTo: draft.validTo || new Date(Date.now() + 30 * 86400000).toISOString(),
-          perCustomerLimit: draft.perUserLimit,
-          usageLimit: draft.maxTotalRedemptions,
+          storeId: chosenStoreId,
+          title: draft.title?.trim() || "Special Deal",
+          description: resolvedDescription,
+          type: resolvedOfferType,
+          offerType: resolvedOfferType,
+          value: resolvedValue,
+          minTransactionAmount: resolvedMinBill,
+          maxDiscountAmount: draft.maxDiscount ? Number(draft.maxDiscount) : undefined,
+          validFrom: formatInstant(draft.validFrom, false),
+          validTo: formatInstant(draft.validTo, true),
+          perCustomerLimit: Number(draft.perUserLimit) || 1,
+          usageLimit: Number(draft.maxTotalRedemptions) || 1000,
           redemptionType: draft.redemptionType || "BOTH",
           minAdvanceHours: draft.minAdvanceHours || 0
         };
@@ -281,9 +299,9 @@ export const OfferStudio: React.FC<OfferStudioProps> = ({
         if (onAddOffer) onAddOffer(draft);
         fetchMerchantData();
       } catch (err: any) {
-        if (onAddOffer) onAddOffer(draft);
-        toast.success(`Campaign "${draft.title}" saved.`);
-        fetchMerchantData();
+        console.error("Failed to create offer:", err?.response?.data || err.message);
+        const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err.message || "Failed to create offer";
+        toast.error(errorMsg);
       } finally {
         setIsCreateOpen(false);
         setCloningOffer(null);

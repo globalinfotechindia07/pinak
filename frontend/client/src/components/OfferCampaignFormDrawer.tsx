@@ -101,10 +101,10 @@ const PRESET_DISCOUNTS = [
   { label: "15% OFF", type: "FLAT_PCT" as const, val: 15, minBill: 400, maxDisc: 150 },
   { label: "20% OFF", type: "FLAT_PCT" as const, val: 20, minBill: 500, maxDisc: 200 },
   { label: "30% OFF", type: "FLAT_PCT" as const, val: 30, minBill: 750, maxDisc: 300 },
-  { label: "40% OFF", type: "FLAT_PCT" as const, val: 40, minBill: 800, maxDisc: 400 },
   { label: "50% OFF", type: "FLAT_PCT" as const, val: 50, minBill: 1000, maxDisc: 500 },
   { label: "₹100 Flat", type: "FLAT_AMT" as const, val: 100, minBill: 500, maxDisc: 100 },
-  { label: "Buy 1 Get 1", type: "BOGO" as const, val: 50, minBill: 600, maxDisc: 300 }
+  { label: "Buy 1 Get 1 Free", type: "BOGO" as const, val: 50, minBill: 600, maxDisc: 300 },
+  { label: "15% Cashback", type: "CASHBACK" as const, val: 15, minBill: 500, maxDisc: 250 }
 ];
 
 const PRESET_TERMS = [
@@ -202,8 +202,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   );
 
   // STEP 2: DEAL RULES & PRICING
-  const [type, setType] = useState<"FLAT_PCT" | "FLAT_AMT" | "BOGO">(
-    initialData?.type || "FLAT_PCT"
+  const [type, setType] = useState<"FLAT_PCT" | "FLAT_AMT" | "BOGO" | "CASHBACK">(
+    (initialData?.type as any) || "FLAT_PCT"
   );
   const [value, setValue] = useState<number>(initialData?.value ?? 50);
   const [minBillAmount, setMinBillAmount] = useState<number>(initialData?.minBillAmount ?? 1000);
@@ -213,6 +213,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   const [maxTotalRedemptions, setMaxTotalRedemptions] = useState<number | undefined>(
     initialData?.maxTotalRedemptions ?? 500
   );
+  const [buyQuantity, setBuyQuantity] = useState<number>(initialData?.buyQuantity ?? 1);
+  const [getQuantity, setGetQuantity] = useState<number>(initialData?.getQuantity ?? 1);
 
   const [redemptionMethod, setRedemptionMethod] = useState<"AUTO_APPLIED" | "PROMO_CODE">(
     initialData?.redemptionMethod || "AUTO_APPLIED"
@@ -346,13 +348,19 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     const storeLabel = selectedStore ? selectedStore.branchName : "All Branches";
     if (offerScope === "STORE_PRODUCT") {
       const pName = productName.trim() || "Retail Item";
-      const disc = computedProductDiscountPct ? `${computedProductDiscountPct}% OFF` : `Special Deal`;
-      setTitle(`${pName} (${disc}) @ ${storeLabel}`);
+      const prodDisc = computedProductDiscountPct ? `${computedProductDiscountPct}% OFF` : `Special Deal`;
+      setTitle(`${pName} (${prodDisc}) @ ${storeLabel}`);
       setTagline(`Special retail store bargain • Limited express counter stock`);
     } else {
-      const disc = type === "FLAT_PCT" ? `${value}% off` : type === "FLAT_AMT" ? `Flat ₹${value} off` : "Buy 1 Get 1 Free";
+      const disc = type === "FLAT_PCT"
+        ? `${value}% off`
+        : type === "FLAT_AMT"
+        ? `Flat ₹${value} off`
+        : type === "CASHBACK"
+        ? `${value}% Cashback`
+        : `Buy ${buyQuantity} Get ${getQuantity} Free`;
       const exp = offerScope === "PRE_BOOK" ? "on Table Pre-Booking" : "on Total Bill";
-      setTitle(`Flat ${disc} ${exp}`);
+      setTitle(type === "BOGO" ? `${disc} ${exp}` : `Flat ${disc} ${exp}`);
       setTagline(`Available on ${activeDays.length === 7 ? "Mon-Sun" : activeDays.join(", ")} • Valid on minimum bill ₹${minBillAmount}`);
     }
     toast.success("Generated clean title & tagline!");
@@ -467,12 +475,12 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     if (e) e.preventDefault();
 
     const isProduct = offerScope === "STORE_PRODUCT";
-    const finalTitle = title.trim() || `${type === "FLAT_PCT" ? `${value}% OFF` : `₹${value} OFF`} at ${selectedStore?.branchName || merchantDisplayName}`;
+    const finalTitle = title.trim() || `${type === "FLAT_PCT" ? `${value}% OFF` : type === "FLAT_AMT" ? `Flat ₹${value} OFF` : type === "CASHBACK" ? `${value}% Cashback` : `Buy ${buyQuantity} Get ${getQuantity} Free`} at ${selectedStore?.branchName || merchantDisplayName}`;
     const autoProductDiscount = isProduct && originalPrice && dealPrice && originalPrice > dealPrice
       ? (type === "FLAT_PCT" ? Math.round(((originalPrice - dealPrice) / originalPrice) * 100) : (originalPrice - dealPrice))
       : Number(value);
     const resolvedValue = autoProductDiscount > 0 ? autoProductDiscount : (Number(value) || 20);
-    const resolvedMaxDiscount = type === "FLAT_PCT"
+    const resolvedMaxDiscount = (type === "FLAT_PCT" || type === "CASHBACK" || type === "BOGO")
       ? (maxDiscount ? Number(maxDiscount) : 500)
       : undefined;
     const resolvedMinBill = Number(minBillAmount || 500);
@@ -512,6 +520,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       bonusCoins: Number(bonusCoins),
       badgeText: badgeText.trim() || "PINAK EXCLUSIVE",
       ctaText: ctaText.trim() || (isProduct ? "Add to Cart" : offerScope === "PRE_BOOK" ? "Reserve Table" : "Book & Pay"),
+      buyQuantity: type === "BOGO" ? Number(buyQuantity || 1) : undefined,
+      getQuantity: type === "BOGO" ? Number(getQuantity || 1) : undefined,
       isTableBookingEnabled: offerScope === "PRE_BOOK",
       bookingType: offerScope === "PRE_BOOK" ? "TABLE_RESERVATION" : undefined,
       slotTimes: offerScope === "PRE_BOOK" ? slotTimes : undefined,
@@ -553,6 +563,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         unitOrWeight: isProduct && unitOrWeight ? unitOrWeight.trim() : undefined,
         type,
         value: resolvedValue,
+        buyQuantity: type === "BOGO" ? Number(buyQuantity || 1) : undefined,
+        getQuantity: type === "BOGO" ? Number(getQuantity || 1) : undefined,
         maxDiscount: resolvedMaxDiscount,
         minBillAmount: resolvedMinBill,
         perUserLimit: perUserLimit ? Number(perUserLimit) : undefined,
@@ -1004,27 +1016,211 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                   </div>
                 </div>
 
-                {/* Core Discount Metrics */}
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="font-bold text-slate-700 dark:text-slate-300 block text-[11px] mb-1">
-                        Discount Type *
-                      </label>
-                      <select
-                        value={type}
-                        onChange={(e) => setType(e.target.value as any)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                      >
-                        <option value="FLAT_PCT">Percentage (% OFF)</option>
-                        <option value="FLAT_AMT">Flat Amount (₹ OFF)</option>
-                        <option value="BOGO">Buy 1 Get 1 (BOGO)</option>
-                      </select>
-                    </div>
+                {/* Dynamic Offer Type Selector (4 Visual Cards) */}
+                <div className="space-y-2">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                    Choose Offer Benefit Structure *
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {/* 1. Percentage Discount */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setType("FLAT_PCT");
+                        if (value > 100) setValue(20);
+                      }}
+                      className={cn(
+                        "p-3 rounded-2xl border text-left transition-all cursor-pointer relative",
+                        type === "FLAT_PCT"
+                          ? "bg-pink-50/70 dark:bg-pink-950/40 border-pink-500 shadow-sm ring-1 ring-pink-500"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-pink-100 dark:bg-pink-900/40 text-pink-600 flex items-center justify-center mb-1.5 font-bold">
+                        <Tag size={15} />
+                      </div>
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">
+                        Percentage OFF
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        % discount on bill with max cap
+                      </div>
+                      {type === "FLAT_PCT" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-pink-600 text-white flex items-center justify-center">
+                          <Check size={10} />
+                        </div>
+                      )}
+                    </button>
 
+                    {/* 2. Flat Amount Discount */}
+                    <button
+                      type="button"
+                      onClick={() => setType("FLAT_AMT")}
+                      className={cn(
+                        "p-3 rounded-2xl border text-left transition-all cursor-pointer relative",
+                        type === "FLAT_AMT"
+                          ? "bg-pink-50/70 dark:bg-pink-950/40 border-pink-500 shadow-sm ring-1 ring-pink-500"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 flex items-center justify-center mb-1.5 font-bold">
+                        <Coins size={15} />
+                      </div>
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">
+                        Flat Rupee (₹)
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        Instant flat cash deduction
+                      </div>
+                      {type === "FLAT_AMT" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-pink-600 text-white flex items-center justify-center">
+                          <Check size={10} />
+                        </div>
+                      )}
+                    </button>
+
+                    {/* 3. Buy X Get Y Free */}
+                    <button
+                      type="button"
+                      onClick={() => setType("BOGO")}
+                      className={cn(
+                        "p-3 rounded-2xl border text-left transition-all cursor-pointer relative",
+                        type === "BOGO"
+                          ? "bg-pink-50/70 dark:bg-pink-950/40 border-pink-500 shadow-sm ring-1 ring-pink-500"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 flex items-center justify-center mb-1.5 font-bold">
+                        <Sparkles size={15} />
+                      </div>
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">
+                        Buy X Get Y Free
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        1+1, 2+1, 1+3 or custom
+                      </div>
+                      {type === "BOGO" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-pink-600 text-white flex items-center justify-center">
+                          <Check size={10} />
+                        </div>
+                      )}
+                    </button>
+
+                    {/* 4. Wallet Cashback */}
+                    <button
+                      type="button"
+                      onClick={() => setType("CASHBACK")}
+                      className={cn(
+                        "p-3 rounded-2xl border text-left transition-all cursor-pointer relative",
+                        type === "CASHBACK"
+                          ? "bg-pink-50/70 dark:bg-pink-950/40 border-pink-500 shadow-sm ring-1 ring-pink-500"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 flex items-center justify-center mb-1.5 font-bold">
+                        <Zap size={15} />
+                      </div>
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">
+                        Wallet Cashback
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        Reward coins / wallet credit
+                      </div>
+                      {type === "CASHBACK" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-pink-600 text-white flex items-center justify-center">
+                          <Check size={10} />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Core Dynamic Value Inputs */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                  {/* Dedicated Buy X Get Y Rule Builder */}
+                  {type === "BOGO" && (
+                    <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
+                          <Sparkles size={13} className="text-amber-500" />
+                          <span>Buy X Get Y Free Combination</span>
+                        </label>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-md">
+                          Buy {buyQuantity} Get {getQuantity} Free
+                        </span>
+                      </div>
+
+                      {/* Quick Ratio Presets */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { b: 1, g: 1, label: "Buy 1 Get 1 (1+1)" },
+                          { b: 2, g: 1, label: "Buy 2 Get 1 (2+1)" },
+                          { b: 3, g: 1, label: "Buy 3 Get 1 (3+1)" },
+                          { b: 2, g: 2, label: "Buy 2 Get 2 (2+2)" },
+                          { b: 1, g: 3, label: "Buy 1 Get 3 (1+3)" },
+                        ].map((combo) => (
+                          <button
+                            key={combo.label}
+                            type="button"
+                            onClick={() => {
+                              setBuyQuantity(combo.b);
+                              setGetQuantity(combo.g);
+                              toast.success(`Set to ${combo.label}!`);
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer",
+                              buyQuantity === combo.b && getQuantity === combo.g
+                                ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                                : "bg-white dark:bg-slate-800 border-amber-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-amber-100/50"
+                            )}
+                          >
+                            {combo.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Custom Numeric Spinners */}
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                            Customer Buys (Quantity) *
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={50}
+                            value={buyQuantity}
+                            onChange={(e) => setBuyQuantity(Math.max(1, Number(e.target.value)))}
+                            className="w-full px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-800 text-xs font-extrabold text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                            Customer Gets FREE (Quantity) *
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={50}
+                            value={getQuantity}
+                            onChange={(e) => setGetQuantity(Math.max(1, Number(e.target.value)))}
+                            className="w-full px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-800 text-xs font-extrabold text-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block text-[11px] mb-1">
-                        {type === "FLAT_PCT" ? "Discount (%) *" : "Discount (₹) *"}
+                        {type === "FLAT_PCT"
+                          ? "Discount Percentage (%) *"
+                          : type === "FLAT_AMT"
+                          ? "Flat Discount Amount (₹) *"
+                          : type === "BOGO"
+                          ? "Equivalent Item Cover Value (₹) *"
+                          : "Cashback Percentage (%) *"}
                       </label>
                       <div className="relative">
                         <input
@@ -1032,18 +1228,18 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           value={value}
                           onChange={(e) => setValue(Number(e.target.value))}
                           min={1}
-                          max={type === "FLAT_PCT" ? 100 : 100000}
+                          max={type === "FLAT_PCT" || type === "CASHBACK" ? 100 : 100000}
                           className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-extrabold text-slate-900 dark:text-white"
                         />
                         <span className="absolute right-3 top-2 font-bold text-slate-400">
-                          {type === "FLAT_PCT" ? "%" : "₹"}
+                          {type === "FLAT_PCT" || type === "CASHBACK" ? "%" : "₹"}
                         </span>
                       </div>
                     </div>
 
                     <div>
                       <label className="font-bold text-slate-700 dark:text-slate-300 block text-[11px] mb-1">
-                        Minimum Bill Spend *
+                        Minimum Bill Spend (₹) *
                       </label>
                       <div className="relative">
                         <input
@@ -1058,13 +1254,15 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     </div>
                   </div>
 
-                  {type === "FLAT_PCT" && (
+                  {(type === "FLAT_PCT" || type === "CASHBACK" || type === "BOGO") && (
                     <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
                       <div>
                         <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
-                          Maximum Discount Cap (₹) *
+                          {type === "CASHBACK" ? "Maximum Cashback Cap (₹) *" : "Maximum Benefit Cap (₹) *"}
                         </span>
-                        <span className="text-[10px] text-slate-400">Protects store margin on large bills</span>
+                        <span className="text-[10px] text-slate-400">
+                          Protects merchant margins from excessively high claims
+                        </span>
                       </div>
                       <div className="relative w-36">
                         <input
@@ -1084,11 +1282,36 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
                       <Calculator size={13} />
                       <span>
-                        Example: On a ₹1,000 bill, customer pays{" "}
-                        <strong className="underline">
-                          ₹{Math.max(1000 - Math.min((1000 * value) / 100, maxDiscount || 1000), 0)}
-                        </strong>{" "}
-                        (Saves ₹{Math.min((1000 * value) / 100, maxDiscount || 1000)})
+                        {type === "FLAT_PCT" && (
+                          <>
+                            Example: On a ₹1,000 bill, customer pays{" "}
+                            <strong className="underline">
+                              ₹{Math.max(1000 - Math.min((1000 * value) / 100, maxDiscount || 1000), 0)}
+                            </strong>{" "}
+                            (Saves ₹{Math.min((1000 * value) / 100, maxDiscount || 1000)})
+                          </>
+                        )}
+                        {type === "FLAT_AMT" && (
+                          <>
+                            Example: Instant flat{" "}
+                            <strong className="underline">₹{value} OFF</strong> on all bills of ₹{minBillAmount || 500} or more
+                          </>
+                        )}
+                        {type === "BOGO" && (
+                          <>
+                            Example: Buy {buyQuantity} Get {getQuantity} Free — Customer orders {buyQuantity} item(s) and receives {getQuantity} complimentary (up to max cap of{" "}
+                            <strong className="underline">₹{maxDiscount || 500}</strong>)
+                          </>
+                        )}
+                        {type === "CASHBACK" && (
+                          <>
+                            Example: Customer earns{" "}
+                            <strong className="underline">
+                              ₹{Math.min((1000 * value) / 100, maxDiscount || 500)} Cashback
+                            </strong>{" "}
+                            credited to wallet on a ₹1,000 bill
+                          </>
+                        )}
                       </span>
                     </span>
                     <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">

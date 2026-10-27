@@ -205,7 +205,11 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
                         ? `Flat ₹${offer.value} Off`
                         : offer.type === "FLAT_PCT"
                         ? `${offer.value}% Off`
-                        : "Buy 1 Get 1 (BOGO)"}
+                        : offer.type === "CASHBACK"
+                        ? `${offer.value}% Wallet Cashback`
+                        : (offer.buyQuantity && offer.getQuantity
+                            ? `Buy ${offer.buyQuantity} Get ${offer.getQuantity} Free`
+                            : "Buy 1 Get 1 Free")}
                     </span>
                     {offer.maxDiscount && (
                       <span className="px-2.5 py-1 rounded-lg bg-pink-100 text-pink-800 dark:bg-pink-950/80 dark:text-pink-300 text-[11px] font-bold">

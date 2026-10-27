@@ -114,10 +114,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<?>> handleMalformedJson(HttpMessageNotReadableException ex, HttpServletRequest req) {
-        log.debug("Malformed JSON on {}: {}", req.getRequestURI(), ex.getMessage());
+        String detailMessage = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+        log.warn("Malformed JSON on {}: {}", req.getRequestURI(), detailMessage);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("Malformed request body", ApiError.VALIDATION_FAILED.name()));
+                .body(ApiResponse.error("Malformed request payload: " + detailMessage, ApiError.VALIDATION_FAILED.name()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -149,8 +150,8 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.error("This email address is already registered.", ApiError.DUPLICATE_RESOURCE.name()));
         }
         return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error("A record with these unique details already exists.", ApiError.DUPLICATE_RESOURCE.name()));
+                    .status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("A record with these unique details already exists.", ApiError.DUPLICATE_RESOURCE.name()));
     }
 
     // ---- Catch-all (never expose internals) ----

@@ -6,7 +6,7 @@ export type StoreStatus = "ACTIVE" | "PENDING_APPROVAL" | "INACTIVE" | "SUSPENDE
 
 export type OfferStatus = "CREATED" | "PENDING_APPROVAL" | "ACTIVE" | "EXPIRED" | "REJECTED" | "PAUSED" | "DRAFT" | "SUBMITTED" | "DEACTIVATED";
 
-export type OfferType = "FLAT_PCT" | "FLAT_AMT" | "BOGO";
+export type OfferType = "FLAT_PCT" | "FLAT_AMT" | "BOGO" | "CASHBACK";
 
 export type PaymentStatus = "INITIATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
 
@@ -130,6 +130,8 @@ export interface Offer {
   bonusCoins?: number;
   badgeText?: string;
   ctaText?: string;
+  buyQuantity?: number;
+  getQuantity?: number;
   // District-style Table & Slot Booking Engine
   isTableBookingEnabled?: boolean;
   bookingType?: "TABLE_RESERVATION" | "APPOINTMENT_SLOT";

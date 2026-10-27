@@ -47,7 +47,8 @@ export interface CreateOfferPayload {
   categoryId?: string;
   title: string;
   description?: string;
-  type: string;
+  type?: string;
+  offerType?: string;
   value: number;
   minTransactionAmount?: number;
   minBillAmount?: number;

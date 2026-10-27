@@ -1052,7 +1052,9 @@ export default function CustomerHomePreviewPage() {
                 if (rawType.includes("PERCENT") || rawType === "FLAT_PCT") {
                   discountText = discountVal > 0 ? `${discountVal}% OFF` : (o.title?.includes("%") ? o.title : "SPECIAL DISCOUNT");
                 } else if (rawType.includes("BOGO") || rawType.includes("BUY_X_GET_Y")) {
-                  discountText = "BUY 1 GET 1 FREE";
+                  const bQ = (o as any).buyQuantity || 1;
+                  const gQ = (o as any).getQuantity || 1;
+                  discountText = `BUY ${bQ} GET ${gQ} FREE`;
                 } else if (rawType.includes("CASHBACK")) {
                   discountText = discountVal > 0 ? `₹${discountVal} CASHBACK` : "CASHBACK DEAL";
                 } else {

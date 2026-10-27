@@ -461,9 +461,11 @@ export default function Home() {
                 ? "All Outlets (Brand-Wide)"
                 : (matchedStore?.storeName || matchedStore?.branchName || o.storeName || "Branch Outlet"),
               title: o.title,
-              tagline: o.description || "",
-              type: (o.offerType || o.type) === "PERCENTAGE_DISCOUNT" ? "FLAT_PCT" : ((o.offerType || o.type) === "BUY_X_GET_Y" ? "BOGO" : "FLAT_AMT"),
-              value: Number(o.value) || 0,
+              type: (o.offerType || o.type) === "PERCENTAGE_DISCOUNT"
+                ? "FLAT_PCT"
+                : ((o.offerType || o.type) === "BUY_X_GET_Y" || (o.offerType || o.type) === "BOGO"
+                  ? "BOGO"
+                  : ((o.offerType || o.type) === "CASHBACK" ? "CASHBACK" : "FLAT_AMT")),
               maxDiscount: o.maxDiscountAmount ? Number(o.maxDiscountAmount) : 0,
               minBillAmount: o.minTransactionAmount ? Number(o.minTransactionAmount) : 0,
               validFrom: o.validFrom ? o.validFrom.split("T")[0] : new Date().toISOString().split("T")[0],
@@ -1105,12 +1107,20 @@ export default function Home() {
         throw new Error("Merchant has no stores configured");
       }
       // If a specific store is selected, target that store; if 'all' or empty, pass null for brand-wide / all branches
-      const chosenStoreId = (draft.storeId && draft.storeId !== "all") ? draft.storeId : null;
+      const chosenStoreId = (draft.storeId && draft.storeId !== "all" && String(draft.storeId).trim() !== "") ? draft.storeId : null;
 
       const isProduct = draft.scopeType === "PRODUCT" || draft.offerScope === "STORE_PRODUCT";
       const resolvedValue = isProduct && draft.originalPrice && draft.dealPrice && draft.originalPrice > draft.dealPrice
         ? (draft.type === "FLAT_AMT" ? (draft.originalPrice - draft.dealPrice) : Math.round(((draft.originalPrice - draft.dealPrice) / draft.originalPrice) * 100))
         : (Number(draft.value) || 20);
+
+      const resolvedMinBill = Math.max(Number(draft.minBillAmount) || 0, draft.type === "FLAT_AMT" ? resolvedValue : 0);
+
+      const resolvedOfferType = draft.type === "FLAT_PCT" || draft.type === "PERCENTAGE" || draft.type === "PERCENTAGE_DISCOUNT"
+        ? "PERCENTAGE_DISCOUNT"
+        : (draft.type === "BOGO" || draft.type === "BUY_ONE_GET_ONE" || draft.type === "BUY_X_GET_Y"
+          ? "BOGO"
+          : (draft.type === "CASHBACK" ? "CASHBACK" : "FIXED_DISCOUNT"));
 
       const resolvedDescription = isProduct
         ? (draft.unitOrWeight || draft.tagline || `Special store product deal at ${draft.merchantName || 'partner store'}`)
@@ -1121,10 +1131,10 @@ export default function Home() {
         storeId: chosenStoreId,
         title: (draft.title || draft.productName || "Special Deal").trim(),
         description: resolvedDescription,
-        termsAndConditions: draft.terms || "",
-        offerType: draft.type === "FLAT_PCT" ? "PERCENTAGE_DISCOUNT" : (draft.type === "BOGO" ? "BUY_X_GET_Y" : "FIXED_DISCOUNT"),
+        type: resolvedOfferType,
+        offerType: resolvedOfferType,
         value: resolvedValue,
-        minTransactionAmount: Number(draft.minBillAmount) || 0,
+        minTransactionAmount: resolvedMinBill,
         maxDiscountAmount: draft.maxDiscount ? Number(draft.maxDiscount) : (isProduct && draft.originalPrice && draft.dealPrice ? (draft.originalPrice - draft.dealPrice) : null),
         usageLimit: Number(draft.maxTotalRedemptions) || 1000,
         perCustomerLimit: Number(draft.perUserLimit) || 1,
