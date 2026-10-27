@@ -20,6 +20,8 @@ import {
   CreditCard,
   User,
   UtensilsCrossed,
+  Star,
+  Users,
   Store,
   Tag,
   Plus
@@ -49,6 +51,9 @@ interface NearbyOffer {
   expiresAt?: string;
   ctaText?: string;
   bonusCoins?: number;
+  badgeText?: string;
+  offerScope?: string;
+  redemptionType?: string;
   merchant?: {
     merchantId?: string;
     name?: string;
@@ -724,7 +729,14 @@ export default function CustomerHomePreviewPage() {
     }
   ];
 
-  const rawOffers = offers.length > 0 ? offers : fallbackDemoOffers;
+  const rawOffers = offers.length > 0
+    ? [
+        ...offers,
+        ...fallbackDemoOffers.filter(
+          (f) => !offers.some((o) => (o.branch?.name && f.branch?.name && o.branch.name.toLowerCase() === f.branch.name.toLowerCase()) || o.title === f.title)
+        )
+      ]
+    : fallbackDemoOffers;
   const displayedServiceOffers = deduplicateOffersByStore(rawOffers);
   const displayedProductDeals = productDeals.length > 0 ? productDeals : fallbackDemoProducts;
   const displayedFeaturedStores = featuredStores.length > 0 ? featuredStores : fallbackFeaturedStores;
@@ -1036,129 +1048,196 @@ export default function CustomerHomePreviewPage() {
             <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
               {displayedServiceOffers.map((o) => {
                 const offerKey = o.offerId || o.id || Math.random().toString();
-                const storeName = o.branch?.name || o.branchSummary?.storeName || o.merchant?.name || o.merchantSummary?.name || "Main Branch";
-                const merchantName = o.merchant?.name || o.merchantSummary?.name || o.title;
+                const branchName = o.branch?.name || o.branchSummary?.storeName;
+                const merchantName = o.merchant?.name || o.merchantSummary?.name;
+                const storeDisplayName = branchName || merchantName || o.title || "Partner Store";
+
                 const distanceMeters = o.branch?.distanceMeters ?? o.branchSummary?.distanceMeters;
                 const distanceText = distanceMeters != null
                   ? (distanceMeters < 1000
-                    ? `${distanceMeters}m`
-                    : `${(distanceMeters / 1000).toFixed(1)} km`)
+                    ? `${distanceMeters}m away`
+                    : `${(distanceMeters / 1000).toFixed(1)} km away`)
                   : "Nearby";
 
                 const discountVal = Number(o.discountValue ?? o.value ?? 0);
                 const rawType = (o.offerType || o.type || "").toUpperCase();
 
-                let discountText = "";
+                let discountBadge = "";
                 if (rawType.includes("PERCENT") || rawType === "FLAT_PCT") {
-                  discountText = discountVal > 0 ? `${discountVal}% OFF` : (o.title?.includes("%") ? o.title : "SPECIAL DISCOUNT");
+                  discountBadge = discountVal > 0 ? `${discountVal}% OFF` : "DISCOUNT";
                 } else if (rawType.includes("BOGO") || rawType.includes("BUY_X_GET_Y")) {
-                  const bQ = (o as any).buyQuantity || 1;
-                  const gQ = (o as any).getQuantity || 1;
-                  discountText = `BUY ${bQ} GET ${gQ} FREE`;
+                  discountBadge = "BUY 1 GET 1";
                 } else if (rawType.includes("CASHBACK")) {
-                  discountText = discountVal > 0 ? `₹${discountVal} CASHBACK` : "CASHBACK DEAL";
+                  discountBadge = discountVal > 0 ? `₹${discountVal} CASHBACK` : "CASHBACK";
                 } else {
-                  // Fixed / Flat Discount
-                  discountText = discountVal > 0 ? `FLAT ₹${discountVal} OFF` : (o.title || "SPECIAL DEAL");
+                  discountBadge = discountVal > 0 ? `₹${discountVal} OFF` : "SPECIAL";
                 }
 
                 const cap = Number(o.maxDiscountAmount ?? 0);
                 const minBill = Number(o.minimumOrderAmount ?? o.minTransactionAmount ?? 0);
-                
+
+                const offerHeadline = o.title && !o.title.toLowerCase().includes("sample")
+                  ? o.title
+                  : (discountVal > 0 ? `Flat ${discountVal}% OFF on Total Bill` : "Special Dine-in Offer");
+
                 let conditionText = "";
                 if (cap > 0 && minBill > 0) {
                   conditionText = `Up to ₹${cap.toLocaleString("en-IN")} • On bills above ₹${minBill.toLocaleString("en-IN")}`;
                 } else if (cap > 0) {
-                  conditionText = `Up to ₹${cap.toLocaleString("en-IN")} • No min bill required`;
+                  conditionText = `Up to ₹${cap.toLocaleString("en-IN")} • No min spend`;
                 } else if (minBill > 0) {
                   conditionText = `On bills above ₹${minBill.toLocaleString("en-IN")}`;
                 } else if (o.subtitle) {
                   conditionText = o.subtitle;
                 } else {
-                  conditionText = "No min bill required";
+                  conditionText = "Available on all days";
                 }
+
+                const isPreBooking =
+                  o.offerScope === "SERVICE" ||
+                  o.offerScope === "PRE_BOOK" ||
+                  (o.ctaText && o.ctaText.toLowerCase().includes("book")) ||
+                  o.redemptionType === "BOTH";
 
                 const expiry = o.expiresAt || o.validTo;
                 const badge = formatTimeLeftBadge(expiry);
-                const rewardCoins = o.reward?.coins || o.rewardSummary?.coins || o.bonusCoins || 150;
+                const rewardCoins = o.reward?.coins || o.rewardSummary?.coins || o.bonusCoins || 100;
                 const imageSrc = o.imageUrl || o.imgUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80";
 
-                const targetStoreId = o.branch?.branchId || o.branchSummary?.storeId || "e1000000-0000-0000-0000-000000000001";
+                const targetStoreId = o.branch?.branchId || o.branchSummary?.storeId || "97aabe53-9349-439d-952e-40f723bb8f51";
 
                 return (
                   <article
                     key={offerKey}
                     onClick={() => handleOpenStoreDetail(targetStoreId)}
-                    className="w-64 shrink-0 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow cursor-pointer"
+                    className="w-72 shrink-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col justify-between cursor-pointer group"
                   >
                     <div>
                       {/* Card Thumbnail */}
-                      <div className="relative h-28 w-full bg-slate-100">
+                      <div className="relative h-32 w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                         <img
-                          alt={merchantName}
-                          className="w-full h-full object-cover"
+                          alt={storeDisplayName}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                           src={imageSrc}
                           onError={(e) => {
                             (e.target as HTMLImageElement).src =
-                              "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80";
+                              "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80";
                           }}
                         />
-                        {/* Dynamic Time-Left Badge */}
-                        <span className={`absolute top-2 left-2 ${badge.bg} backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs tracking-tight`}>
-                          <Clock size={10} className="stroke-[2.5]" />
-                          <span>{badge.text}</span>
-                        </span>
+                        {/* Gradient Scrim */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/30 pointer-events-none" />
+
+                        {/* Top Left Badges */}
+                        <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                          <span className="bg-purple-600/95 backdrop-blur-xs text-white text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs tracking-wider uppercase">
+                            <Sparkles size={9} className="fill-white" />
+                            <span>{o.badgeText || "PINAK EXCLUSIVE"}</span>
+                          </span>
+                          <span className={`${badge.bg} backdrop-blur-xs text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs`}>
+                            <Clock size={9} className="stroke-[2.5]" />
+                            <span>{badge.text}</span>
+                          </span>
+                        </div>
+
+                        {/* Favorite Button */}
                         <button
                           type="button"
                           onClick={(e) => toggleFavorite(offerKey, e)}
                           aria-label="Favorite"
-                          className="absolute top-2 right-2 w-6 h-6 rounded-md bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
+                          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 backdrop-blur-xs text-white flex items-center justify-center hover:bg-black/60 transition-colors z-10"
                         >
                           <Heart
-                            size={14}
+                            size={13}
                             className={favorites[offerKey] ? "fill-rose-500 text-rose-500" : "text-white"}
                           />
                         </button>
+
+                        {/* Bottom Overlay Info (Rating & Pre-booking pill) */}
+                        <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-white text-[10px] font-bold z-10">
+                          <span className="bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <Star size={11} className="fill-amber-400 text-amber-400" />
+                            <span>4.8</span>
+                            <span className="text-slate-300 font-normal text-[9px]">(1.2k)</span>
+                          </span>
+                          {isPreBooking && (
+                            <span className="bg-emerald-600/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-md flex items-center gap-1 text-[9.5px]">
+                              <UtensilsCrossed size={10} />
+                              <span>Table Pre-Booking</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Card Body */}
-                      <div className="p-3">
-                        <div className="flex items-center space-x-1 mb-0.5">
-                          <h3 className="text-xs font-bold text-slate-900 truncate" title={merchantName}>
-                            {merchantName}
-                          </h3>
-                          <CheckCircle2 size={13} className="text-blue-500 shrink-0 fill-blue-500 text-white" />
+                      <div className="p-3 space-y-2">
+                        {/* Store & Locality */}
+                        <div>
+                          <div className="flex items-center space-x-1.5 mb-0.5">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white truncate" title={storeDisplayName}>
+                              {storeDisplayName}
+                            </h3>
+                            <CheckCircle2 size={13} className="text-blue-500 shrink-0 fill-blue-500 text-white" />
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
+                            <MapPin size={10} className="shrink-0 text-slate-400" />
+                            <span>{distanceText}</span>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span className="text-slate-600 dark:text-slate-300 font-semibold">Dine-in Outlet</span>
+                          </p>
                         </div>
-                        <p className="text-[10px] text-slate-500 mb-2 truncate">
-                          {storeName} • {distanceText}
-                        </p>
 
                         {/* Deal Highlight Box */}
-                        <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-2 mb-2.5">
-                          <p className="text-[11px] font-black text-emerald-700 leading-tight">
-                            {discountText}
-                          </p>
-                          <p className="text-[9px] text-emerald-800 font-medium truncate">
+                        <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl p-2.5 space-y-0.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-black text-emerald-800 dark:text-emerald-300 leading-tight">
+                              {offerHeadline}
+                            </p>
+                            <span className="shrink-0 ml-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-200 bg-emerald-200/80 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded">
+                              {discountBadge}
+                            </span>
+                          </div>
+                          <p className="text-[9.5px] text-emerald-700 dark:text-emerald-400 font-medium">
                             {conditionText}
                           </p>
                         </div>
+
+                        {/* Pre-Booking Info Pills (Capacity, Grace, Cover) */}
+                        {isPreBooking && (
+                          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 dark:text-slate-300 pt-0.5 flex-wrap">
+                            <span className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                              <Users size={9} />
+                              <span>Party 2-6</span>
+                            </span>
+                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                              <Clock size={9} />
+                              <span>15m Grace</span>
+                            </span>
+                            <span className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-md">
+                              Free Reservation
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Card Footer */}
-                    <div className="px-3 pb-3 flex items-center justify-between border-t border-slate-50 pt-2">
-                      <span className="text-[10px] font-bold text-amber-700 flex items-center gap-0.5">
-                        🪙 +{rewardCoins} Coins
-                      </span>
+                    <div className="px-3 pb-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-0.5">
+                          🪙 +{rewardCoins} Coins
+                        </span>
+                        <span className="text-[8.5px] text-slate-400">on PINAK Bill Pay</span>
+                      </div>
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenStoreDetail(targetStoreId);
                         }}
-                        className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] px-3.5 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer"
+                        className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] px-3.5 py-1.5 rounded-lg shadow-xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
                       >
-                        {o.ctaText || "Book & Pay"}
+                        <span>{o.ctaText || "Book & Pay"}</span>
+                        <ChevronRight size={12} />
                       </button>
                     </div>
                   </article>
