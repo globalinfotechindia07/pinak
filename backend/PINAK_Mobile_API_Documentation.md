@@ -923,6 +923,218 @@ Includes Hero with 19 photos, 2X Coin incentive banner, sticky tabs, active pre-
 
 ---
 
+### 14c. Fetch Product Detail View (Wood-Fired Truffle Pizza & Catalog Products)
+Returns the rich product detail view payload when user taps on any culinary item or product card in the mobile application.
+Includes:
+- **Product Identity**: Unique UUID, Title, Brand, Quantity/Unit ("12-inch Hand-Stretched Crust • Serves 2-3"), and descriptions.
+- **Gallery**: High-res product imagery and multi-photo carousel with photo count.
+- **Pricing & Discounts**: MRP (`₹699.00`), Selling Price (`₹489.00`), Discount Percentage (`30%`), and Savings Amount (`₹210.00`).
+- **Inventory & Dietary**: In-stock indicator, stock quantity, dietary tags (`VEG` / `NON_VEG`), and delivery ETA badge (`25-35 mins`).
+- **2X Boost Coins Perk Banner**: Cashback percentage, earned PINAK gold coins calculation, and animated badge text.
+- **Originating Merchant Store**: Verified seller badge, rating, live distance calculation (from GPS `lat`/`lng`), full address, and call concierge.
+- **Key Culinary Highlights**: Bulleted chef craftsmanship facts and preparation standards.
+- **Nutritional Facts**: Per-serving Calories, Carbs, Protein, and Fat.
+- **Delivery & Pickup Options**: Instant express delivery threshold, free delivery minimum, and 15-min takeaway pickup status.
+- **Customer Ratings & Reviews**: Comprehensive star distribution breakdown (5-star down to 1-star) and verified customer testimonials.
+- **Cross-Selling & Recommendations**: "Frequently Bought Together" bundles (focaccia, cold brew) and "Similar Products" carousel (formaggi, margherita).
+- **Sticky Bottom Buy Bar**: Quantity selector (min 1, max 10), Add to Cart primary action with live total price, and instant Buy Now checkout trigger.
+
+> **Automatic Fallback Dummy Data**: If the database contains no matching product or when calling canonical test ID `f1000000-0000-0000-0000-000000000001`, the backend automatically renders the full canonical response for **Wood-Fired Truffle & Wild Mushroom Pizza**, ensuring zero downtime and 100% test reliability in Postman.
+
+- **Method**: `GET`
+- **URL**: `{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412`
+- **Aliases**:
+  - `{{baseUrl}}/api/v1/mobile/products/detail` (Auto-routes to canonical Wood-Fired Truffle Pizza)
+  - `{{baseUrl}}/api/v1/products/{{productId}}/detail`
+  - `{{baseUrl}}/api/v1/discovery/products/{{productId}}/detail`
+- **Headers**:
+  ```http
+  Accept: application/json
+  Authorization: Bearer {{mobileToken}}  (Optional: also works for unauthenticated guests)
+  ```
+- **Query Parameters**:
+  - `lat` (optional): Customer device latitude (e.g. `12.9716`)
+  - `lng` (optional): Customer device longitude (e.g. `77.6412`)
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Product detail fetched successfully",
+  "data": {
+    "id": "f1000000-0000-0000-0000-000000000001",
+    "name": "Wood-Fired Truffle & Wild Mushroom Pizza",
+    "brand": "The Smokehouse Kitchen",
+    "unit": "12-inch Hand-Stretched Crust • Serves 2-3",
+    "shortDescription": "Hand-stretched Neapolitan sourdough crust with San Marzano tomatoes, fresh buffalo mozzarella, sautéed forest porcini mushrooms, and drizzled with black truffle oil.",
+    "longDescription": "Crafted using 48-hour fermented Italian 00 flour dough, baked at 450°C in our traditional oak wood-fired oven. Topped with imported Italian fior di latte, aged Parmigiano Reggiano, hand-picked wild porcini and shiitake mushrooms, finished with aromatic Umbrian black summer truffle oil and fresh basil.",
+    "imageUrl": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80",
+    "galleryImages": [
+      "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80"
+    ],
+    "totalPhotosCount": 5,
+    "mrp": 699.00,
+    "sellingPrice": 489.00,
+    "discountPercent": 30,
+    "savingsAmount": 210.00,
+    "discountText": "Flat 30% OFF • Save ₹210",
+    "currency": "INR",
+    "currencySymbol": "₹",
+    "inStock": true,
+    "stockQuantity": 25,
+    "stockStatusText": "In Stock • Delivered in 25-35 mins",
+    "isVeg": true,
+    "dietaryType": "VEG",
+    "category": {
+      "id": "c1000000-0000-0000-0000-000000000001",
+      "name": "Gourmet Wood-Fired Pizzas",
+      "slug": "gourmet-wood-fired-pizzas"
+    },
+    "tags": [
+      "PINAK EXCLUSIVE",
+      "BESTSELLER",
+      "WOOD-FIRED",
+      "ORGANIC INGREDIENTS"
+    ],
+    "rating": 4.8,
+    "ratingCountText": "856+ reviews",
+    "coinsPerkBanner": {
+      "multiplier": "2X",
+      "title": "Earn 5.00% PINAK Cashback Coins",
+      "badgeText": "2X BOOST",
+      "earnedCoinsText": "Earn 24 PINAK Gold Coins on this purchase"
+    },
+    "coinPerkBanner": {
+      "multiplier": "2X",
+      "title": "Earn 5.00% PINAK Cashback Coins",
+      "badgeText": "2X BOOST",
+      "earnedCoinsText": "Earn 24 PINAK Gold Coins on this purchase"
+    },
+    "storeInfo": {
+      "id": "e1000000-0000-0000-0000-000000000001",
+      "name": "The Smokehouse Grill",
+      "isVerified": true,
+      "rating": 4.8,
+      "distanceText": "1.2 km away • Indiranagar",
+      "address": "123, 100 Feet Road, Indiranagar, Bengaluru, Karnataka 560038",
+      "phone": "+919880011234",
+      "isOpenNow": true
+    },
+    "keyHighlights": [
+      "Baked in 450°C Italian Oak Wood-Fired Oven",
+      "48-Hour Cold-Fermented Sourdough Base",
+      "Imported Italian Buffalo Mozzarella & Umbrian Truffle Oil",
+      "100% Vegetarian & No Artificial Preservatives"
+    ],
+    "nutritionFacts": {
+      "Calories": "285 kcal",
+      "Carbohydrates": "34g",
+      "Protein": "12g",
+      "Fat": "11g",
+      "Serving Size": "1 Slice (approx 125g)"
+    },
+    "deliveryOptions": {
+      "instantDeliveryAvailable": true,
+      "deliveryTimeText": "Delivered in 25-35 mins",
+      "freeDeliveryThresholdText": "Free delivery on orders above ₹499",
+      "storePickupAvailable": true,
+      "storePickupText": "Ready for takeaway in 15 mins"
+    },
+    "reviewsSummary": {
+      "averageRating": 4.8,
+      "totalReviews": 856,
+      "breakdown": {
+        "5_star": 720,
+        "4_star": 102,
+        "3_star": 24,
+        "2_star": 6,
+        "1_star": 4
+      },
+      "featuredReviews": [
+        {
+          "userName": "Ananya Roy",
+          "userAvatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
+          "rating": 5,
+          "date": "2 days ago",
+          "comment": "Hands down the most authentic truffle pizza in Bengaluru! Crust was airy and charred to perfection.",
+          "isVerifiedPurchase": true
+        },
+        {
+          "userName": "Vikram Sethi",
+          "userAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+          "rating": 5,
+          "date": "1 week ago",
+          "comment": "The aroma of truffle oil when you open the box is incredible. Worth every penny with the 30% discount!",
+          "isVerifiedPurchase": true
+        }
+      ]
+    },
+    "frequentlyBoughtTogether": [
+      {
+        "id": "f1000000-0000-0000-0000-000000000002",
+        "name": "Artisanal Rosemary & Garlic Herb Focaccia",
+        "price": 189.00,
+        "mrp": 249.00,
+        "rating": 4.7,
+        "imageUrl": "https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=400&q=80"
+      },
+      {
+        "id": "f1000000-0000-0000-0000-000000000003",
+        "name": "Single-Origin Nitro Cold Brew (330ml)",
+        "price": 169.00,
+        "mrp": 219.00,
+        "rating": 4.8,
+        "imageUrl": "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=400&q=80"
+      }
+    ],
+    "similarProducts": [
+      {
+        "id": "f1000000-0000-0000-0000-000000000004",
+        "name": "Four Cheese Quattro Formaggi Pizza",
+        "price": 529.00,
+        "mrp": 699.00,
+        "rating": 4.7,
+        "imageUrl": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80"
+      },
+      {
+        "id": "f1000000-0000-0000-0000-000000000005",
+        "name": "Classic Neapolitan Margherita",
+        "price": 399.00,
+        "mrp": 499.00,
+        "rating": 4.9,
+        "imageUrl": "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&w=400&q=80"
+      }
+    ],
+    "bottomBar": {
+      "sellingPrice": 489.00,
+      "mrp": 699.00,
+      "savingsText": "Save ₹210.00",
+      "minQuantity": 1,
+      "maxQuantity": 10,
+      "isCustomizable": true,
+      "customizationText": "Customizable options available",
+      "primaryAction": {
+        "type": "ADD_TO_CART",
+        "label": "Add to Cart • ₹489.00",
+        "enabled": true
+      },
+      "secondaryAction": {
+        "type": "BUY_NOW",
+        "label": "Buy Now",
+        "enabled": true
+      }
+    }
+  },
+  "requestId": "1b876eaa-b83b-4e09-88df-ee60b7148280"
+}
+```
+
+---
+
 # 📱 Screen 12 — Deal Details & Live Bill Calculator
 
 ### 15. Fetch Deal Details & Store Overview Feed

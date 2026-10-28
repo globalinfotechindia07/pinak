@@ -83,6 +83,8 @@ public class SecurityConfig {
                         "//api/v1/mobile/stores/**",
                         "/api/v1/mobile/services/**",
                         "//api/v1/mobile/services/**",
+                        "/api/v1/mobile/products/**",
+                        "//api/v1/mobile/products/**",
                         "/api/v1/locations/**",
                         "//api/v1/locations/**"
                 ).permitAll()
@@ -116,6 +118,7 @@ public class SecurityConfig {
                         "/api/v1/banners/**",
                         "/api/v1/categories/**",
                         "/api/v1/discovery/**",
+                        "/api/v1/products/**",
                         "/api/v1/products/deals/nearby",
                         "/api/v1/collections/popular",
                         "/api/v1/discover/**",

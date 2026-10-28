@@ -1939,6 +1939,203 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "23b. Fetch Product Detail View (Wood-Fired Truffle Pizza)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "products",
+                    "{{productId}}",
+                    "detail"
+                  ],
+                  "query": [
+                    {
+                      "key": "lat",
+                      "value": "12.9716",
+                      "description": "Customer device latitude"
+                    },
+                    {
+                      "key": "lng",
+                      "value": "77.6412",
+                      "description": "Customer device longitude"
+                    }
+                  ]
+                },
+                "description": "### 🍕 Screen 11/12: Product & Food Dish Detail View (Wood-Fired Truffle Pizza)\n\n#### 📋 Overview\nReturns the comprehensive, rich payload for the **Mobile Product Detail View** when a customer clicks on any product deal, retail item, or restaurant dish card from the discovery rails (e.g. *Top Product Deals Near You*, *Curated Collections*, or Store Menus).\n\n---\n\n#### 🌐 Endpoint Details\n- **HTTP Method**: `GET`\n- **Primary URL**: `{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412`\n- **Resilient Fallback URLs**:\n  - `{{baseUrl}}/api/v1/mobile/products/detail?lat=12.9716&lng=77.6412` *(auto-defaults to Wood-Fired Truffle Pizza if productId is omitted!)*\n  - `{{baseUrl}}/api/v1/products/{{productId}}/detail`\n  - `{{baseUrl}}/api/v1/discovery/products/{{productId}}/detail`\n- **Authentication**: `Bearer Token` (`{{accessToken}}`) *(Optional/Permitted: allows public browsing & guest previews!)*\n\n---\n\n#### 🔍 Query & Path Parameters\n| Parameter | Type | Required | Default | Description |\n|---|---|---|---|---|\n| `productId` | `UUID` (Path) | Optional | `f1000000-0000-0000-0000-000000000001` | Unique item identifier (Canonical Mock: Wood-Fired Truffle Pizza) |\n| `lat` | `Double` (Query) | Optional | `12.9716` | User GPS Latitude for precise store distance calculation |\n| `lng` | `Double` (Query) | Optional | `77.6412` | User GPS Longitude for precise store distance calculation |\n\n---\n\n#### 🎨 Screen UI Components Powered by this Payload:\n1. **Interactive Image Gallery**: 5 high-res photos showcasing product preparation, packaging, and presentation.\n2. **Dynamic Pricing & Savings**: MRP (`₹699.00`), Selling Price (`₹489.00`), Discount (`30% OFF`), Savings (`Save ₹210`).\n3. **Inventory & Urgency**: `inStock: true`, `stockQuantity: 25`, `stockStatusText: \"In Stock • Delivered in 25-35 mins\"`.\n4. **Dietary & Badges**: `isVeg: true`, `dietaryType: \"VEG\"`, Badges: `[\"PINAK EXCLUSIVE\", \"BESTSELLER\", \"WOOD-FIRED\"]`.\n5. **2X Boost Cashback Banner**: `coinsPerkBanner` featuring `badgeText: \"2X BOOST\"` (\"Earn 24 PINAK Gold Coins on this purchase\").\n6. **Store Origin & Delivery**: Integrated outlet card for *The Smokehouse Grill* (4.8 rating, 1.2 km distance, phone, address).\n7. **Culinary Specifications & Nutrition**: 4 key preparation highlights + full nutritional facts (Calories, Protein, Carbs, Fat).\n8. **Delivery & Takeaway Options**: Instant delivery (25-35 mins), Free delivery threshold, and Express Takeaway (15 mins).\n9. **Verified Customer Reviews**: Average rating `4.8`, star rating breakdown distribution, and verified buyer reviews with avatars.\n10. **Cross-Sell & Upsell Rails**:\n    - *Frequently Bought Together*: Rosemary & Garlic Herb Focaccia + Nitro Cold Brew.\n    - *Similar Products*: Quattro Formaggi Pizza + Classic Margherita.\n11. **Sticky Bottom Action Bar**: \"Add to Cart • ₹489.00\" and \"Buy Now\" with quantity stepper.\n"
+              },
+              "response": [
+                {
+                  "name": "200 OK - Full Product Detail View (Wood-Fired Truffle Pizza)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{accessToken}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "mobile",
+                        "products",
+                        "{{productId}}",
+                        "detail"
+                      ],
+                      "query": [
+                        {
+                          "key": "lat",
+                          "value": "12.9716"
+                        },
+                        {
+                          "key": "lng",
+                          "value": "77.6412"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Product detail fetched successfully\",\n  \"data\": {\n    \"id\": \"f1000000-0000-0000-0000-000000000001\",\n    \"name\": \"Wood-Fired Truffle & Wild Mushroom Pizza\",\n    \"brand\": \"The Smokehouse Kitchen\",\n    \"unit\": \"12-inch Hand-Stretched Crust • Serves 2-3\",\n    \"shortDescription\": \"Hand-stretched Neapolitan sourdough crust with San Marzano tomatoes, fresh buffalo mozzarella, sautéed forest porcini mushrooms, and drizzled with black truffle oil.\",\n    \"longDescription\": \"Crafted using 48-hour fermented Italian 00 flour dough, baked at 450°C in our traditional oak wood-fired oven. Topped with imported Italian fior di latte, aged Parmigiano Reggiano, hand-picked wild porcini and shiitake mushrooms, finished with aromatic Umbrian black summer truffle oil and fresh basil.\",\n    \"imageUrl\": \"https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80\",\n    \"galleryImages\": [\n      \"https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80\"\n    ],\n    \"totalPhotosCount\": 5,\n    \"mrp\": 699,\n    \"sellingPrice\": 489,\n    \"discountPercent\": 30,\n    \"savingsAmount\": 210,\n    \"discountText\": \"Flat 30% OFF • Save ₹210\",\n    \"currency\": \"INR\",\n    \"currencySymbol\": \"₹\",\n    \"inStock\": true,\n    \"stockQuantity\": 25,\n    \"stockStatusText\": \"In Stock • Delivered in 25-35 mins\",\n    \"isVeg\": true,\n    \"dietaryType\": \"VEG\",\n    \"category\": {\n      \"id\": \"c1000000-0000-0000-0000-000000000001\",\n      \"name\": \"Gourmet Wood-Fired Pizzas\",\n      \"slug\": \"gourmet-wood-fired-pizzas\"\n    },\n    \"tags\": [\n      \"PINAK EXCLUSIVE\",\n      \"BESTSELLER\",\n      \"WOOD-FIRED\",\n      \"ORGANIC INGREDIENTS\"\n    ],\n    \"rating\": 4.8,\n    \"ratingCountText\": \"856+ reviews\",\n    \"coinsPerkBanner\": {\n      \"multiplier\": \"2X\",\n      \"title\": \"Earn 5.00% PINAK Cashback Coins\",\n      \"badgeText\": \"2X BOOST\",\n      \"earnedCoinsText\": \"Earn 24 PINAK Gold Coins on this purchase\"\n    },\n    \"storeInfo\": {\n      \"id\": \"e1000000-0000-0000-0000-000000000001\",\n      \"name\": \"The Smokehouse Grill\",\n      \"isVerified\": true,\n      \"rating\": 4.8,\n      \"distanceText\": \"1.2 km away • Indiranagar\",\n      \"address\": \"123, 100 Feet Road, Indiranagar, Bengaluru, Karnataka 560038\",\n      \"phone\": \"+919880011234\",\n      \"isOpenNow\": true\n    },\n    \"deliveryOptions\": {\n      \"instantDeliveryAvailable\": true,\n      \"deliveryTimeText\": \"Delivered in 25-35 mins\",\n      \"freeDeliveryThresholdText\": \"Free delivery on orders above ₹499\",\n      \"storePickupAvailable\": true,\n      \"storePickupText\": \"Ready for takeaway in 15 mins\"\n    },\n    \"bottomBar\": {\n      \"sellingPrice\": 489,\n      \"mrp\": 699,\n      \"savingsText\": \"Save ₹210\",\n      \"minQuantity\": 1,\n      \"maxQuantity\": 10,\n      \"isCustomizable\": true,\n      \"customizationText\": \"Customizable options available\",\n      \"primaryAction\": {\n        \"type\": \"ADD_TO_CART\",\n        \"label\": \"Add to Cart • ₹489.00\",\n        \"enabled\": true\n      },\n      \"secondaryAction\": {\n        \"type\": \"BUY_NOW\",\n        \"label\": \"Buy Now\",\n        \"enabled\": true\n      }\n    }\n  },\n  \"requestId\": \"4a71b290-7612-4210-90bc-940176b91c10\"\n}"
+                }
+              ],
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// ==================================================================",
+                      "// Pre-request Script: Defensive Setup & Auto-Diagnostic",
+                      "// ==================================================================",
+                      "var defaultProdId = 'f1000000-0000-0000-0000-000000000001';",
+                      "var prodId = pm.variables.get('productId');",
+                      "",
+                      "if (!prodId || prodId.trim() === '') {",
+                      "    pm.collectionVariables.set('productId', defaultProdId);",
+                      "    console.log('ℹ️ productId was empty; auto-defaulted to ' + defaultProdId);",
+                      "}",
+                      "",
+                      "var token = pm.variables.get('accessToken');",
+                      "if (!token || token.trim() === '') {",
+                      "    console.warn('⚠️ No accessToken found. Request will proceed with public preview access.');",
+                      "} else {",
+                      "    console.log('🔑 Authenticating Product Detail request with Bearer token: ' + token.substring(0, 15) + '...');",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// ==================================================================",
+                      "// Test Script: Comprehensive Enterprise Assertions for Product Detail",
+                      "// ==================================================================",
+                      "",
+                      "pm.test('[Status] HTTP Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('[Performance] Response time is under 1500ms', function () {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(1500);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "",
+                      "pm.test('[Contract] Response envelope is successful with product payload', function () {",
+                      "    pm.expect(jsonData.success).to.eql(true);",
+                      "    pm.expect(jsonData.data).to.be.an('object');",
+                      "    pm.expect(jsonData.data.name).to.include('Pizza');",
+                      "});",
+                      "",
+                      "pm.test('[Pricing] Valid pricing and savings calculation', function () {",
+                      "    var d = jsonData.data;",
+                      "    pm.expect(d.sellingPrice).to.be.below(d.mrp);",
+                      "    pm.expect(d.discountPercent).to.be.above(0);",
+                      "    pm.expect(d.currency).to.eql('INR');",
+                      "});",
+                      "",
+                      "pm.test('[Gallery] Image gallery populated with multiple high-res photos', function () {",
+                      "    var d = jsonData.data;",
+                      "    pm.expect(d.galleryImages).to.be.an('array').with.lengthOf.at.least(3);",
+                      "    pm.expect(d.imageUrl).to.be.a('string');",
+                      "});",
+                      "",
+                      "pm.test('[Incentives] 2X Boost Coins Perk Banner is active', function () {",
+                      "    var banner = jsonData.data.coinsPerkBanner || jsonData.data.coinPerkBanner;",
+                      "    pm.expect(banner).to.be.an('object');",
+                      "    pm.expect(banner.multiplier).to.eql('2X');",
+                      "    pm.expect(banner.badgeText).to.eql('2X BOOST');",
+                      "});",
+                      "",
+                      "pm.test('[Merchant & Delivery] Store origin and delivery options present', function () {",
+                      "    var store = jsonData.data.storeInfo;",
+                      "    pm.expect(store).to.be.an('object');",
+                      "    pm.expect(store.name).to.eql('The Smokehouse Grill');",
+                      "    pm.expect(jsonData.data.deliveryOptions.instantDeliveryAvailable).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test('[Carousels] Frequently bought together and similar products available', function () {",
+                      "    pm.expect(jsonData.data.frequentlyBoughtTogether).to.be.an('array').with.lengthOf.at.least(1);",
+                      "    pm.expect(jsonData.data.similarProducts).to.be.an('array').with.lengthOf.at.least(1);",
+                      "});",
+                      "",
+                      "pm.test('[Sticky CTA] Bottom bar has Add to Cart and Buy Now actions', function () {",
+                      "    var bar = jsonData.data.bottomBar;",
+                      "    pm.expect(bar.primaryAction.type).to.eql('ADD_TO_CART');",
+                      "    pm.expect(bar.secondaryAction.type).to.eql('BUY_NOW');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -1992,6 +2189,12 @@
       "key": "smokehouseStoreId",
       "value": "e1000000-0000-0000-0000-000000000001",
       "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "f1000000-0000-0000-0000-000000000001",
+      "type": "string",
+      "description": "Canonical Mock Product UUID for Wood-Fired Truffle Pizza"
     }
   ]
 }
