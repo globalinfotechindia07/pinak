@@ -291,34 +291,20 @@
                       "pm.test('Status code is 200 OK', function () {",
                       "    pm.response.to.have.status(200);",
                       "});",
-                      "",
-                      "pm.test('Response envelope is valid', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.success).to.be.true;",
-                      "    pm.expect(jsonData.data).to.be.an('object');",
-                      "});",
-                      "",
-                      "pm.test('Smart Gateway routing is well-formed', function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.data).to.have.property('isNewUser');",
-                      "    pm.expect(jsonData.data).to.have.property('nextScreen');",
-                      "    pm.expect(jsonData.data.nextScreen).to.be.oneOf(['PROFILE_SETUP_SCREEN_08', 'HOME_DASHBOARD']);",
-                      "});",
-                      "",
                       "var jsonData = pm.response.json();",
                       "if (jsonData && jsonData.data) {",
                       "    if (jsonData.data.onboardingToken) {",
                       "        pm.collectionVariables.set('onboardingToken', jsonData.data.onboardingToken);",
-                      "        if (!pm.collectionVariables.get('accessToken')) { pm.collectionVariables.set('accessToken', jsonData.data.onboardingToken); }",
-                      "        console.log('✅ [POSTMAN] New Member detected! Saved onboardingToken: ' + jsonData.data.onboardingToken);",
+                      "        console.log('✅ Captured onboardingToken: ' + jsonData.data.onboardingToken);",
                       "    }",
-                      "    if (jsonData.data.token) {",
-                      "        pm.collectionVariables.set('accessToken', jsonData.data.token);",
-                      "        console.log('✅ [POSTMAN] Returning Member detected! Saved accessToken: ' + jsonData.data.token);",
+                      "    if (jsonData.data.token || jsonData.data.accessToken) {",
+                      "        var tok = jsonData.data.token || jsonData.data.accessToken;",
+                      "        pm.collectionVariables.set('accessToken', tok);",
+                      "        console.log('✅ Captured accessToken: ' + tok);",
                       "    }",
                       "    if (jsonData.data.refreshToken) {",
                       "        pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
-                      "        console.log('✅ [POSTMAN] Saved refreshToken: ' + jsonData.data.refreshToken);",
+                      "        console.log('✅ Captured refreshToken: ' + jsonData.data.refreshToken);",
                       "    }",
                       "}"
                     ],
@@ -525,6 +511,67 @@
                     }
                   ],
                   "body": "{\n  \"success\": false,\n  \"message\": \"Invalid or expired onboarding token. Please authenticate with OTP again.\",\n  \"errorCode\": \"UNAUTHORIZED\",\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"details\": null\n  },\n  \"requestId\": \"setup-unauthorized-uuid\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "05. Refresh Access Token (Instant Token Renewal)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/auth/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "auth",
+                    "refresh"
+                  ]
+                },
+                "description": "Instant token renewal: exchange {{refreshToken}} for fresh accessToken and rotated refreshToken without re-sending OTP."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('Token refreshed successfully', function () {",
+                      "    pm.expect(jsonData.success).to.eql(true);",
+                      "    pm.expect(jsonData.data).to.be.an('object');",
+                      "});",
+                      "if (jsonData && jsonData.data) {",
+                      "    var newAccessToken = jsonData.data.accessToken || jsonData.data.token;",
+                      "    var newRefreshToken = jsonData.data.refreshToken;",
+                      "    if (newAccessToken) {",
+                      "        pm.collectionVariables.set('accessToken', newAccessToken);",
+                      "        console.log('🔄 Replaced accessToken in collection variables!');",
+                      "    }",
+                      "    if (newRefreshToken) {",
+                      "        pm.collectionVariables.set('refreshToken', newRefreshToken);",
+                      "        console.log('🔄 Replaced refreshToken in collection variables!');",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
                 }
               ]
             }

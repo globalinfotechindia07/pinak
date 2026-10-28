@@ -276,6 +276,45 @@ Saves customer profile fields (`fullName`, `email`, `city`, `state`, `gender`, `
 
 ---
 
+### 6c. Instant Token Renewal (Refresh Access Token)
+Used by mobile clients and Postman testing suites to rotate expired access tokens without re-requesting and verifying SMS OTP. Automatically returns a fresh 15-minute Bearer access token and rotates the refresh token.
+
+- **Method**: `POST`
+- **URL**: `/api/v1/mobile/auth/refresh` *(aliases: `/api/v1/auth/refresh`, `/api/v1/mobile/auth/token/refresh`)*
+- **Headers**: `Content-Type: application/json`
+- **Request Body**:
+```json
+{
+  "refreshToken": "{{refreshToken}}"
+}
+```
+- **Response Body (200 OK)**:
+```json
+{
+  "success": true,
+  "message": "Token refreshed successfully",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzM4NCJ9...",
+    "tokenType": "Bearer",
+    "expiresIn": 900,
+    "refreshToken": "eyJhbGciOiJIUzM4NCJ9...",
+    "user": {
+      "id": "7f09c621-0a2b-4cd3-89ef-56789abcdef0",
+      "name": "Rahul Sharma",
+      "email": "rahul.sharma@example.com",
+      "phone": "+919876543210",
+      "role": "CUSTOMER",
+      "status": "ACTIVE",
+      "emailVerified": false,
+      "phoneVerified": true
+    }
+  }
+}
+```
+- **Postman Automation**: The collection test script automatically saves `jsonData.data.accessToken` to `{{accessToken}}` and `jsonData.data.refreshToken` to `{{refreshToken}}`. When an access token expires during testing, clicking **Send** on this request instantly restores access across the entire collection!
+
+---
+
 ### 6b. Master India Location Endpoints (Address Cascading)
 
 Directly mirrors the Admin and Web taxonomy from `indiaLocations.ts` and `IndiaAddressFields.tsx`:

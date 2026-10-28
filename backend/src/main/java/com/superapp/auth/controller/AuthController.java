@@ -33,7 +33,7 @@ import java.util.UUID;
  * password management, email/mobile verification, session management, and CSRF token distribution.
  */
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping({"/api/v1/auth", "/api/v1/mobile/auth", "//api/v1/mobile/auth", "/api/v1/api/v1/mobile/auth"})
 @Tag(name = "Authentication", description = "Authentication, token management, and password operations")
 public class AuthController {
 
@@ -230,15 +230,21 @@ public class AuthController {
     @Operation(summary = "Rotate refresh token and issue new access token")
     public ResponseEntity<ApiResponse<AuthDTO.Response>> refresh(
             @RequestBody(required = false) SessionDTO.RefreshTokenRequest request,
+            @RequestParam(value = "refreshToken", required = false) String refreshTokenParam,
             @CookieValue(name = CookieService.REFRESH_COOKIE_NAME, required = false) String cookieRefreshToken,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
 
         rateLimitService.checkLimit(RateLimitService.REFRESH, getClientIp(httpRequest));
 
-        String rawToken = (cookieRefreshToken != null && !cookieRefreshToken.isBlank())
-                ? cookieRefreshToken
-                : (request != null ? request.refreshToken() : null);
+        String headerToken = httpRequest != null ? httpRequest.getHeader("X-Refresh-Token") : null;
+        String rawToken = (request != null && request.refreshToken() != null && !request.refreshToken().isBlank())
+                ? request.refreshToken().trim()
+                : ((refreshTokenParam != null && !refreshTokenParam.isBlank())
+                        ? refreshTokenParam.trim()
+                        : ((headerToken != null && !headerToken.isBlank())
+                                ? headerToken.trim()
+                                : cookieRefreshToken));
 
         if (rawToken == null || rawToken.isBlank()) {
             throw AuthException.refreshTokenInvalid();
@@ -249,15 +255,21 @@ public class AuthController {
                 getClientIp(httpRequest), httpRequest.getHeader("User-Agent"),
                 getRequestId(httpRequest));
 
-        boolean isWeb = (cookieService != null && !cookieService.isMobileClient(httpRequest))
-                || (cookieRefreshToken != null && !cookieRefreshToken.isBlank());
+        boolean isExplicitBodyRequest = (request != null && request.refreshToken() != null && !request.refreshToken().isBlank());
+        boolean isExplicitParamOrHeader = (refreshTokenParam != null && !refreshTokenParam.isBlank()) || (headerToken != null && !headerToken.isBlank());
+        boolean isMobileUri = httpRequest != null && httpRequest.getRequestURI() != null && httpRequest.getRequestURI().contains("/mobile/");
+        boolean isMobileClient = (cookieService != null && cookieService.isMobileClient(httpRequest)) || isMobileUri || isExplicitBodyRequest || isExplicitParamOrHeader;
 
-        if (isWeb && cookieService != null) {
+        boolean isCookieOnlyWeb = !isMobileClient && (cookieRefreshToken != null && !cookieRefreshToken.isBlank());
+
+        if (cookieService != null) {
             cookieService.attachRefreshCookie(httpRequest, httpResponse, authResponse.refreshToken(),
                     jwtService != null ? jwtService.getRefreshTokenExpirationSeconds() : 604800L);
             String csrf = cookieService.generateCsrfToken();
             cookieService.attachCsrfCookie(httpRequest, httpResponse, csrf);
-            authResponse = AuthDTO.Response.of(authResponse.accessToken(), null, authResponse.expiresIn(), authResponse.user());
+            if (isCookieOnlyWeb) {
+                authResponse = AuthDTO.Response.of(authResponse.accessToken(), null, authResponse.expiresIn(), authResponse.user());
+            }
         }
 
         return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully", authResponse));
