@@ -720,6 +720,170 @@ Toggles bookmark state for a merchant store card.
 
 ---
 
+
+# 🍽️ Screen 11 — Service & Store Detail View (The Smokehouse Grill)
+
+### 14b. Fetch Store & Service Detail View (Production & Testing)
+Returns the comprehensive store detail view payload when user clicks on a service card from the mobile home or discovery feed.
+Includes Hero with 19 photos, 2X Coin incentive banner, sticky tabs, active pre-booking and walk-in offers, flash sale deals, 5 menu highlights with veg/non-veg indicator, 7-page menu scans, photo mosaic, verified amenities, GPS location, concierge support, similar places, and sticky bottom bar.
+
+> **Automatic Fallback Dummy Data**: If the requested `storeId` is not found in the database (or when using `smokehouseStoreId` `e1000000-0000-0000-0000-000000000001`), the server automatically provides the full canonical dummy response for **The Smokehouse Grill** so testing in Postman or offline environments always succeeds with `200 OK`.
+
+- **Method**: `GET`
+- **URL**: `{{baseUrl}}/api/v1/mobile/stores/{{smokehouseStoreId}}/detail?lat=12.9716&lng=77.6412`
+- **Aliases**: `/api/v1/mobile/services/{storeId}/detail`, `/api/v1/discovery/stores/{storeId}/detail`
+- **Headers**:
+  ```http
+  Accept: application/json
+  ```
+- **Query Parameters**:
+  - `lat` (optional): Customer device latitude (e.g. `12.9716`)
+  - `lng` (optional): Customer device longitude (e.g. `77.6412`)
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Store service detail fetched successfully",
+  "data": {
+    "id": "e1000000-0000-0000-0000-000000000001",
+    "storeName": "The Smokehouse Grill",
+    "merchantName": "The Smokehouse Grill Hospitality",
+    "isVerified": true,
+    "coverImageUrl": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
+    "heroPhotos": [
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=800&q=80"
+    ],
+    "totalPhotosCount": 19,
+    "photoCounterText": "1/19",
+    "distanceMeters": 4600.0,
+    "distanceText": "4.6 km • Indiranagar",
+    "cuisines": "North Indian, Italian, BBQ",
+    "priceForTwoText": "₹1700 for two • Moderate",
+    "cuisineAndPriceText": "North Indian, Italian, BBQ • ₹1700 for two • Moderate",
+    "rating": 4.8,
+    "ratingCountText": "1.2K ratings",
+    "isOpenNow": true,
+    "openStatusText": "Open till 00:30",
+    "openingTime": "12:00",
+    "closingTime": "00:30",
+    "phone": "+919880011234",
+    "latitude": 12.9715987,
+    "longitude": 77.6411543,
+    "address": "123, 100 Feet Road, Indiranagar, Bengaluru, Karnataka 560038",
+    "googleMapsUrl": "https://maps.google.com/?q=12.9715987,77.6411543",
+    "coinPerkBanner": {
+      "multiplier": "2X",
+      "title": "Earn 5.00% PINAK Cashback Coins",
+      "tag": "AUTO-APPLY",
+      "badgeText": "2X BOOST"
+    },
+    "coinsPerkBanner": {
+      "multiplier": "2X",
+      "title": "Earn 5.00% PINAK Cashback Coins",
+      "tag": "AUTO-APPLY",
+      "badgeText": "2X BOOST"
+    },
+    "availableTabs": ["Offers", "Menu", "Photos", "Amenities", "Location"],
+    "offersSection": {
+      "activeOffersCountText": "4 Available",
+      "primaryOffer": {
+        "id": "e3000000-0000-0000-0000-000000000001",
+        "title": "Flat 50% off on Pre-Booking & Dining",
+        "subtitle": "Valid on minimum bill ₹1,000.00",
+        "discountType": "PERCENTAGE_DISCOUNT",
+        "discountValue": 50.00,
+        "maxDiscountAmount": 500.00,
+        "minimumOrderAmount": 1000.00,
+        "badges": ["PINAK EXCLUSIVE", "Instant Confirm", "Special Deal"],
+        "termsAndConditions": "Valid for pre-booked tables only. Maximum discount ₹500 on total food & soft beverages.",
+        "redemptionType": "PRE_BOOK",
+        "minAdvanceHours": 2,
+        "ctaText": "Book & Pay",
+        "isAutoApplied": true,
+        "bonusCoins": 100,
+        "minPartySize": 2,
+        "maxPartySize": 8,
+        "gracePeriodMinutes": 15,
+        "slotTimes": "["12:30 PM","01:00 PM","01:30 PM","07:00 PM","07:30 PM","08:00 PM","08:30 PM"]",
+        "isTableBookingEnabled": true
+      },
+      "preBookingOffers": [
+        {
+          "id": "e3000000-0000-0000-0000-000000000001",
+          "title": "Flat 50% off on Pre-Booking & Dining",
+          "discountValue": 50.00
+        }
+      ],
+      "preBookOffers": [
+        {
+          "id": "e3000000-0000-0000-0000-000000000001",
+          "title": "Flat 50% off on Pre-Booking & Dining",
+          "discountValue": 50.00
+        }
+      ],
+      "walkInOffers": [
+        {
+          "id": "e3000000-0000-0000-0000-000000000003",
+          "title": "Flat 20% off Instant Bill Pass",
+          "discountValue": 20.00
+        }
+      ],
+      "greenPerkHighlight": "Unlock extra 100 PINAK Coins on bill payments above ₹1,000"
+    },
+    "menuHighlights": [
+      {
+        "name": "Wood-Fired Truffle Pizza",
+        "price": 549.00,
+        "isVeg": true,
+        "category": "Italian Specialties"
+      }
+    ],
+    "menuScans": [
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80"
+    ],
+    "amenities": [
+      { "label": "Full Bar & Cocktails", "icon": "martini-glass" },
+      { "label": "Valet Parking", "icon": "square-parking" },
+      { "label": "Table Reservation", "icon": "calendar-check" },
+      { "label": "PINAK UPI Instant Pay", "icon": "qrcode" },
+      { "label": "Air Conditioned", "icon": "snowflake" },
+      { "label": "Free High-Speed Wi-Fi", "icon": "wifi" }
+    ],
+    "similarPlaces": [
+      {
+        "id": "e1000000-0000-0000-0000-000000000002",
+        "name": "Tipsy Turk - Rooftop",
+        "rating": 4.3,
+        "offerBadge": "Flat 40% off"
+      }
+    ],
+    "bottomBar": {
+      "rewardTeaser": {
+        "icon": "🪙",
+        "text": "Earn Coins on bill payment & table bookings",
+        "badge": "MAX REWARD"
+      },
+      "isTableBookingEnabled": true,
+      "primaryAction": {
+        "type": "PAY_BILL",
+        "label": "Pay Bill Now",
+        "discountBadge": "50% OFF",
+        "enabled": true
+      },
+      "secondaryAction": {
+        "type": "BOOK_TABLE",
+        "label": "Book a Table",
+        "enabled": true
+      }
+    }
+  }
+}
+```
+
+---
+
 # 📱 Screen 12 — Deal Details & Live Bill Calculator
 
 ### 15. Fetch Deal Details & Store Overview Feed

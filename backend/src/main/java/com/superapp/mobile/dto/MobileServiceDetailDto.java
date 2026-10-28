@@ -37,6 +37,7 @@ public record MobileServiceDetailDto(
 
         // Top Incentive Banner
         CoinPerkBannerDto coinPerkBanner,
+        CoinPerkBannerDto coinsPerkBanner,
 
         // Navigation Tabs
         List<String> availableTabs,
@@ -49,6 +50,8 @@ public record MobileServiceDetailDto(
 
         // Menu Highlights Section
         MenuHighlightsSectionDto menuSection,
+        List<MenuItemDto> menuHighlights,
+        List<String> menuScans,
 
         // Photos Mosaic Section
         PhotoMosaicSectionDto photoMosaic,
@@ -69,20 +72,89 @@ public record MobileServiceDetailDto(
         StickyBottomBarDto bottomBar
 ) implements Serializable {
 
+    public MobileServiceDetailDto(
+            String id,
+            String storeName,
+            String merchantName,
+            boolean isVerified,
+            String coverImageUrl,
+            List<String> heroPhotos,
+            int totalPhotosCount,
+            String photoCounterText,
+            Double distanceMeters,
+            String distanceText,
+            String cuisines,
+            String priceForTwoText,
+            String cuisineAndPriceText,
+            Double rating,
+            String ratingCountText,
+            boolean isOpenNow,
+            String openStatusText,
+            String openingTime,
+            String closingTime,
+            String phone,
+            Double latitude,
+            Double longitude,
+            String address,
+            String googleMapsUrl,
+            CoinPerkBannerDto coinPerkBanner,
+            List<String> availableTabs,
+            OffersSectionDto offersSection,
+            FlashSaleSectionDto flashSales,
+            MenuHighlightsSectionDto menuSection,
+            PhotoMosaicSectionDto photoMosaic,
+            List<AmenityItemDto> amenities,
+            LocationSectionDto locationSection,
+            ConciergeSupportDto concierge,
+            List<SimilarPlaceCardDto> similarPlaces,
+            StickyBottomBarDto bottomBar
+    ) {
+        this(
+                id, storeName, merchantName, isVerified, coverImageUrl, heroPhotos,
+                totalPhotosCount, photoCounterText, distanceMeters, distanceText,
+                cuisines, priceForTwoText, cuisineAndPriceText, rating, ratingCountText,
+                isOpenNow, openStatusText, openingTime, closingTime, phone,
+                latitude, longitude, address, googleMapsUrl,
+                coinPerkBanner, coinPerkBanner,
+                availableTabs, offersSection, flashSales,
+                menuSection,
+                menuSection != null ? menuSection.items() : java.util.Collections.emptyList(),
+                menuSection != null ? menuSection.menuImages() : java.util.Collections.emptyList(),
+                photoMosaic, amenities, locationSection, concierge, similarPlaces, bottomBar
+        );
+    }
+
     public record CoinPerkBannerDto(
             String multiplier,
             String title,
-            String tag
-    ) implements Serializable {}
+            String tag,
+            String badgeText
+    ) implements Serializable {
+        public CoinPerkBannerDto(String multiplier, String title, String tag) {
+            this(multiplier, title, tag, multiplier != null ? multiplier + " BOOST" : "2X BOOST");
+        }
+    }
 
     public record OffersSectionDto(
             String activeOffersCountText,
             StoreOfferCardDto primaryOffer,
             List<StoreOfferCardDto> preBookingOffers,
+            List<StoreOfferCardDto> preBookOffers,
             List<StoreOfferCardDto> walkInOffers,
             List<PartnerChipDto> partnerIncentiveChips,
             String greenPerkHighlight
-    ) implements Serializable {}
+    ) implements Serializable {
+        public OffersSectionDto(
+                String activeOffersCountText,
+                StoreOfferCardDto primaryOffer,
+                List<StoreOfferCardDto> preBookingOffers,
+                List<StoreOfferCardDto> walkInOffers,
+                List<PartnerChipDto> partnerIncentiveChips,
+                String greenPerkHighlight
+        ) {
+            this(activeOffersCountText, primaryOffer, preBookingOffers, preBookingOffers, walkInOffers, partnerIncentiveChips, greenPerkHighlight);
+        }
+    }
 
     public record StoreOfferCardDto(
             String id,

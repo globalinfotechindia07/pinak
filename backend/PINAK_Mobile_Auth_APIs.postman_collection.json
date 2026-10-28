@@ -47,6 +47,12 @@
       "value": "",
       "type": "string",
       "description": "Auto-captured refresh token"
+    },
+    {
+      "key": "smokehouseStoreId",
+      "value": "e1000000-0000-0000-0000-000000000001",
+      "type": "string",
+      "description": "The Smokehouse Grill Mock Store UUID for Screen 11 Service Detail"
     }
   ],
   "item": [
@@ -94,8 +100,16 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/v1/mobile/auth/send-otp",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "mobile", "auth", "send-otp"]
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mobile",
+            "auth",
+            "send-otp"
+          ]
         },
         "description": "Triggers 6-digit OTP delivery to the customer's phone and records the challenge in PostgreSQL `mobile_otps` table."
       },
@@ -166,8 +180,16 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/v1/mobile/auth/resend-otp",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "mobile", "auth", "resend-otp"]
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mobile",
+            "auth",
+            "resend-otp"
+          ]
         },
         "description": "Resends a new 6-digit OTP code once the 60-second cooldown expires."
       },
@@ -231,8 +253,16 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/v1/mobile/auth/verify-otp",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "mobile", "auth", "verify-otp"]
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mobile",
+            "auth",
+            "verify-otp"
+          ]
         },
         "description": "Validates the 6-digit OTP code directly from PostgreSQL `mobile_otps` table and routes returning members to Home Dashboard or new signups to Screen 08 Profile Setup."
       },
@@ -311,8 +341,16 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/v1/mobile/auth/verify-otp",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "mobile", "auth", "verify-otp"]
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mobile",
+            "auth",
+            "verify-otp"
+          ]
         },
         "description": "Tests rejection of wrong OTP code (returns 401 Unauthorized)."
       },
@@ -359,8 +397,15 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/v1/discovery/states",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "discovery", "states"]
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "discovery",
+            "states"
+          ]
         },
         "description": "Returns distinct list of states for profile setup dropdown. Cities can be fetched via `GET /api/v1/discovery/cities?state=Gujarat`."
       }
@@ -392,8 +437,15 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/v1/discovery/categories",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "discovery", "categories"]
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "discovery",
+            "categories"
+          ]
         },
         "description": "Returns active categories configured by Admin/Merchant to allow users to select category preferences."
       }
@@ -446,8 +498,16 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/v1/mobile/auth/complete-setup",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "mobile", "auth", "complete-setup"]
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mobile",
+            "auth",
+            "complete-setup"
+          ]
         },
         "description": "Finalizes customer profile using scoped onboarding token. Enriches name, email, city, state, district, pincode, gender, address, birthday, referralCode, and categoryPreferences. Unlocks ₹100 welcome coupon and returns permanent tokens."
       },
@@ -464,6 +524,98 @@
             }
           ],
           "body": "{\n  \"success\": true,\n  \"message\": \"Profile setup completed successfully\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Rahul Sharma\",\n      \"email\": \"rahul.sharma@example.com\",\n      \"mobile\": \"+919876543210\",\n      \"city\": \"Ahmedabad\",\n      \"state\": \"Gujarat\",\n      \"district\": \"Ahmedabad\",\n      \"pincode\": \"380015\",\n      \"address\": \"101, Galaxy Heights, S.G. Highway\",\n      \"gender\": \"MALE\",\n      \"birthday\": \"1998-05-15\",\n      \"referralCode\": \"PINAK8899\",\n      \"role\": \"CUSTOMER\",\n      \"profileCompleted\": true\n    },\n    \"welcomeBonusUnlocked\": true,\n    \"rewardCoupon\": {\n      \"code\": \"WELCOME100\",\n      \"title\": \"Flat ₹100 Off First Order\",\n      \"discountAmount\": 100.0,\n      \"description\": \"Welcome to PINAK! ₹100 discount applied to your rewards wallet\"\n    },\n    \"nextScreen\": \"PERMISSIONS_CONSENT_SCREEN_09\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "8. Fetch Service / Store Detail (Screen 11 - The Smokehouse Grill)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/mobile/stores/{{smokehouseStoreId}}/detail?lat=12.9716&lng=77.6412",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "mobile",
+            "stores",
+            "{{smokehouseStoreId}}",
+            "detail"
+          ],
+          "query": [
+            {
+              "key": "lat",
+              "value": "12.9716",
+              "description": "User current latitude for dynamic distance calculation"
+            },
+            {
+              "key": "lng",
+              "value": "77.6412",
+              "description": "User current longitude for dynamic distance calculation"
+            }
+          ]
+        },
+        "description": "Fetches the full 1-to-1 Store and Service Detail View matching Screen 11 (The Smokehouse Grill). Returns hero carousel, 2X coin perks, segmented Pre-Booking and Walk-In offers, flash sale deals, 5 menu highlights with veg/non-veg indicator, 7-page menu scans, photo mosaic (+14 more), verified amenities, live GPS location, 24/7 concierge support, similar places, and sticky bottom bar CTAs."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response payload is successful with valid schema', function () {",
+              "    var res = pm.response.json();",
+              "    pm.expect(res.success).to.eql(true);",
+              "    pm.expect(res.data).to.be.an('object');",
+              "    pm.expect(res.data.id).to.eql('e1000000-0000-0000-0000-000000000001');",
+              "    pm.expect(res.data.storeName).to.eql('The Smokehouse Grill');",
+              "});",
+              "",
+              "pm.test('Hero photos and overview details match Screen 11', function () {",
+              "    var data = pm.response.json().data;",
+              "    pm.expect(data.heroPhotos.length).to.be.at.least(4);",
+              "    pm.expect(data.cuisines).to.include('North Indian');",
+              "    pm.expect(data.priceForTwoText).to.include('1700 for two');",
+              "    pm.expect(data.rating).to.eql(4.8);",
+              "    pm.expect(data.ratingCountText).to.include('ratings');",
+              "    pm.expect(data.isOpenNow).to.eql(true);",
+              "});",
+              "",
+              "pm.test('Coin perk banner returns 2X boost rewards', function () {",
+              "    var data = pm.response.json().data;",
+              "    pm.expect(data.coinsPerkBanner).to.be.an('object');",
+              "    pm.expect(data.coinsPerkBanner.badgeText).to.eql('2X BOOST');",
+              "});",
+              "",
+              "pm.test('Offers section has both Pre-Booking and Walk-In segmented offers', function () {",
+              "    var offers = pm.response.json().data.offersSection;",
+              "    pm.expect(offers.preBookOffers.length).to.be.at.least(2);",
+              "    pm.expect(offers.walkInOffers.length).to.be.at.least(2);",
+              "    pm.expect(offers.preBookOffers[0].title).to.include('Flat 50% off');",
+              "});",
+              "",
+              "pm.test('Menu highlights and scan cards are present', function () {",
+              "    var data = pm.response.json().data;",
+              "    pm.expect(data.menuHighlights.length).to.be.at.least(5);",
+              "    pm.expect(data.menuScans.length).to.be.at.least(5);",
+              "    pm.expect(data.amenities.length).to.be.at.least(6);",
+              "    pm.expect(data.similarPlaces.length).to.be.at.least(2);",
+              "    pm.expect(data.bottomBar.primaryAction.label).to.eql('Pay Bill Now');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
         }
       ]
     }
