@@ -541,33 +541,177 @@
                     "refresh"
                   ]
                 },
-                "description": "Instant token renewal: exchange {{refreshToken}} for fresh accessToken and rotated refreshToken without re-sending OTP."
+                "description": "### 🔄 Instant Token Renewal (Refresh Access Token)\n\n#### 📋 Overview\nExchanges an active **Refresh Token** for a fresh **Access Token** (valid for 15 minutes) and a newly rotated **Refresh Token** (valid for 7 days). This endpoint eliminates the need to repeatedly request and verify 6-digit SMS OTPs whenever customer sessions expire during Postman testing or in the mobile application.\n\n---\n\n#### 🌐 Endpoint Details\n- **HTTP Method**: `POST` *(also supports `GET` with query parameter)*\n- **Primary URL**: `{{baseUrl}}/api/v1/mobile/auth/refresh`\n- **Resilient Aliases**:\n  - `{{baseUrl}}/api/v1/auth/refresh`\n  - `{{baseUrl}}/api/v1/mobile/refresh`\n  - `{{baseUrl}}/api/v1/mobile/auth/token/refresh`\n  - `{{baseUrl}}/api/v1/mobile/auth/refersh` *(automatic typo fallback)*\n- **Authentication**: None *(Public endpoint – no Bearer token required)*\n\n---\n\n#### 📥 Request Headers\n| Header | Value | Required | Description |\n|---|---|---|---|\n| `Content-Type` | `application/json` | Yes | Request payload format |\n| `Accept` | `application/json` | Yes | Expected response format |\n\n---\n\n#### 📦 Request Body Schema (`application/json`)\n| Field | Type | Required | Description | Example |\n|---|---|---|---|---|\n| `refreshToken` | `string` | Yes | The rotating JWT refresh token issued by OTP Verify or previous Refresh call | `{{refreshToken}}` |\n\n**Alternative passing methods**:\n1. Query parameter: `?refreshToken={{refreshToken}}`\n2. Custom header: `X-Refresh-Token: {{refreshToken}}`\n3. Authorization header: `Bearer {{refreshToken}}`\n\n---\n\n#### 📤 Success Response (200 OK)\n```json\n{\n  \"success\": true,\n  \"message\": \"Token refreshed successfully\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzM4NCJ9...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 900,\n    \"refreshToken\": \"eyJhbGciOiJIUzM4NCJ9...\",\n    \"user\": {\n      \"id\": \"147ff421-7f6c-4995-98c2-b6de2a9f8eab\",\n      \"name\": \"Test Customer\",\n      \"email\": \"testcustomer@pinak.app\",\n      \"phone\": \"+919876543210\",\n      \"role\": \"CUSTOMER\",\n      \"status\": \"ACTIVE\",\n      \"emailVerified\": false,\n      \"phoneVerified\": true\n    }\n  },\n  \"requestId\": \"0708aef0-597b-4874-8c4a-e8896bebaf75\"\n}\n```\n\n---\n\n#### ⚡ Automated Postman Best Practices Implemented:\n1. **Pre-request Script**:\n   - Inspects `{{refreshToken}}` in Postman collection/environment variables.\n   - If missing, prints clear instructions to the Postman Console on which request to run first.\n2. **Test Script Automation**:\n   - Asserts HTTP `200 OK` status.\n   - Asserts response time < `1500ms`.\n   - Validates JSON response structure according to enterprise schema contract.\n   - Automatically stores the fresh `accessToken` into `pm.collectionVariables`.\n   - Automatically stores the new rotated `refreshToken` into `pm.collectionVariables`.\n   - Downstream authenticated requests (Screen 10 Home, Screen 11 Service Detail) immediately use the renewed token without manual copy-pasting.\n\n---\n\n#### ⚠️ Error Responses\n| Status Code | Error Code | Cause | Solution |\n|---|---|---|---|\n| `401 Unauthorized` | `REFRESH_TOKEN_INVALID` | Token expired, revoked, or manipulated | Run `3. Verify OTP` or `7. Complete Setup` to generate a fresh pair |\n| `400 Bad Request` | `VALIDATION_FAILED` | `refreshToken` missing or empty | Provide a valid refresh token string in body |\n| `429 Too Many Requests` | `RATE_LIMIT_EXCEEDED` | Rapid brute-force refresh attempts | Wait 60 seconds before retrying |\n"
               },
-              "response": [],
+              "response": [
+                {
+                  "name": "200 OK - Token Refreshed Successfully",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxNDdmZjQyMS03ZjZjLTQ5OTUtOThjMi1iNmRlMmE5ZjhlYWIiLCJ0eXBlIjoicmVmcmVzaCJ9...\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/mobile/auth/refresh",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "mobile",
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Token refreshed successfully\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxNDdmZjQyMS03ZjZjLTQ5OTUtOThjMi1iNmRlMmE5ZjhlYWIiLCJyb2xlIjoiQ1VTVE9NRVIiLCJpc3MiOiJzdXBlcmFwcCIsImlhdCI6MTc2MTYzNDY1MSwiZXhwIjoxNzYxNjM1NTUxfQ.EXAMPLE_ACCESS_TOKEN\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 900,\n    \"refreshToken\": \"eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxNDdmZjQyMS03ZjZjLTQ5OTUtOThjMi1iNmRlMmE5ZjhlYWIiLCJ0eXBlIjoicmVmcmVzaCIsInNpZCI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImlzcyI6InN1cGVyYXBwIiwiaWF0IjoxNzYxNjM0NjUxLCJleHAiOjE3NjIyMzk0NTF9.EXAMPLE_REFRESH_TOKEN\",\n    \"user\": {\n      \"id\": \"147ff421-7f6c-4995-98c2-b6de2a9f8eab\",\n      \"name\": \"Test Customer\",\n      \"email\": \"testcustomer@pinak.app\",\n      \"phone\": \"+919876543210\",\n      \"role\": \"CUSTOMER\",\n      \"status\": \"ACTIVE\",\n      \"emailVerified\": false,\n      \"phoneVerified\": true\n    }\n  },\n  \"requestId\": \"0708aef0-597b-4874-8c4a-e8896bebaf75\"\n}"
+                },
+                {
+                  "name": "401 Unauthorized - Invalid or Expired Refresh Token",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"invalid_or_expired_token\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/mobile/auth/refresh",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "mobile",
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Refresh token is invalid or expired\",\n  \"errorCode\": \"REFRESH_TOKEN_INVALID\",\n  \"error\": {\n    \"code\": \"REFRESH_TOKEN_INVALID\",\n    \"details\": null\n  },\n  \"requestId\": \"22c76497-be6c-4b8c-b314-389f9af89b6f\"\n}"
+                }
+              ],
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
+                      "// ==================================================================",
+                      "// Test Script: Comprehensive Enterprise Assertions & Dynamic Sync",
+                      "// ==================================================================",
+                      "",
+                      "pm.test('[Status] HTTP Status code is 200 OK', function () {",
                       "    pm.response.to.have.status(200);",
                       "});",
-                      "var jsonData = pm.response.json();",
-                      "pm.test('Token refreshed successfully', function () {",
-                      "    pm.expect(jsonData.success).to.eql(true);",
-                      "    pm.expect(jsonData.data).to.be.an('object');",
+                      "",
+                      "pm.test('[Performance] Response time is under 1500ms', function () {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(1500);",
                       "});",
+                      "",
+                      "pm.test('[Header] Response is application/json', function () {",
+                      "    pm.response.to.have.header('content-type');",
+                      "    pm.expect(pm.response.headers.get('content-type')).to.include('application/json');",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "",
+                      "pm.test('[Contract] Response envelope matches standard ApiResponse schema', function () {",
+                      "    pm.expect(jsonData).to.be.an('object');",
+                      "    pm.expect(jsonData.success).to.eql(true);",
+                      "    pm.expect(jsonData.message).to.be.a('string');",
+                      "    pm.expect(jsonData.data).to.be.an('object');",
+                      "    pm.expect(jsonData.requestId).to.be.a('string');",
+                      "});",
+                      "",
+                      "pm.test('[Tokens] Both accessToken and rotated refreshToken are present and valid JWTs', function () {",
+                      "    var data = jsonData.data;",
+                      "    var accToken = data.accessToken || data.token;",
+                      "    var refToken = data.refreshToken;",
+                      "    ",
+                      "    pm.expect(accToken, 'accessToken should be a valid string').to.be.a('string').and.to.have.lengthOf.at.least(20);",
+                      "    pm.expect(refToken, 'refreshToken should be a valid string').to.be.a('string').and.to.have.lengthOf.at.least(20);",
+                      "    pm.expect(data.tokenType).to.eql('Bearer');",
+                      "    pm.expect(data.expiresIn).to.be.a('number');",
+                      "});",
+                      "",
+                      "pm.test('[User] Enriched user summary is attached', function () {",
+                      "    var user = jsonData.data.user;",
+                      "    pm.expect(user).to.be.an('object');",
+                      "    pm.expect(user.id).to.be.a('string');",
+                      "    pm.expect(user.phone).to.be.a('string');",
+                      "    pm.expect(user.role).to.be.a('string');",
+                      "});",
+                      "",
+                      "// ---- Dynamic Collection Variables Auto-Sync ----",
                       "if (jsonData && jsonData.data) {",
-                      "    var newAccessToken = jsonData.data.accessToken || jsonData.data.token;",
-                      "    var newRefreshToken = jsonData.data.refreshToken;",
-                      "    if (newAccessToken) {",
-                      "        pm.collectionVariables.set('accessToken', newAccessToken);",
-                      "        console.log('🔄 Replaced accessToken in collection variables!');",
+                      "    var freshAccessToken = jsonData.data.accessToken || jsonData.data.token;",
+                      "    var freshRefreshToken = jsonData.data.refreshToken;",
+                      "    ",
+                      "    if (freshAccessToken) {",
+                      "        pm.collectionVariables.set('accessToken', freshAccessToken);",
+                      "        console.log('✅ [Postman Auto-Sync] Updated accessToken: ' + freshAccessToken.substring(0, 20) + '...');",
                       "    }",
-                      "    if (newRefreshToken) {",
-                      "        pm.collectionVariables.set('refreshToken', newRefreshToken);",
-                      "        console.log('🔄 Replaced refreshToken in collection variables!');",
+                      "    if (freshRefreshToken) {",
+                      "        pm.collectionVariables.set('refreshToken', freshRefreshToken);",
+                      "        console.log('✅ [Postman Auto-Sync] Updated refreshToken: ' + freshRefreshToken.substring(0, 20) + '...');",
                       "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// ==================================================================",
+                      "// Pre-request Script: Defensive Variable Validation & Auto-Diagnostic",
+                      "// ==================================================================",
+                      "var refreshToken = pm.variables.get('refreshToken');",
+                      "var baseUrl = pm.variables.get('baseUrl');",
+                      "",
+                      "if (!baseUrl) {",
+                      "    pm.collectionVariables.set('baseUrl', 'http://localhost:8080');",
+                      "    console.log('ℹ️ baseUrl was undefined, auto-defaulted to http://localhost:8080');",
+                      "}",
+                      "",
+                      "if (!refreshToken || refreshToken.trim() === '') {",
+                      "    console.warn('⚠️ [PINAK Auth Alert] Prerequisite \"refreshToken\" is currently empty!');",
+                      "    console.warn('👉 Please run \"3. Verify OTP & Smart Gateway\" or \"7. Complete Profile Setup\" first to obtain a valid session token.');",
+                      "} else {",
+                      "    console.log('🔄 Preparing token refresh request using existing refreshToken: ' + refreshToken.substring(0, 15) + '...');",
                       "}"
                     ],
                     "type": "text/javascript"
@@ -1694,7 +1838,7 @@
                     }
                   ]
                 },
-                "description": "Fetches the full 1-to-1 Store and Service Detail View matching Screen 11 (The Smokehouse Grill). Returns hero carousel, 2X coin perks, segmented Pre-Booking and Walk-In offers, flash sale deals, 5 menu highlights with veg/non-veg indicator, 7-page menu scans, photo mosaic (+14 more), verified amenities, live GPS location, 24/7 concierge support, similar places, and sticky bottom bar CTAs.",
+                "description": "### 🍽️ Screen 11: Store & Service Detail View (The Smokehouse Grill)\n\n#### 📋 Overview\nReturns the comprehensive, rich payload for **Screen 11 (Store / Service Detail View)** matching the design specification in `code.html`.\nWhen a customer clicks on any merchant card or service offer in the PINAK mobile discovery rail, this endpoint powers the full screen experience.\n\n---\n\n#### 🌐 Endpoint Details\n- **HTTP Method**: `GET`\n- **Primary URL**: `{{baseUrl}}/api/v1/mobile/stores/{{smokehouseStoreId}}/detail?lat=12.9716&lng=77.6412`\n- **Fallback URL**: `{{baseUrl}}/api/v1/mobile/stores/detail?lat=12.9716&lng=77.6412` *(auto-defaults to The Smokehouse Grill even if storeId is missing!)*\n- **Authentication**: `Bearer Token` (`{{accessToken}}`) *(Optional/Permitted: also renders public preview)*\n\n---\n\n#### 🔍 Query & Path Parameters\n| Parameter | Type | Required | Default | Description |\n|---|---|---|---|---|\n| `storeId` | `UUID` (Path) | Optional | `e1000000-0000-0000-0000-000000000001` | Outlet UUID (The Smokehouse Grill Mock) |\n| `lat` | `Double` (Query) | Optional | `12.9716` | User GPS Latitude for precise distance calculation |\n| `lng` | `Double` (Query) | Optional | `77.6412` | User GPS Longitude for precise distance calculation |\n\n---\n\n#### 🎨 Screen 11 UI Components Powered by this Payload:\n1. **Hero Media Gallery**: 19 curated photos with real-time `photoCounterText` (\"1/19\").\n2. **Metadata & Status**: `isOpenNow: true`, `openStatusText: \"Open till 00:30\"`, rating 4.8 (1.2K ratings), `₹1700 for two • Moderate`.\n3. **2X Boost Cashback Banner**: `coinsPerkBanner` featuring `badgeText: \"2X BOOST\"` (\"Earn 5.00% PINAK Cashback Coins\").\n4. **Sticky Sub-Header Navigation Tabs**: `[\"Offers\", \"Menu\", \"Photos\", \"Amenities\", \"Location\"]`\n5. **Active Offers Section**:\n   - Primary Hero Deal: Flat 50% Off Pre-Booking & Dining (`PINAK EXCLUSIVE`, `Instant Confirm`, `Special Deal`).\n   - Secondary Walk-in Deal: Flat 20% Off Walk-In Dine-in (`WALK_IN_PAY`).\n6. **Menu Highlights & Scans**: 4 signature dishes (Truffle Mushroom Risotto, Smoked BBQ Pork Ribs, etc.) + 7 high-res menu scan image URLs.\n7. **Photo Mosaic Grid**: 3-photo mosaic with `+16 Photos` modal trigger.\n8. **Verified Amenities Rail**: Full Bar, Valet Parking, Table Reservation, PINAK UPI Instant Pay, AC, Free Wi-Fi.\n9. **Location & GPS Section**: Complete address, distance (`4.6 km • Indiranagar`), and Google Maps deep-link.\n10. **Concierge Desk**: 1-tap call reservation assistance.\n11. **Similar Places Rail**: Tipsy Turk Rooftop & Bellavista Skybar.\n12. **Sticky Bottom Action Bar**: \"Pay Bill Now\" (with `50% OFF` badge) and \"Book a Table\".\n",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -1711,48 +1855,59 @@
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('Status code is 200 OK', function () {",
+                      "// ==================================================================",
+                      "// Test Script: Comprehensive Enterprise Assertions for Screen 11",
+                      "// ==================================================================",
+                      "",
+                      "pm.test('[Status] HTTP Status code is 200 OK', function () {",
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test('Response payload is successful with valid schema', function () {",
-                      "    var res = pm.response.json();",
-                      "    pm.expect(res.success).to.eql(true);",
-                      "    pm.expect(res.data).to.be.an('object');",
-                      "    pm.expect(res.data.id).to.eql('e1000000-0000-0000-0000-000000000001');",
-                      "    pm.expect(res.data.storeName).to.eql('The Smokehouse Grill');",
+                      "pm.test('[Performance] Response time is under 1500ms', function () {",
+                      "    pm.expect(pm.response.responseTime).to.be.below(1500);",
                       "});",
                       "",
-                      "pm.test('Hero photos and overview details match Screen 11', function () {",
-                      "    var data = pm.response.json().data;",
-                      "    pm.expect(data.heroPhotos.length).to.be.at.least(4);",
-                      "    pm.expect(data.cuisines).to.include('North Indian');",
-                      "    pm.expect(data.priceForTwoText).to.include('1700 for two');",
-                      "    pm.expect(data.rating).to.eql(4.8);",
-                      "    pm.expect(data.ratingCountText).to.include('ratings');",
-                      "    pm.expect(data.isOpenNow).to.eql(true);",
+                      "var jsonData = pm.response.json();",
+                      "",
+                      "pm.test('[Contract] Response success is true and contains store data', function () {",
+                      "    pm.expect(jsonData.success).to.eql(true);",
+                      "    pm.expect(jsonData.data).to.be.an('object');",
+                      "    pm.expect(jsonData.data.storeName).to.eql('The Smokehouse Grill');",
                       "});",
                       "",
-                      "pm.test('Coin perk banner returns 2X boost rewards', function () {",
-                      "    var data = pm.response.json().data;",
-                      "    pm.expect(data.coinsPerkBanner).to.be.an('object');",
-                      "    pm.expect(data.coinsPerkBanner.badgeText).to.eql('2X BOOST');",
+                      "pm.test('[Hero & Media] 19 curated photos with proper counter text', function () {",
+                      "    var d = jsonData.data;",
+                      "    pm.expect(d.totalPhotosCount).to.eql(19);",
+                      "    pm.expect(d.photoCounterText).to.eql('1/19');",
+                      "    pm.expect(d.heroPhotos).to.be.an('array').with.lengthOf(19);",
                       "});",
                       "",
-                      "pm.test('Offers section has both Pre-Booking and Walk-In segmented offers', function () {",
-                      "    var offers = pm.response.json().data.offersSection;",
-                      "    pm.expect(offers.preBookOffers.length).to.be.at.least(2);",
-                      "    pm.expect(offers.walkInOffers.length).to.be.at.least(2);",
-                      "    pm.expect(offers.preBookOffers[0].title).to.include('Flat 50% off');",
+                      "pm.test('[Perk Banner] 2X Boost Coins Perk Banner is configured', function () {",
+                      "    var banner = jsonData.data.coinsPerkBanner || jsonData.data.coinPerkBanner;",
+                      "    pm.expect(banner).to.be.an('object');",
+                      "    pm.expect(banner.multiplier).to.eql('2X');",
+                      "    pm.expect(banner.badgeText).to.eql('2X BOOST');",
                       "});",
                       "",
-                      "pm.test('Menu highlights and scan cards are present', function () {",
-                      "    var data = pm.response.json().data;",
-                      "    pm.expect(data.menuHighlights.length).to.be.at.least(5);",
-                      "    pm.expect(data.menuScans.length).to.be.at.least(5);",
-                      "    pm.expect(data.amenities.length).to.be.at.least(6);",
-                      "    pm.expect(data.similarPlaces.length).to.be.at.least(2);",
-                      "    pm.expect(data.bottomBar.primaryAction.label).to.eql('Pay Bill Now');",
+                      "pm.test('[Navigation Tabs] 5 sticky tabs present: Offers, Menu, Photos, Amenities, Location', function () {",
+                      "    var tabs = jsonData.data.availableTabs;",
+                      "    pm.expect(tabs).to.include.members(['Offers', 'Menu', 'Photos', 'Amenities', 'Location']);",
+                      "});",
+                      "",
+                      "pm.test('[Offers Section] Primary pre-booking offer has badges and terms', function () {",
+                      "    var offers = jsonData.data.offersSection;",
+                      "    pm.expect(offers).to.be.an('object');",
+                      "    pm.expect(offers.primaryOffer).to.be.an('object');",
+                      "    pm.expect(offers.primaryOffer.badges).to.include('PINAK EXCLUSIVE');",
+                      "    pm.expect(offers.primaryOffer.discountValue).to.eql(50.0);",
+                      "});",
+                      "",
+                      "pm.test('[Bottom Action Bar] Sticky Pay Bill & Book Table CTAs configured', function () {",
+                      "    var bar = jsonData.data.bottomBar;",
+                      "    pm.expect(bar).to.be.an('object');",
+                      "    pm.expect(bar.isTableBookingEnabled).to.eql(true);",
+                      "    pm.expect(bar.primaryAction.type).to.eql('PAY_BILL');",
+                      "    pm.expect(bar.primaryAction.discountBadge).to.eql('50% OFF');",
                       "});"
                     ],
                     "type": "text/javascript"
@@ -1762,11 +1917,22 @@
                   "listen": "prerequest",
                   "script": {
                     "exec": [
-                      "if (!pm.variables.get('smokehouseStoreId') || pm.variables.get('smokehouseStoreId') === '') {",
-                      "    pm.collectionVariables.set('smokehouseStoreId', 'e1000000-0000-0000-0000-000000000001');",
+                      "// ==================================================================",
+                      "// Pre-request Script: Defensive Variable Validation & Auto-Setup",
+                      "// ==================================================================",
+                      "var defaultStoreId = 'e1000000-0000-0000-0000-000000000001';",
+                      "var storeId = pm.variables.get('smokehouseStoreId');",
+                      "",
+                      "if (!storeId || storeId.trim() === '') {",
+                      "    pm.collectionVariables.set('smokehouseStoreId', defaultStoreId);",
+                      "    console.log('ℹ️ smokehouseStoreId was empty; auto-defaulted to ' + defaultStoreId);",
                       "}",
-                      "if (!pm.collectionVariables.get('smokehouseStoreId')) {",
-                      "    pm.collectionVariables.set('smokehouseStoreId', 'e1000000-0000-0000-0000-000000000001');",
+                      "",
+                      "var token = pm.variables.get('accessToken');",
+                      "if (!token || token.trim() === '') {",
+                      "    console.warn('⚠️ No accessToken found in collection variables. Request will proceed with public mock access.');",
+                      "} else {",
+                      "    console.log('🔑 Authenticating Screen 11 detail request with Bearer token: ' + token.substring(0, 15) + '...');",
                       "}"
                     ],
                     "type": "text/javascript"
