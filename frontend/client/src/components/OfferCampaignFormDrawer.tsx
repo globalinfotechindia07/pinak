@@ -1588,6 +1588,43 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     </div>
                   )}
 
+                  {/* Campaign Budget Limit & Customer Usage Limits */}
+                  <div className="pt-2.5 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block text-[11px] mb-1">
+                        Campaign Budget Limit (Max Uses)
+                      </label>
+                      <input
+                        type="number"
+                        value={maxTotalRedemptions ?? ""}
+                        onChange={(e) => setMaxTotalRedemptions(e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="e.g. 500 (or leave empty for Unlimited)"
+                        min={1}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-extrabold text-slate-900 dark:text-white"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">
+                        Total budget cap across all customers
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block text-[11px] mb-1">
+                        Per-Customer Usage Limit
+                      </label>
+                      <input
+                        type="number"
+                        value={perUserLimit ?? 1}
+                        onChange={(e) => setPerUserLimit(e.target.value ? Number(e.target.value) : 1)}
+                        min={1}
+                        max={100}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-extrabold text-slate-900 dark:text-white"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">
+                        Times a single user can claim
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Live Calculation Feedback */}
                   <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between">
                     <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">

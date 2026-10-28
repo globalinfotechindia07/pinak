@@ -97,7 +97,14 @@ public record MobileServiceDetailDto(
             String redemptionType,
             Integer minAdvanceHours,
             String ctaText,
-            boolean isAutoApplied
+            boolean isAutoApplied,
+            Integer bonusCoins,
+            BigDecimal coverChargeAmount,
+            Integer minPartySize,
+            Integer maxPartySize,
+            Integer gracePeriodMinutes,
+            String slotTimes,
+            Boolean isTableBookingEnabled
     ) implements Serializable {}
 
     public record PartnerChipDto(

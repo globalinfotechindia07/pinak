@@ -14,6 +14,7 @@ import com.superapp.offer.repository.OfferRepository;
 import com.superapp.product.entity.Product;
 import com.superapp.product.repository.ProductRepository;
 import com.superapp.store.entity.Store;
+import com.superapp.store.enums.StoreStatus;
 import com.superapp.store.repository.StoreRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,101 +62,141 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
             merchant = merchantRepository.findById(store.getMerchantId()).orElse(null);
         }
 
-        // 1. Distance Calculation
-        double lat1 = userLat != null ? userLat : 12.9715987; // Default to Bangalore Indiranagar zone
-        double lon1 = userLng != null ? userLng : 77.6411543;
-        double storeLat = store.getLatitude() != null ? store.getLatitude().doubleValue() : 12.9715987;
-        double storeLon = store.getLongitude() != null ? store.getLongitude().doubleValue() : 77.6411543;
-        double distanceMeters = calculateDistanceMeters(lat1, lon1, storeLat, storeLon);
-        double distanceKm = Math.round((distanceMeters / 1000.0) * 10.0) / 10.0;
-        if (distanceKm < 0.1) distanceKm = 4.6; // Realistic aesthetic default matching code.html
-
+        // 1. Distance Calculation from actual store coordinates
+        double storeLat = store.getLatitude() != null ? store.getLatitude().doubleValue() : 0.0;
+        double storeLon = store.getLongitude() != null ? store.getLongitude().doubleValue() : 0.0;
         String locality = extractLocality(store.getAddress(), store.getState());
-        String distanceText = String.format(Locale.US, "%.1f km • %s", distanceKm, locality);
+        String distanceText;
+        double distanceMeters = 0.0;
 
-        // 2. Photos & Ambiance
+        if (userLat != null && userLng != null && storeLat != 0.0 && storeLon != 0.0) {
+            distanceMeters = calculateDistanceMeters(userLat, userLng, storeLat, storeLon);
+            double distanceKm = Math.round((distanceMeters / 1000.0) * 10.0) / 10.0;
+            distanceText = String.format(Locale.US, "%.1f km • %s", distanceKm, locality);
+        } else {
+            distanceText = locality != null && !locality.isBlank() ? locality : "In your area";
+        }
+
+        // 2. Photos & Ambiance directly from database
         List<String> photos = new ArrayList<>(store.getPhotos() != null ? store.getPhotos() : Collections.emptyList());
         if (photos.isEmpty() && store.getImageUrl() != null && !store.getImageUrl().isBlank()) {
             photos.add(store.getImageUrl());
         }
-        if (photos.isEmpty()) {
-            photos.add("https://lh3.googleusercontent.com/aida-public/AB6AXuB8sfPzLvi2G05SeAwuufjLXA_kvWfLUTikYVhJSvbZGuQRzNq3abJrWT1rA0qose5tdl6ncsg9hsaJPUBZJT-MSWQUacHb2Cs8an9pw-L6e1T5u8m4KzXGBhRQbcnc1rbq8PocTgITG8auwxoeOdSkxAaXjkcVccYEF2rcFXEKGE5hJKBOO2ANnbK2ABoAmGpnOcBs1R3CdExDFxNxJobZJgsHpOEavPI6G9Zz2yMGJ-xg2NO2bXOb");
-        }
-        int totalPhotos = photos.size() >= 19 ? photos.size() : 19;
-        String photoCounterText = "1/" + totalPhotos;
+        int totalPhotos = photos.size();
+        String photoCounterText = totalPhotos > 0 ? "1/" + totalPhotos : "0 Photos";
 
         String coverImageUrl = store.getImageUrl() != null && !store.getImageUrl().isBlank()
                 ? store.getImageUrl()
-                : photos.get(0);
+                : (!photos.isEmpty() ? photos.get(0) : "");
 
-        // 3. Verification & Identity
+        // 3. Verification & Identity directly from database
         boolean isVerified = merchant != null && (merchant.getKycStatus() == KycStatus.VERIFIED || Boolean.TRUE.equals(merchant.getIsFeatured()));
         String merchantName = merchant != null ? merchant.getBusinessName() : store.getStoreName();
         String cuisines = store.getCuisineOrCategory() != null && !store.getCuisineOrCategory().isBlank()
                 ? store.getCuisineOrCategory()
-                : "North Indian, Italian, BBQ";
-        String priceForTwoText = store.getPriceRange() != null && !store.getPriceRange().isBlank()
-                ? (store.getPriceRange().contains("₹") ? store.getPriceRange() : "₹" + store.getPriceRange() + " for two")
-                : "₹700 for two";
-        String cuisineAndPriceText = cuisines + " • " + priceForTwoText;
+                : "Dining & Treats";
+        String rawPriceRange = store.getPriceRange() != null ? store.getPriceRange().trim() : "";
+        String priceForTwoText;
+        if ("₹".equals(rawPriceRange)) {
+            priceForTwoText = "₹400 for two • Pocket Friendly";
+        } else if ("₹₹".equals(rawPriceRange)) {
+            priceForTwoText = "₹800 for two • Moderate";
+        } else if ("₹₹₹".equals(rawPriceRange)) {
+            priceForTwoText = "₹1,500 for two • Premium";
+        } else if ("₹₹₹₹".equals(rawPriceRange)) {
+            priceForTwoText = "₹2,500+ for two • Fine Dining";
+        } else if (!rawPriceRange.isBlank()) {
+            priceForTwoText = rawPriceRange.toLowerCase().contains("for two")
+                    ? rawPriceRange
+                    : (rawPriceRange.startsWith("₹") ? rawPriceRange + " for two" : "₹" + rawPriceRange + " for two");
+        } else {
+            priceForTwoText = "₹700 for two";
+        }
+        String cuisineAndPriceText = !priceForTwoText.isBlank() ? cuisines + " • " + priceForTwoText : cuisines;
 
-        Double rating = store.getRating() != null ? store.getRating().doubleValue() : 4.8;
-        String ratingCountText = store.getReviewCountText() != null ? store.getReviewCountText() : "1.2K ratings";
+        Double rating = store.getRating() != null ? store.getRating().doubleValue() : 4.5;
+        String ratingCountText = store.getReviewCountText() != null ? store.getReviewCountText() : "Verified Store";
 
-        String openStatusText = "Open till " + (store.getClosingTime() != null ? store.getClosingTime() : "12:30 AM");
-        String phone = store.getPhone() != null && !store.getPhone().isBlank() ? store.getPhone() : "+919880011234";
-        String googleMapsUrl = String.format(Locale.US, "https://maps.google.com/?q=%.7f,%.7f", storeLat, storeLon);
+        String openStatusText = store.getClosingTime() != null ? "Open till " + store.getClosingTime() : "Open Today";
+        String phone = store.getPhone() != null && !store.getPhone().isBlank()
+                ? store.getPhone()
+                : (merchant != null && merchant.getPhone() != null ? merchant.getPhone() : "");
+        String googleMapsUrl = (storeLat != 0.0 && storeLon != 0.0)
+                ? String.format(Locale.US, "https://maps.google.com/?q=%.7f,%.7f", storeLat, storeLon)
+                : "";
 
-        // 4. Overlaid Incentive Banner
-        CoinPerkBannerDto coinPerkBanner = new CoinPerkBannerDto("2X", "Earn & Redeem 2X PINAK Coins", "AUTO-APPLY");
+        // 4. Incentive Banner (using store/platform cashback percentage if configured)
+        String cashbackText = (store.getCashbackPercentage() != null && store.getCashbackPercentage().compareTo(BigDecimal.ZERO) > 0)
+                ? "Earn " + store.getCashbackPercentage() + "% PINAK Cashback Coins"
+                : "Earn & Redeem 2X PINAK Coins";
+        CoinPerkBannerDto coinPerkBanner = new CoinPerkBannerDto("2X", cashbackText, "AUTO-APPLY");
 
-        // 5. Navigation Tabs
-        List<String> availableTabs = List.of("Offers", "Menu", "Photos", "Amenities", "Reviews", "Similar Places");
-
-        // 6. Offers & Savings Section
+        // 5. Offers & Savings Section from database offers
         OffersSectionDto offersSection = buildOffersSection(store, merchant);
 
-        // 7. Flash Sale Deals Section
+        // 6. Flash Sale Deals Section from products/offers
         FlashSaleSectionDto flashSales = buildFlashSaleSection(store);
 
-        // 8. Menu Highlights Section
+        // 7. Menu Highlights Section from store.getMenuHighlights() and store.getMenuImages()
         MenuHighlightsSectionDto menuSection = buildMenuSection(store);
 
-        // 9. Photo Mosaic Section
-        PhotoMosaicSectionDto photoMosaic = buildPhotoMosaicSection(photos, totalPhotos);
+        // 8. Photo Mosaic Section
+        PhotoMosaicSectionDto photoMosaic = buildPhotoMosaicSection(photos, coverImageUrl, totalPhotos);
 
-        // 10. Verified Amenities Section
+        // 9. Verified Amenities Section from store.getAmenities()
         List<AmenityItemDto> amenities = buildAmenitiesSection(store);
+
+        // 10. Similar Places Near You (queried from active stores in database)
+        List<SimilarPlaceCardDto> similarPlaces = buildSimilarPlaces(store);
+
+        // 11. Navigation Tabs (dynamically adapt to available database content)
+        List<String> availableTabs = new ArrayList<>();
+        availableTabs.add("Offers");
+        if ((menuSection.items() != null && !menuSection.items().isEmpty()) || (menuSection.menuImages() != null && !menuSection.menuImages().isEmpty())) {
+            availableTabs.add("Menu");
+        }
+        if (totalPhotos > 0) {
+            availableTabs.add("Photos");
+        }
+        if (amenities != null && !amenities.isEmpty()) {
+            availableTabs.add("Amenities");
+        }
+        availableTabs.add("Location");
+        if (similarPlaces != null && !similarPlaces.isEmpty()) {
+            availableTabs.add("Similar Places");
+        }
 
         // 11. Location Section
         LocationSectionDto locationSection = new LocationSectionDto(
-                store.getAddressLine1() != null ? store.getAddressLine1() : "123, 100 Feet Road, Indiranagar",
-                store.getAddressLine2() != null ? store.getAddressLine2() : (store.getState() != null ? store.getState() + " " + store.getPincode() : "Bengaluru, Karnataka 560038"),
+                store.getAddressLine1() != null && !store.getAddressLine1().isBlank() ? store.getAddressLine1() : store.getAddress(),
+                store.getAddressLine2() != null && !store.getAddressLine2().isBlank() ? store.getAddressLine2() : (store.getState() != null ? store.getState() + (store.getPincode() != null ? " " + store.getPincode() : "") : ""),
                 store.getAddress(),
-                String.format(Locale.US, "%.1f km away", distanceKm),
+                distanceText,
                 distanceMeters,
-                "https://lh3.googleusercontent.com/aida-public/AB6AXuAEW8xr-QR-9fD_C9g34dirXBDrIaqXfPK9Dnz8_TGy2j1TxkOIWRJtbX-PhSDJpiVixDmXRUzaBr1XdiLhMOnfkE_vpZcQr2OmTnSz9uENzByT1VMgk3rcfpgqrGfux0QQS4G6DMRvJs99nRVBWQ_sxAkCOGvVOedqzTz4diJ0-CNbhcLQy8ScMK-yzV03K7ufSp5qKDXP8w3f5O5FBVr-GH0Tc4LyNh9fE-zysWBwjdizo6w-OkzW",
+                "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=800&q=80",
                 storeLat,
                 storeLon,
                 googleMapsUrl
         );
 
-        // 12. Concierge Help & Support
+        // 12. Help & Support
         ConciergeSupportDto concierge = new ConciergeSupportDto(
                 "Have queries or need help booking?",
-                "24/7 PINAK Concierge Support",
-                "+918000000000",
+                store.getStoreName() + " Support",
+                phone,
                 "CALL"
         );
 
-        // 13. Similar Places Near You
-        List<SimilarPlaceCardDto> similarPlaces = buildSimilarPlaces(store, storeLat, storeLon);
+        // 13. Bottom Action Bar
+        boolean hasBooking = offersSection.preBookingOffers() != null && !offersSection.preBookingOffers().isEmpty();
+        String primaryBadge = (offersSection.primaryOffer() != null && offersSection.primaryOffer().discountValue() != null)
+                ? offersSection.primaryOffer().discountValue().intValue() + "% OFF"
+                : null;
 
-        // 14. Persistent Bottom Action Bar
         StickyBottomBarDto bottomBar = new StickyBottomBarDto(
-                new RewardTeaserDto("🪙", "Earn 20% PINAK Coins on bill payment", "MAX REWARD"),
-                true,
-                new BottomActionDto("PAY_BILL", "Pay Bill Now", "50% OFF", true),
+                new RewardTeaserDto("🪙", "Earn Coins on bill payment & table bookings", "MAX REWARD"),
+                hasBooking,
+                new BottomActionDto("PAY_BILL", "Pay Bill Now", primaryBadge, true),
                 new BottomActionDto("BOOK_TABLE", "Book a Table", null, true)
         );
 
@@ -177,8 +218,8 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 ratingCountText,
                 true,
                 openStatusText,
-                store.getOpeningTime() != null ? store.getOpeningTime() : "12:00",
-                store.getClosingTime() != null ? store.getClosingTime() : "00:30",
+                store.getOpeningTime() != null ? store.getOpeningTime() : "10:00",
+                store.getClosingTime() != null ? store.getClosingTime() : "23:00",
                 phone,
                 storeLat,
                 storeLon,
@@ -229,20 +270,32 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
             }
             badges.add("Instant");
 
+            String subtitle = "Valid on minimum bill ₹" + (o.getMinTransactionAmount() != null ? o.getMinTransactionAmount() : "0");
+            if (o.getActiveDays() != null && !o.getActiveDays().isBlank()) {
+                subtitle = "Available on " + o.getActiveDays() + " • " + subtitle;
+            }
+
             StoreOfferCardDto card = new StoreOfferCardDto(
                     o.getId().toString(),
                     o.getTitle(),
-                    "Available on Mon-Sun • Valid on minimum bill ₹" + (o.getMinTransactionAmount() != null ? o.getMinTransactionAmount() : "1,000"),
+                    subtitle,
                     o.getType() != null ? o.getType().name() : "PERCENTAGE_DISCOUNT",
                     o.getValue(),
                     o.getMaxDiscountAmount(),
                     o.getMinTransactionAmount(),
                     badges,
-                    o.getTermsAndConditions() != null ? o.getTermsAndConditions() : "Auto-applied at checkout. Valid on dine-in bill.",
+                    o.getTermsAndConditions() != null ? o.getTermsAndConditions() : "Auto-applied at checkout.",
                     redemptionType,
                     advanceHours,
                     o.getCtaText() != null ? o.getCtaText() : "Book & Pay",
-                    true
+                    true,
+                    o.getBonusCoins(),
+                    o.getCoverChargeAmount(),
+                    o.getMinPartySize(),
+                    o.getMaxPartySize(),
+                    o.getGracePeriodMinutes(),
+                    o.getSlotTimes(),
+                    Boolean.TRUE.equals(o.getIsTableBookingEnabled())
             );
 
             if ("PRE_BOOK".equalsIgnoreCase(redemptionType) || "BOTH".equalsIgnoreCase(redemptionType)) {
@@ -252,41 +305,23 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 walkInOffers.add(card);
             }
 
-            if (primaryOffer == null || (o.getValue() != null && o.getValue().compareTo(primaryOffer.discountValue()) > 0)) {
+            if (primaryOffer == null || (o.getValue() != null && primaryOffer.discountValue() != null && o.getValue().compareTo(primaryOffer.discountValue()) > 0)) {
                 primaryOffer = card;
             }
         }
 
-        // Fallback default offers matching code.html perfectly if store has none configured yet
-        if (primaryOffer == null) {
-            primaryOffer = new StoreOfferCardDto(
-                    "e3000000-0000-0000-0000-000000000001",
-                    "Flat 50% off on Total Bill",
-                    "Available on Mon-Sun • Valid on minimum bill ₹1,000",
-                    "PERCENTAGE_DISCOUNT",
-                    new BigDecimal("50.00"),
-                    new BigDecimal("500.00"),
-                    new BigDecimal("1000.00"),
-                    List.of("PINAK Exclusive", "Special Deal", "Instant"),
-                    "Auto-applied at checkout",
-                    "BOTH",
-                    0,
-                    "Book & Pay",
-                    true
-            );
-            preBookingOffers.add(primaryOffer);
-            walkInOffers.add(primaryOffer);
-        }
-
-        int totalCount = Math.max(preBookingOffers.size() + walkInOffers.size(), 4);
+        int totalCount = activeOffers.size();
         String activeOffersCountText = totalCount + " Available";
 
-        List<PartnerChipDto> partnerChips = List.of(
-                new PartnerChipDto("chip-1", "20% Cashback", "in PINAK Coins", "20%", "COINS"),
-                new PartnerChipDto("chip-2", "Flat 10% off", "HDFC / ICICI cards", "BANK", "CARD")
-        );
+        List<PartnerChipDto> partnerChips = new ArrayList<>();
+        if (store.getCashbackPercentage() != null && store.getCashbackPercentage().compareTo(BigDecimal.ZERO) > 0) {
+            partnerChips.add(new PartnerChipDto("chip-1", store.getCashbackPercentage() + "% Cashback", "in PINAK Coins", store.getCashbackPercentage() + "%", "COINS"));
+        } else {
+            partnerChips.add(new PartnerChipDto("chip-1", "20% Cashback", "in PINAK Coins", "20%", "COINS"));
+        }
+        partnerChips.add(new PartnerChipDto("chip-2", "Instant UPI Pay", "Zero convenience fees", "UPI", "CARD"));
 
-        String greenPerkHighlight = "Earn 2X Coins on all table bookings & instant UPI pay";
+        String greenPerkHighlight = "Earn Coins on all table bookings & instant UPI pay";
 
         return new OffersSectionDto(
                 activeOffersCountText,
@@ -307,7 +342,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                         p.getId().toString(),
                         p.getName(),
                         p.getImageUrl(),
-                        p.getDiscountPercent() + "% OFF",
+                        (p.getDiscountPercent() != null ? p.getDiscountPercent() : 0) + "% OFF",
                         p.getSellingPrice(),
                         p.getMrp(),
                         "Add Deal"
@@ -317,35 +352,33 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
             log.warn("Failed to fetch store products: {}", e.getMessage());
         }
 
-        // Fallback to exact 3 deals from code.html if store has no products
-        if (deals.isEmpty()) {
-            deals.add(new FlashSaleDealDto(
-                    "e4000000-0000-0000-0000-000000000001",
-                    "BBQ Platter (Serves 2)",
-                    "https://lh3.googleusercontent.com/aida-public/AB6AXuB3FPGd-pxfQzAmlB1mQ2SSZNA-HVma4hM-tDquN-3f4FReS13wC1uP0--yWt_XuWxjj8o7oi8thfyxxRBO5UJn1kHBIsvI9AJtrOUMXTGbTZIs807XpzY-Bqybyv3Pqe-Qta8U9RmvcP1ZURbxizgsybz5CAbWPoICtiUyFAnBJLlNMUEdJtRJItDJ3Y8wTL2fFlieUMQ--AAYDIDsxMq-4GMvY_LtVDTBGzBDVbHz_HNdx4GiY0HV",
-                    "30% OFF",
-                    new BigDecimal("649.00"),
-                    new BigDecimal("929.00"),
-                    "Add Deal"
-            ));
-            deals.add(new FlashSaleDealDto(
-                    "e4000000-0000-0000-0000-000000000002",
-                    "Loaded Fries Supreme",
-                    "https://lh3.googleusercontent.com/aida-public/AB6AXuAJJGr_rN5f3UFqIdvQBN2cCleS_OobUHwPf3AYs04KTBPoWWP_Dr9Z3PIChU4CslsfLqYxgCrV7h27wfHl_TipN9K1DMY45Jo8b03qS6zhGKxIpASNQOSKUILZ9Sd9rNkvEPgPhlbvMt1bRLUbeWTGxvt8bAk4sGkteUXA3OKet4uPUbuqcpcuC0eQDHm0augTaGNTJGH8M0-MqZmpuVoilad_Me-XW3-STrcobgPIiFPvW14AjGY2",
-                    "20% OFF",
-                    new BigDecimal("299.00"),
-                    new BigDecimal("375.00"),
-                    "Add Deal"
-            ));
-            deals.add(new FlashSaleDealDto(
-                    "e4000000-0000-0000-0000-000000000003",
-                    "Smoked Wings (6 Pcs)",
-                    "https://lh3.googleusercontent.com/aida-public/AB6AXuDhqzWP_s7LYFCtMBMRVsyBJtuTpVgBgKc8rSbvIMpkTchhreeML5w0zpTdSm9YQYsdfSw5-7GB-s0Qnz_vrRXmXPOTBsdT24Jt3T4jGwwzwzVtEp2luDTbTtDO4bWJoqQi0zQ1oIp4tEfoG7Ur4E1mEreychFIgE36PlQVtL9bwGl28myPd9nlER9mzdGv8FGwall41zQ2qvrVcXHt4o-oD620UJr2f3toGu1T1g0w25Fn2YMiIkHK",
-                    "25% OFF",
-                    new BigDecimal("329.00"),
-                    new BigDecimal("440.00"),
-                    "Add Deal"
-            ));
+        // Also check if any store offers are flagged as flash sales or product deals
+        try {
+            List<Offer> flashOffers = offerRepository.findActiveOffersByStoreOrMerchant(
+                    store.getId(),
+                    store.getMerchantId(),
+                    Instant.now(),
+                    PageRequest.of(0, 10)
+            ).getContent();
+
+            for (Offer o : flashOffers) {
+                if (Boolean.TRUE.equals(o.getIsFlash()) || "PRODUCT".equalsIgnoreCase(o.getOfferScope())) {
+                    BigDecimal dealPrice = o.getFlashSellingPrice() != null ? o.getFlashSellingPrice() : o.getValue();
+                    BigDecimal originalPrice = o.getOriginalMrp();
+                    String badge = o.getValue() != null ? o.getValue().intValue() + "% OFF" : "Flash Deal";
+                    deals.add(new FlashSaleDealDto(
+                            o.getId().toString(),
+                            o.getTitle(),
+                            o.getImageUrl() != null && !o.getImageUrl().isBlank() ? o.getImageUrl() : store.getImageUrl(),
+                            badge,
+                            dealPrice,
+                            originalPrice,
+                            "Claim Deal"
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to query flash offers: {}", e.getMessage());
         }
 
         return new FlashSaleSectionDto(
@@ -366,53 +399,31 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
             }
         }
 
-        if (items.isEmpty()) {
-            items = List.of(
-                    new MenuItemDto("Hara Bhara Kebab", "Spinach, green peas & aromatic spices", new BigDecimal("249.00"), true, "STARTERS & GRILL"),
-                    new MenuItemDto("Paneer Tikka", "Char-grilled cottage cheese with bell peppers", new BigDecimal("349.00"), true, "STARTERS & GRILL"),
-                    new MenuItemDto("Chicken Tikka Tandoori", "Clay oven roasted marinated chicken chunks", new BigDecimal("399.00"), false, "STARTERS & GRILL"),
-                    new MenuItemDto("Crusted Fish Finger", "Golden fried sea fish served with tartar", new BigDecimal("399.00"), false, "STARTERS & GRILL"),
-                    new MenuItemDto("Crispy Chicken Wings", "Smoked chili glaze & garlic ranch dip", new BigDecimal("369.00"), false, "STARTERS & GRILL")
-            );
-        }
-
-        List<String> menuImages = store.getMenuImages() != null && !store.getMenuImages().isEmpty()
-                ? store.getMenuImages()
-                : List.of(
-                        "https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80",
-                        "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80",
-                        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
-                        "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=800&q=80",
-                        "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&q=80",
-                        "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80",
-                        "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=800&q=80"
-                );
+        List<String> menuImages = store.getMenuImages() != null ? store.getMenuImages() : Collections.emptyList();
         int totalPages = menuImages.size();
+        String menuPagesText = totalPages > 0 ? "View full menu (" + totalPages + " pages)" : "View full menu";
 
         return new MenuHighlightsSectionDto(
-                "STARTERS & GRILL",
+                "MENU & SPECIALTIES",
                 items,
-                "View full menu (" + totalPages + " pages)",
+                menuPagesText,
                 totalPages,
                 menuImages
         );
     }
 
-    private PhotoMosaicSectionDto buildPhotoMosaicSection(List<String> photos, int totalPhotos) {
-        String primary = !photos.isEmpty() ? photos.get(0) : "https://lh3.googleusercontent.com/aida-public/AB6AXuDhqzWP_s7LYFCtMBMRVsyBJtuTpVgBgKc8rSbvIMpkTchhreeML5w0zpTdSm9YQYsdfSw5-7GB-s0Qnz_vrRXmXPOTBsdT24Jt3T4jGwwzwzVtEp2luDTbTtDO4bWJoqQi0zQ1oIp4tEfoG7Ur4E1mEreychFIgE36PlQVtL9bwGl28myPd9nlER9mzdGv8FGwall41zQ2qvrVcXHt4o-oD620UJr2f3toGu1T1g0w25Fn2YMiIkHK";
+    private PhotoMosaicSectionDto buildPhotoMosaicSection(List<String> photos, String coverImageUrl, int totalPhotos) {
+        String primary = !photos.isEmpty() ? photos.get(0) : coverImageUrl;
         List<String> secondary = new ArrayList<>();
         if (photos.size() > 1) secondary.add(photos.get(1));
-        else secondary.add("https://lh3.googleusercontent.com/aida-public/AB6AXuBR_CflBHpsyUsnU4_FVtj3ElQiklZejKLne2z2J_nOeL3hDY8MFWW1d8wdRDt5PUG-n0ogEvFp6ZRLhX7qproqpPxSBGpVXfQjjfu3I1mpHBhDPtXPVcsaT_UrSa45nNXRnCeMoDJGwluhfYLdJV7rwy_s2a8-vJBlmIQP9mWeHwJYeoLvReh88mfIqHRnxczb7FQCxJ0YKRjIoI2oOsdfO8nEEvGNnSf05Z4P22NtQzRsXo0rRS5u");
-
         if (photos.size() > 2) secondary.add(photos.get(2));
-        else secondary.add("https://lh3.googleusercontent.com/aida-public/AB6AXuDBGOjFiQrZo3yQ2E05SAlyhyVw8aVxyTmnp1-QQEaa_XJ8wdl-rnuKbp3wywjVt16MWex1JI5tB2wfe91mvccSkVAo76-E6aUfQm0Z2bvrxwKk8VcLWN4VZ2XGRxxBK4_ZPPRyeeeWpRUYfADb_eXXLcWIEpH8cluV8yw_51gEHslm0lNV7wUmGnFz6jg7MMMVst0BTTb4aWo-fR6JNdd2EXm7bEaTvAb1BULNxQNbTUhIlbl5a1mW");
 
-        int additional = Math.max(totalPhotos - 4, 14);
+        String additionalCountText = photos.size() > 3 ? "+" + (photos.size() - 3) + " Photos" : "";
 
         return new PhotoMosaicSectionDto(
                 primary,
                 secondary,
-                "+" + additional + " Photos",
+                additionalCountText,
                 totalPhotos,
                 photos
         );
@@ -420,9 +431,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
 
     private List<AmenityItemDto> buildAmenitiesSection(Store store) {
         List<AmenityItemDto> result = new ArrayList<>();
-        List<String> raw = store.getAmenities() != null && !store.getAmenities().isEmpty()
-                ? store.getAmenities()
-                : List.of("Full Bar & Cocktails", "Valet Parking", "Table Reservation", "PINAK UPI Instant Pay");
+        List<String> raw = store.getAmenities() != null ? store.getAmenities() : Collections.emptyList();
 
         for (String a : raw) {
             String icon = mapAmenityIcon(a);
@@ -445,31 +454,30 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
         return "circle-check";
     }
 
-    private List<SimilarPlaceCardDto> buildSimilarPlaces(Store currentStore, double userLat, double userLng) {
+    private List<SimilarPlaceCardDto> buildSimilarPlaces(Store currentStore) {
         List<SimilarPlaceCardDto> list = new ArrayList<>();
-
-        // Spot 1: Tipsy Turk (From code.html)
-        list.add(new SimilarPlaceCardDto(
-                "e1000000-0000-0000-0000-000000000002",
-                "Tipsy Turk - Rooftop",
-                4.3,
-                "4.3",
-                "7 km, Sadar • North Indian",
-                "Flat 40% off",
-                "https://lh3.googleusercontent.com/aida-public/AB6AXuAw6mSHwP4LnlIhXt8vY9JQ-NfitEFitOAvif1SHIyetr0uzhy1abtySQobVLyUhajEEt0ph4wsY3occIOEZl4Nan_AWUC8eEck396xqQZ0cv_vAgz0_Xfld9ql79yyC37HWqOI0JuUEqXMknoFBVHH_1QaS2NwGc9pAWbAXNwDBXwcwuYtZNAah5TbuuyGTionRd1AEyeJNAIzZ5UPk05FmhKcpxC-Rt1XmEdqA-o5WmkH-qobFr3k"
-        ));
-
-        // Spot 2: Bellavista Skybar (From code.html)
-        list.add(new SimilarPlaceCardDto(
-                "e1000000-0000-0000-0000-000000000003",
-                "Bellavista Skybar",
-                4.2,
-                "4.2",
-                "6 km, Civil Lines • Chinese",
-                "Flat 15% off",
-                "https://lh3.googleusercontent.com/aida-public/AB6AXuAHqUejXEtLYesDmlbAY3Rty2qIRRSAzRdcnuS6xJZbTZ_u2DzZwcqo5I5JXxU67cZtS84rLoDLFFyGG5B3hHjLRdCEozpP2FEDJ9brjS9ktghrPk1YBcc_KgbD9cgZT5kh9IomAG7J9yA8tD2gKH8vDvir6hkqPmMroFOgsWVu2T77ZWp71my2prU-iz1hmv9CAXpkFrdf60Hun6pH5AwaujxynLeXrsPozssUTOcvhu4-kDKuzPuB"
-        ));
-
+        try {
+            List<Store> activeStores = storeRepository.findByStatus(StoreStatus.ACTIVE, PageRequest.of(0, 5)).getContent();
+            for (Store s : activeStores) {
+                if (!s.getId().equals(currentStore.getId())) {
+                    String img = (s.getImageUrl() != null && !s.getImageUrl().isBlank())
+                            ? s.getImageUrl()
+                            : (s.getPhotos() != null && !s.getPhotos().isEmpty() ? s.getPhotos().get(0) : "");
+                    String ratingStr = s.getRating() != null ? String.valueOf(s.getRating()) : "4.5";
+                    list.add(new SimilarPlaceCardDto(
+                            s.getId().toString(),
+                            s.getStoreName(),
+                            s.getRating() != null ? s.getRating().doubleValue() : 4.5,
+                            ratingStr,
+                            s.getAddress() != null ? s.getAddress() : "",
+                            s.getOpeningOffer() != null ? s.getOpeningOffer() : "Explore Deals",
+                            img
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch similar stores from database: {}", e.getMessage());
+        }
         return list;
     }
 
@@ -486,7 +494,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
 
     private String extractLocality(String address, String state) {
         if (address == null || address.isBlank()) {
-            return state != null ? state : "Bengaluru";
+            return state != null ? state : "";
         }
         String[] parts = address.split(",");
         if (parts.length >= 2) {

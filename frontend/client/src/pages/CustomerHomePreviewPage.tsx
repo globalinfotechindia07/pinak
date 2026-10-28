@@ -548,7 +548,13 @@ export default function CustomerHomePreviewPage() {
           <button
             type="button"
             onClick={() => {
-              setSelectedStoreId("e1000000-0000-0000-0000-000000000001");
+              if (!selectedStoreId || selectedStoreId.startsWith("e1000000")) {
+                const firstRealStore =
+                  offers.find((o) => o.branch?.branchId || o.branchSummary?.storeId)?.branch?.branchId ||
+                  offers.find((o) => o.branchSummary?.storeId)?.branchSummary?.storeId ||
+                  "97aabe53-9349-439d-952e-40f723bb8f51";
+                setSelectedStoreId(firstRealStore);
+              }
               setActiveScreen("detail");
             }}
             className={cn(
@@ -615,6 +621,8 @@ export default function CustomerHomePreviewPage() {
           {activeScreen === "detail" ? (
             <ServiceDetailPreviewView
               storeId={selectedStoreId}
+              userLat={userLocation.latitude}
+              userLng={userLocation.longitude}
               onBack={() => setActiveScreen("home")}
             />
           ) : (
@@ -887,11 +895,11 @@ export default function CustomerHomePreviewPage() {
                   <article
                     key={offerKey}
                     onClick={() => handleOpenStoreDetail(targetStoreId)}
-                    className="w-72 shrink-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col justify-between cursor-pointer group"
+                    className="w-72 shrink-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col justify-between cursor-pointer group h-[335px]"
                   >
-                    <div>
+                    <div className="flex-1 flex flex-col">
                       {/* Card Thumbnail */}
-                      <div className="relative h-32 w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <div className="relative h-32 w-full bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0">
                         <img
                           alt={storeDisplayName}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -945,8 +953,8 @@ export default function CustomerHomePreviewPage() {
                         </div>
                       </div>
 
-                      {/* Card Body */}
-                      <div className="p-3 space-y-2">
+                      {/* Card Body with Fixed Sub-containers for Uniform Height */}
+                      <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
                         {/* Store & Locality */}
                         <div>
                           <div className="flex items-center space-x-1.5 mb-0.5">
@@ -963,42 +971,46 @@ export default function CustomerHomePreviewPage() {
                           </p>
                         </div>
 
-                        {/* Deal Highlight Box */}
-                        <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl p-2.5 space-y-0.5">
+                        {/* Deal Highlight Box: Fixed Height */}
+                        <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl p-2.5 h-[52px] flex flex-col justify-center">
                           <div className="flex items-center justify-between">
-                            <p className="text-[11px] font-black text-emerald-800 dark:text-emerald-300 leading-tight">
+                            <p className="text-[11px] font-black text-emerald-800 dark:text-emerald-300 leading-tight truncate">
                               {offerHeadline}
                             </p>
                             <span className="shrink-0 ml-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-200 bg-emerald-200/80 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded">
                               {discountBadge}
                             </span>
                           </div>
-                          <p className="text-[9.5px] text-emerald-700 dark:text-emerald-400 font-medium">
+                          <p className="text-[9.5px] text-emerald-700 dark:text-emerald-400 font-medium truncate mt-0.5">
                             {conditionText}
                           </p>
                         </div>
 
-                        {/* Pre-Booking Info Pills (Capacity, Grace, Cover) */}
-                        {isPreBooking && (
-                          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 dark:text-slate-300 pt-0.5 flex-wrap">
-                            <span className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                              <Users size={9} />
-                              <span>Party 2-6</span>
-                            </span>
-                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                              <Clock size={9} />
-                              <span>15m Grace</span>
-                            </span>
-                            <span className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-md">
-                              Free Reservation
-                            </span>
-                          </div>
-                        )}
+                        {/* Pre-Booking Info Pills / Walk-in Indicator: Fixed Height */}
+                        <div className="h-6 flex items-center gap-1.5 text-[9px] font-bold text-slate-600 dark:text-slate-300">
+                          {isPreBooking ? (
+                            <>
+                              <span className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                                <Users size={9} />
+                                <span>Party 2-6</span>
+                              </span>
+                              <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                                <Clock size={9} />
+                                <span>15m Grace</span>
+                              </span>
+                              <span className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-md">
+                                Free Reservation
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 text-[10px] font-medium">Walk-in instant billing supported</span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* Card Footer */}
-                    <div className="px-3 pb-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div className="px-3 pb-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 h-12">
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-0.5">
                           🪙 +{rewardCoins} Coins
