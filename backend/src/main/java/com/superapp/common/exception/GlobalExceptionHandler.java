@@ -130,10 +130,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ApiResponse<?>> handleNoResource(NoResourceFoundException ex) {
+    public ResponseEntity<ApiResponse<?>> handleNoResource(NoResourceFoundException ex, HttpServletRequest req) {
+        log.warn("404 Resource not found on [{}] {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error("Resource not found", ApiError.RESOURCE_NOT_FOUND.name()));
+                .body(ApiResponse.error("Resource not found: " + req.getMethod() + " " + req.getRequestURI(), ApiError.RESOURCE_NOT_FOUND.name()));
     }
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)

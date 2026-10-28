@@ -33,7 +33,7 @@ import java.util.UUID;
  * password management, email/mobile verification, session management, and CSRF token distribution.
  */
 @RestController
-@RequestMapping({"/api/v1/auth", "/api/v1/mobile/auth", "//api/v1/mobile/auth", "/api/v1/api/v1/mobile/auth"})
+@RequestMapping({"/api/v1/auth", "/api/v1/mobile/auth", "//api/v1/mobile/auth", "/api/v1/api/v1/mobile/auth", "/api/v1/mobile"})
 @Tag(name = "Authentication", description = "Authentication, token management, and password operations")
 public class AuthController {
 
@@ -226,11 +226,22 @@ public class AuthController {
 
     // ---- Token Refresh ----
 
-    @PostMapping({"/refresh", "/token/refresh"})
+    @RequestMapping(
+            value = {
+                    "/refresh", "/refresh/",
+                    "/refersh", "/refersh/",
+                    "/token/refresh", "/token/refresh/",
+                    "/refresh-token", "/refresh-token/",
+                    "/token-refresh", "/token-refresh/"
+            },
+            method = {RequestMethod.POST, RequestMethod.GET}
+    )
     @Operation(summary = "Rotate refresh token and issue new access token")
     public ResponseEntity<ApiResponse<AuthDTO.Response>> refresh(
             @RequestBody(required = false) SessionDTO.RefreshTokenRequest request,
             @RequestParam(value = "refreshToken", required = false) String refreshTokenParam,
+            @RequestParam(value = "token", required = false) String tokenParam,
+            @RequestParam(value = "refershToken", required = false) String refershTokenParam,
             @CookieValue(name = CookieService.REFRESH_COOKIE_NAME, required = false) String cookieRefreshToken,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
@@ -238,13 +249,24 @@ public class AuthController {
         rateLimitService.checkLimit(RateLimitService.REFRESH, getClientIp(httpRequest));
 
         String headerToken = httpRequest != null ? httpRequest.getHeader("X-Refresh-Token") : null;
+        String authHeader = httpRequest != null ? httpRequest.getHeader("Authorization") : null;
+        String bearerToken = (authHeader != null && authHeader.startsWith("Bearer "))
+                ? authHeader.substring(7).trim()
+                : null;
+
         String rawToken = (request != null && request.refreshToken() != null && !request.refreshToken().isBlank())
                 ? request.refreshToken().trim()
                 : ((refreshTokenParam != null && !refreshTokenParam.isBlank())
                         ? refreshTokenParam.trim()
-                        : ((headerToken != null && !headerToken.isBlank())
-                                ? headerToken.trim()
-                                : cookieRefreshToken));
+                        : ((tokenParam != null && !tokenParam.isBlank())
+                                ? tokenParam.trim()
+                                : ((refershTokenParam != null && !refershTokenParam.isBlank())
+                                        ? refershTokenParam.trim()
+                                        : ((headerToken != null && !headerToken.isBlank())
+                                                ? headerToken.trim()
+                                                : ((bearerToken != null && !bearerToken.isBlank())
+                                                        ? bearerToken.trim()
+                                                        : cookieRefreshToken)))));
 
         if (rawToken == null || rawToken.isBlank()) {
             throw AuthException.refreshTokenInvalid();
@@ -256,7 +278,11 @@ public class AuthController {
                 getRequestId(httpRequest));
 
         boolean isExplicitBodyRequest = (request != null && request.refreshToken() != null && !request.refreshToken().isBlank());
-        boolean isExplicitParamOrHeader = (refreshTokenParam != null && !refreshTokenParam.isBlank()) || (headerToken != null && !headerToken.isBlank());
+        boolean isExplicitParamOrHeader = (refreshTokenParam != null && !refreshTokenParam.isBlank())
+                || (tokenParam != null && !tokenParam.isBlank())
+                || (refershTokenParam != null && !refershTokenParam.isBlank())
+                || (headerToken != null && !headerToken.isBlank())
+                || (bearerToken != null && !bearerToken.isBlank());
         boolean isMobileUri = httpRequest != null && httpRequest.getRequestURI() != null && httpRequest.getRequestURI().contains("/mobile/");
         boolean isMobileClient = (cookieService != null && cookieService.isMobileClient(httpRequest)) || isMobileUri || isExplicitBodyRequest || isExplicitParamOrHeader;
 

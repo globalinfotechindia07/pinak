@@ -1662,6 +1662,10 @@
                   {
                     "key": "Accept",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
                   }
                 ],
                 "url": {
@@ -1690,7 +1694,17 @@
                     }
                   ]
                 },
-                "description": "Fetches the full 1-to-1 Store and Service Detail View matching Screen 11 (The Smokehouse Grill). Returns hero carousel, 2X coin perks, segmented Pre-Booking and Walk-In offers, flash sale deals, 5 menu highlights with veg/non-veg indicator, 7-page menu scans, photo mosaic (+14 more), verified amenities, live GPS location, 24/7 concierge support, similar places, and sticky bottom bar CTAs."
+                "description": "Fetches the full 1-to-1 Store and Service Detail View matching Screen 11 (The Smokehouse Grill). Returns hero carousel, 2X coin perks, segmented Pre-Booking and Walk-In offers, flash sale deals, 5 menu highlights with veg/non-veg indicator, 7-page menu scans, photo mosaic (+14 more), verified amenities, live GPS location, 24/7 concierge support, similar places, and sticky bottom bar CTAs.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
               },
               "event": [
                 {
@@ -1740,6 +1754,20 @@
                       "    pm.expect(data.similarPlaces.length).to.be.at.least(2);",
                       "    pm.expect(data.bottomBar.primaryAction.label).to.eql('Pay Bill Now');",
                       "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "if (!pm.variables.get('smokehouseStoreId') || pm.variables.get('smokehouseStoreId') === '') {",
+                      "    pm.collectionVariables.set('smokehouseStoreId', 'e1000000-0000-0000-0000-000000000001');",
+                      "}",
+                      "if (!pm.collectionVariables.get('smokehouseStoreId')) {",
+                      "    pm.collectionVariables.set('smokehouseStoreId', 'e1000000-0000-0000-0000-000000000001');",
+                      "}"
                     ],
                     "type": "text/javascript"
                   }
