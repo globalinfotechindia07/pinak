@@ -53,26 +53,75 @@ public class DatabaseAutoCreationProcessor implements BeanFactoryPostProcessor, 
         if (environment instanceof org.springframework.core.env.ConfigurableEnvironment configEnv) {
             String rawUrl = configEnv.getProperty("DATABASE_URL");
             if (rawUrl == null || rawUrl.isBlank()) {
+                rawUrl = configEnv.getProperty("DB_URL");
+            }
+            if (rawUrl == null || rawUrl.isBlank()) {
                 rawUrl = configEnv.getProperty("spring.datasource.url");
             }
-            if (rawUrl != null && (rawUrl.startsWith("postgres://") || rawUrl.startsWith("postgresql://"))) {
+            if (rawUrl != null && (rawUrl.startsWith("postgres://") || rawUrl.startsWith("postgresql://") || rawUrl.startsWith("jdbc:postgresql://"))) {
                 try {
-                    String cleanUriStr = rawUrl.startsWith("postgres://")
-                            ? "postgresql://" + rawUrl.substring("postgres://".length())
-                            : rawUrl;
+                    String cleanUriStr;
+                    if (rawUrl.startsWith("jdbc:postgresql://")) {
+                        cleanUriStr = rawUrl.substring("jdbc:".length());
+                    } else if (rawUrl.startsWith("postgres://")) {
+                        cleanUriStr = "postgresql://" + rawUrl.substring("postgres://".length());
+                    } else {
+                        cleanUriStr = rawUrl;
+                    }
                     URI uri = URI.create(cleanUriStr);
                     String userInfo = uri.getUserInfo();
                     String user = null;
                     String pass = null;
                     if (userInfo != null && userInfo.contains(":")) {
                         String[] parts = userInfo.split(":", 2);
-                        user = parts[0];
-                        pass = parts[1];
+                        try {
+                            user = java.net.URLDecoder.decode(parts[0], java.nio.charset.StandardCharsets.UTF_8);
+                            pass = java.net.URLDecoder.decode(parts[1], java.nio.charset.StandardCharsets.UTF_8);
+                        } catch (Exception ex) {
+                            user = parts[0];
+                            pass = parts[1];
+                        }
                     }
                     String host = uri.getHost() != null ? uri.getHost() : "localhost";
                     int port = uri.getPort() > 0 ? uri.getPort() : 5432;
                     String path = uri.getPath() != null && !uri.getPath().isBlank() ? uri.getPath() : "/superappdb";
                     String query = uri.getQuery();
+
+                    // If host is a Render internal database hostname (e.g. dpg-xxxx without domain suffix),
+                    // verify if it resolves in the current network/region. If not, auto-resolve with Render region domains.
+                    if (host.startsWith("dpg-") && !host.contains(".")) {
+                        boolean hostResolves = false;
+                        try {
+                            java.net.InetAddress.getByName(host);
+                            hostResolves = true;
+                        } catch (java.net.UnknownHostException e) {
+                            log.warn("Render internal database host '{}' could not be resolved directly (service and DB may be in different regions). Attempting external region resolution...", host);
+                        }
+
+                        if (!hostResolves) {
+                            String[] candidateRegions = {"oregon", "ohio", "frankfurt", "singapore", "virginia"};
+                            for (String region : candidateRegions) {
+                                String candidateHost = host + "." + region + "-postgres.render.com";
+                                try {
+                                    java.net.InetAddress.getByName(candidateHost);
+                                    log.info("Successfully resolved Render database host to external domain: {}", candidateHost);
+                                    host = candidateHost;
+                                    hostResolves = true;
+                                    break;
+                                } catch (Exception ignored) {
+                                }
+                            }
+                        }
+                    }
+
+                    // Render external database connections require SSL
+                    if (host.contains("render.com")) {
+                        if (query == null || query.isBlank()) {
+                            query = "sslmode=require";
+                        } else if (!query.contains("sslmode")) {
+                            query = query + "&sslmode=require";
+                        }
+                    }
 
                     StringBuilder jdbcUrlBuilder = new StringBuilder("jdbc:postgresql://")
                             .append(host).append(":").append(port).append(path);

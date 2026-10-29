@@ -41,4 +41,23 @@ class DatabaseAutoCreationProcessorTest {
         // Does not throw and skips gracefully
         processor.postProcessBeanFactory(null);
     }
+
+    @Test
+    @DisplayName("Processor auto-resolves Render internal host and configures external SSL JDBC properties")
+    void translatesRenderInternalHostnameToExternalWithSsl() {
+        DatabaseAutoCreationProcessor processor = new DatabaseAutoCreationProcessor();
+        MockEnvironment env = new MockEnvironment();
+        env.setProperty("DATABASE_URL", "postgres://pinak_user:secret@dpg-dbc71o3bc2fs73bh31ug-a/superappdb_w5rc");
+        processor.setEnvironment(env);
+
+        processor.postProcessBeanFactory(null);
+
+        String configuredUrl = env.getProperty("spring.datasource.url");
+        assertThat(configuredUrl).isNotNull();
+        assertThat(configuredUrl).contains("dpg-dbc71o3bc2fs73bh31ug-a.oregon-postgres.render.com:5432/superappdb_w5rc");
+        assertThat(configuredUrl).contains("sslmode=require");
+        assertThat(env.getProperty("spring.datasource.username")).isEqualTo("pinak_user");
+        assertThat(env.getProperty("spring.datasource.password")).isEqualTo("secret");
+        assertThat(env.getProperty("spring.datasource.create-database-if-not-exist")).isEqualTo("false");
+    }
 }
