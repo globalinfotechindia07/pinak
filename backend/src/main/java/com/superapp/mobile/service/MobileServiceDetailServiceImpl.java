@@ -858,6 +858,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 availableTabs,
                 offersSection,
                 flashSales,
+                new StoreProductsSectionDto("Smokehouse Pantry", "Artisan sauces & cuts", 0, Collections.emptyList()),
                 menuSection,
                 menuItems,
                 menuScans,

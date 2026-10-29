@@ -101,6 +101,59 @@ public record MobileServiceDetailDto(
             String address,
             String googleMapsUrl,
             CoinPerkBannerDto coinPerkBanner,
+            CoinPerkBannerDto coinsPerkBanner,
+            List<String> availableTabs,
+            OffersSectionDto offersSection,
+            FlashSaleSectionDto flashSales,
+            MenuHighlightsSectionDto menuSection,
+            List<MenuItemDto> menuHighlights,
+            List<String> menuScans,
+            PhotoMosaicSectionDto photoMosaic,
+            List<AmenityItemDto> amenities,
+            LocationSectionDto locationSection,
+            ConciergeSupportDto concierge,
+            List<SimilarPlaceCardDto> similarPlaces,
+            StickyBottomBarDto bottomBar
+    ) {
+        this(
+                id, storeName, merchantName, isVerified, coverImageUrl, heroPhotos,
+                totalPhotosCount, photoCounterText, distanceMeters, distanceText,
+                cuisines, priceForTwoText, cuisineAndPriceText, rating, ratingCountText,
+                isOpenNow, openStatusText, openingTime, closingTime, phone,
+                latitude, longitude, address, googleMapsUrl,
+                coinPerkBanner, coinsPerkBanner != null ? coinsPerkBanner : coinPerkBanner,
+                availableTabs, offersSection, flashSales, null,
+                menuSection, menuHighlights, menuScans,
+                photoMosaic, amenities, locationSection, concierge, similarPlaces, bottomBar
+        );
+    }
+
+    public MobileServiceDetailDto(
+            String id,
+            String storeName,
+            String merchantName,
+            boolean isVerified,
+            String coverImageUrl,
+            List<String> heroPhotos,
+            int totalPhotosCount,
+            String photoCounterText,
+            Double distanceMeters,
+            String distanceText,
+            String cuisines,
+            String priceForTwoText,
+            String cuisineAndPriceText,
+            Double rating,
+            String ratingCountText,
+            boolean isOpenNow,
+            String openStatusText,
+            String openingTime,
+            String closingTime,
+            String phone,
+            Double latitude,
+            Double longitude,
+            String address,
+            String googleMapsUrl,
+            CoinPerkBannerDto coinPerkBanner,
             List<String> availableTabs,
             OffersSectionDto offersSection,
             FlashSaleSectionDto flashSales,
@@ -321,7 +374,11 @@ public record MobileServiceDetailDto(
             String subtitle,
             int totalCount,
             List<StoreProductItemDto> items
-    ) implements Serializable {}
+    ) implements Serializable {
+        public StoreProductsSectionDto(String title, String subtitle, List<StoreProductItemDto> items) {
+            this(title, subtitle, items != null ? items.size() : 0, items != null ? items : java.util.Collections.emptyList());
+        }
+    }
 
     public record MenuHighlightsSectionDto(
             String categoryTitle,
