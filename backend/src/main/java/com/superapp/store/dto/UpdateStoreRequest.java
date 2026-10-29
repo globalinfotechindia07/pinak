@@ -38,6 +38,8 @@ public record UpdateStoreRequest(
         @Pattern(regexp = "^$|^[+]?[0-9\\s\\-()]{7,25}$", message = "Invalid contact phone number format")
         String contactPhone,
 
+        String imageUrl,
+
         List<String> menuImages,
 
         List<String> photos,
@@ -50,6 +52,6 @@ public record UpdateStoreRequest(
 ) {
     public UpdateStoreRequest(String storeName, String address, String cityId, String state,
                               String pincode, BigDecimal latitude, BigDecimal longitude) {
-        this(storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null, null, null, null, null);
+        this(storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null, null, null, null, null, null);
     }
 }

@@ -41,11 +41,20 @@ public class MobileServiceDetailController {
                     "flash sale deals, menu highlights, photo mosaic, verified amenities, GPS location, concierge support, similar places, and sticky bottom bar."
     )
     public ResponseEntity<ApiResponse<MobileServiceDetailDto>> getStoreServiceDetail(
-            @PathVariable(required = false) @Parameter(description = "Store Outlet UUID", example = "e1000000-0000-0000-0000-000000000001") UUID storeId,
+            @PathVariable(required = false) @Parameter(description = "Store Outlet UUID", example = "e1000000-0000-0000-0000-000000000001") String storeId,
             @RequestParam(required = false) @Parameter(description = "Customer Device Latitude", example = "12.9716") Double lat,
             @RequestParam(required = false) @Parameter(description = "Customer Device Longitude", example = "77.6412") Double lng
     ) {
-        UUID effectiveId = storeId != null ? storeId : DEFAULT_SMOKEHOUSE_ID;
+        UUID effectiveId;
+        if (storeId == null || storeId.isBlank() || "detail".equalsIgnoreCase(storeId) || "undefined".equalsIgnoreCase(storeId) || "null".equalsIgnoreCase(storeId)) {
+            effectiveId = DEFAULT_SMOKEHOUSE_ID;
+        } else {
+            try {
+                effectiveId = UUID.fromString(storeId.trim());
+            } catch (IllegalArgumentException e) {
+                effectiveId = DEFAULT_SMOKEHOUSE_ID;
+            }
+        }
         MobileServiceDetailDto response = serviceDetailService.getServiceDetail(effectiveId, lat, lng);
         return ResponseEntity.ok(ApiResponse.success("Store service detail fetched successfully", response));
     }

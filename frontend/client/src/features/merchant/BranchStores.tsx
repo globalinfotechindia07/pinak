@@ -126,6 +126,7 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
             managerPhone: s.managerPhone || s.phone || s.contactPhone || "",
             createdAt: s.createdAt || new Date().toISOString(),
             hasActiveOffer: true,
+            imageUrl: s.imageUrl || "",
             menuImages: Array.isArray(s.menuImages) ? s.menuImages : [],
             photos: Array.isArray(s.photos) ? s.photos : [],
             amenities: Array.isArray(s.amenities) ? s.amenities : []
@@ -178,9 +179,13 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
   const [longitude, setLongitude] = useState(79.0882);
   const [storeEmail, setStoreEmail] = useState("");
   const [managerName, setManagerName] = useState("");
+  const [imageUrl, setImageUrl] = useState<string>("");
   const [menuImages, setMenuImages] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [storeType, setStoreType] = useState<"DINING" | "RETAIL" | "SERVICES">(
+    /fab|retail|cloth|apparel|living|decor|grocery/i.test(currentMerchantName) ? "RETAIL" : "DINING"
+  );
 
   const handleBranchNameChange = (name: string) => {
     setBranchName(name);
@@ -904,7 +909,8 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
             managerEmail: generatedEmail,
             managerName: managerName.trim() || "Store Manager",
             managerPhone: phone.trim(),
-            category: "Dining & Restaurant",
+            category: storeType === "RETAIL" ? "Retail & Lifestyle" : "Dining & Restaurant",
+            imageUrl: imageUrl.trim() || undefined,
             menuImages: [...menuImages],
             photos: [...photos],
             amenities: [...amenities]
@@ -923,6 +929,7 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
             setAddBranchStep(1);
             setBranchName("");
             setAddress("");
+            setImageUrl("");
             setMenuImages([]);
             setPhotos([]);
             setAmenities([]);
@@ -1083,13 +1090,17 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
                   {addBranchStep === 3 && (
                     <div className="space-y-4 animate-in fade-in duration-200">
                       <StoreMediaAndAmenitiesSection
+                        imageUrl={imageUrl}
                         menuImages={menuImages}
                         photos={photos}
                         amenities={amenities}
+                        onImageUrlChange={setImageUrl}
                         onMenuImagesChange={setMenuImages}
                         onPhotosChange={setPhotos}
                         onAmenitiesChange={setAmenities}
-                        categoryHint="Dining"
+                        categoryHint={currentMerchantName}
+                        storeType={storeType}
+                        onStoreTypeChange={setStoreType}
                       />
                     </div>
                   )}
@@ -1844,6 +1855,7 @@ function EditBranchStoreDrawer({
   const [longitude, setLongitude] = useState(store.longitude || 79.0882);
   const [operatingHours, setOperatingHours] = useState(store.operatingHours || "10:00 AM – 10:00 PM (Daily)");
   const [status, setStatus] = useState<StoreType["status"]>(store.status || "ACTIVE");
+  const [imageUrl, setImageUrl] = useState<string>(store.imageUrl || "");
   const [menuImages, setMenuImages] = useState<string[]>(store.menuImages || []);
   const [photos, setPhotos] = useState<string[]>(store.photos || []);
   const [amenities, setAmenities] = useState<string[]>(store.amenities || []);
@@ -1851,7 +1863,7 @@ function EditBranchStoreDrawer({
   const MERCHANT_EDIT_STEPS = [
     { id: 1, title: "Details & Hours", subtitle: "Name & Timing" },
     { id: 2, title: "Location", subtitle: "Address & GPS" },
-    { id: 3, title: "Media", subtitle: "Menu & Photos" },
+    { id: 3, title: "Media", subtitle: "Cover, Menu & Photos" },
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1868,6 +1880,7 @@ function EditBranchStoreDrawer({
       longitude: Number(longitude),
       operatingHours: operatingHours.trim(),
       status,
+      imageUrl: imageUrl.trim() || undefined,
       menuImages,
       photos,
       amenities
@@ -2006,13 +2019,15 @@ function EditBranchStoreDrawer({
             {currentStep === 3 && (
               <div className="space-y-4 animate-in fade-in duration-200">
                 <StoreMediaAndAmenitiesSection
+                  imageUrl={imageUrl}
                   menuImages={menuImages}
                   photos={photos}
                   amenities={amenities}
+                  onImageUrlChange={setImageUrl}
                   onMenuImagesChange={setMenuImages}
                   onPhotosChange={setPhotos}
                   onAmenitiesChange={setAmenities}
-                  categoryHint="Dining"
+                  categoryHint={store.category || store.branchName || "Dining"}
                 />
               </div>
             )}

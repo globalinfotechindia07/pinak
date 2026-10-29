@@ -914,6 +914,7 @@ export default function Home() {
         longitude: Number(draft.longitude) || 79.0882,
         openingTime: draft.openingTime || "09:00",
         closingTime: draft.closingTime || "22:00",
+        imageUrl: draft.imageUrl || (draft.photos && draft.photos[0]) || "",
         menuImages: draft.menuImages || [],
         photos: draft.photos || [],
         amenities: draft.amenities || [],

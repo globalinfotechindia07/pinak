@@ -49,6 +49,8 @@ public record MerchantCreateStoreRequest(
 
         String operatingDays,
 
+        String imageUrl,
+
         List<String> menuImages,
 
         List<String> photos,
@@ -60,6 +62,6 @@ public record MerchantCreateStoreRequest(
                                      String pincode, BigDecimal latitude, BigDecimal longitude,
                                      String phone) {
         this(name, description, addressLine1, addressLine2, cityId, state, pincode,
-             latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", null, null, null);
+             latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", null, null, null, null);
     }
 }

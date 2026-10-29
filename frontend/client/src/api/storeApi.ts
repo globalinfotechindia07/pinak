@@ -87,6 +87,7 @@ export const storeApi = {
         closingTime: payload.closingTime || "22:00",
         operatingDays: payload.operatingDays || "Daily (Mon - Sun)",
         menuImages: payload.menuImages || [],
+        imageUrl: payload.imageUrl || null,
         photos: payload.photos || [],
         amenities: payload.amenities || [],
       });

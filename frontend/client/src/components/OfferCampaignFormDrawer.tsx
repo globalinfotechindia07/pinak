@@ -39,6 +39,87 @@ import { Offer, Store, Merchant } from "../types";
 import { offerCampaignSchema } from "../lib/validationSchemas";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
+import apiClient from "@/api/client";
+
+export const RETAIL_PRODUCT_PRESETS = [
+  {
+    name: "Amul Taaza Homogenised Toned Milk",
+    unit: "1 Litre",
+    mrp: 72,
+    dealPrice: 58,
+    discountPct: 19,
+    category: "DAIRY",
+    stock: 60,
+    imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDs3waAQbgzW6ulcWgCbnSxbpZN_13ZJXWzm4X2qAl0vMuum2WR04QFvNkO8dtZdx7jm6Hx-4Yv-UOTJvm_T1_zP-BjcNgu-n36fI1NJbiNiDN6iATJvnTI3PZFH9s3mrPOOkbC6anaq1aeOnanPe9Jc7mJ3mhPvignPOty3w2-rM7g19DmmRog4WK1HSwTg6I3iNANpsvacjgVB8XlD2SaJ5lauRM86etGCZnk70_yZwEM-f1ui0Vd",
+    badge: "DAILY SPECIAL"
+  },
+  {
+    name: "Haldiram's Nagpur Kaju Katli",
+    unit: "500g Box",
+    mrp: 460,
+    dealPrice: 368,
+    discountPct: 20,
+    category: "SWEETS",
+    stock: 40,
+    imageUrl: "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?auto=format&fit=crop&w=600&q=80",
+    badge: "FESTIVE DEAL"
+  },
+  {
+    name: "Daawat Rozana Super Basmati Rice",
+    unit: "5 kg Bag",
+    mrp: 495,
+    dealPrice: 395,
+    discountPct: 20,
+    category: "GROCERY",
+    stock: 35,
+    imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAz3pTi8RkZpVw-Mr8tM5TAVW9Dl52lt8OT816AYoIq9TJciz5RZiVqam6VcVx6sW0eHkx1AIsMU_2cJQnOVUCV_IsPb5ebrpge7RJgrt7_UolSuNwhci2MERrxPmWqzsSDf9lIz1ejVVwqN1p2Tqt7z2H8zJcBLccInJxlWFHuXUO9pdnl62dGbzHOHafQcu5_8dty0RVNA6-oxEzRekQ_W5lhkTuggAod0xEPnSZqWT2hebkFAl3V",
+    badge: "MEGA SAVER"
+  },
+  {
+    name: "Maggi 2-Minute Masala Noodles (Pack of 12)",
+    unit: "840g Pack",
+    mrp: 168,
+    dealPrice: 134,
+    discountPct: 20,
+    category: "SNACKS",
+    stock: 80,
+    imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuD85STcU1nutJDJ0krl4bTkoIPmaJ4PD8EjDXxLt-3Wn97ov26ZRK_SgQz8XHHhygaSlXOwxm0aLDFgmOu9U2WwN_95PeXogGINTBsN7dXzUQy2oBGxucmNu9hQEbQmEHzwp5jNKXMetSnvoYnYlLJefb5wPnXog5WI-ZbK496lXs2rlF6L_D7_gM36Sat4HKXCWbX4zLOgCJftTO1Y9PBzQcX7uXfvPaYD0tsmT6Klx91ng021rARr",
+    badge: "INSTANT DEAL"
+  },
+  {
+    name: "Tata Tea Gold Leaf Tea",
+    unit: "1 kg Pouch",
+    mrp: 510,
+    dealPrice: 408,
+    discountPct: 20,
+    category: "BEVERAGES",
+    stock: 45,
+    imageUrl: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80",
+    badge: "TOP SELLER"
+  },
+  {
+    name: "Fortune Sunlite Refined Sunflower Oil",
+    unit: "1 Litre Pouch",
+    mrp: 165,
+    dealPrice: 132,
+    discountPct: 20,
+    category: "GROCERY",
+    stock: 100,
+    imageUrl: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
+    badge: "STORE FLASH"
+  },
+  {
+    name: "Dettol Original Liquid Handwash Refill",
+    unit: "750ml Pouch",
+    mrp: 119,
+    dealPrice: 89,
+    discountPct: 25,
+    category: "PERSONAL_CARE",
+    stock: 50,
+    imageUrl: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80",
+    badge: "HYGIENE PACK"
+  }
+];
 
 export interface OfferCampaignFormDrawerProps {
   merchants?: Merchant[];
@@ -265,6 +346,76 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   const [dealPrice, setDealPrice] = useState<number | undefined>(initialData?.dealPrice);
   const [isFlashDeal, setIsFlashDeal] = useState<boolean>(initialData?.isFlashDeal || false);
   const [totalFlashUnits, setTotalFlashUnits] = useState<number | undefined>(initialData?.totalFlashUnits ?? 50);
+
+  // Store products fetched from backend API for auto-filling
+  const [storeProducts, setStoreProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchStoreProducts() {
+      if (offerScope !== "STORE_PRODUCT") return;
+      try {
+        let endpoint = "";
+        if (selectedStoreId && selectedStoreId !== "all") {
+          endpoint = `/products/store/${selectedStoreId}`;
+        } else if (selectedMerchantId && selectedMerchantId !== "all") {
+          endpoint = `/products/merchant/${selectedMerchantId}`;
+        }
+        if (endpoint) {
+          const res = await apiClient.get<any>(endpoint);
+          if (isMounted && res.data?.success && Array.isArray(res.data?.data)) {
+            setStoreProducts(res.data.data);
+          }
+        }
+      } catch {
+        // Fall back gracefully to curated presets
+      }
+    }
+    fetchStoreProducts();
+    return () => {
+      isMounted = false;
+    };
+  }, [offerScope, selectedStoreId, selectedMerchantId]);
+
+  const handleAutoFillProduct = (p: {
+    name: string;
+    unit?: string;
+    mrp: number;
+    dealPrice?: number;
+    discountPct?: number;
+    category?: string;
+    stock?: number;
+    imageUrl?: string;
+    badge?: string;
+  }) => {
+    setProductName(p.name);
+    if (p.unit) setUnitOrWeight(p.unit);
+    setOriginalPrice(p.mrp);
+
+    const resolvedDealPrice =
+      p.dealPrice ||
+      (p.discountPct ? Math.round(p.mrp * (1 - p.discountPct / 100)) : Math.round(p.mrp * 0.8));
+    setDealPrice(resolvedDealPrice);
+
+    if (p.stock) setTotalFlashUnits(p.stock);
+    if (p.category) setProductCategory(p.category);
+    if (p.imageUrl) setImageUrl(p.imageUrl);
+    if (p.badge) setBadgeText(p.badge);
+
+    const disc = Math.round(((p.mrp - resolvedDealPrice) / p.mrp) * 100);
+    setValue(disc);
+    setType("FLAT_PCT");
+
+    const storeLabel = selectedStore ? selectedStore.branchName : "Store Counter";
+    const unitText = p.unit ? ` (${p.unit})` : "";
+    setTitle(`Flat ${disc}% OFF on ${p.name}${unitText}`);
+    setTagline(`Original MRP ₹${p.mrp} • Special Deal Price ₹${resolvedDealPrice} at ${storeLabel}`);
+    setCtaText("Add to Cart");
+
+    toast.success(`Auto-filled details for "${p.name}"!`, {
+      description: `MRP ₹${p.mrp} ➔ Deal ₹${resolvedDealPrice} (${disc}% OFF) auto-calculated.`
+    });
+  };
 
   // Validity Dates & Schedule
   const [validFrom, setValidFrom] = useState(
@@ -1767,12 +1918,85 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                   </div>
                 )}
 
-                {/* Retail Product Deals Specific Settings */}
+                {/* Retail Product Deals Specific Settings with Auto-Fill Capabilities */}
                 {offerScope === "STORE_PRODUCT" && (
-                  <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 space-y-3">
-                    <span className="font-bold text-emerald-900 dark:text-emerald-300 text-xs block">
-                      Retail Product Details & Pricing
-                    </span>
+                  <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-3.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <ShoppingBag size={15} className="text-emerald-700 dark:text-emerald-400" />
+                        <span className="font-bold text-emerald-900 dark:text-emerald-200 text-xs">
+                          Retail Product Details & Pricing
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Sparkles size={10} />
+                        <span>Auto-Fill Enabled</span>
+                      </span>
+                    </div>
+
+                    {/* Quick Auto-Fill Preset Rail */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                          <Zap size={11} className="text-amber-500 fill-amber-500" />
+                          <span>1-Click Auto-Fill from Catalog:</span>
+                        </label>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">Click to fill all fields</span>
+                      </div>
+
+                      {/* If store products exist from API */}
+                      {storeProducts.length > 0 && (
+                        <div className="mb-2">
+                          <select
+                            onChange={(e) => {
+                              const found = storeProducts.find((p) => p.id === e.target.value);
+                              if (found) {
+                                handleAutoFillProduct({
+                                  name: found.name,
+                                  unit: found.unit,
+                                  mrp: Number(found.mrp || 100),
+                                  dealPrice: Number(found.sellingPrice || (found.mrp ? Math.round(Number(found.mrp) * 0.8) : 80)),
+                                  stock: found.stockQuantity || 50,
+                                  category: "GROCERY",
+                                  imageUrl: found.imageUrl,
+                                  badge: "STORE ITEM"
+                                });
+                              }
+                            }}
+                            defaultValue=""
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs"
+                          >
+                            <option value="" disabled>-- Select from your Store Inventory ({storeProducts.length} items) --</option>
+                            {storeProducts.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} {p.unit ? `(${p.unit})` : ""} — MRP ₹{p.mrp} ➔ Deal ₹{p.sellingPrice || Math.round(Number(p.mrp) * 0.8)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Curated Presets Pills */}
+                      <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                        {RETAIL_PRODUCT_PRESETS.map((preset, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleAutoFillProduct(preset)}
+                            className="shrink-0 px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700/80 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-left transition cursor-pointer shadow-2xs group flex items-center gap-1.5"
+                          >
+                            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                              {preset.name.split(" ")[0]} {preset.unit}
+                            </span>
+                            <span className="text-[9.5px] font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-900/40 px-1 py-0.2 rounded">
+                              ₹{preset.dealPrice}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Product Name & Pack Size Inputs */}
                     <div className="grid grid-cols-2 gap-2.5">
                       <div>
                         <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
@@ -1783,7 +2007,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           value={productName}
                           onChange={(e) => setProductName(e.target.value)}
                           placeholder="e.g. Amul Fresh Milk 1L"
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
@@ -1795,22 +2019,29 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           value={unitOrWeight}
                           onChange={(e) => setUnitOrWeight(e.target.value)}
                           placeholder="e.g. 500g, 1L, Pack of 2"
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
 
+                    {/* Pricing & Stock Quantity */}
                     <div className="grid grid-cols-3 gap-2.5">
                       <div>
                         <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                          Original MRP (₹)
+                          Original MRP (₹) *
                         </label>
                         <input
                           type="number"
                           value={originalPrice || ""}
-                          onChange={(e) => setOriginalPrice(Number(e.target.value))}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setOriginalPrice(val);
+                            if (val && !dealPrice) {
+                              setDealPrice(Math.round(val * 0.8)); // Default 20% discount
+                            }
+                          }}
                           placeholder="100"
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
@@ -1833,10 +2064,67 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           type="number"
                           value={totalFlashUnits || 50}
                           onChange={(e) => setTotalFlashUnits(Number(e.target.value))}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
+
+                    {/* Auto-Calculate Deal Price Presets */}
+                    <div className="bg-white/80 dark:bg-slate-900/60 p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-800/50 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                          <Calculator size={11} className="text-emerald-600" />
+                          <span>Auto-Calculate Deal Price:</span>
+                        </span>
+                        {originalPrice && dealPrice && originalPrice > dealPrice && (
+                          <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300">
+                            Save ₹{originalPrice - dealPrice} ({computedProductDiscountPct}% OFF)
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {[10, 15, 20, 25, 30, 40, 50].map((pct) => (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => {
+                              const baseMrp = originalPrice || 100;
+                              if (!originalPrice) setOriginalPrice(baseMrp);
+                              const calcDeal = Math.round(baseMrp * (1 - pct / 100));
+                              setDealPrice(calcDeal);
+                              setValue(pct);
+                              setType("FLAT_PCT");
+                              toast.success(`Calculated ${pct}% OFF! Deal Price: ₹${calcDeal}`);
+                            }}
+                            className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 transition cursor-pointer active:scale-95"
+                          >
+                            {pct}% OFF
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Quick Sync / Auto-Fill Campaign Copy Button */}
+                    {productName.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const disc = computedProductDiscountPct || 20;
+                          const pName = productName.trim();
+                          const unitText = unitOrWeight ? ` (${unitOrWeight})` : "";
+                          const storeLabel = selectedStore ? selectedStore.branchName : "Store Counter";
+                          setTitle(`Flat ${disc}% OFF on ${pName}${unitText}`);
+                          setTagline(`Original MRP ₹${originalPrice || 100} • Deal Price ₹${dealPrice || 80} at ${storeLabel}`);
+                          setBadgeText(`${disc}% OFF`);
+                          setCtaText("Add to Cart");
+                          toast.success("Campaign title and tagline auto-filled from product details!");
+                        }}
+                        className="w-full py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
+                      >
+                        <Wand2 size={12} />
+                        <span>Auto-Fill Campaign Title & Tagline from Product</span>
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -2123,7 +2411,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       <Eye size={14} className="text-pink-600" />
                       <span>Live Consumer Mobile Card Preview</span>
                     </span>
-                    <span className="text-[10px] text-pink-600 font-bold bg-pink-50 dark:bg-pink-950 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] text-pink-600 font-bold bg-pink-50 dark:bg-pink-950 px-2 py-0.5 rounded-md whitespace-nowrap">
                       {offerScope === "PRE_BOOK" ? "Pre-booking offer" : "Walk-in offer"}
                     </span>
                   </div>

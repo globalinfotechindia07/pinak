@@ -30,6 +30,7 @@ public record StoreResponse(
         String openingTime,
         String closingTime,
         String operatingDays,
+        String imageUrl,
         List<String> menuImages,
         List<String> photos,
         List<String> amenities,
@@ -80,6 +81,7 @@ public record StoreResponse(
                 store.getOpeningTime(),
                 store.getClosingTime(),
                 store.getOperatingDays(),
+                store.getImageUrl(),
                 store.getMenuImages(),
                 store.getPhotos(),
                 store.getAmenities(),
@@ -128,7 +130,7 @@ public record StoreResponse(
         this(
                 id, merchantId, merchantName, name, storeName, description,
                 addressLine1, addressLine2, address, cityId, cityName, state, pincode,
-                latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", java.util.Collections.emptyList(), java.util.Collections.emptyList(), java.util.Collections.emptyList(),
+                latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", null, java.util.Collections.emptyList(), java.util.Collections.emptyList(), java.util.Collections.emptyList(),
                 status, approvalStatus, rejectionReason, suspensionReason,
                 distanceMeters, approvedAt, createdAt, updatedAt,
                 BigDecimal.valueOf(5.00), BigDecimal.valueOf(150.00), BigDecimal.valueOf(100.00), true
@@ -160,6 +162,7 @@ public record StoreResponse(
                 "10:00",
                 "22:00",
                 "Daily (Mon - Sun)",
+                null,
                 java.util.Collections.emptyList(),
                 java.util.Collections.emptyList(),
                 java.util.Collections.emptyList(),

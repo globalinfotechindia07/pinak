@@ -123,6 +123,9 @@ public class StoreServiceImpl implements StoreService {
         if (request.operatingDays() != null && !request.operatingDays().isBlank()) {
             store.setOperatingDays(request.operatingDays().trim());
         }
+        if (request.imageUrl() != null && !request.imageUrl().isBlank()) {
+            store.setImageUrl(request.imageUrl().trim());
+        }
         if (request.menuImages() != null) {
             store.setMenuImages(request.menuImages());
         }
@@ -223,6 +226,9 @@ public class StoreServiceImpl implements StoreService {
         }
         if (request.operatingDays() != null && !request.operatingDays().isBlank()) {
             store.setOperatingDays(request.operatingDays().trim());
+        }
+        if (request.imageUrl() != null && !request.imageUrl().isBlank()) {
+            store.setImageUrl(request.imageUrl().trim());
         }
         if (request.menuImages() != null) {
             store.setMenuImages(request.menuImages());
@@ -470,6 +476,9 @@ public class StoreServiceImpl implements StoreService {
             store.setApprovalStatus(ApprovalStatus.APPROVED);
             store.setApprovedAt(Instant.now());
         }
+        if (request.imageUrl() != null && !request.imageUrl().isBlank()) {
+            store.setImageUrl(request.imageUrl().trim());
+        }
         if (request.menuImages() != null) {
             store.setMenuImages(request.menuImages());
         }
@@ -557,6 +566,9 @@ public class StoreServiceImpl implements StoreService {
         store.setPincode(request.pincode().trim());
         store.setLatitude(request.latitude());
         store.setLongitude(request.longitude());
+        if (request.imageUrl() != null && !request.imageUrl().isBlank()) {
+            store.setImageUrl(request.imageUrl().trim());
+        }
         if (request.menuImages() != null) {
             store.setMenuImages(request.menuImages());
         }

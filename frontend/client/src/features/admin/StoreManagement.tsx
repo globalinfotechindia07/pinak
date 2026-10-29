@@ -1902,9 +1902,11 @@ function AddStoreDrawer({
   const [managerEmailNotice, setManagerEmailNotice] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>("");
   const [menuImages, setMenuImages] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [storeType, setStoreType] = useState<"DINING" | "RETAIL" | "SERVICES">("DINING");
 
   const selectedMerchant = merchants.find((m) => m.id === merchantId);
 
@@ -1969,20 +1971,54 @@ function AddStoreDrawer({
     setOperatingHours("10:00 AM – 10:00 PM");
     setPhone(target.ownerPhone ? target.ownerPhone.replace(/[\s\-_()]/g, "") : "+917122550000");
 
-    if (menuImages.length === 0) {
-      setMenuImages([
-        "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"
-      ]);
-    }
-    if (photos.length === 0) {
+    // Detect if Retail / Fabindia / Products merchant vs Dining vs Salon
+    const combinedBrandCategory = ((brand || "") + " " + (target.categoryName || "")).toLowerCase();
+    const isRetail = /fab|retail|fashion|cloth|apparel|living|decor|jewel|grocery|mart|store/i.test(combinedBrandCategory);
+    const isSalon = /salon|spa|beauty|wellness|hair/i.test(combinedBrandCategory);
+
+    if (isRetail) {
+      setStoreType("RETAIL");
+      setImageUrl("https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?auto=format&fit=crop&w=1200&q=80"); // Fabindia / Ethnic Living Boutique Facade
+      setMenuImages([]); // Retail merchants have NO food menu cards!
       setPhotos([
-        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=800&q=80"
+        "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80"
       ]);
-    }
-    if (amenities.length === 0) {
-      setAmenities(["Air Conditioned", "Free High-Speed Wi-Fi", "Cards & UPI Accepted", "Valet Parking"]);
+      setAmenities([
+        "Trial Rooms",
+        "Alteration Service",
+        "Gift Wrapping",
+        "Air Conditioned",
+        "Cards & UPI Accepted",
+        "Instant In-Store Pickup"
+      ]);
+    } else if (isSalon) {
+      setStoreType("SERVICES");
+      setImageUrl("https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80");
+      setMenuImages([]);
+      setPhotos([
+        "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80"
+      ]);
+      setAmenities(["Air Conditioned", "Cards & UPI Accepted", "Free High-Speed Wi-Fi"]);
+    } else {
+      setStoreType("DINING");
+      setImageUrl("https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80");
+      if (menuImages.length === 0) {
+        setMenuImages([
+          "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"
+        ]);
+      }
+      if (photos.length === 0) {
+        setPhotos([
+          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=800&q=80"
+        ]);
+      }
+      if (amenities.length === 0) {
+        setAmenities(["Air Conditioned", "Free High-Speed Wi-Fi", "Cards & UPI Accepted", "Valet Parking"]);
+      }
     }
 
     setManagerName(`${mgrFirstName} Store Manager`);
@@ -2062,7 +2098,8 @@ function AddStoreDrawer({
         managerName: managerName.trim(),
         managerEmail: managerEmail.trim(),
         managerPhone: managerPhone.replace(/[\s\-_()]/g, "").trim(),
-        category: "Dining & Retail",
+        category: storeType === "RETAIL" ? "Retail & Lifestyle" : storeType === "SERVICES" ? "Services & Wellness" : "Dining & Retail",
+        imageUrl: imageUrl.trim() || undefined,
         menuImages,
         photos,
         amenities,
@@ -2241,13 +2278,17 @@ function AddStoreDrawer({
             {currentStep === 3 && (
               <div className="space-y-4 animate-in fade-in duration-200">
                 <StoreMediaAndAmenitiesSection
+                  imageUrl={imageUrl}
                   menuImages={menuImages}
                   photos={photos}
                   amenities={amenities}
+                  onImageUrlChange={setImageUrl}
                   onMenuImagesChange={setMenuImages}
                   onPhotosChange={setPhotos}
                   onAmenitiesChange={setAmenities}
-                  categoryHint={selectedMerchant?.categoryName || "Dining"}
+                  categoryHint={selectedMerchant?.businessName || selectedMerchant?.categoryName || "Dining"}
+                  storeType={storeType}
+                  onStoreTypeChange={setStoreType}
                 />
               </div>
             )}
@@ -2270,15 +2311,24 @@ function AddStoreDrawer({
                       <span className="font-medium text-slate-800 dark:text-slate-200">{city}, {state}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[11px]">Media Prepared:</span>
-                      <span className="font-medium text-amber-700 dark:text-amber-300">
-                        🍽️ {menuImages.length} menu • 📸 {photos.length} photos
+                      <span className="text-slate-400 block text-[11px]">Store Type & Cover:</span>
+                      <span className="font-medium text-purple-700 dark:text-purple-300">
+                        {storeType === "RETAIL" ? "🛍️ Retail & Products" : storeType === "SERVICES" ? "💇 Services" : "🍽️ Dining"}
+                        {imageUrl ? " • Cover Set" : " • No Cover"}
                       </span>
                     </div>
                     <div>
+                      <span className="text-slate-400 block text-[11px]">Media Prepared:</span>
+                      <span className="font-medium text-amber-700 dark:text-amber-300">
+                        {storeType === "RETAIL"
+                          ? `🛍️ ${photos.length} photos${menuImages.length > 0 ? ` • ${menuImages.length} lookbook` : " (No food menu)"}`
+                          : `🍽️ ${menuImages.length} menu • 📸 ${photos.length} photos`}
+                      </span>
+                    </div>
+                    <div className="col-span-2">
                       <span className="text-slate-400 block text-[11px]">Amenities:</span>
                       <span className="font-medium text-emerald-700 dark:text-emerald-300">
-                        ✨ {amenities.length} selected
+                        ✨ {amenities.length} selected ({amenities.slice(0, 3).join(", ")}{amenities.length > 3 ? "..." : ""})
                       </span>
                     </div>
                   </div>
@@ -2419,6 +2469,7 @@ function EditStoreDrawer({
   const [longitude, setLongitude] = useState(store.longitude || 79.0882);
   const [operatingHours, setOperatingHours] = useState(store.operatingHours || "10:00 AM – 10:00 PM (Daily)");
   const [status, setStatus] = useState<StoreType["status"]>(store.status || "ACTIVE");
+  const [imageUrl, setImageUrl] = useState<string>(store.imageUrl || "");
   const [menuImages, setMenuImages] = useState<string[]>(store.menuImages || []);
   const [photos, setPhotos] = useState<string[]>(store.photos || []);
   const [amenities, setAmenities] = useState<string[]>(store.amenities || []);
@@ -2426,7 +2477,7 @@ function EditStoreDrawer({
   const EDIT_STEPS = [
     { id: 1, title: "Basic Info", subtitle: "Name, Phone & Status" },
     { id: 2, title: "Location", subtitle: "Address & Map" },
-    { id: 3, title: "Media", subtitle: "Menu & Amenities" },
+    { id: 3, title: "Media", subtitle: "Cover, Menu & Photos" },
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -2443,6 +2494,7 @@ function EditStoreDrawer({
       longitude: Number(longitude),
       operatingHours: operatingHours.trim(),
       status,
+      imageUrl: imageUrl.trim() || undefined,
       menuImages,
       photos,
       amenities
@@ -2583,13 +2635,15 @@ function EditStoreDrawer({
             {currentStep === 3 && (
               <div className="space-y-4 animate-in fade-in duration-200">
                 <StoreMediaAndAmenitiesSection
+                  imageUrl={imageUrl}
                   menuImages={menuImages}
                   photos={photos}
                   amenities={amenities}
+                  onImageUrlChange={setImageUrl}
                   onMenuImagesChange={setMenuImages}
                   onPhotosChange={setPhotos}
                   onAmenitiesChange={setAmenities}
-                  categoryHint="Dining"
+                  categoryHint={store.category || store.branchName || "Dining"}
                 />
               </div>
             )}

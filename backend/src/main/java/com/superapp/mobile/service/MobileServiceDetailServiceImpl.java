@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class MobileServiceDetailServiceImpl implements MobileServiceDetailService {
@@ -111,22 +112,22 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 : "Dining & Treats";
         String rawPriceRange = store.getPriceRange() != null ? store.getPriceRange().trim() : "";
         String priceForTwoText;
-        if ("₹".equals(rawPriceRange)) {
-            priceForTwoText = "₹400 for two • Pocket Friendly";
-        } else if ("₹₹".equals(rawPriceRange)) {
-            priceForTwoText = "₹800 for two • Moderate";
-        } else if ("₹₹₹".equals(rawPriceRange)) {
-            priceForTwoText = "₹1,500 for two • Premium";
-        } else if ("₹₹₹₹".equals(rawPriceRange)) {
-            priceForTwoText = "₹2,500+ for two • Fine Dining";
+        if ("\u20B9".equals(rawPriceRange)) {
+            priceForTwoText = "\u20B9400 for two \u2022 Pocket Friendly";
+        } else if ("\u20B9\u20B9".equals(rawPriceRange)) {
+            priceForTwoText = "\u20B9800 for two \u2022 Moderate";
+        } else if ("\u20B9\u20B9\u20B9".equals(rawPriceRange)) {
+            priceForTwoText = "\u20B91,500 for two \u2022 Premium";
+        } else if ("\u20B9\u20B9\u20B9\u20B9".equals(rawPriceRange)) {
+            priceForTwoText = "\u20B92,500+ for two \u2022 Fine Dining";
         } else if (!rawPriceRange.isBlank()) {
             priceForTwoText = rawPriceRange.toLowerCase().contains("for two")
                     ? rawPriceRange
-                    : (rawPriceRange.startsWith("₹") ? rawPriceRange + " for two" : "₹" + rawPriceRange + " for two");
+                    : (rawPriceRange.startsWith("\u20B9") ? rawPriceRange + " for two" : "\u20B9" + rawPriceRange + " for two");
         } else {
-            priceForTwoText = "₹700 for two";
+            priceForTwoText = "\u20B9700 for two";
         }
-        String cuisineAndPriceText = !priceForTwoText.isBlank() ? cuisines + " • " + priceForTwoText : cuisines;
+        String cuisineAndPriceText = !priceForTwoText.isBlank() ? cuisines + " \u2022 " + priceForTwoText : cuisines;
 
         Double rating = store.getRating() != null ? store.getRating().doubleValue() : 4.5;
         String ratingCountText = store.getReviewCountText() != null ? store.getReviewCountText() : "Verified Store";
@@ -148,8 +149,11 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
         // 5. Offers & Savings Section from database offers
         OffersSectionDto offersSection = buildOffersSection(store, merchant);
 
-        // 6. Flash Sale Deals Section from products/offers
+        // 6. Flash Sale Deals Section (strictly is_flash == true offers)
         FlashSaleSectionDto flashSales = buildFlashSaleSection(store);
+
+        // 6b. Store Products & Retail Catalog Section (Inventory items and product deals)
+        StoreProductsSectionDto productsSection = buildProductsSection(store);
 
         // 7. Menu Highlights Section from store.getMenuHighlights() and store.getMenuImages()
         MenuHighlightsSectionDto menuSection = buildMenuSection(store);
@@ -166,6 +170,9 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
         // 11. Navigation Tabs (dynamically adapt to available database content)
         List<String> availableTabs = new ArrayList<>();
         availableTabs.add("Offers");
+        if (productsSection != null && productsSection.items() != null && !productsSection.items().isEmpty()) {
+            availableTabs.add("Products");
+        }
         if ((menuSection.items() != null && !menuSection.items().isEmpty()) || (menuSection.menuImages() != null && !menuSection.menuImages().isEmpty())) {
             availableTabs.add("Menu");
         }
@@ -187,7 +194,9 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 store.getAddress(),
                 distanceText,
                 distanceMeters,
-                "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=800&q=80",
+                (storeLat != 0.0 && storeLon != 0.0)
+                        ? String.format(Locale.US, "https://staticmap.openstreetmap.de/staticmap.php?center=%.6f,%.6f&zoom=15&size=600x300&markers=%.6f,%.6f,ol-marker", storeLat, storeLon, storeLat, storeLon)
+                        : "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=800&q=80",
                 storeLat,
                 storeLon,
                 googleMapsUrl
@@ -202,16 +211,31 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
         );
 
         // 13. Bottom Action Bar
-        boolean hasBooking = offersSection.preBookingOffers() != null && !offersSection.preBookingOffers().isEmpty();
+        boolean isRetail = (store.getCuisineOrCategory() != null && (
+                store.getCuisineOrCategory().toLowerCase().contains("retail") ||
+                store.getCuisineOrCategory().toLowerCase().contains("cloth") ||
+                store.getCuisineOrCategory().toLowerCase().contains("living") ||
+                store.getCuisineOrCategory().toLowerCase().contains("grocery")
+        )) || (merchantName != null && (
+                merchantName.toLowerCase().contains("fab") ||
+                merchantName.toLowerCase().contains("retail") ||
+                merchantName.toLowerCase().contains("cloth")
+        ));
+
+        boolean hasBooking = !isRetail && offersSection.preBookingOffers() != null && !offersSection.preBookingOffers().isEmpty();
         String primaryBadge = (offersSection.primaryOffer() != null && offersSection.primaryOffer().discountValue() != null)
                 ? offersSection.primaryOffer().discountValue().intValue() + "% OFF"
                 : null;
 
+        String teaserText = isRetail
+                ? "Earn Coins on bill payment & retail purchases"
+                : "Earn Coins on bill payment & table bookings";
+
         StickyBottomBarDto bottomBar = new StickyBottomBarDto(
-                new RewardTeaserDto("🪙", "Earn Coins on bill payment & table bookings", "MAX REWARD"),
+                new RewardTeaserDto("🪙", teaserText, "MAX REWARD"),
                 hasBooking,
-                new BottomActionDto("PAY_BILL", "Pay Bill Now", primaryBadge, true),
-                new BottomActionDto("BOOK_TABLE", "Book a Table", null, true)
+                new BottomActionDto("PAY_BILL", isRetail ? "Pay at Counter" : "Pay Bill Now", primaryBadge, true),
+                new BottomActionDto(isRetail ? "EXPLORE" : "BOOK_TABLE", isRetail ? "View Products" : "Book a Table", null, true)
         );
 
         return new MobileServiceDetailDto(
@@ -243,6 +267,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 availableTabs,
                 offersSection,
                 flashSales,
+                productsSection,
                 menuSection,
                 photoMosaic,
                 amenities,
@@ -268,26 +293,37 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
 
         List<StoreOfferCardDto> preBookingOffers = new ArrayList<>();
         List<StoreOfferCardDto> walkInOffers = new ArrayList<>();
+        List<StoreOfferCardDto> productOffers = new ArrayList<>();
         StoreOfferCardDto primaryOffer = null;
 
         for (Offer o : activeOffers) {
+            boolean isProduct = "PRODUCT".equalsIgnoreCase(o.getOfferScope());
             String redemptionType = o.getRedemptionType() != null ? o.getRedemptionType() : "BOTH";
             Integer advanceHours = o.getMinAdvanceHours() != null ? o.getMinAdvanceHours() : 0;
             List<String> badges = new ArrayList<>();
             if (o.getBadgeText() != null && !o.getBadgeText().isBlank()) {
                 badges.add(o.getBadgeText());
             } else {
-                badges.add("PINAK Exclusive");
+                badges.add(isProduct ? "PRODUCT DEAL" : "PINAK Exclusive");
             }
             if (o.getValue() != null && o.getValue().compareTo(new BigDecimal("30")) >= 0) {
                 badges.add("Special Deal");
             }
             badges.add("Instant");
 
-            String subtitle = "Valid on minimum bill ₹" + (o.getMinTransactionAmount() != null ? o.getMinTransactionAmount() : "0");
-            if (o.getActiveDays() != null && !o.getActiveDays().isBlank()) {
-                subtitle = "Available on " + o.getActiveDays() + " • " + subtitle;
+            String subtitle;
+            if (isProduct) {
+                subtitle = "Original MRP \u20B9" + (o.getOriginalMrp() != null ? o.getOriginalMrp() : "0")
+                        + " \u2022 Deal Price \u20B9" + (o.getFlashSellingPrice() != null ? o.getFlashSellingPrice() : (o.getValue() != null ? o.getValue() : "0"));
+            } else {
+                subtitle = "Valid on minimum bill \u20B9" + (o.getMinTransactionAmount() != null ? o.getMinTransactionAmount() : "0");
+                if (o.getActiveDays() != null && !o.getActiveDays().isBlank()) {
+                    subtitle = "Available on " + o.getActiveDays() + " \u2022 " + subtitle;
+                }
             }
+
+            BigDecimal dealPrice = o.getFlashSellingPrice() != null ? o.getFlashSellingPrice() : o.getValue();
+            String cta = o.getCtaText() != null ? o.getCtaText() : (isProduct ? "Claim Deal" : "Book & Pay");
 
             StoreOfferCardDto card = new StoreOfferCardDto(
                     o.getId().toString(),
@@ -301,22 +337,32 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                     o.getTermsAndConditions() != null ? o.getTermsAndConditions() : "Auto-applied at checkout.",
                     redemptionType,
                     advanceHours,
-                    o.getCtaText() != null ? o.getCtaText() : "Book & Pay",
+                    cta,
                     true,
                     o.getBonusCoins(),
                     o.getCoverChargeAmount(),
-                    o.getMinPartySize(),
-                    o.getMaxPartySize(),
+                    isProduct ? 1 : o.getMinPartySize(),
+                    isProduct ? 1 : o.getMaxPartySize(),
                     o.getGracePeriodMinutes(),
-                    o.getSlotTimes(),
-                    Boolean.TRUE.equals(o.getIsTableBookingEnabled())
+                    isProduct ? null : o.getSlotTimes(),
+                    Boolean.TRUE.equals(o.getIsTableBookingEnabled()) && !isProduct,
+                    o.getOriginalMrp(),
+                    dealPrice,
+                    o.getOfferScope() != null ? o.getOfferScope() : "SERVICE",
+                    o.getImageUrl()
             );
 
-            if ("PRE_BOOK".equalsIgnoreCase(redemptionType) || "BOTH".equalsIgnoreCase(redemptionType)) {
-                preBookingOffers.add(card);
-            }
-            if ("WALK_IN".equalsIgnoreCase(redemptionType) || "BOTH".equalsIgnoreCase(redemptionType)) {
-                walkInOffers.add(card);
+            if (isProduct) {
+                // Product deals strictly go into productOffers (Kirana / Retail deals)
+                productOffers.add(card);
+            } else {
+                // Dining / Service offers go into preBooking or walkIn
+                if ("PRE_BOOK".equalsIgnoreCase(redemptionType) || "BOTH".equalsIgnoreCase(redemptionType)) {
+                    preBookingOffers.add(card);
+                }
+                if ("WALK_IN".equalsIgnoreCase(redemptionType) || "BOTH".equalsIgnoreCase(redemptionType)) {
+                    walkInOffers.add(card);
+                }
             }
 
             if (primaryOffer == null || (o.getValue() != null && primaryOffer.discountValue() != null && o.getValue().compareTo(primaryOffer.discountValue()) > 0)) {
@@ -324,15 +370,19 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
             }
         }
 
-        if (preBookingOffers.isEmpty() && walkInOffers.isEmpty()) {
+        if (preBookingOffers.isEmpty() && walkInOffers.isEmpty() && productOffers.isEmpty()) {
             List<StoreOfferCardDto> dummyPre = getDummyPreBookingOffers();
             List<StoreOfferCardDto> dummyWalk = getDummyWalkInOffers();
             preBookingOffers.addAll(dummyPre);
             walkInOffers.addAll(dummyWalk);
             primaryOffer = dummyPre.get(0);
+        } else if (primaryOffer == null) {
+            if (!preBookingOffers.isEmpty()) primaryOffer = preBookingOffers.get(0);
+            else if (!productOffers.isEmpty()) primaryOffer = productOffers.get(0);
+            else if (!walkInOffers.isEmpty()) primaryOffer = walkInOffers.get(0);
         }
 
-        int totalCount = preBookingOffers.size() + walkInOffers.size();
+        int totalCount = preBookingOffers.size() + walkInOffers.size() + productOffers.size();
         String activeOffersCountText = totalCount + " Available";
 
         List<PartnerChipDto> partnerChips = new ArrayList<>();
@@ -350,6 +400,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 primaryOffer,
                 preBookingOffers,
                 walkInOffers,
+                productOffers,
                 partnerChips,
                 greenPerkHighlight
         );
@@ -357,24 +408,8 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
 
     private FlashSaleSectionDto buildFlashSaleSection(Store store) {
         List<FlashSaleDealDto> deals = new ArrayList<>();
-        try {
-            List<Product> products = productRepository.findByStoreIdAndIsActiveTrue(store.getId());
-            for (Product p : products) {
-                deals.add(new FlashSaleDealDto(
-                        p.getId().toString(),
-                        p.getName(),
-                        p.getImageUrl(),
-                        (p.getDiscountPercent() != null ? p.getDiscountPercent() : 0) + "% OFF",
-                        p.getSellingPrice(),
-                        p.getMrp(),
-                        "Add Deal"
-                ));
-            }
-        } catch (Exception e) {
-            log.warn("Failed to fetch store products: {}", e.getMessage());
-        }
 
-        // Also check if any store offers are flagged as flash sales or product deals
+        // Flash Sales: strictly query offers that the merchant explicitly created as Flash Deals (is_flash == true)
         try {
             List<Offer> flashOffers = offerRepository.findActiveOffersByStoreOrMerchant(
                     store.getId(),
@@ -384,7 +419,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
             ).getContent();
 
             for (Offer o : flashOffers) {
-                if (Boolean.TRUE.equals(o.getIsFlash()) || "PRODUCT".equalsIgnoreCase(o.getOfferScope())) {
+                if (Boolean.TRUE.equals(o.getIsFlash())) {
                     BigDecimal dealPrice = o.getFlashSellingPrice() != null ? o.getFlashSellingPrice() : o.getValue();
                     BigDecimal originalPrice = o.getOriginalMrp();
                     String badge = o.getValue() != null ? o.getValue().intValue() + "% OFF" : "Flash Deal";
@@ -406,8 +441,88 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
         return new FlashSaleSectionDto(
                 "Flash Sale Deals",
                 "LIMITED",
-                "View all (" + deals.size() + ")",
+                deals.size() > 0 ? "View all (" + deals.size() + ")" : "",
                 deals
+        );
+    }
+
+    private StoreProductsSectionDto buildProductsSection(Store store) {
+        List<StoreProductItemDto> items = new ArrayList<>();
+        java.util.Set<String> seenNames = new java.util.HashSet<>();
+
+        // 1. Direct products from store inventory database
+        try {
+            List<Product> products = productRepository.findByStoreIdAndIsActiveTrue(store.getId());
+            if ((products == null || products.isEmpty()) && store.getMerchantId() != null) {
+                products = productRepository.findAll().stream()
+                        .filter(p -> store.getMerchantId().equals(p.getMerchantId()) && Boolean.TRUE.equals(p.getIsActive()))
+                        .collect(Collectors.toList());
+            }
+
+            if (products != null) {
+                for (Product p : products) {
+                    seenNames.add(p.getName().trim().toLowerCase());
+                    int discount = p.getDiscountPercent() != null ? p.getDiscountPercent() : 0;
+                    items.add(new StoreProductItemDto(
+                            p.getId().toString(),
+                            p.getName(),
+                            p.getBrand() != null ? p.getBrand() : "Store Item",
+                            p.getUnit() != null ? p.getUnit() : "1 Unit",
+                            p.getImageUrl() != null && !p.getImageUrl().isBlank() ? p.getImageUrl() : store.getImageUrl(),
+                            p.getMrp(),
+                            p.getSellingPrice(),
+                            discount,
+                            discount > 0 ? discount + "% OFF" : "BEST PRICE",
+                            Boolean.TRUE.equals(p.getInStock()),
+                            null
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch store inventory products: {}", e.getMessage());
+        }
+
+        // 2. Product-level offers (e.g. Kirana / Supermarket / Dairy retail product deals)
+        try {
+            List<Offer> productOffers = offerRepository.findActiveOffersByStoreOrMerchant(
+                    store.getId(),
+                    store.getMerchantId(),
+                    Instant.now(),
+                    PageRequest.of(0, 20)
+            ).getContent();
+
+            for (Offer o : productOffers) {
+                if ("PRODUCT".equalsIgnoreCase(o.getOfferScope())) {
+                    String cleanName = o.getTitle();
+                    if (seenNames.add(cleanName.trim().toLowerCase())) {
+                        BigDecimal dealPrice = o.getFlashSellingPrice() != null ? o.getFlashSellingPrice() : o.getValue();
+                        BigDecimal mrp = o.getOriginalMrp() != null ? o.getOriginalMrp() : (dealPrice != null ? dealPrice.multiply(BigDecimal.valueOf(1.2)) : BigDecimal.valueOf(70));
+                        int discount = o.getValue() != null ? o.getValue().intValue() : 0;
+                        items.add(new StoreProductItemDto(
+                                o.getId().toString(),
+                                o.getTitle(),
+                                "Store Special",
+                                "1 Pack",
+                                o.getImageUrl() != null && !o.getImageUrl().isBlank() ? o.getImageUrl() : store.getImageUrl(),
+                                mrp,
+                                dealPrice != null ? dealPrice : BigDecimal.valueOf(58),
+                                discount,
+                                discount > 0 ? discount + "% OFF" : "SPECIAL DEAL",
+                                true,
+                                o.getId().toString()
+                        ));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch product-scope offers: {}", e.getMessage());
+        }
+
+        return new StoreProductsSectionDto(
+                "Store Products & Essentials",
+                items.size() > 0 ? items.size() + " items available in store" : "Explore store catalog",
+                items.size(),
+                items
         );
     }
 
@@ -420,18 +535,33 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 log.warn("Failed to parse store menuHighlights JSON: {}", e.getMessage());
             }
         }
-        if (items.isEmpty()) {
-            items = getDummyMenuItems();
+        if (items.isEmpty() && store.getId() != null) {
+            try {
+                List<com.superapp.product.entity.Product> products = productRepository.findByStoreIdAndIsActiveTrue(store.getId());
+                if (products != null && !products.isEmpty()) {
+                    for (com.superapp.product.entity.Product p : products) {
+                        items.add(new MenuItemDto(
+                                p.getName(),
+                                p.getDescription() != null ? p.getDescription() : p.getBrand(),
+                                p.getSellingPrice() != null ? p.getSellingPrice() : p.getMrp(),
+                                true,
+                                p.getBrand() != null ? p.getBrand() : "Store Item"
+                        ));
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to load products for store: {}", e.getMessage());
+            }
         }
 
         List<String> menuImages = store.getMenuImages() != null && !store.getMenuImages().isEmpty()
                 ? store.getMenuImages()
-                : getDummyMenuScans();
+                : Collections.emptyList();
         int totalPages = menuImages.size();
         String menuPagesText = totalPages > 0 ? "View full menu (" + totalPages + " pages)" : "View full menu";
 
         return new MenuHighlightsSectionDto(
-                "Chef's Signatures & Highlights",
+                items.isEmpty() ? "" : (store.getStoreName() != null ? store.getStoreName() + " Specialties" : "Store Specialties"),
                 items,
                 menuPagesText,
                 totalPages,
@@ -624,13 +754,13 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 )
         );
 
-        List<MenuItemDto> menuItems = getDummyMenuItems();
-        List<String> menuScans = getDummyMenuScans();
+        List<MenuItemDto> menuItems = Collections.emptyList();
+        List<String> menuScans = Collections.emptyList();
         MenuHighlightsSectionDto menuSection = new MenuHighlightsSectionDto(
-                "Chef's Signatures & Highlights",
+                "",
                 menuItems,
-                "View full menu (" + menuScans.size() + " pages)",
-                menuScans.size(),
+                "View full menu",
+                0,
                 menuScans
         );
 
@@ -765,13 +895,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
     }
 
     private List<MenuItemDto> getDummyMenuItems() {
-        return List.of(
-                new MenuItemDto("Wood-Fired Truffle Pizza", "Hand-stretched sourdough topped with black truffle pate, fior di latte and arugula.", new BigDecimal("549.00"), true, "Italian Specialties"),
-                new MenuItemDto("Smoked Lamb Rogan Josh", "Kashmiri slow-braised tender lamb simmered with aromatic spices in a wood-fired clay pot.", new BigDecimal("699.00"), false, "North Indian Signatures"),
-                new MenuItemDto("Chargrilled Peri-Peri Chicken", "Succulent boneless chicken skewers basted with house-made peri-peri glaze and garlic dip.", new BigDecimal("579.00"), false, "BBQ & Grills"),
-                new MenuItemDto("Wild Mushroom Risotto", "Carnaroli rice slow-cooked in parmesan broth, topped with porcini crisps and herb butter.", new BigDecimal("529.00"), true, "Continental Mains"),
-                new MenuItemDto("Signature Tiramisu", "Classic Venetian savoiardi soaked in espresso and coffee liqueur with whipped mascarpone.", new BigDecimal("389.00"), true, "Desserts & Bakes")
-        );
+        return Collections.emptyList();
     }
 
     private List<String> getDummyMenuScans() {
@@ -791,13 +915,13 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 new StoreOfferCardDto(
                         "e3000000-0000-0000-0000-000000000001",
                         "Flat 50% off on Pre-Booking & Dining",
-                        "Valid on minimum bill ₹1,000.00",
+                        "Valid on minimum bill \u20B91,000.00",
                         "PERCENTAGE_DISCOUNT",
                         new BigDecimal("50.00"),
                         new BigDecimal("500.00"),
                         new BigDecimal("1000.00"),
                         List.of("PINAK EXCLUSIVE", "Instant Confirm", "Special Deal"),
-                        "Valid for pre-booked tables only. Maximum discount ₹500 on total food & soft beverages.",
+                        "Valid for pre-booked tables only. Maximum discount \u20B9500 on total food & soft beverages.",
                         "PRE_BOOK",
                         2,
                         "Book & Pay",
@@ -813,7 +937,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 new StoreOfferCardDto(
                         "e3000000-0000-0000-0000-000000000002",
                         "Flat 25% off Early Bird Table Pass",
-                        "Valid on minimum bill ₹800.00",
+                        "Valid on minimum bill \u20B9800.00",
                         "PERCENTAGE_DISCOUNT",
                         new BigDecimal("25.00"),
                         new BigDecimal("300.00"),
@@ -840,7 +964,7 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 new StoreOfferCardDto(
                         "e3000000-0000-0000-0000-000000000003",
                         "Flat 20% off Instant Bill Pass",
-                        "Pay via PINAK Pay at the counter • Min bill ₹500",
+                        "Pay via PINAK Pay at the counter \u2022 Min bill \u20B9500",
                         "PERCENTAGE_DISCOUNT",
                         new BigDecimal("20.00"),
                         new BigDecimal("400.00"),

@@ -247,10 +247,11 @@ function formatTimeLeftBadge(expiryStr?: string | null): { text: string; bg: str
 
 /**
  * Deduplicates offers by store and picks ONLY the single best, latest offer for each store.
- * If 1 store has 3 offers, only 1 card is displayed with the best discount / latest deal.
+ * Aggregates redemption types (Pre-booking, Walk-in, or Both) across all branch offers.
  */
 function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
   const storeMap = new Map<string, NearbyOffer>();
+  const storeOfferTypes = new Map<string, { hasPreBook: boolean; hasWalkIn: boolean }>();
 
   for (const o of rawOffers) {
     const storeKey = (
@@ -266,6 +267,15 @@ function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
       o.id ||
       ""
     ).trim().toLowerCase();
+
+    const rType = (o.redemptionType || "").toUpperCase();
+    const isPre = rType === "PRE_BOOK" || rType === "BOTH" || (o.ctaText && o.ctaText.toLowerCase().includes("book"));
+    const isWalk = rType === "WALK_IN" || rType === "BOTH" || (o.ctaText && o.ctaText.toLowerCase().includes("pay"));
+
+    const currentTypes = storeOfferTypes.get(storeKey) || { hasPreBook: false, hasWalkIn: false };
+    if (isPre) currentTypes.hasPreBook = true;
+    if (isWalk) currentTypes.hasWalkIn = true;
+    storeOfferTypes.set(storeKey, currentTypes);
 
     const currentVal = Number(o.discountValue ?? o.value ?? 0);
     const currentExpiry = o.expiresAt
@@ -292,14 +302,29 @@ function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
     }
   }
 
-  return Array.from(storeMap.values());
+  // Enrich winning offer with aggregated store redemption capabilities
+  return Array.from(storeMap.entries()).map(([storeKey, offer]) => {
+    const types = storeOfferTypes.get(storeKey);
+    let resolvedRedemption = offer.redemptionType || "BOTH";
+    if (types?.hasPreBook && types?.hasWalkIn) {
+      resolvedRedemption = "BOTH";
+    } else if (types?.hasWalkIn && !types?.hasPreBook) {
+      resolvedRedemption = "WALK_IN";
+    } else if (types?.hasPreBook && !types?.hasWalkIn) {
+      resolvedRedemption = "PRE_BOOK";
+    }
+    return {
+      ...offer,
+      redemptionType: resolvedRedemption
+    };
+  });
 }
 
 export default function CustomerHomePreviewPage() {
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const initialStoreId = searchParams?.get("storeId");
   const [activeScreen, setActiveScreen] = useState<"home" | "detail">(initialStoreId ? "detail" : "home");
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "97aabe53-9349-439d-952e-40f723bb8f51");
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "e1000000-0000-0000-0000-000000000001");
   const [offers, setOffers] = useState<NearbyOffer[]>([]);
   const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
   const [featuredStores, setFeaturedStores] = useState<FeaturedMerchant[]>([]);
@@ -494,7 +519,7 @@ export default function CustomerHomePreviewPage() {
   };
 
   const handleOpenStoreDetail = (storeId?: string) => {
-    setSelectedStoreId(storeId || "97aabe53-9349-439d-952e-40f723bb8f51");
+    setSelectedStoreId(storeId || "e1000000-0000-0000-0000-000000000001");
     setActiveScreen("detail");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -548,11 +573,11 @@ export default function CustomerHomePreviewPage() {
           <button
             type="button"
             onClick={() => {
-              if (!selectedStoreId || selectedStoreId.startsWith("e1000000")) {
+              if (!selectedStoreId) {
                 const firstRealStore =
                   offers.find((o) => o.branch?.branchId || o.branchSummary?.storeId)?.branch?.branchId ||
                   offers.find((o) => o.branchSummary?.storeId)?.branchSummary?.storeId ||
-                  "97aabe53-9349-439d-952e-40f723bb8f51";
+                  "e1000000-0000-0000-0000-000000000001";
                 setSelectedStoreId(firstRealStore);
               }
               setActiveScreen("detail");
@@ -878,18 +903,17 @@ export default function CustomerHomePreviewPage() {
                   conditionText = "Available on all days";
                 }
 
-                const isPreBooking =
-                  o.offerScope === "SERVICE" ||
-                  o.offerScope === "PRE_BOOK" ||
-                  (o.ctaText && o.ctaText.toLowerCase().includes("book")) ||
-                  o.redemptionType === "BOTH";
+                const rType = (o.redemptionType || "").toUpperCase();
+                const isBoth = rType === "BOTH";
+                const isWalkInOnly = rType === "WALK_IN";
+                const isPreBookingOnly = rType === "PRE_BOOK" || (!isBoth && !isWalkInOnly);
 
                 const expiry = o.expiresAt || o.validTo;
                 const badge = formatTimeLeftBadge(expiry);
                 const rewardCoins = o.reward?.coins || o.rewardSummary?.coins || o.bonusCoins || 100;
                 const imageSrc = o.imageUrl || o.imgUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80";
 
-                const targetStoreId = o.branch?.branchId || o.branchSummary?.storeId || "97aabe53-9349-439d-952e-40f723bb8f51";
+                const targetStoreId = o.branch?.branchId || o.branchSummary?.storeId || "e1000000-0000-0000-0000-000000000001";
 
                 return (
                   <article
@@ -937,17 +961,27 @@ export default function CustomerHomePreviewPage() {
                           />
                         </button>
 
-                        {/* Bottom Overlay Info (Rating & Pre-booking pill) */}
+                        {/* Bottom Overlay Info (Rating & Redemption Badge) */}
                         <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-white text-[10px] font-bold z-10">
                           <span className="bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-md flex items-center gap-1">
                             <Star size={11} className="fill-amber-400 text-amber-400" />
                             <span>4.8</span>
                             <span className="text-slate-300 font-normal text-[9px]">(1.2k)</span>
                           </span>
-                          {isPreBooking && (
-                            <span className="bg-emerald-600/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-md flex items-center gap-1 text-[9.5px]">
-                              <UtensilsCrossed size={10} />
-                              <span>Table Pre-Booking</span>
+                          {isBoth ? (
+                            <span className="bg-gradient-to-r from-purple-700 to-indigo-700 backdrop-blur-xs text-white px-2 py-0.5 rounded-md flex items-center gap-1 text-[9.5px] font-extrabold shadow-xs whitespace-nowrap shrink-0">
+                              <Sparkles size={10} className="fill-amber-300 text-amber-300 shrink-0" />
+                              <span className="whitespace-nowrap">Pre-Book & Walk-in</span>
+                            </span>
+                          ) : isWalkInOnly ? (
+                            <span className="bg-blue-600/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-md flex items-center gap-1 text-[9.5px] font-extrabold shadow-xs whitespace-nowrap shrink-0">
+                              <Store size={10} className="shrink-0" />
+                              <span className="whitespace-nowrap">Walk-in Offer</span>
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-600/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-md flex items-center gap-1 text-[9.5px] font-extrabold shadow-xs whitespace-nowrap shrink-0">
+                              <UtensilsCrossed size={10} className="shrink-0" />
+                              <span className="whitespace-nowrap">Table Pre-Booking</span>
                             </span>
                           )}
                         </div>
@@ -986,9 +1020,37 @@ export default function CustomerHomePreviewPage() {
                           </p>
                         </div>
 
-                        {/* Pre-Booking Info Pills / Walk-in Indicator: Fixed Height */}
+                        {/* Redemption Info Pills: Pre-Booking, Walk-in, or Both: Fixed Height */}
                         <div className="h-6 flex items-center gap-1.5 text-[9px] font-bold text-slate-600 dark:text-slate-300">
-                          {isPreBooking ? (
+                          {isBoth ? (
+                            <>
+                              <span className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                                <Users size={9} />
+                                <span>Pre-book</span>
+                              </span>
+                              <span className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                                <Store size={9} />
+                                <span>Walk-in</span>
+                              </span>
+                              <span className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-md">
+                                Instant Deals
+                              </span>
+                            </>
+                          ) : isWalkInOnly ? (
+                            <>
+                              <span className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                                <Store size={9} />
+                                <span>Walk-in Direct</span>
+                              </span>
+                              <span className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                                <QrCode size={9} />
+                                <span>Scan & Pay</span>
+                              </span>
+                              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded-md">
+                                Zero Advance
+                              </span>
+                            </>
+                          ) : (
                             <>
                               <span className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">
                                 <Users size={9} />
@@ -1002,8 +1064,6 @@ export default function CustomerHomePreviewPage() {
                                 Free Reservation
                               </span>
                             </>
-                          ) : (
-                            <span className="text-slate-400 text-[10px] font-medium">Walk-in instant billing supported</span>
                           )}
                         </div>
                       </div>
@@ -1025,7 +1085,7 @@ export default function CustomerHomePreviewPage() {
                         }}
                         className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] px-3.5 py-1.5 rounded-lg shadow-xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
                       >
-                        <span>{o.ctaText || "Book & Pay"}</span>
+                        <span>{o.ctaText || (isWalkInOnly ? "Pay Bill" : isBoth ? "Book & Pay" : "Book Table")}</span>
                         <ChevronRight size={12} />
                       </button>
                     </div>
@@ -1205,9 +1265,7 @@ export default function CustomerHomePreviewPage() {
                   <article
                     key={storeKey}
                     onClick={() => {
-                      toast.success(`Opening ${store.name}`, {
-                        description: `${store.categoryName || "Store"} • ${store.bestOffer?.label || "Special offers available"}`
-                      });
+                      handleOpenStoreDetail(store.merchantId);
                     }}
                     className="w-48 shrink-0 bg-white rounded-xl border border-slate-100 p-2.5 shadow-sm hover:shadow-md transition-shadow group cursor-pointer flex flex-col justify-between"
                   >

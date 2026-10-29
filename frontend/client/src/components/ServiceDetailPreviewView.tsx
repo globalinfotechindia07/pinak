@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Heart,
   Share2,
   Image as ImageIcon,
@@ -8,7 +12,6 @@ import {
   Star,
   Compass,
   Phone,
-  ChevronRight,
   Sparkles,
   Bolt,
   CreditCard,
@@ -17,6 +20,7 @@ import {
   Utensils,
   BookOpen,
   MapPin,
+  Navigation,
   ExternalLink,
   Headphones,
   Clock,
@@ -37,7 +41,8 @@ import {
   Loader2,
   Coins,
   Wallet,
-  CheckCircle
+  CheckCircle,
+  ShoppingBag
 } from "lucide-react";
 import { toast } from "sonner";
 import apiClient from "@/api/client";
@@ -78,6 +83,7 @@ interface ServiceDetailData {
     primaryOffer: any;
     preBookingOffers: any[];
     walkInOffers: any[];
+    productOffers?: any[];
     partnerIncentiveChips?: any[];
     greenPerkHighlight?: string;
   };
@@ -86,6 +92,24 @@ interface ServiceDetailData {
     badge: string;
     viewAllText: string;
     deals: any[];
+  };
+  productsSection?: {
+    title: string;
+    subtitle: string;
+    totalCount: number;
+    items: Array<{
+      id: string;
+      name: string;
+      brand: string;
+      unit: string;
+      imageUrl: string;
+      mrp: number;
+      sellingPrice: number;
+      discountPercent: number;
+      discountBadge: string;
+      inStock: boolean;
+      offerId?: string;
+    }>;
   };
   menuSection: {
     categoryTitle: string;
@@ -148,6 +172,101 @@ interface ServiceDetailPreviewViewProps {
   onBack: () => void;
 }
 
+interface StoreLocationMapProps {
+  latitude?: number;
+  longitude?: number;
+  storeName?: string;
+  onClick?: () => void;
+}
+
+const StoreLocationMap: React.FC<StoreLocationMapProps> = ({
+  latitude,
+  longitude,
+  storeName,
+  onClick
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+
+  const initialLat = Number.isFinite(latitude) && latitude !== 0 ? latitude! : 21.1458;
+  const initialLng = Number.isFinite(longitude) && longitude !== 0 ? longitude! : 79.0882;
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    if (mapRef.current) {
+      mapRef.current.setView([initialLat, initialLng], 15);
+      return;
+    }
+
+    const map = L.map(containerRef.current, {
+      center: [initialLat, initialLng],
+      zoom: 15,
+      zoomControl: false,
+      scrollWheelZoom: false,
+      attributionControl: false,
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+
+    // Zoom controls matching StoreLocationPicker from store creation
+    L.control.zoom({ position: "topright" }).addTo(map);
+
+    // Luxury SVG Pin matching StoreLocationPicker from store creation
+    const pinIcon = L.divIcon({
+      className: "custom-store-pin",
+      html: `
+        <div style="position: relative; width: 36px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <svg width="36" height="44" viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 6px 12px rgba(124, 58, 237, 0.45));">
+            <path d="M18 0C8.05887 0 0 8.05887 0 18C0 29.5 18 44 18 44C18 44 36 29.5 36 18C36 8.05887 27.9411 0 18 0Z" fill="url(#pin_gradient_detail)"/>
+            <circle cx="18" cy="17" r="7" fill="white"/>
+            <circle cx="18" cy="17" r="3.5" fill="#7C3AED"/>
+            <defs>
+              <linearGradient id="pin_gradient_detail" x1="0" y1="0" x2="36" y2="44" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#9333EA"/>
+                <stop offset="1" stop-color="#4F46E5"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+      `,
+      iconSize: [36, 44],
+      iconAnchor: [18, 44],
+      popupAnchor: [0, -42],
+    });
+
+    const marker = L.marker([initialLat, initialLng], { icon: pinIcon }).addTo(map);
+    marker.bindPopup(`
+      <div style="font-family: inherit; font-size: 11px; padding: 2px;">
+        <strong style="color: #7C3AED; display: block; margin-bottom: 2px;">📍 ${storeName || "Store Location"}</strong>
+        <span style="color: #64748B;">Tap Navigate for turn-by-turn directions</span>
+      </div>
+    `);
+
+    mapRef.current = map;
+
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [initialLat, initialLng, storeName]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-full z-0"
+    />
+  );
+};
+
 export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> = ({
   storeId,
   userLat = 12.9716,
@@ -157,37 +276,37 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   const [data, setData] = useState<ServiceDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [offerSegment, setOfferSegment] = useState<"PRE_BOOK" | "WALK_IN">("PRE_BOOK");
+  const [offerSegment, setOfferSegment] = useState<"PRE_BOOK" | "WALK_IN" | "PRODUCT">("PRE_BOOK");
   const [activeTab, setActiveTab] = useState("Offers");
   const [isFavorited, setIsFavorited] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [selectedImageZoom, setSelectedImageZoom] = useState<string | null>(null);
 
-  // Production-Ready Interactive Booking & Payment Sheet States
+  // Production-Ready Interactive Booking, Payment & Product Sheet States
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedProductForDeal, setSelectedProductForDeal] = useState<any>(null);
+  const [productOrderQuantity, setProductOrderQuantity] = useState<number>(1);
   const [selectedGuests, setSelectedGuests] = useState<number>(2);
   const [selectedDate, setSelectedDate] = useState<string>("Today");
   const [selectedSlot, setSelectedSlot] = useState<string>("07:30 PM");
   const [enteredBillAmount, setEnteredBillAmount] = useState<number>(1000);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("UPI");
   const [activeOfferIndex, setActiveOfferIndex] = useState<number>(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  const DEFAULT_STORE_ID = "97aabe53-9349-439d-952e-40f723bb8f51";
+  const effectiveStoreId = storeId && storeId !== "undefined" && storeId !== "null" ? storeId : DEFAULT_STORE_ID;
 
   useEffect(() => {
     let isMounted = true;
     async function fetchDetail() {
-      if (!storeId) {
-        if (isMounted) {
-          setLoading(false);
-          setError("No store selected");
-        }
-        return;
-      }
       try {
         setLoading(true);
         setError(null);
         const res = await apiClient.get<any>(
-          `/mobile/stores/${storeId}/detail?lat=${userLat}&lng=${userLng}`
+          `/mobile/stores/${effectiveStoreId}/detail?lat=${userLat}&lng=${userLng}`
         );
         if (isMounted) {
           if (res.data?.success && res.data?.data) {
@@ -229,16 +348,20 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
     return () => {
       isMounted = false;
     };
-  }, [storeId, userLat, userLng]);
+  }, [effectiveStoreId, userLat, userLng]);
 
-  // Sync active offer segment automatically to match available offers
+  // Sync active offer segment automatically to match available store offers (Restaurant vs Kirana vs Hybrid)
   useEffect(() => {
     if (data?.offersSection) {
       const hasPre = (data.offersSection.preBookingOffers?.length || 0) > 0;
       const hasWalk = (data.offersSection.walkInOffers?.length || 0) > 0;
-      if (hasPre && !hasWalk) {
+      const hasProd = (data.offersSection.productOffers?.length || 0) > 0;
+
+      if (!hasPre && hasProd) {
+        setOfferSegment("PRODUCT");
+      } else if (hasPre) {
         setOfferSegment("PRE_BOOK");
-      } else if (!hasPre && hasWalk) {
+      } else if (hasWalk) {
         setOfferSegment("WALK_IN");
       }
     }
@@ -277,6 +400,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
     setActiveTab(tab);
     const tabMap: Record<string, string> = {
       Offers: "sec-offers",
+      Products: "sec-products",
       Menu: "sec-menu",
       Photos: "sec-photos",
       Amenities: "sec-amenities",
@@ -356,18 +480,37 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
 
   const preBookingOffers = data.offersSection?.preBookingOffers || [];
   const walkInOffers = data.offersSection?.walkInOffers || [];
+  const productOffers = data.offersSection?.productOffers || [];
   const hasPreBooking = preBookingOffers.length > 0;
   const hasWalkIn = walkInOffers.length > 0;
-  const hasBothOfferTypes = hasPreBooking && hasWalkIn;
+  const hasProductDeals = productOffers.length > 0;
+
+  // Segment switch tabs: when 3 or more tabs are shown, use concise labels ("Pre-booking", "Walk-in", "Product deals")
+  // to prevent long text stacking/wrapping into two lines on mobile screens.
+  const isMultiTab = [hasPreBooking, hasWalkIn, hasProductDeals].filter(Boolean).length >= 3;
+
+  const segmentTabs = [
+    ...(hasPreBooking
+      ? [{ id: "PRE_BOOK" as const, label: isMultiTab ? "Pre-booking" : "Pre-booking offers" }]
+      : []),
+    ...(hasWalkIn
+      ? [{ id: "WALK_IN" as const, label: isMultiTab ? "Walk-in" : "Walk-in offers" }]
+      : []),
+    ...(hasProductDeals
+      ? [{ id: "PRODUCT" as const, label: "Product deals" }]
+      : [])
+  ];
 
   const activeSegmentOffers =
-    hasBothOfferTypes
-      ? (offerSegment === "PRE_BOOK" ? preBookingOffers : walkInOffers)
-      : hasPreBooking
-      ? preBookingOffers
-      : hasWalkIn
+    offerSegment === "PRODUCT"
+      ? productOffers
+      : offerSegment === "WALK_IN"
       ? walkInOffers
-      : [];
+      : preBookingOffers.length > 0
+      ? preBookingOffers
+      : productOffers.length > 0
+      ? productOffers
+      : walkInOffers;
 
   const currentHeroOffer = activeSegmentOffers[activeOfferIndex] || activeSegmentOffers[0] || primaryOffer;
   const additionalOffers = activeSegmentOffers.slice(1);
@@ -397,12 +540,30 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   );
   const finalPayable = Math.max(enteredBillAmount - calculatedDiscount, 0);
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX - touchEndX;
+    if (Math.abs(diff) > 40 && activeSegmentOffers.length > 1) {
+      if (diff > 0) {
+        setActiveOfferIndex((prev) => (prev < activeSegmentOffers.length - 1 ? prev + 1 : 0));
+      } else {
+        setActiveOfferIndex((prev) => (prev > 0 ? prev - 1 : activeSegmentOffers.length - 1));
+      }
+    }
+    setTouchStartX(null);
+  };
+
   return (
-    <div className="w-full bg-[#f6f4ee] text-stone-900 font-sans pb-32 relative">
+    <div className="w-full bg-[#fbfbff] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans pb-32 relative">
       {/* ========================================================= */}
       {/* 1. HERO CAROUSEL & OVERLAY ACTIONS */}
       {/* ========================================================= */}
-      <section className="relative bg-white pb-4 border-b border-slate-200" data-purpose="restaurant-hero-overview">
+      <section className="relative bg-white dark:bg-slate-900 pb-4 border-b border-slate-200/90 dark:border-slate-800" data-purpose="restaurant-hero-overview">
         <div className="relative w-full h-64 bg-slate-900 overflow-hidden">
           {heroImage ? (
             <img
@@ -467,16 +628,16 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
         {/* 2. OVERLAID INCENTIVE BANNER */}
         {data.coinPerkBanner?.title && (
           <div className="px-4 -mt-6 relative z-10">
-            <div className="bg-emerald-50 border border-emerald-300/90 rounded-xl p-2.5 flex items-center justify-between shadow-xs">
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-2.5 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-md bg-amber-400 text-slate-900 font-extrabold text-[10px] flex items-center justify-center border border-amber-500/40 shadow-xs">
                   {data.coinPerkBanner.multiplier || "2X"}
                 </span>
-                <span className="text-xs font-bold text-slate-900">
+                <span className="text-xs font-bold text-slate-900 dark:text-white">
                   {data.coinPerkBanner.title}
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 rounded">
                 {data.coinPerkBanner.tag || "AUTO-APPLY"}
               </span>
             </div>
@@ -488,7 +649,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-2">
               <div className="flex items-center gap-1.5">
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                   {data.storeName}
                 </h1>
                 {data.isVerified && (
@@ -496,18 +657,18 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                 )}
               </div>
               {data.distanceText && (
-                <div className="flex items-center gap-1 text-xs text-slate-600 mt-1">
+                <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 mt-1">
                   <span className="font-medium">{data.distanceText}</span>
                   <ChevronRight size={12} className="text-slate-400" />
                 </div>
               )}
               {data.cuisineAndPriceText && (
-                <p className="text-xs text-slate-500 mt-1 font-medium">{data.cuisineAndPriceText}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">{data.cuisineAndPriceText}</p>
               )}
             </div>
 
             {/* Rating Box */}
-            <div className="bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-center shrink-0 shadow-xs">
+            <div className="bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl text-center shrink-0 shadow-xs">
               <div className="flex items-center justify-center gap-1 font-bold text-sm leading-none">
                 <span>{data.rating?.toFixed(1) || "4.8"}</span>
                 <Star size={11} className="fill-white text-white" />
@@ -519,8 +680,8 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
           </div>
 
           {/* Quick Status Pill & Action Buttons */}
-          <div className="flex items-center justify-between mt-3.5 pt-2 border-t border-slate-100">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
+          <div className="flex items-center justify-between mt-3.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-xs font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
               <span>{data.openStatusText || "Open Today"}</span>
             </div>
@@ -528,7 +689,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
               <button
                 onClick={handleDirections}
                 aria-label="Directions"
-                className="h-8 px-2.5 rounded-lg bg-slate-100 text-slate-700 flex items-center gap-1.5 hover:bg-slate-200 active:scale-95 transition text-xs font-semibold cursor-pointer"
+                className="h-8 px-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 flex items-center gap-1.5 hover:bg-slate-200 active:scale-95 transition text-xs font-semibold cursor-pointer"
                 type="button"
               >
                 <Compass size={14} className="text-purple-700" />
@@ -538,7 +699,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                 <button
                   onClick={handleCall}
                   aria-label="Call store"
-                  className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center hover:bg-slate-200 active:scale-95 transition cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center hover:bg-slate-200 active:scale-95 transition cursor-pointer"
                   type="button"
                 >
                   <Phone size={13} />
@@ -552,15 +713,15 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
       {/* ========================================================= */}
       {/* 4. STICKY HORIZONTAL NAVIGATION TABS (Interactive Scrolling) */}
       {/* ========================================================= */}
-      <div className="sticky top-0 z-30 bg-[#f6f4ee]/95 backdrop-blur-md border-y border-stone-200/60 px-4 py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar shadow-xs">
+      <div className="sticky top-0 z-30 bg-[#fbfbff]/95 dark:bg-slate-950/95 backdrop-blur-md border-y border-slate-200/90 dark:border-slate-800 px-4 py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar shadow-xs">
         {(data.availableTabs || ["Offers", "Menu", "Photos", "Amenities", "Location"]).map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabClick(tab)}
             className={`px-4 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer ${
               activeTab === tab
-                ? "bg-black text-white shadow-xs"
-                : "text-stone-700 hover:text-black hover:bg-stone-200/60"
+                ? "bg-purple-700 text-white shadow-xs"
+                : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-purple-700 hover:bg-slate-50 border border-slate-200/80 dark:border-slate-800"
             }`}
             type="button"
           >
@@ -573,53 +734,39 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
       {/* 5. OFFERS FOR YOU (MATCHING EXACT REFERENCE SPECIFICATION) */}
       {/* ========================================================= */}
       <section id="sec-offers" className="px-4 pt-4 space-y-3" data-purpose="offers-for-you">
-        <h2 className="text-lg font-black text-stone-900 tracking-tight">Offers for you</h2>
+        <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Offers for you</h2>
 
         {/* Main Offer Card Container: Compact & Uniform Dimensions */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 shadow-xs border border-stone-200/80 relative overflow-hidden text-center min-h-[162px] flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-xs border border-slate-200/90 dark:border-slate-800 relative overflow-hidden text-center min-h-[162px] flex flex-col justify-between">
           {/* Subtle Gift Voucher Watermark in bottom left */}
-          <div className="absolute -bottom-3 -left-3 w-24 h-24 opacity-[0.04] text-rose-500 pointer-events-none select-none">
+          <div className="absolute -bottom-3 -left-3 w-24 h-24 opacity-[0.04] text-purple-500 pointer-events-none select-none">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 4H16.82C16.93 3.7 17 3.36 17 3C17 1.34 15.66 0 14 0C12.89 0 11.93 0.61 11.41 1.5H12.59C12.07 0.61 11.11 0 10 0C8.34 0 7 1.34 7 3C7 3.36 7.07 3.7 7.18 4H4C2.9 4 2.01 4.9 2.01 6L2 20C2 21.1 2.9 22 4 22H20C21.1 22 22 21.1 22 20V6C22 4.9 21.1 4 20 4ZM14 2C14.55 2 15 2.45 15 3C15 3.55 14.55 4 14 4H12.22C12.56 2.84 13.19 2 14 2ZM9 3C9 2.45 9.45 2 10 2C10.81 2 11.44 2.84 11.78 4H10C9.45 4 9 3.55 9 3ZM20 20H4V8H20V20Z" />
             </svg>
           </div>
 
-          {/* Tab Selector: Screenshot 1 (Both) vs Screenshot 2 (Single) */}
-          {hasBothOfferTypes ? (
-            <div className="bg-[#ede7dd] p-0.5 rounded-full flex items-center justify-between mb-2.5 shadow-inner max-w-xs mx-auto">
-              <button
-                type="button"
-                onClick={() => setOfferSegment("PRE_BOOK")}
-                className={`flex-1 py-1 rounded-full text-xs font-bold transition-all cursor-pointer text-center ${
-                  offerSegment === "PRE_BOOK"
-                    ? "bg-black text-white shadow-xs"
-                    : "text-stone-700 hover:text-black font-semibold"
-                }`}
-              >
-                Pre-booking offers
-              </button>
-              <button
-                type="button"
-                onClick={() => setOfferSegment("WALK_IN")}
-                className={`flex-1 py-1 rounded-full text-xs font-bold transition-all cursor-pointer text-center ${
-                  offerSegment === "WALK_IN"
-                    ? "bg-black text-white shadow-xs"
-                    : "text-stone-700 hover:text-black font-semibold"
-                }`}
-              >
-                Walk-in offers
-              </button>
+          {/* Tab Selector: Pre-booking vs Walk-in vs Product offers */}
+          {segmentTabs.length > 1 ? (
+            <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center justify-between mb-2.5 border border-slate-200/60 dark:border-slate-700/60 max-w-sm mx-auto gap-1">
+              {segmentTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setOfferSegment(tab.id)}
+                  className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer text-center whitespace-nowrap min-h-[30px] flex items-center justify-center ${
+                    offerSegment === tab.id
+                      ? "bg-purple-700 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 font-semibold"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-          ) : hasPreBooking ? (
+          ) : segmentTabs.length === 1 ? (
             <div className="flex justify-center mb-2">
-              <span className="px-3.5 py-1 rounded-lg bg-[#efe9df] text-stone-800 text-xs font-bold tracking-tight">
-                Pre-booking offers
-              </span>
-            </div>
-          ) : hasWalkIn ? (
-            <div className="flex justify-center mb-2">
-              <span className="px-3.5 py-1 rounded-lg bg-[#efe9df] text-stone-800 text-xs font-bold tracking-tight">
-                Walk-in offers
+              <span className="px-3.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold tracking-tight">
+                {segmentTabs[0].label}
               </span>
             </div>
           ) : null}
@@ -631,28 +778,28 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                 {currentHeroOffer.badges && currentHeroOffer.badges.length > 0 ? (
                   currentHeroOffer.badges.map((b: string, i: number) => (
                     <React.Fragment key={i}>
-                      {i > 0 && <span className="text-stone-300 font-light text-[11px]">|</span>}
+                      {i > 0 && <span className="text-slate-300 dark:text-slate-700 font-light text-[11px]">|</span>}
                       {i === 0 ? (
-                        <span className="inline-flex items-center gap-1 font-black text-[10.5px] tracking-wider uppercase text-[#e24430]">
-                          <span className="font-black text-[#e24430] lowercase tracking-normal text-xs font-sans">pinak</span>
+                        <span className="inline-flex items-center gap-1 font-black text-[10.5px] tracking-wider uppercase text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800">
+                          <span className="font-black text-purple-700 dark:text-purple-300 lowercase tracking-normal text-xs font-sans">pinak</span>
                           <span className="font-extrabold text-[10px]">{b.replace(/pinak/gi, "").trim() || "EXCLUSIVE"}</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider text-[#582c8b] bg-[#f2eafb] border border-[#d8bdf2]">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
                           {b}
                         </span>
                       )}
                     </React.Fragment>
                   ))
                 ) : (
-                  <span className="inline-flex items-center gap-1 font-black text-[10.5px] tracking-wider uppercase text-[#e24430]">
-                    <span className="font-black text-[#e24430] lowercase tracking-normal text-xs font-sans">pinak</span>
+                  <span className="inline-flex items-center gap-1 font-black text-[10.5px] tracking-wider uppercase text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800">
+                    <span className="font-black text-purple-700 dark:text-purple-300 lowercase tracking-normal text-xs font-sans">pinak</span>
                     <span className="font-extrabold text-[10px]">EXCLUSIVE</span>
                   </span>
                 )}
               </div>
 
-              {/* Offer Title: Fixed Height Container to Guarantee Uniform Length Across All Offers */}
+              {/* Offer Title */}
               <div className="h-11 flex items-center justify-center relative px-6">
                 {activeSegmentOffers.length > 1 && (
                   <button
@@ -661,7 +808,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                       e.stopPropagation();
                       setActiveOfferIndex((prev) => (prev > 0 ? prev - 1 : activeSegmentOffers.length - 1));
                     }}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center text-xs font-bold transition shadow-xs cursor-pointer z-20"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 flex items-center justify-center text-xs font-bold transition shadow-xs cursor-pointer z-20 border border-slate-200/60 dark:border-slate-700/60"
                     title="Previous offer"
                   >
                     ‹
@@ -670,10 +817,10 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
 
                 <h3
                   onClick={() => setShowPaymentModal(true)}
-                  className="text-base sm:text-lg font-black text-stone-900 tracking-tight flex items-center justify-center gap-1 cursor-pointer hover:text-orange-600 transition group text-center line-clamp-2 leading-snug"
+                  className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-1 cursor-pointer hover:text-purple-700 transition group text-center line-clamp-2 leading-snug"
                 >
                   <span>{currentHeroOffer.title}</span>
-                  <span className="text-stone-800 font-black text-base group-hover:translate-x-1 transition-transform">›</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-black text-base group-hover:translate-x-1 transition-transform">›</span>
                 </h3>
 
                 {activeSegmentOffers.length > 1 && (
@@ -683,7 +830,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                       e.stopPropagation();
                       setActiveOfferIndex((prev) => (prev < activeSegmentOffers.length - 1 ? prev + 1 : 0));
                     }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center text-xs font-bold transition shadow-xs cursor-pointer z-20"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 flex items-center justify-center text-xs font-bold transition shadow-xs cursor-pointer z-20 border border-slate-200/60 dark:border-slate-700/60"
                     title="Next offer"
                   >
                     ›
@@ -691,14 +838,14 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                 )}
               </div>
 
-              {/* Subtitle / Availability: Fixed Height Container */}
+              {/* Subtitle / Availability */}
               <div className="h-4 flex items-center justify-center mt-0.5">
-                <p className="text-[11px] text-stone-500 font-medium truncate max-w-[280px]">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-[280px]">
                   {currentHeroOffer.subtitle || "Available on Mon-Sun"}
                 </p>
               </div>
 
-              {/* Carousel Dots Indicator: Compact */}
+              {/* Carousel Dots Indicator */}
               <div className="flex items-center justify-center gap-1.5 mt-2">
                 {activeSegmentOffers.map((_, idx) => (
                   <button
@@ -707,8 +854,8 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                     onClick={() => setActiveOfferIndex(idx)}
                     className={`transition-all cursor-pointer ${
                       activeOfferIndex === idx
-                        ? "w-3.5 h-1.5 rounded-full bg-[#ea580c]"
-                        : "w-1.5 h-1.5 rounded-full bg-stone-300 hover:bg-stone-400"
+                        ? "w-3.5 h-1.5 rounded-full bg-purple-700"
+                        : "w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300"
                     }`}
                     aria-label={`Go to offer ${idx + 1}`}
                   />
@@ -716,67 +863,67 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
               </div>
             </div>
           ) : (
-            <p className="text-xs text-stone-500 py-3">No active offers available right now.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 py-3">No active offers available right now.</p>
           )}
         </div>
 
         {/* Plus Connector Badge */}
         <div className="relative flex justify-center -my-3 z-10">
-          <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-xs font-black shadow-md border-2 border-[#f6f4ee]">
+          <div className="w-6 h-6 rounded-full bg-purple-700 text-white flex items-center justify-center text-xs font-black shadow-md border-2 border-white dark:border-slate-900">
             +
           </div>
         </div>
 
         {/* Combined Perks & DineCash Card */}
-        <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
           {/* Top Split Columns */}
-          <div className="p-3.5 grid grid-cols-2 divide-x divide-stone-100 items-center">
+          <div className="p-3.5 grid grid-cols-2 divide-x divide-slate-100 dark:divide-slate-800 items-center">
             {/* Left: Cashback */}
             <div className="flex items-center gap-2.5 pr-3">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-stone-900 font-black text-[10px] flex items-center justify-center shadow-xs shrink-0 border border-amber-400">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-slate-900 font-black text-[10px] flex items-center justify-center shadow-xs shrink-0 border border-amber-400">
                 2X
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-stone-900 leading-tight truncate">
+                <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate">
                   {data.offersSection?.partnerIncentiveChips?.[0]?.title || "5% cashback"}
                 </p>
-                <p className="text-[10px] text-stone-500 truncate leading-tight mt-0.5">
-                  on every bill payment
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate leading-tight mt-0.5">
+                  {data.offersSection?.partnerIncentiveChips?.[0]?.subtitle || "on every bill payment"}
                 </p>
               </div>
             </div>
 
             {/* Right: Bank / UPI Offer */}
             <div className="flex items-center gap-2.5 pl-3">
-              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 font-black text-[10px] flex items-center justify-center shrink-0 border border-blue-200">
+              <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 font-black text-[10px] flex items-center justify-center shrink-0 border border-purple-200 dark:border-purple-800">
                 UPI
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-stone-900 leading-tight truncate">
-                  Flat 10% off*
+                <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate">
+                  {data.offersSection?.partnerIncentiveChips?.[1]?.title || "Flat 10% off*"}
                 </p>
-                <p className="text-[10px] text-stone-500 truncate leading-tight mt-0.5">
-                  use PINAKPAY
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate leading-tight mt-0.5">
+                  {data.offersSection?.partnerIncentiveChips?.[1]?.subtitle || "use PINAKPAY"}
                 </p>
               </div>
               {/* Dots */}
               <div className="flex gap-1 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c]"></span>
-                <span className="w-1.5 h-1.5 rounded-full bg-stone-300"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-700"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700"></span>
               </div>
             </div>
           </div>
 
-          {/* Attached Dark Green DineCash Banner */}
-          <div className="bg-[#1b4d3e] text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold">
+          {/* Attached Dark Perks Banner */}
+          <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold border-t border-purple-800/40">
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-amber-300 tracking-tight">DineCash 2X</span>
+              <span className="font-extrabold text-amber-300 tracking-tight">PINAK Coins 2X</span>
               <span className="text-white/40">|</span>
-              <span className="text-emerald-100 text-[11px]">
-                {data.offersSection?.greenPerkHighlight || "Earn & Redeem 2X DineCash"}
+              <span className="text-emerald-300 text-[11px]">
+                {data.offersSection?.greenPerkHighlight || "Earn & Redeem 2X Coins on Bill"}
               </span>
             </div>
-            <Info size={14} className="text-emerald-200 cursor-pointer shrink-0" />
+            <Info size={14} className="text-purple-200 cursor-pointer shrink-0" />
           </div>
         </div>
 
@@ -784,10 +931,10 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
         {activeSegmentOffers.length > 1 && (
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-black text-stone-800 tracking-tight uppercase">
+              <span className="text-xs font-black text-slate-800 dark:text-slate-200 tracking-tight uppercase">
                 All Available Offers ({activeSegmentOffers.length})
               </span>
-              <span className="text-[10px] text-stone-500 font-medium">Swipe or tap to switch</span>
+              <span className="text-[10px] text-slate-500 font-medium">Swipe or tap to switch</span>
             </div>
 
             {activeSegmentOffers.map((off: any, idx: number) => {
@@ -799,15 +946,15 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                     setActiveOfferIndex(idx);
                     toast.info(`Switched to "${off.title}"`);
                   }}
-                  className={`bg-white rounded-2xl border px-3.5 py-2.5 shadow-xs flex items-center justify-between gap-3 cursor-pointer transition h-[74px] ${
+                  className={`bg-white dark:bg-slate-900 rounded-2xl border px-3.5 py-2.5 shadow-xs flex items-center justify-between gap-3 cursor-pointer transition h-[74px] ${
                     isSelected
-                      ? "border-orange-500 ring-2 ring-orange-100 bg-orange-50/20"
-                      : "border-stone-200/80 hover:border-stone-300"
+                      ? "border-purple-600 ring-2 ring-purple-100 dark:ring-purple-950/50 bg-purple-50/20 dark:bg-purple-950/20"
+                      : "border-slate-200/90 dark:border-slate-800 hover:border-slate-300"
                   }`}
                 >
                   <div className="min-w-0 flex-1 flex flex-col justify-center h-full">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 shrink-0">
+                      <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0">
                         {off.redemptionType === "PRE_BOOK"
                           ? "PRE-BOOKING"
                           : off.redemptionType === "WALK_IN"
@@ -815,18 +962,18 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                           : "ALL VISITS"}
                       </span>
                       {off.discountValue && (
-                        <span className="text-[9px] font-black text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 shrink-0">
+                        <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 shrink-0">
                           {off.discountValue}% OFF
                         </span>
                       )}
                       {isSelected && (
-                        <span className="text-[9px] font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded shrink-0">
+                        <span className="text-[9px] font-black text-purple-800 bg-purple-100 dark:bg-purple-900/50 dark:text-purple-200 px-1.5 py-0.5 rounded shrink-0">
                           ✓ ACTIVE
                         </span>
                       )}
                     </div>
-                    <h4 className="text-xs font-bold text-stone-900 truncate leading-snug">{off.title}</h4>
-                    <p className="text-[10px] text-stone-500 truncate mt-0.5">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate leading-snug">{off.title}</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
                       {off.subtitle || off.termsAndConditions || "Auto-applied at checkout"}
                     </p>
                   </div>
@@ -835,15 +982,21 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveOfferIndex(idx);
-                      setShowPaymentModal(true);
+                      if (off.redemptionType === "PRE_BOOK") {
+                        setShowBookingModal(true);
+                      } else {
+                        setShowPaymentModal(true);
+                      }
                     }}
                     className={`h-8 px-3.5 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer flex items-center justify-center ${
                       isSelected
-                        ? "bg-[#e85d26] text-white shadow-xs"
-                        : "bg-orange-50 hover:bg-orange-100 text-[#e85d26] border border-orange-200"
+                        ? "bg-purple-700 text-white shadow-xs hover:bg-purple-800"
+                        : "bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
                     }`}
                   >
-                    {isSelected ? "Pay Now" : "Select"}
+                    {isSelected
+                      ? off.ctaText || (off.redemptionType === "PRE_BOOK" ? "Book & Pay" : "Pay Now")
+                      : "Select"}
                   </button>
                 </div>
               );
@@ -918,16 +1071,117 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
       )}
 
       {/* ========================================================= */}
+      {/* 6B. STORE PRODUCTS & ESSENTIALS (Retail, Kirana, Supermarkets, Dairy) */}
+      {/* ========================================================= */}
+      {data.productsSection?.items && data.productsSection.items.length > 0 && (
+        <section id="sec-products" className="px-4 pt-4 space-y-3" data-purpose="store-products">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xs">
+                <ShoppingBag size={13} />
+              </div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                {data.productsSection.title || "Available Products"}
+              </h2>
+              <span className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {data.productsSection.items.length} In Store
+              </span>
+            </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Retail Catalog
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {data.productsSection.items.map((prod) => (
+              <div
+                key={prod.id}
+                onClick={() => {
+                  setSelectedProductForDeal(prod);
+                  setProductOrderQuantity(1);
+                  setShowProductModal(true);
+                }}
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="relative aspect-square w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <img
+                      src={prod.imageUrl || heroImage}
+                      alt={prod.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    />
+                    {prod.discountBadge && (
+                      <span className="absolute top-2 left-2 bg-emerald-600 text-white font-extrabold text-[9.5px] px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wide">
+                        {prod.discountBadge}
+                      </span>
+                    )}
+                    {prod.inStock && (
+                      <span className="absolute bottom-2 right-2 bg-emerald-950/80 backdrop-blur-xs text-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>In Stock</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-3 space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-purple-700 dark:text-purple-400">
+                      {prod.brand || "Store Special"}
+                    </p>
+                    <h3 className="text-xs font-black text-slate-900 dark:text-white line-clamp-2 leading-tight">
+                      {prod.name}
+                    </h3>
+                    <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
+                      {prod.unit}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 pt-0 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 mt-1">
+                  <div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-black text-slate-900 dark:text-white">
+                        ₹{Number(prod.sellingPrice).toLocaleString("en-IN")}
+                      </span>
+                      {prod.mrp && Number(prod.mrp) > Number(prod.sellingPrice) && (
+                        <span className="text-[10.5px] line-through text-slate-400">
+                          ₹{Number(prod.mrp).toLocaleString("en-IN")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedProductForDeal(prod);
+                      setProductOrderQuantity(1);
+                      setShowProductModal(true);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-[11px] font-extrabold shadow-xs transition active:scale-95 cursor-pointer"
+                  >
+                    Claim
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ========================================================= */}
       {/* 7. MENU HIGHLIGHTS SECTION (With Photo Mosaic Layout) */}
       {/* ========================================================= */}
-      {(data.menuSection?.items?.length > 0 || data.menuSection?.menuImages?.length > 0) && (
+      {((data.menuSection?.menuImages && data.menuSection.menuImages.length > 0) || (data.menuSection?.items && data.menuSection.items.some((d: any) => {
+        const n = (d?.name || "").toLowerCase();
+        return !n.includes("wood-fired truffle pizza") && !n.includes("smoked lamb rogan josh") && !n.includes("chargrilled peri-peri chicken") && !n.includes("wild mushroom risotto") && !n.includes("signature tiramisu");
+      }))) && (
         <section id="sec-menu" className="px-4 pt-4 space-y-2.5" data-purpose="restaurant-menu">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-purple-50 text-purple-700 flex items-center justify-center text-xs">
                 <Utensils size={13} />
               </div>
-              <h2 className="text-base font-bold text-slate-900 tracking-tight">Menu Highlights</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Menu Highlights</h2>
             </div>
             {data.menuSection?.menuImages?.length > 0 && (
               <span
@@ -944,7 +1198,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
             <div>
               {data.menuSection.menuImages.length === 1 ? (
                 <div
-                  className="h-44 rounded-xl overflow-hidden border border-slate-200 relative group cursor-pointer shadow-xs"
+                  className="h-44 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-pointer shadow-xs"
                   onClick={() => setShowMenuModal(true)}
                 >
                   <img
@@ -961,7 +1215,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                   {data.menuSection.menuImages.slice(0, 2).map((img, idx) => (
                     <div
                       key={idx}
-                      className="h-36 rounded-xl overflow-hidden border border-slate-200 relative group cursor-pointer shadow-xs"
+                      className="h-36 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-pointer shadow-xs"
                       onClick={() => setShowMenuModal(true)}
                     >
                       <img
@@ -978,7 +1232,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   <div
-                    className="h-44 rounded-xl overflow-hidden border border-slate-200 relative group cursor-pointer shadow-xs"
+                    className="h-44 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-pointer shadow-xs"
                     onClick={() => setShowMenuModal(true)}
                   >
                     <img
@@ -992,7 +1246,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                   </div>
                   <div className="space-y-2">
                     <div
-                      className="h-20 rounded-xl overflow-hidden border border-slate-200 relative group cursor-pointer shadow-xs"
+                      className="h-20 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-pointer shadow-xs"
                       onClick={() => setShowMenuModal(true)}
                     >
                       <img
@@ -1005,7 +1259,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                       </div>
                     </div>
                     <div
-                      className="h-20 rounded-xl overflow-hidden border border-slate-200 relative group cursor-pointer shadow-xs"
+                      className="h-20 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative group cursor-pointer shadow-xs"
                       onClick={() => setShowMenuModal(true)}
                     >
                       <img
@@ -1038,40 +1292,53 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
             </div>
           )}
 
-          {/* Dish Specialties List if available */}
-          {data.menuSection?.items && data.menuSection.items.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs space-y-3">
-              <div className="border-b border-slate-100 pb-2 flex justify-between items-center">
-                <span className="text-xs font-extrabold text-slate-700 tracking-wider uppercase">
-                  {data.menuSection.categoryTitle || "SPECIALTIES"}
-                </span>
-                <span className="text-[11px] font-bold text-slate-400">PRICE</span>
-              </div>
-
-              {data.menuSection.items.map((dish: any, idx: number) => (
-                <div key={idx} className="flex items-start justify-between">
-                  <div className="flex items-start gap-2">
-                    {dish.isVeg ? (
-                      <span className="w-3.5 h-3.5 rounded-xs border border-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                      </span>
-                    ) : (
-                      <span className="w-3.5 h-3.5 rounded-xs border border-rose-600 flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
-                      </span>
-                    )}
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">{dish.name}</p>
-                      {dish.description && (
-                        <p className="text-[10px] text-slate-500 font-medium">{dish.description}</p>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-xs font-extrabold text-slate-900">₹{dish.price}</span>
+          {/* Dish Specialties List if available: Filters out demo dummy pizza/lamb rogan josh */}
+          {data.menuSection?.items && data.menuSection.items.length > 0 && (() => {
+            const realItems = data.menuSection.items.filter((dish: any) => {
+              const n = (dish?.name || "").toLowerCase();
+              return !(
+                n.includes("wood-fired truffle pizza") ||
+                n.includes("smoked lamb rogan josh") ||
+                n.includes("chargrilled peri-peri chicken") ||
+                n.includes("wild mushroom risotto") ||
+                n.includes("signature tiramisu")
+              );
+            });
+            if (realItems.length === 0) return null;
+            return (
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 shadow-xs space-y-3">
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2 flex justify-between items-center">
+                  <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 tracking-wider uppercase">
+                    {data.menuSection.categoryTitle || "SPECIALTIES"}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-400">PRICE</span>
                 </div>
-              ))}
-            </div>
-          )}
+
+                {realItems.map((dish: any, idx: number) => (
+                  <div key={idx} className="flex items-start justify-between">
+                    <div className="flex items-start gap-2">
+                      {dish.isVeg ? (
+                        <span className="w-3.5 h-3.5 rounded-xs border border-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                        </span>
+                      ) : (
+                        <span className="w-3.5 h-3.5 rounded-xs border border-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                        </span>
+                      )}
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">{dish.name}</p>
+                        {dish.description && (
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{dish.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs font-extrabold text-slate-900 dark:text-white">₹{dish.price}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </section>
       )}
 
@@ -1303,26 +1570,26 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
       {/* ========================================================= */}
       {/* 13. PERSISTENT BOTTOM ACTION BAR */}
       {/* ========================================================= */}
-      <footer className="sticky bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md rounded-t-3xl border-t border-stone-200/80 shadow-2xl p-3.5">
+      <footer className="sticky bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-t-3xl border-t border-slate-200/90 dark:border-slate-800 shadow-2xl p-3.5">
         {/* Floating Incentive Teaser Pill */}
-        <div className="mb-2.5 bg-[#eaf7f0] border border-emerald-200/80 rounded-2xl px-3 py-2 flex items-center justify-between text-xs shadow-xs">
+        <div className="mb-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2 flex items-center justify-between text-xs shadow-xs">
           <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-300 to-amber-500 text-stone-900 font-black text-[9px] flex items-center justify-center border border-amber-400">
+            <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-300 to-amber-500 text-slate-900 font-black text-[9px] flex items-center justify-center border border-amber-400">
               2X
             </span>
-            <span className="text-xs font-bold text-stone-800">
+            <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
               {data.bottomBar?.rewardTeaser?.text || "Earn 5% PINAK Coins on bill payment"}
             </span>
           </div>
-          <Info size={14} className="text-stone-400 cursor-pointer shrink-0" />
+          <Info size={14} className="text-emerald-600 dark:text-emerald-400 cursor-pointer shrink-0" />
         </div>
 
-        {/* High-Impact Dual CTAs Matching Reference */}
+        {/* High-Impact Dual CTAs Matching Pinak Palette */}
         <div className="flex items-center gap-2.5">
           {data.bottomBar?.isTableBookingEnabled && (
             <button
               onClick={() => setShowBookingModal(true)}
-              className="flex-1 py-3 px-3 rounded-2xl bg-[#fef2eb] border border-[#fbd9c8] text-[#e85d26] hover:bg-[#fde7da] font-extrabold active:scale-98 transition text-sm text-center cursor-pointer shadow-xs"
+              className="flex-1 py-3 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-bold active:scale-98 transition text-sm text-center cursor-pointer shadow-xs"
               type="button"
             >
               Book a table
@@ -1330,7 +1597,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
           )}
           <button
             onClick={() => setShowPaymentModal(true)}
-            className="flex-1 py-3 px-3 rounded-2xl bg-[#e85d26] hover:bg-[#d64f1c] text-white font-extrabold active:scale-98 transition text-sm shadow-md shadow-orange-500/25 text-center cursor-pointer"
+            className="flex-1 py-3 px-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold active:scale-98 transition text-sm shadow-md shadow-purple-600/20 text-center cursor-pointer"
             type="button"
           >
             Pay bill now
@@ -1632,6 +1899,156 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                 <span>Pay ₹{finalPayable.toLocaleString("en-IN")} via {selectedPaymentMethod}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* RETAIL / KIRANA PRODUCT DEAL & EXPRESS CHECKOUT MODAL */}
+      {/* ========================================================= */}
+      {showProductModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl w-full max-w-md max-h-[92vh] overflow-hidden flex flex-col shadow-2xl">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <ShoppingBag size={17} className="text-emerald-600" />
+                  <span>Retail Store Product Deal</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Available at {data.storeName}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProductModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            {(() => {
+              const activeProduct = selectedProductForDeal || targetOffer;
+              const prodTitle = activeProduct?.title || activeProduct?.name || "Product Deal";
+              const prodImage = activeProduct?.imageUrl;
+              const prodMrp = activeProduct?.originalMrp || activeProduct?.mrp;
+              const prodPrice = activeProduct?.dealPrice || activeProduct?.sellingPrice || activeProduct?.discountValue || 58;
+              const prodBadge = activeProduct?.discountBadge || activeProduct?.badges?.[0] || "Special Deal";
+
+              return (
+                <>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+                    {/* Product Card Info */}
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-center gap-3">
+                      {prodImage ? (
+                        <img
+                          src={prodImage}
+                          alt={prodTitle}
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0">
+                          <ShoppingBag size={24} />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
+                          {prodTitle}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {prodMrp && Number(prodMrp) > Number(prodPrice) && (
+                            <span className="text-xs line-through text-slate-400">
+                              ₹{Number(prodMrp).toLocaleString("en-IN")}
+                            </span>
+                          )}
+                          <span className="text-sm font-black text-pink-600">
+                            ₹{Number(prodPrice).toLocaleString("en-IN")}
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">
+                            {prodBadge}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quantity Selector */}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-slate-200 text-xs">Select Quantity</p>
+                        <p className="text-[10px] text-slate-500">Subject to store stock availability</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setProductOrderQuantity((prev) => Math.max(1, prev - 1))}
+                          className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-black border border-slate-200 dark:border-slate-600 flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-95"
+                        >
+                          -
+                        </button>
+                        <span className="w-6 text-center font-black text-sm text-slate-900 dark:text-white">
+                          {productOrderQuantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setProductOrderQuantity((prev) => Math.min(10, prev + 1))}
+                          className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-black border border-slate-200 dark:border-slate-600 flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-95"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Price Calculation */}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span>Price ({productOrderQuantity} item{productOrderQuantity > 1 ? "s" : ""}):</span>
+                        <span>₹{((Number(prodPrice)) * productOrderQuantity).toLocaleString("en-IN")}</span>
+                      </div>
+                      {prodMrp && Number(prodMrp) > Number(prodPrice) && (
+                        <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-bold">
+                          <span>You Save:</span>
+                          <span>-₹{((Number(prodMrp) - Number(prodPrice)) * productOrderQuantity).toLocaleString("en-IN")}</span>
+                        </div>
+                      )}
+                      <div className="border-t border-slate-200 dark:border-slate-700 pt-2 flex justify-between text-sm font-extrabold text-slate-900 dark:text-white">
+                        <span>Payable at Store Counter:</span>
+                        <span>₹{((Number(prodPrice)) * productOrderQuantity).toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+
+                    {/* Store Pickup Notice */}
+                    <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-2.5 flex items-center gap-2">
+                      <Store size={15} className="text-amber-600 shrink-0" />
+                      <p className="text-[11px] text-amber-800 dark:text-amber-300 font-medium leading-snug">
+                        Show voucher token at store express counter for instant item collection.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProductModal(false);
+                        const total = (Number(prodPrice)) * productOrderQuantity;
+                        toast.success(`Deal Voucher Claimed for ${productOrderQuantity}x "${prodTitle}"!`, {
+                          description: `Total ₹${total} payable at ${data.storeName} billing counter.`
+                        });
+                        setSelectedProductForDeal(null);
+                      }}
+                      className="w-full py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs shadow-md transition active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle size={15} />
+                      <span>Claim Deal Voucher (₹{((Number(prodPrice)) * productOrderQuantity).toLocaleString("en-IN")})</span>
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

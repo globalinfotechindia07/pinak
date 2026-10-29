@@ -48,6 +48,9 @@ public record MobileServiceDetailDto(
         // Flash Sale Deals Section
         FlashSaleSectionDto flashSales,
 
+        // Products Section (Kirana / Retail / Supermarket / Dairy Catalog)
+        StoreProductsSectionDto productsSection,
+
         // Menu Highlights Section
         MenuHighlightsSectionDto menuSection,
         List<MenuItemDto> menuHighlights,
@@ -101,6 +104,7 @@ public record MobileServiceDetailDto(
             List<String> availableTabs,
             OffersSectionDto offersSection,
             FlashSaleSectionDto flashSales,
+            StoreProductsSectionDto productsSection,
             MenuHighlightsSectionDto menuSection,
             PhotoMosaicSectionDto photoMosaic,
             List<AmenityItemDto> amenities,
@@ -116,11 +120,60 @@ public record MobileServiceDetailDto(
                 isOpenNow, openStatusText, openingTime, closingTime, phone,
                 latitude, longitude, address, googleMapsUrl,
                 coinPerkBanner, coinPerkBanner,
-                availableTabs, offersSection, flashSales,
+                availableTabs, offersSection, flashSales, productsSection,
                 menuSection,
                 menuSection != null ? menuSection.items() : java.util.Collections.emptyList(),
                 menuSection != null ? menuSection.menuImages() : java.util.Collections.emptyList(),
                 photoMosaic, amenities, locationSection, concierge, similarPlaces, bottomBar
+        );
+    }
+
+    public MobileServiceDetailDto(
+            String id,
+            String storeName,
+            String merchantName,
+            boolean isVerified,
+            String coverImageUrl,
+            List<String> heroPhotos,
+            int totalPhotosCount,
+            String photoCounterText,
+            Double distanceMeters,
+            String distanceText,
+            String cuisines,
+            String priceForTwoText,
+            String cuisineAndPriceText,
+            Double rating,
+            String ratingCountText,
+            boolean isOpenNow,
+            String openStatusText,
+            String openingTime,
+            String closingTime,
+            String phone,
+            Double latitude,
+            Double longitude,
+            String address,
+            String googleMapsUrl,
+            CoinPerkBannerDto coinPerkBanner,
+            List<String> availableTabs,
+            OffersSectionDto offersSection,
+            FlashSaleSectionDto flashSales,
+            MenuHighlightsSectionDto menuSection,
+            PhotoMosaicSectionDto photoMosaic,
+            List<AmenityItemDto> amenities,
+            LocationSectionDto locationSection,
+            ConciergeSupportDto concierge,
+            List<SimilarPlaceCardDto> similarPlaces,
+            StickyBottomBarDto bottomBar
+    ) {
+        this(
+                id, storeName, merchantName, isVerified, coverImageUrl, heroPhotos,
+                totalPhotosCount, photoCounterText, distanceMeters, distanceText,
+                cuisines, priceForTwoText, cuisineAndPriceText, rating, ratingCountText,
+                isOpenNow, openStatusText, openingTime, closingTime, phone,
+                latitude, longitude, address, googleMapsUrl,
+                coinPerkBanner,
+                availableTabs, offersSection, flashSales, null,
+                menuSection, photoMosaic, amenities, locationSection, concierge, similarPlaces, bottomBar
         );
     }
 
@@ -141,6 +194,7 @@ public record MobileServiceDetailDto(
             List<StoreOfferCardDto> preBookingOffers,
             List<StoreOfferCardDto> preBookOffers,
             List<StoreOfferCardDto> walkInOffers,
+            List<StoreOfferCardDto> productOffers,
             List<PartnerChipDto> partnerIncentiveChips,
             String greenPerkHighlight
     ) implements Serializable {
@@ -152,7 +206,19 @@ public record MobileServiceDetailDto(
                 List<PartnerChipDto> partnerIncentiveChips,
                 String greenPerkHighlight
         ) {
-            this(activeOffersCountText, primaryOffer, preBookingOffers, preBookingOffers, walkInOffers, partnerIncentiveChips, greenPerkHighlight);
+            this(activeOffersCountText, primaryOffer, preBookingOffers, preBookingOffers, walkInOffers, java.util.Collections.emptyList(), partnerIncentiveChips, greenPerkHighlight);
+        }
+
+        public OffersSectionDto(
+                String activeOffersCountText,
+                StoreOfferCardDto primaryOffer,
+                List<StoreOfferCardDto> preBookingOffers,
+                List<StoreOfferCardDto> walkInOffers,
+                List<StoreOfferCardDto> productOffers,
+                List<PartnerChipDto> partnerIncentiveChips,
+                String greenPerkHighlight
+        ) {
+            this(activeOffersCountText, primaryOffer, preBookingOffers, preBookingOffers, walkInOffers, productOffers != null ? productOffers : java.util.Collections.emptyList(), partnerIncentiveChips, greenPerkHighlight);
         }
     }
 
@@ -176,8 +242,40 @@ public record MobileServiceDetailDto(
             Integer maxPartySize,
             Integer gracePeriodMinutes,
             String slotTimes,
-            Boolean isTableBookingEnabled
-    ) implements Serializable {}
+            Boolean isTableBookingEnabled,
+            BigDecimal originalMrp,
+            BigDecimal dealPrice,
+            String offerScope,
+            String imageUrl
+    ) implements Serializable {
+        public StoreOfferCardDto(
+                String id,
+                String title,
+                String subtitle,
+                String discountType,
+                BigDecimal discountValue,
+                BigDecimal maxDiscountAmount,
+                BigDecimal minimumOrderAmount,
+                List<String> badges,
+                String termsAndConditions,
+                String redemptionType,
+                Integer minAdvanceHours,
+                String ctaText,
+                boolean isAutoApplied,
+                Integer bonusCoins,
+                BigDecimal coverChargeAmount,
+                Integer minPartySize,
+                Integer maxPartySize,
+                Integer gracePeriodMinutes,
+                String slotTimes,
+                Boolean isTableBookingEnabled
+        ) {
+            this(id, title, subtitle, discountType, discountValue, maxDiscountAmount, minimumOrderAmount,
+                    badges, termsAndConditions, redemptionType, minAdvanceHours, ctaText, isAutoApplied,
+                    bonusCoins, coverChargeAmount, minPartySize, maxPartySize, gracePeriodMinutes, slotTimes,
+                    isTableBookingEnabled, null, null, "SERVICE", null);
+        }
+    }
 
     public record PartnerChipDto(
             String id,
@@ -202,6 +300,27 @@ public record MobileServiceDetailDto(
             BigDecimal dealPrice,
             BigDecimal originalPrice,
             String ctaText
+    ) implements Serializable {}
+
+    public record StoreProductItemDto(
+            String id,
+            String name,
+            String brand,
+            String unit,
+            String imageUrl,
+            BigDecimal mrp,
+            BigDecimal sellingPrice,
+            Integer discountPercent,
+            String discountBadge,
+            boolean inStock,
+            String offerId
+    ) implements Serializable {}
+
+    public record StoreProductsSectionDto(
+            String title,
+            String subtitle,
+            int totalCount,
+            List<StoreProductItemDto> items
     ) implements Serializable {}
 
     public record MenuHighlightsSectionDto(
