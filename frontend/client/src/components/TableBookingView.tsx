@@ -8,6 +8,7 @@ import {
   Moon,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Sparkles,
   CheckCircle2,
   Check,
@@ -187,17 +188,30 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
 
   const totalCoverCharge = selectedGuests * activeOption.coverChargePerGuest;
 
-  // 6. Accordion for Terms
+  // 6. Accordions
   const [isTermsOpen, setIsTermsOpen] = useState<boolean>(true);
+  const [isCheckoutTermsOpen, setIsCheckoutTermsOpen] = useState<boolean>(false);
 
-  // 7. Booking Confirmation State
-  const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
+  // 7. Navigation Flow: "select_slot" -> "checkout_bill" -> "confirmed"
+  type BookingStep = "select_slot" | "checkout_bill" | "confirmed";
+  const [bookingStep, setBookingStep] = useState<BookingStep>("select_slot");
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>("");
+  const [includeVipPlan, setIncludeVipPlan] = useState<boolean>(true);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("Google Pay");
 
-  const handleProceedToBook = () => {
+  const vipPlanFee = includeVipPlan ? 1 : 0;
+  const totalToPay = totalCoverCharge + vipPlanFee;
+
+  const handleProceedToCheckout = () => {
+    setBookingStep("checkout_bill");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleConfirmPaymentAndBooking = () => {
     const bookingRef = `PNK-TB-${Math.floor(100000 + Math.random() * 900000)}`;
     setConfirmedBookingId(bookingRef);
-    setIsConfirmed(true);
+    setBookingStep("confirmed");
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     const details = {
       bookingRef,
@@ -207,7 +221,9 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
       date: `${selectedDate.month} ${selectedDate.dayNum} (${selectedDate.dayName})`,
       time: selectedSlot,
       offerTitle: activeOption.title,
-      coverCharge: totalCoverCharge
+      coverCharge: totalCoverCharge,
+      amountPaid: totalToPay,
+      paymentMethod: selectedPaymentMethod
     };
 
     if (onBookingConfirmed) {
@@ -219,7 +235,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
   };
 
   // If confirmed, render instant confirmation screen
-  if (isConfirmed) {
+  if (bookingStep === "confirmed") {
     return (
       <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-200">
         <div>
@@ -300,20 +316,24 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
               </span>
             </div>
 
-            {totalCoverCharge > 0 ? (
-              <div className="flex items-center justify-between text-xs pt-1 px-1 text-slate-600 dark:text-slate-300">
-                <span>Redeemable Cover Charge:</span>
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-2 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                <span>Amount Paid:</span>
                 <span className="font-bold text-slate-900 dark:text-white">
-                  ₹{totalCoverCharge} (₹{activeOption.coverChargePerGuest} × {selectedGuests})
+                  ₹{totalToPay} (via {selectedPaymentMethod})
                 </span>
               </div>
-            ) : (
-              <div className="flex items-center justify-between text-xs pt-1 px-1 text-emerald-600 font-bold">
-                <span>Cover Charge:</span>
-                <span>FREE</span>
-              </div>
-            )}
-            <p className="text-[10px] text-slate-400 text-center">
+              {totalCoverCharge > 0 && (
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                  <span>Redeemable Cover Charge:</span>
+                  <span className="font-bold text-emerald-600">
+                    ₹{totalCoverCharge}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-[10px] text-slate-400 text-center pt-1">
               💡 The cover charge will be automatically adjusted when you pay your bill via PINAK.
             </p>
           </div>
@@ -329,6 +349,267 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
             <span>Return to Store</span>
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Step 2: Pre-book Bill Details & Payment Screen (Matching User Screenshots)
+  if (bookingStep === "checkout_bill") {
+    return (
+      <div className="min-h-full bg-[#fbfaf7] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between font-['Manrope'] pb-28 animate-in fade-in duration-200">
+        <div>
+          {/* Header */}
+          <header className="sticky top-0 z-30 bg-[#fbfaf7]/95 dark:bg-slate-950/95 backdrop-blur-md px-4 py-3 border-b border-slate-200/80 dark:border-slate-800 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setBookingStep("select_slot");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer shrink-0 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
+              aria-label="Back to slot selection"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="overflow-hidden min-w-0">
+              <h1 className="text-base font-black text-slate-900 dark:text-white leading-tight truncate">
+                {storeName}
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate leading-tight mt-0.5">
+                {storeAddress ? storeAddress.split(",")[0] : "Nagpur"}
+              </p>
+            </div>
+          </header>
+
+          <div className="p-3.5 space-y-3.5">
+            {/* Top Mint Highlight Banner */}
+            <div className="bg-[#e9faf1] dark:bg-emerald-950/40 border border-[#bbf0d4] dark:border-emerald-800/60 rounded-2xl p-3.5 flex items-center justify-between text-[#0d5c3a] dark:text-emerald-300 shadow-2xs">
+              <span className="text-xs font-bold leading-snug">
+                Your cover charge of ₹{totalCoverCharge} will be redeemed when you pay your bill via PINAK
+              </span>
+              <Sparkles size={16} className="text-emerald-600 fill-emerald-500 shrink-0 ml-2" />
+            </div>
+
+            {/* Booking Details Card */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div className="p-4 space-y-3">
+                {/* 3 Columns Header */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                      {selectedDate.dayName}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                      {selectedDate.dayNum} {selectedDate.month} {selectedDate.fullDate.getFullYear()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                      {mealType === "DINNER" ? "Dinner" : "Lunch"}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                      {selectedSlot}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                      for {selectedGuests}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                      guests
+                    </p>
+                  </div>
+                </div>
+
+                {/* Restaurant Name & Locality */}
+                <div className="pt-0.5">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                    {storeName}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {storeAddress || "Bajaj Nagar, Nagpur"}
+                  </p>
+                </div>
+
+                {/* Applied Offer Box */}
+                <div className="pt-2">
+                  <div className="border border-[#f0c2bb] dark:border-purple-800/80 bg-white dark:bg-slate-800/50 rounded-xl p-3 relative pt-3.5">
+                    <span className="absolute -top-2.5 left-3 bg-[#e85b46] text-white text-[9.5px] font-black px-2 py-0.5 rounded shadow-2xs uppercase tracking-wide flex items-center gap-1">
+                      <span className="font-sans lowercase font-extrabold">pinak</span>
+                      <span>Pre-book Offer</span>
+                    </span>
+                    <p className="text-xs font-black text-slate-900 dark:text-white leading-snug">
+                      {activeOption.title || "Flat 15% off on Total Bill"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Strip inside Card */}
+              <div className="bg-[#fbf7ee] dark:bg-slate-800/80 border-t border-slate-200/70 dark:border-slate-800 px-4 py-2.5 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
+                <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                  {totalCoverCharge > 0 && (
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      Redeem ₹{totalCoverCharge} cover +
+                    </span>
+                  )}
+                  <div className="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 px-1.5 py-0.5 rounded text-[10px] font-black text-amber-900 dark:text-amber-200 shadow-2xs">
+                    <span>🪙 2X</span>
+                  </div>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                    Earn 20% PINAK Coins on bill...
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Special Plan Added For You Card */}
+            <div className="pt-1.5">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs space-y-2 relative pt-3.5">
+                <span className="absolute -top-2.5 left-3 bg-[#0d5c3a] text-white text-[9.5px] font-extrabold px-2 py-0.5 rounded shadow-2xs uppercase tracking-wide">
+                  Special plan added for you
+                </span>
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-red-500 text-sm tracking-tight font-sans">
+                      pinak <span className="text-slate-900 dark:text-white font-bold">1 Month Plan</span>
+                    </span>
+                  </div>
+                  <span className="text-sm font-black text-slate-900 dark:text-white">
+                    ₹1
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                  Enjoy unlimited access to pre-book offers on 7500+ restaurants.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => toast.info("PINAK VIP gives unlimited 20% cashback + zero reservation fees.")}
+                  className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1 hover:underline cursor-pointer pt-0.5"
+                >
+                  <span>View all benefits</span>
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
+
+            {/* Bill Details Section */}
+            <section className="space-y-2 pt-1">
+              <h2 className="text-sm font-black text-slate-900 dark:text-white">
+                Bill Details
+              </h2>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs space-y-3">
+                {/* Cover charges row */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Cover charges for {selectedGuests}
+                    </p>
+                    {totalCoverCharge > 0 ? (
+                      <p className="text-[11px] text-[#0d5c3a] dark:text-emerald-400 font-semibold mt-0.5">
+                        Redeem it by paying bill via PINAK
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                        Zero cover charge
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                    {totalCoverCharge > 0 ? `₹${totalCoverCharge}` : "₹0"}
+                  </span>
+                </div>
+
+                {/* VIP Plan Row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-red-500 font-black">pinak</span> 1 Month Plan
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                    ₹1
+                  </span>
+                </div>
+
+                {/* Dashed Separator */}
+                <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-3 flex items-center justify-between">
+                  <span className="text-sm font-black text-slate-900 dark:text-white">
+                    To Pay
+                  </span>
+                  <span className="text-sm font-black text-slate-900 dark:text-white">
+                    ₹{totalToPay}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            {/* Offer terms & conditions Accordion */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
+              <button
+                type="button"
+                onClick={() => setIsCheckoutTermsOpen((v) => !v)}
+                className="w-full p-4 flex items-center justify-between text-left cursor-pointer transition hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
+              >
+                <h3 className="text-xs font-black text-slate-900 dark:text-white">
+                  Offer terms & conditions
+                </h3>
+                <ChevronDown
+                  size={15}
+                  className={cn(
+                    "text-slate-400 transition-transform duration-200",
+                    isCheckoutTermsOpen ? "rotate-180" : ""
+                  )}
+                />
+              </button>
+
+              {isCheckoutTermsOpen && (
+                <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800 space-y-2 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                  <p>• The deal must be redeemed/bill paid within 6 hours of the dining start time, or the offer will expire.</p>
+                  <p>• Discount, if any, can only be availed when you pay your bill via PINAK.</p>
+                  <p>• The paid cover charge will be redeemed automatically when you pay your bill via PINAK.</p>
+                  <p>• Cover charges will be fully refunded only if booking is cancelled before the dining start time.</p>
+                  <p>• A maximum of Rs. 3,00,000 can be paid in a single bill payment transaction via PINAK.</p>
+                  <p>• The booking details via WhatsApp, email, or on the app need to be shown at the restaurant before ordering.</p>
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
+
+        {/* Sticky Bottom Payment Bar */}
+        <footer className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 p-3 max-w-[430px] mx-auto shadow-2xl flex items-center justify-between gap-3">
+          {/* Left: Pay using */}
+          <div
+            onClick={() => {
+              setSelectedPaymentMethod((prev) =>
+                prev === "Google Pay" ? "PhonePe" : prev === "PhonePe" ? "PINAK UPI" : "Google Pay"
+              );
+            }}
+            className="cursor-pointer select-none pl-1 flex flex-col justify-center"
+          >
+            <div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400 tracking-wider">
+              <span className="w-3.5 h-3.5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[8px] font-bold">
+                ▲
+              </span>
+              <span>PAY USING ▲</span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                {selectedPaymentMethod}
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Green Pay Button */}
+          <button
+            type="button"
+            onClick={handleConfirmPaymentAndBooking}
+            className="flex-1 max-w-[190px] py-3.5 px-4 rounded-xl bg-[#009b60] hover:bg-[#008552] text-white font-extrabold text-sm flex items-center justify-center shadow-md active:scale-98 transition cursor-pointer"
+          >
+            <span>Pay ₹{totalToPay}</span>
+          </button>
+        </footer>
       </div>
     );
   }
@@ -704,31 +985,16 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
       </div>
 
       {/* ========================================================= */}
-      {/* 8. STICKY BOTTOM ACTION BAR */}
+      {/* 8. STICKY BOTTOM ACTION BAR (Slot Selection Step) */}
       {/* ========================================================= */}
       <footer className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 p-3 max-w-[430px] mx-auto shadow-2xl">
-        <div className="flex items-center gap-3">
-          {totalCoverCharge > 0 && (
-            <div className="shrink-0 text-left pl-1">
-              <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">
-                Cover Charge
-              </span>
-              <span className="text-sm font-black text-slate-900 dark:text-white">
-                ₹{totalCoverCharge}
-              </span>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={handleProceedToBook}
-            className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 active:scale-98 transition cursor-pointer"
-          >
-            <span>Proceed to book</span>
-            {totalCoverCharge > 0 && (
-              <span className="text-xs font-normal opacity-90">• ₹{totalCoverCharge}</span>
-            )}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleProceedToCheckout}
+          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 active:scale-98 transition cursor-pointer"
+        >
+          <span>Proceed to pay</span>
+        </button>
       </footer>
     </div>
   );
