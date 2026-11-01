@@ -22,7 +22,9 @@ import {
   MapPin,
   CalendarClock,
   Smartphone,
-  ArrowRight
+  ArrowRight,
+  X,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -203,6 +205,8 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
   // 7. Navigation Flow: "select_slot" -> "checkout_bill" -> "confirmed"
   type BookingStep = "select_slot" | "checkout_bill" | "confirmed";
   const [bookingStep, setBookingStep] = useState<BookingStep>("select_slot");
+  const [isCancelled, setIsCancelled] = useState<boolean>(false);
+  const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>("");
   const [includeVipPlan, setIncludeVipPlan] = useState<boolean>(true);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("Google Pay");
@@ -218,6 +222,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
   const handleConfirmPaymentAndBooking = () => {
     const bookingRef = `PNK-TB-${Math.floor(100000 + Math.random() * 900000)}`;
     setConfirmedBookingId(bookingRef);
+    setIsCancelled(false);
     setBookingStep("confirmed");
     window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -242,12 +247,12 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
     });
   };
 
-  // If confirmed, render instant confirmation screen (Matching User's Reference Screenshots)
+  // If confirmed or cancelled, render confirmation/cancellation screen (Matching User's Reference Screenshots)
   if (bookingStep === "confirmed") {
     return (
       <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-['Manrope'] pb-28 animate-in fade-in duration-200">
         <div>
-          {/* Top Header with Back, Share & Help buttons */}
+          {/* Top Header with Back, Help buttons (and Share if not cancelled) */}
           <header className="sticky top-0 z-30 bg-[#fbfbff]/95 dark:bg-slate-950/95 backdrop-blur-md px-4 py-3 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
             <button
               type="button"
@@ -258,28 +263,32 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
               <ArrowLeft size={18} />
             </button>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `Table booked at ${storeName}`,
-                      text: `Reservation confirmed at ${storeName} for ${selectedGuests} guests on ${selectedDate.dayName} at ${selectedSlot}.`
-                    }).catch(() => {});
-                  } else {
-                    toast.success("Reservation details copied to clipboard!");
-                  }
-                }}
-                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
+              {!isCancelled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({
+                        title: `Table booked at ${storeName}`,
+                        text: `Reservation confirmed at ${storeName} for ${selectedGuests} guests on ${selectedDate.dayName} at ${selectedSlot}.`
+                      }).catch(() => {});
+                    } else {
+                      toast.success("Reservation details copied to clipboard!");
+                    }
+                  }}
+                  className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer"
+                  aria-label="Share"
+                >
+                  <Share2 size={16} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
                   toast.info("PINAK 24/7 Concierge Support", {
-                    description: "Need help with your table booking? Contact +91 800-PINAK-HELP"
+                    description: isCancelled
+                      ? "Have questions regarding your cancellation or cover charge refund? Contact +91 800-PINAK-HELP"
+                      : "Need help with your table booking? Contact +91 800-PINAK-HELP"
                   });
                 }}
                 className="h-8 px-3 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
@@ -291,25 +300,46 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
           </header>
 
           <div className="p-3.5 space-y-3.5">
-            {/* Hero Green Check & Title */}
-            <div className="text-center pt-3 pb-1">
-              <div className="relative inline-flex items-center justify-center mb-3">
-                <div className="absolute inset-0 rounded-full bg-emerald-400/25 blur-xl scale-150 animate-pulse" />
-                <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center relative shadow-lg shadow-emerald-500/30">
-                  <Check size={28} className="stroke-[3.5]" />
+            {/* Hero Section: Green Check if Booked, Coral Red X if Cancelled */}
+            {isCancelled ? (
+              <div className="text-center pt-3 pb-1">
+                <div className="relative inline-flex items-center justify-center mb-3">
+                  <div className="absolute inset-0 rounded-full bg-rose-400/25 blur-2xl scale-175 animate-pulse" />
+                  <div className="w-14 h-14 rounded-full bg-[#f24e53] text-white flex items-center justify-center relative shadow-lg shadow-rose-500/30">
+                    <X size={28} className="stroke-[3.5]" />
+                  </div>
                 </div>
+                <h1 className="text-2xl font-black text-[#f24e53] dark:text-rose-400 tracking-tight">
+                  Booking cancelled
+                </h1>
               </div>
-              <h1 className="text-2xl font-black text-[#0d5c3a] dark:text-emerald-400 tracking-tight">
-                Your table is booked!
-              </h1>
-            </div>
+            ) : (
+              <div className="text-center pt-3 pb-1">
+                <div className="relative inline-flex items-center justify-center mb-3">
+                  <div className="absolute inset-0 rounded-full bg-emerald-400/25 blur-xl scale-150 animate-pulse" />
+                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center relative shadow-lg shadow-emerald-500/30">
+                    <Check size={28} className="stroke-[3.5]" />
+                  </div>
+                </div>
+                <h1 className="text-2xl font-black text-[#0d5c3a] dark:text-emerald-400 tracking-tight">
+                  Your table is booked!
+                </h1>
+              </div>
+            )}
 
-            {/* Confirmed Reservation Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+            {/* Reservation Card */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
               <div className="p-4 space-y-3">
-                {/* Confirmed status badge */}
-                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 block tracking-tight">
-                  Confirmed
+                {/* Status badge */}
+                <span
+                  className={cn(
+                    "text-xs font-black block tracking-tight",
+                    isCancelled
+                      ? "text-[#f24e53] dark:text-rose-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                  )}
+                >
+                  {isCancelled ? "Cancelled" : "Confirmed"}
                 </span>
 
                 {/* 3 Column Grid: Date, Meal & Slot, Guests */}
@@ -377,25 +407,27 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                   </div>
                 </div>
 
-                {/* Dashed line */}
-                <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-1" />
-
-                {/* Pay bill now button */}
-                <button
-                  type="button"
-                  disabled
-                  className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold text-xs tracking-wide uppercase cursor-not-allowed text-center"
-                >
-                  Pay bill now
-                </button>
+                {/* Pay bill now button (Only if NOT cancelled) */}
+                {!isCancelled && (
+                  <>
+                    <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-1" />
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold text-xs tracking-wide uppercase cursor-not-allowed text-center"
+                    >
+                      Pay bill now
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Attached bottom perks strip */}
-              <div className="bg-purple-50/70 dark:bg-purple-950/40 border-t border-purple-100/80 dark:border-purple-900/40 px-4 py-2.5 flex items-center gap-2 text-xs">
-                <span className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-black px-1.5 py-0.5 rounded shadow-2xs">
+              <div className="bg-[#f4efe6] dark:bg-amber-950/40 border-t border-amber-200/60 dark:border-amber-900/40 px-4 py-2.5 flex items-center gap-2 text-xs">
+                <span className="bg-[#e7d8bb] dark:bg-amber-900/50 text-[#7c5513] dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-black px-1.5 py-0.5 rounded shadow-2xs">
                   🪙 2X
                 </span>
-                <span className="font-bold text-emerald-800 dark:text-emerald-300 text-[11px] truncate">
+                <span className="font-bold text-[#0f6647] dark:text-emerald-300 text-[11px] truncate">
                   Earn 20% PINAK Coins on bill payment
                 </span>
               </div>
@@ -426,96 +458,163 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
               </div>
             </div>
 
-            {/* "What to do next?" Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-              <div className="p-4 space-y-3.5">
-                <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                  What to do next?
-                </h3>
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
-                    <CalendarClock size={16} />
+            {/* "What to do next?" Card (Only if NOT cancelled) */}
+            {!isCancelled && (
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+                <div className="p-4 space-y-3.5">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                    What to do next?
+                  </h3>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
+                      <CalendarClock size={16} />
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                      Reach restaurant on the booked date and time
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                    Reach restaurant on the booked date and time
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
-                    <Smartphone size={16} />
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
+                      <Smartphone size={16} />
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                      Pay your dining bill via PINAK, your offer gets auto applied!
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                    Pay your dining bill via PINAK, your offer gets auto applied!
-                  </p>
                 </div>
-              </div>
 
-              {/* Soft alert banner inside card */}
-              <div className="bg-[#fff9e6] dark:bg-amber-950/40 border-t border-amber-200/60 dark:border-amber-900/40 px-4 py-2.5 text-center text-xs font-bold text-amber-800 dark:text-amber-300">
-                You may have to wait for your table to get ready
+                {/* Soft alert banner inside card */}
+                <div className="bg-[#fff9e6] dark:bg-amber-950/40 border-t border-amber-200/60 dark:border-amber-900/40 px-4 py-2.5 text-center text-xs font-bold text-amber-800 dark:text-amber-300">
+                  You may have to wait for your table to get ready
+                </div>
               </div>
-            </div>
+            )}
 
             {/* "View restaurant details" Card */}
             <div
               onClick={onBack}
-              className="bg-purple-50/70 hover:bg-purple-100/80 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition shadow-2xs"
+              className={cn(
+                "rounded-2xl p-4 flex items-center justify-between cursor-pointer transition shadow-2xs",
+                isCancelled
+                  ? "bg-[#fff4ef] hover:bg-[#ffece4] dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/50"
+                  : "bg-purple-50/70 hover:bg-purple-100/80 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60"
+              )}
             >
-              <span className="text-sm font-black text-purple-700 dark:text-purple-300">
+              <span
+                className={cn(
+                  "text-sm font-black",
+                  isCancelled
+                    ? "text-[#e85b46] dark:text-rose-400"
+                    : "text-purple-700 dark:text-purple-300"
+                )}
+              >
                 View restaurant details
               </span>
-              <ArrowRight size={18} className="text-purple-700 dark:text-purple-300" />
+              <ArrowRight
+                size={18}
+                className={
+                  isCancelled
+                    ? "text-[#e85b46] dark:text-rose-400"
+                    : "text-purple-700 dark:text-purple-300"
+                }
+              />
             </div>
 
-            {/* Cancellation Row */}
-            <div className="flex items-center justify-between px-2 pt-1 pb-1 text-xs">
-              <span className="text-slate-500 font-medium">Can't make it to the restaurant?</span>
-              <button
-                type="button"
-                onClick={() => {
-                  toast.success("Table reservation cancelled", {
-                    description: "Any cover charges paid will be refunded to your source account within 2 hours."
-                  });
-                  onBack();
-                }}
-                className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
-              >
-                Cancel booking
-              </button>
-            </div>
+            {/* Cancellation Row (Only if NOT cancelled) */}
+            {!isCancelled && (
+              <div className="flex items-center justify-between px-2 pt-1 pb-1 text-xs">
+                <span className="text-slate-500 font-medium">Can't make it to the restaurant?</span>
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(true)}
+                  className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                >
+                  Cancel booking
+                </button>
+              </div>
+            )}
 
-            {/* "Offer terms & conditions" Accordion */}
-            <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
-              <button
-                type="button"
-                onClick={() => setIsConfirmedTermsOpen((v) => !v)}
-                className="w-full p-4 flex items-center justify-between text-left cursor-pointer transition hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
-              >
-                <h3 className="text-xs font-black text-slate-900 dark:text-white">
-                  Offer terms & conditions
-                </h3>
-                <ChevronDown
-                  size={15}
-                  className={cn(
-                    "text-purple-600 dark:text-purple-400 transition-transform duration-200",
-                    isConfirmedTermsOpen ? "rotate-180" : ""
-                  )}
-                />
-              </button>
+            {/* "Offer terms & conditions" Accordion (Only if NOT cancelled) */}
+            {!isCancelled && (
+              <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmedTermsOpen((v) => !v)}
+                  className="w-full p-4 flex items-center justify-between text-left cursor-pointer transition hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
+                >
+                  <h3 className="text-xs font-black text-slate-900 dark:text-white">
+                    Offer terms & conditions
+                  </h3>
+                  <ChevronDown
+                    size={15}
+                    className={cn(
+                      "text-purple-600 dark:text-purple-400 transition-transform duration-200",
+                      isConfirmedTermsOpen ? "rotate-180" : ""
+                    )}
+                  />
+                </button>
 
-              {isConfirmedTermsOpen && (
-                <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800 space-y-2 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                  <p>• The deal must be redeemed/bill paid within 6 hours of the dining start time, or the offer will expire.</p>
-                  <p>• Discount, if any, can only be availed when you pay your bill via PINAK.</p>
-                  <p>• The paid cover charge will be redeemed automatically when you pay your bill via PINAK.</p>
-                  <p>• Cover charges will be fully refunded only if booking is cancelled before the dining start time.</p>
-                  <p>• A maximum of Rs. 3,00,000 can be paid in a single bill payment transaction via PINAK.</p>
-                  <p>• The booking details via WhatsApp, email, or on the app need to be shown at the restaurant before ordering.</p>
-                </div>
-              )}
-            </section>
+                {isConfirmedTermsOpen && (
+                  <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800 space-y-2 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <p>• The deal must be redeemed/bill paid within 6 hours of the dining start time, or the offer will expire.</p>
+                    <p>• Discount, if any, can only be availed when you pay your bill via PINAK.</p>
+                    <p>• The paid cover charge will be redeemed automatically when you pay your bill via PINAK.</p>
+                    <p>• Cover charges will be fully refunded only if booking is cancelled before the dining start time.</p>
+                    <p>• A maximum of Rs. 3,00,000 can be paid in a single bill payment transaction via PINAK.</p>
+                    <p>• The booking details via WhatsApp, email, or on the app need to be shown at the restaurant before ordering.</p>
+                  </div>
+                )}
+              </section>
+            )}
           </div>
         </div>
+
+        {/* Cancel Confirmation Modal */}
+        {showCancelModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-[#f24e53] flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900">
+                <AlertTriangle size={24} />
+              </div>
+              <div className="text-center space-y-1.5">
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Cancel Table Reservation?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Are you sure you want to cancel your table at <span className="font-bold text-slate-800 dark:text-slate-200">{storeName}</span>?
+                </p>
+                {totalToPay > 0 && (
+                  <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                    ₹{totalToPay} cover charge will be automatically refunded to your original payment method within 2 hours.
+                  </p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(false)}
+                  className="w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Keep Booking
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setIsCancelled(true);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    toast.error("Table reservation cancelled", {
+                      description: "Cover charge refund has been initiated."
+                    });
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-[#f24e53] hover:bg-[#df3d42] text-white font-black text-xs shadow-md transition cursor-pointer"
+                >
+                  Yes, Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Floating Center Done Button matching screenshots */}
         <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center pointer-events-none">
