@@ -325,6 +325,7 @@ export default function CustomerHomePreviewPage() {
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const initialStoreId = searchParams?.get("storeId");
   const [activeScreen, setActiveScreen] = useState<"home" | "detail">(initialStoreId ? "detail" : "home");
+  const [initialDetailView, setInitialDetailView] = useState<"detail" | "booking">("detail");
   const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "97aabe53-9349-439d-952e-40f723bb8f51");
   const [offers, setOffers] = useState<NearbyOffer[]>([]);
   const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
@@ -705,6 +706,7 @@ export default function CustomerHomePreviewPage() {
                   "97aabe53-9349-439d-952e-40f723bb8f51";
                 setSelectedStoreId(firstRealStore);
               }
+              setInitialDetailView("detail");
               setActiveScreen("detail");
             }}
             className={cn(
@@ -773,7 +775,11 @@ export default function CustomerHomePreviewPage() {
               storeId={selectedStoreId}
               userLat={userLocation.latitude}
               userLng={userLocation.longitude}
-              onBack={() => setActiveScreen("home")}
+              initialView={initialDetailView}
+              onBack={() => {
+                setInitialDetailView("detail");
+                setActiveScreen("home");
+              }}
             />
           ) : (
             <>
@@ -1045,7 +1051,10 @@ export default function CustomerHomePreviewPage() {
                 return (
                   <article
                     key={offerKey}
-                    onClick={() => handleOpenStoreDetail(targetStoreId)}
+                    onClick={() => {
+                      setInitialDetailView("detail");
+                      handleOpenStoreDetail(targetStoreId);
+                    }}
                     className="w-72 shrink-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col justify-between cursor-pointer group h-[335px]"
                   >
                     <div className="flex-1 flex flex-col">
@@ -1208,6 +1217,11 @@ export default function CustomerHomePreviewPage() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (isPreBookingOnly || isBoth) {
+                            setInitialDetailView("booking");
+                          } else {
+                            setInitialDetailView("detail");
+                          }
                           handleOpenStoreDetail(targetStoreId);
                         }}
                         className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] px-3.5 py-1.5 rounded-lg shadow-xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"

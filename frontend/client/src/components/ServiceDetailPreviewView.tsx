@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import TableBookingView from "./TableBookingView";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -165,11 +166,13 @@ interface ServiceDetailData {
   };
 }
 
-interface ServiceDetailPreviewViewProps {
+export interface ServiceDetailPreviewViewProps {
   storeId?: string;
   userLat?: number;
   userLng?: number;
   onBack: () => void;
+  initialView?: "detail" | "booking";
+  initialOffer?: any;
 }
 
 interface StoreLocationMapProps {
@@ -271,19 +274,27 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   storeId,
   userLat = 12.9716,
   userLng = 77.6412,
-  onBack
+  onBack,
+  initialView = "detail",
+  initialOffer
 }) => {
   const [data, setData] = useState<ServiceDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<"detail" | "booking">(initialView);
   const [offerSegment, setOfferSegment] = useState<"PRE_BOOK" | "WALK_IN" | "PRODUCT">("PRE_BOOK");
   const [activeTab, setActiveTab] = useState("Offers");
   const [isFavorited, setIsFavorited] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [selectedImageZoom, setSelectedImageZoom] = useState<string | null>(null);
 
-  // Production-Ready Interactive Booking, Payment & Product Sheet States
-  const [showBookingModal, setShowBookingModal] = useState(false);
+  useEffect(() => {
+    if (initialView) {
+      setCurrentView(initialView);
+    }
+  }, [initialView]);
+
+  // Production-Ready Interactive Payment & Product Sheet States
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProductForDeal, setSelectedProductForDeal] = useState<any>(null);
@@ -515,6 +526,31 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   const currentHeroOffer = activeSegmentOffers[activeOfferIndex] || activeSegmentOffers[0] || primaryOffer;
   const additionalOffers = activeSegmentOffers.slice(1);
 
+  if (currentView === "booking") {
+    return (
+      <TableBookingView
+        storeId={effectiveStoreId}
+        storeName={data.storeName}
+        storeAddress={data.address}
+        storeCuisines={data.cuisines}
+        initialGuests={selectedGuests}
+        initialSlot={selectedSlot}
+        initialOfferTitle={currentHeroOffer?.title}
+        initialOfferDiscount={currentHeroOffer?.discountValue ? Number(currentHeroOffer.discountValue) : 20}
+        initialCoverCharge={primaryOffer?.coverChargeAmount ? Number(primaryOffer.coverChargeAmount) : 25}
+        onBack={() => {
+          setCurrentView("detail");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onBookingConfirmed={(details) => {
+          toast.success(`Table Booked for ${details.guests} Guests!`, {
+            description: `Confirmed at ${data.storeName} for ${details.date} at ${details.time}.`
+          });
+        }}
+      />
+    );
+  }
+
   // Active slots for booking modal
   let parsedSlots: string[] = ["12:30 PM", "01:00 PM", "01:30 PM", "07:00 PM", "07:30 PM", "08:00 PM"];
   const targetOffer = currentHeroOffer || primaryOffer;
@@ -737,7 +773,17 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
         <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Offers for you</h2>
 
         {/* Main Offer Card Container: Compact & Uniform Dimensions */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-xs border border-slate-200/90 dark:border-slate-800 relative overflow-hidden text-center min-h-[162px] flex flex-col justify-between">
+        <div
+          onClick={() => {
+            if (offerSegment === "PRE_BOOK" || currentHeroOffer?.redemptionType === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
+              setCurrentView("booking");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            } else {
+              setShowPaymentModal(true);
+            }
+          }}
+          className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-xs border border-slate-200/90 dark:border-slate-800 relative overflow-hidden text-center min-h-[162px] flex flex-col justify-between cursor-pointer hover:border-purple-300 dark:hover:border-purple-800 transition"
+        >
           {/* Subtle Gift Voucher Watermark in bottom left */}
           <div className="absolute -bottom-3 -left-3 w-24 h-24 opacity-[0.04] text-purple-500 pointer-events-none select-none">
             <svg viewBox="0 0 24 24" fill="currentColor">
@@ -747,12 +793,18 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
 
           {/* Tab Selector: Pre-booking vs Walk-in vs Product offers */}
           {segmentTabs.length > 1 ? (
-            <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center justify-between mb-2.5 border border-slate-200/60 dark:border-slate-700/60 max-w-sm mx-auto gap-1">
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center justify-between mb-2.5 border border-slate-200/60 dark:border-slate-700/60 max-w-sm mx-auto gap-1"
+            >
               {segmentTabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setOfferSegment(tab.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOfferSegment(tab.id);
+                  }}
                   className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer text-center whitespace-nowrap min-h-[30px] flex items-center justify-center ${
                     offerSegment === tab.id
                       ? "bg-purple-700 text-white shadow-xs"
@@ -764,7 +816,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
               ))}
             </div>
           ) : segmentTabs.length === 1 ? (
-            <div className="flex justify-center mb-2">
+            <div className="flex justify-center mb-2" onClick={(e) => e.stopPropagation()}>
               <span className="px-3.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold tracking-tight">
                 {segmentTabs[0].label}
               </span>
@@ -816,7 +868,15 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                 )}
 
                 <h3
-                  onClick={() => setShowPaymentModal(true)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (offerSegment === "PRE_BOOK" || currentHeroOffer?.redemptionType === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
+                      setCurrentView("booking");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    } else {
+                      setShowPaymentModal(true);
+                    }
+                  }}
                   className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-1 cursor-pointer hover:text-purple-700 transition group text-center line-clamp-2 leading-snug"
                 >
                   <span>{currentHeroOffer.title}</span>
@@ -846,12 +906,15 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
               </div>
 
               {/* Carousel Dots Indicator */}
-              <div className="flex items-center justify-center gap-1.5 mt-2">
+              <div className="flex items-center justify-center gap-1.5 mt-2" onClick={(e) => e.stopPropagation()}>
                 {activeSegmentOffers.map((_, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setActiveOfferIndex(idx)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveOfferIndex(idx);
+                    }}
                     className={`transition-all cursor-pointer ${
                       activeOfferIndex === idx
                         ? "w-3.5 h-1.5 rounded-full bg-purple-700"
@@ -944,7 +1007,12 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                   key={off.id || idx}
                   onClick={() => {
                     setActiveOfferIndex(idx);
-                    toast.info(`Switched to "${off.title}"`);
+                    if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
+                      setCurrentView("booking");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    } else {
+                      toast.info(`Switched to "${off.title}"`);
+                    }
                   }}
                   className={`bg-white dark:bg-slate-900 rounded-2xl border px-3.5 py-2.5 shadow-xs flex items-center justify-between gap-3 cursor-pointer transition h-[74px] ${
                     isSelected
@@ -982,8 +1050,9 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveOfferIndex(idx);
-                      if (off.redemptionType === "PRE_BOOK") {
-                        setShowBookingModal(true);
+                      if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
+                        setCurrentView("booking");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
                       } else {
                         setShowPaymentModal(true);
                       }
@@ -1588,7 +1657,10 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
         <div className="flex items-center gap-2.5">
           {data.bottomBar?.isTableBookingEnabled && (
             <button
-              onClick={() => setShowBookingModal(true)}
+              onClick={() => {
+                setCurrentView("booking");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
               className="flex-1 py-3 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-bold active:scale-98 transition text-sm text-center cursor-pointer shadow-xs"
               type="button"
             >
@@ -1604,158 +1676,6 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
           </button>
         </div>
       </footer>
-
-      {/* ========================================================= */}
-      {/* PRODUCTION-READY INTERACTIVE TABLE RESERVATION MODAL */}
-      {/* ========================================================= */}
-      {showBookingModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl w-full max-w-md max-h-[92vh] overflow-hidden flex flex-col shadow-2xl">
-            {/* Modal Header */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                    Reserve a Table
-                  </h3>
-                  <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                    Instant Confirm
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {data.storeName} • {data.address}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowBookingModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-              {/* Date Selection */}
-              <div>
-                <label className="font-bold text-slate-800 dark:text-slate-200 mb-1.5 block">
-                  Select Date
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {["Today", "Tomorrow", "Day After"].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setSelectedDate(d)}
-                      className={`py-2 rounded-xl border text-center font-bold cursor-pointer transition ${
-                        selectedDate === d
-                          ? "bg-purple-700 text-white border-purple-700 shadow-xs"
-                          : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Guests Count Selector */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="font-bold text-slate-800 dark:text-slate-200">
-                    Number of Guests
-                  </label>
-                  <span className="text-slate-500 text-[11px]">
-                    Limit: {minParty} to {maxParty} Guests
-                  </span>
-                </div>
-                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2">
-                  <button
-                    type="button"
-                    disabled={selectedGuests <= minParty}
-                    onClick={() => setSelectedGuests((g) => Math.max(minParty, g - 1))}
-                    className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center font-bold disabled:opacity-40 cursor-pointer"
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Users size={15} className="text-purple-600" />
-                    <span>{selectedGuests} Guests</span>
-                  </span>
-                  <button
-                    type="button"
-                    disabled={selectedGuests >= maxParty}
-                    onClick={() => setSelectedGuests((g) => Math.min(maxParty, g + 1))}
-                    className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center font-bold disabled:opacity-40 cursor-pointer"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Time Slots Selector (Loaded from DB) */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="font-bold text-slate-800 dark:text-slate-200">
-                    Available Time Slots
-                  </label>
-                  <span className="text-emerald-700 font-semibold text-[11px] flex items-center gap-1">
-                    <Clock size={11} /> {primaryOffer?.gracePeriodMinutes || 15}m Grace Period
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {parsedSlots.map((slot) => (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => setSelectedSlot(slot)}
-                      className={`py-2 px-1 rounded-xl border text-center font-bold transition cursor-pointer text-xs ${
-                        selectedSlot === slot
-                          ? "bg-purple-700 text-white border-purple-700 shadow-xs"
-                          : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-purple-300"
-                      }`}
-                    >
-                      {slot}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Booking Perks & Cover Charge */}
-              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3 space-y-1.5">
-                <div className="flex items-center justify-between text-emerald-900 dark:text-emerald-200 font-bold">
-                  <span>Cover Charge:</span>
-                  <span>{primaryOffer?.coverChargeAmount && Number(primaryOffer.coverChargeAmount) > 0 ? `₹${primaryOffer.coverChargeAmount}` : "₹0 (Free Booking)"}</span>
-                </div>
-                <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300">
-                  <span>Reward Perks:</span>
-                  <span className="font-bold flex items-center gap-1">
-                    <Coins size={11} /> +{bonusCoins} PINAK Coins
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer CTA */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowBookingModal(false);
-                  toast.success(`Table Booked for ${selectedGuests} Guests!`, {
-                    description: `Confirmed at ${data.storeName} for ${selectedDate} at ${selectedSlot}. +${bonusCoins} Coins queued!`
-                  });
-                }}
-                className="w-full py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs shadow-md transition active:scale-98 cursor-pointer flex items-center justify-center gap-2"
-              >
-                <CheckCircle size={15} />
-                <span>Confirm Reservation ({selectedDate} @ {selectedSlot})</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================= */}
       {/* PRODUCTION-READY INTERACTIVE PINAK PAY BILL MODAL */}
