@@ -18,6 +18,7 @@ import com.superapp.store.enums.StoreStatus;
 import com.superapp.store.repository.StoreRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +57,22 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
     @Transactional(readOnly = true)
     public MobileServiceDetailDto getServiceDetail(UUID storeId, Double userLat, Double userLng) {
         Optional<Store> storeOpt = storeId != null ? storeRepository.findById(storeId) : Optional.empty();
+
+        if (storeOpt.isEmpty() && storeId != null) {
+            // Check if storeId is actually a merchantId
+            List<Store> merchantStores = storeRepository.findByMerchantId(storeId);
+            if (!merchantStores.isEmpty()) {
+                storeOpt = Optional.of(merchantStores.get(0));
+            }
+        }
+
+        if (storeOpt.isEmpty()) {
+            // Check if there is an active store in the database before falling back to dummy Smokehouse
+            Page<Store> activeStores = storeRepository.findNewlyAddedApprovedStores(org.springframework.data.domain.PageRequest.of(0, 1));
+            if (activeStores.hasContent()) {
+                storeOpt = Optional.of(activeStores.getContent().get(0));
+            }
+        }
 
         if (storeOpt.isEmpty()) {
             log.info("Store with id={} not found in database, providing fallback dummy response for The Smokehouse Grill (Screen 11)", storeId);

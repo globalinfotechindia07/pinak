@@ -99,6 +99,7 @@ interface ProductDeal {
   imageUrl: string;
   merchantName?: string;
   storeName?: string;
+  storeId?: string;
 }
 
 interface FeaturedMerchant {
@@ -324,7 +325,7 @@ export default function CustomerHomePreviewPage() {
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const initialStoreId = searchParams?.get("storeId");
   const [activeScreen, setActiveScreen] = useState<"home" | "detail">(initialStoreId ? "detail" : "home");
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "e1000000-0000-0000-0000-000000000001");
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "97aabe53-9349-439d-952e-40f723bb8f51");
   const [offers, setOffers] = useState<NearbyOffer[]>([]);
   const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
   const [featuredStores, setFeaturedStores] = useState<FeaturedMerchant[]>([]);
@@ -338,26 +339,40 @@ export default function CustomerHomePreviewPage() {
   const [seconds, setSeconds] = useState(10);
   const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
   const [userLocation, setUserLocation] = useState({
-    name: "100ft Rd, Indiranagar",
-    city: "Bengaluru, Karnataka",
-    latitude: 12.9716,
-    longitude: 77.6412,
+    name: "West High Court Rd, Dharampeth",
+    city: "Nagpur, Maharashtra",
+    latitude: 21.1458,
+    longitude: 79.0882,
     radiusKm: 15.0
   });
 
   const PRESET_LOCATIONS = [
     {
-      name: "100ft Rd, Indiranagar",
-      city: "Bengaluru, Karnataka",
-      latitude: 12.9716,
-      longitude: 77.6412,
-      radiusKm: 15.0
-    },
-    {
       name: "West High Court Rd, Dharampeth",
       city: "Nagpur, Maharashtra",
       latitude: 21.1458,
       longitude: 79.0882,
+      radiusKm: 15.0
+    },
+    {
+      name: "Residency Rd, Sadar",
+      city: "Nagpur, Maharashtra",
+      latitude: 21.1610,
+      longitude: 79.0830,
+      radiusKm: 15.0
+    },
+    {
+      name: "Central Bazaar Rd, Ramdaspeth",
+      city: "Nagpur, Maharashtra",
+      latitude: 21.1390,
+      longitude: 79.0760,
+      radiusKm: 15.0
+    },
+    {
+      name: "100ft Rd, Indiranagar",
+      city: "Bengaluru, Karnataka",
+      latitude: 12.9716,
+      longitude: 77.6412,
       radiusKm: 15.0
     }
   ];
@@ -375,7 +390,22 @@ export default function CustomerHomePreviewPage() {
         }
       });
       const data = res.data?.data;
-      const list = Array.isArray(data?.offers) ? data.offers : Array.isArray(data) ? data : [];
+      let list = Array.isArray(data?.offers) ? data.offers : Array.isArray(data) ? data : [];
+      if (list.length === 0) {
+        // Fallback: If no service deals within exact radius of this location, fetch platform active deals
+        try {
+          const fallbackRes = await apiClient.get("/offers/nearby", {
+            params: {
+              type: "SERVICE",
+              limit: 10
+            }
+          });
+          const fbData = fallbackRes.data?.data;
+          list = Array.isArray(fbData?.offers) ? fbData.offers : Array.isArray(fbData) ? fbData : [];
+        } catch (fErr: any) {
+          console.warn("Fallback service offers error:", fErr?.message);
+        }
+      }
       setOffers(list);
       if (list.length > 0 && !searchParams?.get("storeId")) {
         const firstStore = list[0].branch?.branchId || list[0].branchSummary?.storeId;
@@ -385,7 +415,15 @@ export default function CustomerHomePreviewPage() {
       }
     } catch (err: any) {
       console.warn("Could not fetch live service offers:", err?.message);
-      setOffers([]);
+      try {
+        const fallbackRes = await apiClient.get("/offers/nearby", {
+          params: { type: "SERVICE", limit: 10 }
+        });
+        const fbData = fallbackRes.data?.data;
+        setOffers(Array.isArray(fbData?.offers) ? fbData.offers : []);
+      } catch {
+        setOffers([]);
+      }
     }
 
     try {
@@ -399,12 +437,43 @@ export default function CustomerHomePreviewPage() {
         }
       });
       const pData = pRes.data?.data;
-      const pList = Array.isArray(pData?.offers) ? pData.offers : Array.isArray(pData) ? pData : [];
+      let pList = Array.isArray(pData?.offers) ? pData.offers : Array.isArray(pData) ? pData : [];
+      if (pList.length === 0) {
+        // Fallback: If no product deals within exact radius of this location, fetch platform active product deals
+        try {
+          const pFallbackRes = await apiClient.get("/offers/nearby", {
+            params: {
+              type: "PRODUCT",
+              limit: 10
+            }
+          });
+          const pFbData = pFallbackRes.data?.data;
+          pList = Array.isArray(pFbData?.offers) ? pFbData.offers : Array.isArray(pFbData) ? pFbData : [];
+        } catch (fErr: any) {
+          console.warn("Fallback product deals error:", fErr?.message);
+        }
+      }
       setProductDeals(
         pList.map((item: any) => {
           const orig = item.originalMrp ? Number(item.originalMrp) : undefined;
-          const deal = item.flashSellingPrice ? Number(item.flashSellingPrice) : (Number(item.discountValue || item.value) || 0);
-          const pct = (orig && deal && orig > deal) ? Math.round(((orig - deal) / orig) * 100) : Number(item.discountValue || item.value || 0);
+          let deal = item.flashSellingPrice ? Number(item.flashSellingPrice) : 0;
+          const discVal = Number(item.discountValue ?? item.value ?? 0);
+          const oType = (item.offerType || item.type || "").toUpperCase();
+
+          if (!deal && orig && discVal > 0) {
+            if (oType.includes("PERCENT") || discVal <= 100) {
+              deal = Math.round(orig * (1 - discVal / 100));
+            } else {
+              deal = Math.max(0, orig - discVal);
+            }
+          } else if (!deal) {
+            deal = discVal > 0 ? discVal : (orig || 99);
+          }
+
+          const pct = (orig && deal && orig > deal)
+            ? Math.round(((orig - deal) / orig) * 100)
+            : discVal > 0 ? discVal : 0;
+
           return {
             id: item.offerId || item.id,
             title: item.title,
@@ -415,13 +484,42 @@ export default function CustomerHomePreviewPage() {
             discountBadge: item.badgeText || (pct > 0 ? `${pct}% OFF` : "DEAL"),
             imageUrl: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
             merchantName: item.merchant?.name,
-            storeName: item.branch?.name
+            storeName: item.branch?.name,
+            storeId: item.branch?.branchId || item.branchSummary?.storeId
           };
         })
       );
     } catch (err: any) {
       console.warn("Could not fetch live product deals:", err?.message);
-      setProductDeals([]);
+      try {
+        const pFallbackRes = await apiClient.get("/offers/nearby", {
+          params: { type: "PRODUCT", limit: 10 }
+        });
+        const pFbData = pFallbackRes.data?.data;
+        const pList = Array.isArray(pFbData?.offers) ? pFbData.offers : [];
+        setProductDeals(
+          pList.map((item: any) => {
+            const orig = item.originalMrp ? Number(item.originalMrp) : undefined;
+            const deal = item.flashSellingPrice ? Number(item.flashSellingPrice) : (Number(item.discountValue || item.value) || 0);
+            const pct = (orig && deal && orig > deal) ? Math.round(((orig - deal) / orig) * 100) : Number(item.discountValue || item.value || 0);
+            return {
+              id: item.offerId || item.id,
+              title: item.title,
+              unitOrWeight: item.subtitle || "Standard Pack",
+              dealPrice: deal,
+              originalPrice: orig,
+              discountPct: pct,
+              discountBadge: item.badgeText || (pct > 0 ? `${pct}% OFF` : "DEAL"),
+              imageUrl: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
+              merchantName: item.merchant?.name,
+              storeName: item.branch?.name,
+              storeId: item.branch?.branchId || item.branchSummary?.storeId
+            };
+          })
+        );
+      } catch {
+        setProductDeals([]);
+      }
     }
 
     try {
@@ -433,7 +531,17 @@ export default function CustomerHomePreviewPage() {
         }
       });
       const fData = fRes.data?.data;
-      const fList = Array.isArray(fData?.merchants) ? fData.merchants : [];
+      let fList = Array.isArray(fData?.merchants) ? fData.merchants : [];
+      if (fList.length === 0) {
+        try {
+          const fFallbackRes = await apiClient.get("/merchants/featured", {
+            params: { limit: 10 }
+          });
+          fList = Array.isArray(fFallbackRes.data?.data?.merchants) ? fFallbackRes.data?.data?.merchants : [];
+        } catch (fErr: any) {
+          console.warn("Fallback featured merchants error:", fErr?.message);
+        }
+      }
       setFeaturedStores(fList);
     } catch (err: any) {
       console.warn("Could not fetch live featured merchants:", err?.message);
@@ -466,11 +574,28 @@ export default function CustomerHomePreviewPage() {
         },
       });
       const fData = fRes.data?.data;
-      const fList = Array.isArray(fData?.deals) ? fData.deals : [];
+      let fList = Array.isArray(fData?.deals) ? fData.deals : [];
+      if (fList.length === 0) {
+        try {
+          const flashFallback = await apiClient.get("/offers/flash", {
+            params: { limit: 10 }
+          });
+          fList = Array.isArray(flashFallback.data?.data?.deals) ? flashFallback.data?.data?.deals : [];
+        } catch {
+          // ignore
+        }
+      }
       setFlashDeals(fList);
     } catch (err: any) {
       console.warn("Could not fetch live flash deals:", err?.message);
-      setFlashDeals([]);
+      try {
+        const flashFallback = await apiClient.get("/offers/flash", {
+          params: { limit: 10 }
+        });
+        setFlashDeals(Array.isArray(flashFallback.data?.data?.deals) ? flashFallback.data?.data?.deals : []);
+      } catch {
+        setFlashDeals([]);
+      }
     }
 
     try {
@@ -577,7 +702,7 @@ export default function CustomerHomePreviewPage() {
                 const firstRealStore =
                   offers.find((o) => o.branch?.branchId || o.branchSummary?.storeId)?.branch?.branchId ||
                   offers.find((o) => o.branchSummary?.storeId)?.branchSummary?.storeId ||
-                  "e1000000-0000-0000-0000-000000000001";
+                  "97aabe53-9349-439d-952e-40f723bb8f51";
                 setSelectedStoreId(firstRealStore);
               }
               setActiveScreen("detail");
@@ -599,7 +724,7 @@ export default function CustomerHomePreviewPage() {
           <div className="hidden sm:flex items-center gap-1.5 text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg">
             <MapPin size={13} className="text-purple-400" />
             <span className="text-[11px]">
-              Nagpur Hub ({userLocation.latitude}, {userLocation.longitude})
+              {userLocation.name.split(",")[0]} ({userLocation.latitude}, {userLocation.longitude})
             </span>
           </div>
 
@@ -866,6 +991,8 @@ export default function CustomerHomePreviewPage() {
                 const distanceText = distanceMeters != null
                   ? (distanceMeters < 1000
                     ? `${distanceMeters}m away`
+                    : distanceMeters > 50000
+                    ? (branchName ? branchName.split("–")[0].trim() : "Nagpur Hub")
                     : `${(distanceMeters / 1000).toFixed(1)} km away`)
                   : "Nearby";
 
@@ -1159,7 +1286,10 @@ export default function CustomerHomePreviewPage() {
                         className={favorites[prodKey] ? "fill-rose-500 text-rose-500" : "text-slate-300"}
                       />
                     </button>
-                    <div className="h-24 w-full flex items-center justify-center p-2 mb-1 bg-white rounded-lg overflow-hidden">
+                    <div
+                      className="h-24 w-full flex items-center justify-center p-2 mb-1 bg-white rounded-lg overflow-hidden cursor-pointer"
+                      onClick={() => p.storeId && handleOpenStoreDetail(p.storeId)}
+                    >
                       <img
                         alt={p.title}
                         className="max-h-full max-w-full object-contain transition-transform duration-200 group-hover:scale-105"
@@ -1171,7 +1301,11 @@ export default function CustomerHomePreviewPage() {
                       />
                     </div>
                     <div>
-                      <h4 className="text-[11px] font-bold text-slate-800 truncate" title={p.title}>
+                      <h4
+                        className="text-[11px] font-bold text-slate-800 truncate cursor-pointer hover:text-purple-700"
+                        title={p.title}
+                        onClick={() => p.storeId && handleOpenStoreDetail(p.storeId)}
+                      >
                         {p.title}
                       </h4>
                       <p className="text-[9px] text-slate-400 mb-1 truncate">
