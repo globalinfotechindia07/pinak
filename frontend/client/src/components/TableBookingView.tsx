@@ -15,7 +15,14 @@ import {
   ShieldCheck,
   Store,
   TicketPercent,
-  Info
+  Info,
+  Share2,
+  MessageSquare,
+  Phone,
+  MapPin,
+  CalendarClock,
+  Smartphone,
+  ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -191,6 +198,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
   // 6. Accordions
   const [isTermsOpen, setIsTermsOpen] = useState<boolean>(true);
   const [isCheckoutTermsOpen, setIsCheckoutTermsOpen] = useState<boolean>(false);
+  const [isConfirmedTermsOpen, setIsConfirmedTermsOpen] = useState<boolean>(false);
 
   // 7. Navigation Flow: "select_slot" -> "checkout_bill" -> "confirmed"
   type BookingStep = "select_slot" | "checkout_bill" | "confirmed";
@@ -234,119 +242,289 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
     });
   };
 
-  // If confirmed, render instant confirmation screen
+  // If confirmed, render instant confirmation screen (Matching User's Reference Screenshots)
   if (bookingStep === "confirmed") {
     return (
-      <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-200">
+      <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-['Manrope'] pb-28 animate-in fade-in duration-200">
         <div>
-          {/* Top header */}
-          <div className="flex items-center justify-between mb-6">
+          {/* Top Header with Back, Share & Help buttons */}
+          <header className="sticky top-0 z-30 bg-[#fbfbff]/95 dark:bg-slate-950/95 backdrop-blur-md px-4 py-3 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
             <button
               type="button"
               onClick={onBack}
-              className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 flex items-center justify-center text-slate-700 dark:text-slate-200 transition cursor-pointer"
+              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer"
+              aria-label="Back"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={18} />
             </button>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Instant Confirmation
-            </span>
-            <div className="w-9" />
-          </div>
-
-          {/* Success Hero */}
-          <div className="text-center py-6">
-            <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border-4 border-emerald-500 text-emerald-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20 animate-bounce">
-              <CheckCircle2 size={42} className="stroke-[2.5]" />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `Table booked at ${storeName}`,
+                      text: `Reservation confirmed at ${storeName} for ${selectedGuests} guests on ${selectedDate.dayName} at ${selectedSlot}.`
+                    }).catch(() => {});
+                  } else {
+                    toast.success("Reservation details copied to clipboard!");
+                  }
+                }}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer"
+                aria-label="Share"
+              >
+                <Share2 size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  toast.info("PINAK 24/7 Concierge Support", {
+                    description: "Need help with your table booking? Contact +91 800-PINAK-HELP"
+                  });
+                }}
+                className="h-8 px-3 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <MessageSquare size={13} />
+                <span>Help</span>
+              </button>
             </div>
-            <span className="inline-block bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-extrabold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider mb-2 border border-purple-200 dark:border-purple-800">
-              PINAK Table Reserved
-            </span>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1">
-              Table Reservation Confirmed!
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Booking Ref: <strong className="text-slate-900 dark:text-white font-mono text-sm">{confirmedBookingId}</strong>
-            </p>
-          </div>
+          </header>
 
-          {/* Booking Summary Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm mb-4 space-y-3">
-            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white">{storeName}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{storeAddress}</p>
-                <p className="text-[10px] text-purple-600 font-bold mt-1">🍽️ {storeCuisines}</p>
+          <div className="p-3.5 space-y-3.5">
+            {/* Hero Green Check & Title */}
+            <div className="text-center pt-3 pb-1">
+              <div className="relative inline-flex items-center justify-center mb-3">
+                <div className="absolute inset-0 rounded-full bg-emerald-400/25 blur-xl scale-150 animate-pulse" />
+                <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center relative shadow-lg shadow-emerald-500/30">
+                  <Check size={28} className="stroke-[3.5]" />
+                </div>
               </div>
-              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-md shrink-0">
-                Confirmed
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center py-1">
-              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                <p className="text-[10px] text-slate-400 font-medium">Guests</p>
-                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
-                  {selectedGuests} People
-                </p>
-              </div>
-              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                <p className="text-[10px] text-slate-400 font-medium">Date</p>
-                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
-                  {selectedDate.dayName}, {selectedDate.dayNum} {selectedDate.month}
-                </p>
-              </div>
-              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                <p className="text-[10px] text-slate-400 font-medium">Time Slot</p>
-                <p className="text-sm font-black text-purple-700 dark:text-purple-400 mt-0.5">
-                  {selectedSlot}
-                </p>
-              </div>
+              <h1 className="text-2xl font-black text-[#0d5c3a] dark:text-emerald-400 tracking-tight">
+                Your table is booked!
+              </h1>
             </div>
 
-            <div className="bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl p-3 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wide">
-                  Offer Applied
+            {/* Confirmed Reservation Card */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div className="p-4 space-y-3">
+                {/* Confirmed status badge */}
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 block tracking-tight">
+                  Confirmed
                 </span>
-                <p className="text-xs font-black text-slate-900 dark:text-white">{activeOption.title}</p>
-              </div>
-              <span className="bg-purple-700 text-white font-black text-xs px-2.5 py-1 rounded-lg shadow-xs">
-                {activeOption.discountPct ? `${activeOption.discountPct}% OFF` : "FREE TABLE"}
-              </span>
-            </div>
 
-            <div className="border-t border-slate-100 dark:border-slate-800 pt-2 space-y-1.5 text-xs">
-              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                <span>Amount Paid:</span>
-                <span className="font-bold text-slate-900 dark:text-white">
-                  ₹{totalToPay} (via {selectedPaymentMethod})
+                {/* 3 Column Grid: Date, Meal & Slot, Guests */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-base font-black text-slate-900 dark:text-white leading-tight">
+                      {selectedDate.dayName}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                      {selectedDate.dayNum} {selectedDate.month} {selectedDate.fullDate.getFullYear()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-base font-black text-slate-900 dark:text-white leading-tight">
+                      {mealType === "DINNER" ? "Dinner" : "Lunch"}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                      {selectedSlot}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-black text-slate-900 dark:text-white leading-tight">
+                      for {selectedGuests}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                      guests
+                    </p>
+                  </div>
+                </div>
+
+                {/* Restaurant details with Call & Directions buttons */}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="min-w-0 flex-1 pr-2">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug truncate">
+                      {storeName}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      {storeAddress || "Bajaj Nagar, Nagpur"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.location.href = "tel:+918007462500";
+                      }}
+                      className="w-10 h-10 rounded-xl bg-[#f2f8f5] hover:bg-[#e4f3ec] dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition cursor-pointer border border-emerald-100 dark:border-emerald-900/60 shadow-2xs"
+                      title="Call Restaurant"
+                    >
+                      <Phone size={17} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.open(
+                          `https://maps.google.com/?q=${encodeURIComponent(storeName + " " + (storeAddress || "Nagpur"))}`,
+                          "_blank"
+                        );
+                      }}
+                      className="w-10 h-10 rounded-xl bg-[#f2f8f5] hover:bg-[#e4f3ec] dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition cursor-pointer border border-emerald-100 dark:border-emerald-900/60 shadow-2xs"
+                      title="Directions"
+                    >
+                      <MapPin size={17} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dashed line */}
+                <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-1" />
+
+                {/* Pay bill now button */}
+                <button
+                  type="button"
+                  disabled
+                  className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold text-xs tracking-wide uppercase cursor-not-allowed text-center"
+                >
+                  Pay bill now
+                </button>
+              </div>
+
+              {/* Attached bottom perks strip */}
+              <div className="bg-purple-50/70 dark:bg-purple-950/40 border-t border-purple-100/80 dark:border-purple-900/40 px-4 py-2.5 flex items-center gap-2 text-xs">
+                <span className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-black px-1.5 py-0.5 rounded shadow-2xs">
+                  🪙 2X
+                </span>
+                <span className="font-bold text-emerald-800 dark:text-emerald-300 text-[11px] truncate">
+                  Earn 20% PINAK Coins on bill payment
                 </span>
               </div>
-              {totalCoverCharge > 0 && (
-                <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                  <span>Redeemable Cover Charge:</span>
-                  <span className="font-bold text-emerald-600">
-                    ₹{totalCoverCharge}
+            </div>
+
+            {/* Promo Feature Banner ("Split Pay") */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center gap-1.5 justify-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                <Sparkles size={11} className="fill-purple-600 text-purple-600" />
+                <span>NEW ON PINAK</span>
+              </div>
+              <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden flex items-center justify-between">
+                <div className="min-w-0 pr-2">
+                  <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest block mb-0.5">
+                    INTRODUCING
                   </span>
+                  <h4 className="text-base font-black text-white leading-tight">
+                    Split Pay
+                  </h4>
+                  <p className="text-[11px] text-slate-300 mt-1 flex items-center gap-1 font-medium leading-tight">
+                    <span>Split bill with friends minus the awkwardness</span>
+                    <ChevronRight size={12} className="shrink-0" />
+                  </p>
+                </div>
+                <div className="w-14 h-14 rounded-xl bg-purple-800/40 border border-purple-700/50 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                  👥
+                </div>
+              </div>
+            </div>
+
+            {/* "What to do next?" Card */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div className="p-4 space-y-3.5">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  What to do next?
+                </h3>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
+                    <CalendarClock size={16} />
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                    Reach restaurant on the booked date and time
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
+                    <Smartphone size={16} />
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                    Pay your dining bill via PINAK, your offer gets auto applied!
+                  </p>
+                </div>
+              </div>
+
+              {/* Soft alert banner inside card */}
+              <div className="bg-[#fff9e6] dark:bg-amber-950/40 border-t border-amber-200/60 dark:border-amber-900/40 px-4 py-2.5 text-center text-xs font-bold text-amber-800 dark:text-amber-300">
+                You may have to wait for your table to get ready
+              </div>
+            </div>
+
+            {/* "View restaurant details" Card */}
+            <div
+              onClick={onBack}
+              className="bg-purple-50/70 hover:bg-purple-100/80 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition shadow-2xs"
+            >
+              <span className="text-sm font-black text-purple-700 dark:text-purple-300">
+                View restaurant details
+              </span>
+              <ArrowRight size={18} className="text-purple-700 dark:text-purple-300" />
+            </div>
+
+            {/* Cancellation Row */}
+            <div className="flex items-center justify-between px-2 pt-1 pb-1 text-xs">
+              <span className="text-slate-500 font-medium">Can't make it to the restaurant?</span>
+              <button
+                type="button"
+                onClick={() => {
+                  toast.success("Table reservation cancelled", {
+                    description: "Any cover charges paid will be refunded to your source account within 2 hours."
+                  });
+                  onBack();
+                }}
+                className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+              >
+                Cancel booking
+              </button>
+            </div>
+
+            {/* "Offer terms & conditions" Accordion */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
+              <button
+                type="button"
+                onClick={() => setIsConfirmedTermsOpen((v) => !v)}
+                className="w-full p-4 flex items-center justify-between text-left cursor-pointer transition hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
+              >
+                <h3 className="text-xs font-black text-slate-900 dark:text-white">
+                  Offer terms & conditions
+                </h3>
+                <ChevronDown
+                  size={15}
+                  className={cn(
+                    "text-purple-600 dark:text-purple-400 transition-transform duration-200",
+                    isConfirmedTermsOpen ? "rotate-180" : ""
+                  )}
+                />
+              </button>
+
+              {isConfirmedTermsOpen && (
+                <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800 space-y-2 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                  <p>• The deal must be redeemed/bill paid within 6 hours of the dining start time, or the offer will expire.</p>
+                  <p>• Discount, if any, can only be availed when you pay your bill via PINAK.</p>
+                  <p>• The paid cover charge will be redeemed automatically when you pay your bill via PINAK.</p>
+                  <p>• Cover charges will be fully refunded only if booking is cancelled before the dining start time.</p>
+                  <p>• A maximum of Rs. 3,00,000 can be paid in a single bill payment transaction via PINAK.</p>
+                  <p>• The booking details via WhatsApp, email, or on the app need to be shown at the restaurant before ordering.</p>
                 </div>
               )}
-            </div>
-
-            <p className="text-[10px] text-slate-400 text-center pt-1">
-              💡 The cover charge will be automatically adjusted when you pay your bill via PINAK.
-            </p>
+            </section>
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="pt-4">
+        {/* Floating Center Done Button matching screenshots */}
+        <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center pointer-events-none">
           <button
             type="button"
             onClick={onBack}
-            className="w-full py-3.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-sm rounded-xl shadow-md transition active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+            className="pointer-events-auto px-12 py-3 rounded-2xl bg-[#009b60] hover:bg-[#008552] text-white font-black text-sm shadow-xl active:scale-95 transition cursor-pointer"
           >
-            <span>Return to Store</span>
+            Done
           </button>
         </div>
       </div>
