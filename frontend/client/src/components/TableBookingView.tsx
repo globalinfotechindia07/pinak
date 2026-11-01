@@ -300,30 +300,33 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
           </header>
 
           <div className="p-3.5 space-y-3.5">
-            {/* Hero Section: Green Check if Booked, Coral Red X if Cancelled */}
+            {/* Hero Section: Signature PINAK Purple Check if Booked, Rose Red X if Cancelled */}
             {isCancelled ? (
               <div className="text-center pt-3 pb-1">
                 <div className="relative inline-flex items-center justify-center mb-3">
-                  <div className="absolute inset-0 rounded-full bg-rose-400/25 blur-2xl scale-175 animate-pulse" />
-                  <div className="w-14 h-14 rounded-full bg-[#f24e53] text-white flex items-center justify-center relative shadow-lg shadow-rose-500/30">
+                  <div className="absolute inset-0 rounded-full bg-rose-500/20 blur-2xl scale-175 animate-pulse" />
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-rose-600 to-red-500 text-white flex items-center justify-center relative shadow-lg shadow-rose-600/30">
                     <X size={28} className="stroke-[3.5]" />
                   </div>
                 </div>
-                <h1 className="text-2xl font-black text-[#f24e53] dark:text-rose-400 tracking-tight">
+                <h1 className="text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
                   Booking cancelled
                 </h1>
               </div>
             ) : (
               <div className="text-center pt-3 pb-1">
                 <div className="relative inline-flex items-center justify-center mb-3">
-                  <div className="absolute inset-0 rounded-full bg-emerald-400/25 blur-xl scale-150 animate-pulse" />
-                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center relative shadow-lg shadow-emerald-500/30">
+                  <div className="absolute inset-0 rounded-full bg-purple-500/20 blur-xl scale-150 animate-pulse" />
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-purple-700 via-purple-600 to-indigo-600 text-white flex items-center justify-center relative shadow-lg shadow-purple-700/30">
                     <Check size={28} className="stroke-[3.5]" />
                   </div>
                 </div>
-                <h1 className="text-2xl font-black text-[#0d5c3a] dark:text-emerald-400 tracking-tight">
+                <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                   Your table is booked!
                 </h1>
+                <p className="text-xs text-purple-700 dark:text-purple-300 font-bold mt-0.5">
+                  Instant confirmation • Offer locked
+                </p>
               </div>
             )}
 
@@ -335,8 +338,8 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                   className={cn(
                     "text-xs font-black block tracking-tight",
                     isCancelled
-                      ? "text-[#f24e53] dark:text-rose-400"
-                      : "text-emerald-600 dark:text-emerald-400"
+                      ? "text-rose-600 dark:text-rose-400"
+                      : "text-purple-700 dark:text-purple-300"
                   )}
                 >
                   {isCancelled ? "Cancelled" : "Confirmed"}
@@ -370,7 +373,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                   </div>
                 </div>
 
-                {/* Restaurant details with Call & Directions buttons */}
+                {/* Restaurant details with Call & Directions buttons in PINAK Palette */}
                 <div className="flex items-center justify-between pt-1">
                   <div className="min-w-0 flex-1 pr-2">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug truncate">
@@ -386,7 +389,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                       onClick={() => {
                         window.location.href = "tel:+918007462500";
                       }}
-                      className="w-10 h-10 rounded-xl bg-[#f2f8f5] hover:bg-[#e4f3ec] dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition cursor-pointer border border-emerald-100 dark:border-emerald-900/60 shadow-2xs"
+                      className="w-10 h-10 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 flex items-center justify-center transition cursor-pointer border border-purple-200 dark:border-purple-800/60 shadow-2xs"
                       title="Call Restaurant"
                     >
                       <Phone size={17} />
@@ -399,7 +402,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                           "_blank"
                         );
                       }}
-                      className="w-10 h-10 rounded-xl bg-[#f2f8f5] hover:bg-[#e4f3ec] dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition cursor-pointer border border-emerald-100 dark:border-emerald-900/60 shadow-2xs"
+                      className="w-10 h-10 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 flex items-center justify-center transition cursor-pointer border border-purple-200 dark:border-purple-800/60 shadow-2xs"
                       title="Directions"
                     >
                       <MapPin size={17} />
@@ -422,12 +425,12 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                 )}
               </div>
 
-              {/* Attached bottom perks strip */}
-              <div className="bg-[#f4efe6] dark:bg-amber-950/40 border-t border-amber-200/60 dark:border-amber-900/40 px-4 py-2.5 flex items-center gap-2 text-xs">
-                <span className="bg-[#e7d8bb] dark:bg-amber-900/50 text-[#7c5513] dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-black px-1.5 py-0.5 rounded shadow-2xs">
+              {/* Attached bottom perks strip in PINAK Purple & Amber Coins */}
+              <div className="bg-gradient-to-r from-purple-50/90 via-indigo-50/70 to-purple-50/90 dark:from-purple-950/40 dark:via-indigo-950/30 dark:to-purple-950/40 border-t border-purple-100 dark:border-purple-900/50 px-4 py-2.5 flex items-center gap-2 text-xs">
+                <span className="bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-black px-1.5 py-0.5 rounded shadow-2xs">
                   🪙 2X
                 </span>
-                <span className="font-bold text-[#0f6647] dark:text-emerald-300 text-[11px] truncate">
+                <span className="font-bold text-purple-900 dark:text-purple-200 text-[11px] truncate">
                   Earn 20% PINAK Coins on bill payment
                 </span>
               </div>
@@ -435,11 +438,11 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
 
             {/* Promo Feature Banner ("Split Pay") */}
             <div className="space-y-1.5 pt-1">
-              <div className="flex items-center gap-1.5 justify-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
+              <div className="flex items-center gap-1.5 justify-center text-[10px] font-black uppercase text-purple-600 dark:text-purple-400 tracking-wider">
                 <Sparkles size={11} className="fill-purple-600 text-purple-600" />
                 <span>NEW ON PINAK</span>
               </div>
-              <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden flex items-center justify-between">
+              <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 text-white rounded-2xl p-4 shadow-sm relative overflow-hidden flex items-center justify-between border border-purple-900/40">
                 <div className="min-w-0 pr-2">
                   <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest block mb-0.5">
                     INTRODUCING
@@ -449,7 +452,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                   </h4>
                   <p className="text-[11px] text-slate-300 mt-1 flex items-center gap-1 font-medium leading-tight">
                     <span>Split bill with friends minus the awkwardness</span>
-                    <ChevronRight size={12} className="shrink-0" />
+                    <ChevronRight size={12} className="shrink-0 text-purple-400" />
                   </p>
                 </div>
                 <div className="w-14 h-14 rounded-xl bg-purple-800/40 border border-purple-700/50 flex items-center justify-center text-2xl shadow-inner shrink-0">
@@ -466,7 +469,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                     What to do next?
                   </h3>
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-700 dark:text-purple-300 shrink-0 border border-purple-100 dark:border-purple-900/40">
                       <CalendarClock size={16} />
                     </div>
                     <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
@@ -474,7 +477,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                     </p>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-700 dark:text-purple-300 shrink-0 border border-purple-100 dark:border-purple-900/40">
                       <Smartphone size={16} />
                     </div>
                     <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
@@ -484,39 +487,23 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                 </div>
 
                 {/* Soft alert banner inside card */}
-                <div className="bg-[#fff9e6] dark:bg-amber-950/40 border-t border-amber-200/60 dark:border-amber-900/40 px-4 py-2.5 text-center text-xs font-bold text-amber-800 dark:text-amber-300">
+                <div className="bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200/60 dark:border-amber-900/40 px-4 py-2.5 text-center text-xs font-bold text-amber-900 dark:text-amber-200">
                   You may have to wait for your table to get ready
                 </div>
               </div>
             )}
 
-            {/* "View restaurant details" Card */}
+            {/* "View restaurant details" Card in PINAK Purple */}
             <div
               onClick={onBack}
-              className={cn(
-                "rounded-2xl p-4 flex items-center justify-between cursor-pointer transition shadow-2xs",
-                isCancelled
-                  ? "bg-[#fff4ef] hover:bg-[#ffece4] dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/50"
-                  : "bg-purple-50/70 hover:bg-purple-100/80 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60"
-              )}
+              className="bg-purple-50/80 hover:bg-purple-100/90 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition shadow-2xs group"
             >
-              <span
-                className={cn(
-                  "text-sm font-black",
-                  isCancelled
-                    ? "text-[#e85b46] dark:text-rose-400"
-                    : "text-purple-700 dark:text-purple-300"
-                )}
-              >
+              <span className="text-sm font-black text-purple-800 dark:text-purple-200">
                 View restaurant details
               </span>
               <ArrowRight
                 size={18}
-                className={
-                  isCancelled
-                    ? "text-[#e85b46] dark:text-rose-400"
-                    : "text-purple-700 dark:text-purple-300"
-                }
+                className="text-purple-700 dark:text-purple-300 transition-transform group-hover:translate-x-0.5"
               />
             </div>
 
@@ -527,7 +514,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowCancelModal(true)}
-                  className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                  className="font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:underline cursor-pointer"
                 >
                   Cancel booking
                 </button>
@@ -573,7 +560,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
         {showCancelModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-[#f24e53] flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900">
                 <AlertTriangle size={24} />
               </div>
               <div className="text-center space-y-1.5">
@@ -584,7 +571,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                   Are you sure you want to cancel your table at <span className="font-bold text-slate-800 dark:text-slate-200">{storeName}</span>?
                 </p>
                 {totalToPay > 0 && (
-                  <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                  <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 p-2 rounded-xl border border-purple-200/60 dark:border-purple-800/60">
                     ₹{totalToPay} cover charge will be automatically refunded to your original payment method within 2 hours.
                   </p>
                 )}
@@ -593,7 +580,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowCancelModal(false)}
-                  className="w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  className="w-full py-2.5 rounded-xl border border-purple-200 dark:border-purple-800/80 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-50 dark:hover:bg-purple-950/40 transition cursor-pointer"
                 >
                   Keep Booking
                 </button>
@@ -607,7 +594,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                       description: "Cover charge refund has been initiated."
                     });
                   }}
-                  className="w-full py-2.5 rounded-xl bg-[#f24e53] hover:bg-[#df3d42] text-white font-black text-xs shadow-md transition cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-black text-xs shadow-md shadow-rose-600/20 transition cursor-pointer"
                 >
                   Yes, Cancel
                 </button>
@@ -616,12 +603,12 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
           </div>
         )}
 
-        {/* Floating Center Done Button matching screenshots */}
+        {/* Floating Center Done Button in PINAK Royal Purple Gradient */}
         <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center pointer-events-none">
           <button
             type="button"
             onClick={onBack}
-            className="pointer-events-auto px-12 py-3 rounded-2xl bg-[#009b60] hover:bg-[#008552] text-white font-black text-sm shadow-xl active:scale-95 transition cursor-pointer"
+            className="pointer-events-auto px-12 py-3 rounded-2xl bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-sm shadow-xl shadow-purple-600/30 active:scale-95 transition cursor-pointer"
           >
             Done
           </button>
