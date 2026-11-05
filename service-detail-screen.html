@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Service Detail Screen - Mobile Reference Spec</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            warmbg: '#f6f4ee',
+            cardbg: '#ffffff',
+            softtrack: '#ede8dc',
+            swiggyorange: '#ff5200',
+            swiggydarkgreen: '#1b4d3e',
+            swiggygold: '#b8860b',
+            pinakpurple: '#7c3aed',
+            pinakindigo: '#4f46e5'
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    /* Mobile scrollbar hiding */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    body {
+      background-color: #f6f4ee;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Subtle Gift Watermark */
+    .gift-watermark {
+      position: absolute;
+      bottom: -6px;
+      left: 10px;
+      width: 76px;
+      height: 76px;
+      opacity: 0.08;
+      pointer-events: none;
+    }
+
+    /* Hexagon Coin Shape */
+    .hex-coin {
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    }
+
+    /* Swiggy vs Pinak Palette classes */
+    .theme-swiggy .accent-cta {
+      background-color: #ff5200;
+      color: #ffffff;
+    }
+    .theme-swiggy .secondary-cta {
+      background-color: #fff2ec;
+      color: #ff5200;
+      border: 1px solid #ffd8c7;
+    }
+    .theme-swiggy .active-dot {
+      background-color: #ff5200;
+    }
+    .theme-swiggy .perk-banner-bg {
+      background-color: #1b4d3e;
+      color: #ffffff;
+    }
+
+    .theme-pinak .accent-cta {
+      background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+      color: #ffffff;
+    }
+    .theme-pinak .secondary-cta {
+      background-color: #f5f3ff;
+      color: #7c3aed;
+      border: 1px solid #ddd6fe;
+    }
+    .theme-pinak .active-dot {
+      background-color: #7c3aed;
+    }
+    .theme-pinak .perk-banner-bg {
+      background: linear-gradient(90deg, #2e1065 0%, #1e1b4b 100%);
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body class="theme-swiggy min-h-screen text-slate-900 antialiased flex flex-col items-center justify-start">
+
+  <!-- ========================================================================= -->
+  <!-- TOP CONTROLS BAR: THEME & DEVELOPER SPEC SWITCHER (Floating, subtle) -->
+  <!-- ========================================================================= -->
+  <aside class="w-full max-w-md bg-white/90 backdrop-blur-md border-b border-stone-200 px-4 py-2 flex items-center justify-between text-xs sticky top-0 z-50 shadow-xs">
+    <div class="flex items-center gap-1.5 font-bold text-stone-700">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span id="specTitle">Screen 11: Exact Spec</span>
+    </div>
+    <div class="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg border border-stone-200">
+      <button id="themeSwiggyBtn" onclick="setTheme('swiggy')" class="px-2.5 py-1 rounded-md font-bold text-[11px] bg-white text-stone-900 shadow-xs transition">
+        Exact Reference
+      </button>
+      <button id="themePinakBtn" onclick="setTheme('pinak')" class="px-2.5 py-1 rounded-md font-bold text-[11px] text-stone-500 hover:text-stone-800 transition">
+        PINAK Theme
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN MOBILE PHONE APP CANVAS (390px - 428px Real Target Width) -->
+  <!-- ========================================================================= -->
+  <main class="w-full max-w-[428px] min-h-screen bg-[#f6f4ee] flex flex-col relative pb-36 shadow-xl">
+
+    <!-- 0. Mobile Status Bar (Android / iOS native look) -->
+    <div class="w-full px-5 pt-3 pb-1 flex items-center justify-between text-xs font-semibold text-stone-900 select-none">
+      <span class="tracking-tight font-bold">10:42</span>
+      <div class="flex items-center gap-1.5 text-[11px]">
+        <span>6.00 KB/s</span>
+        <span class="text-[10px] font-bold">VoLTE</span>
+        <span class="text-[10px] font-bold">5G</span>
+        <!-- Cellular Bars -->
+        <svg class="w-3.5 h-3 fill-stone-900" viewBox="0 0 16 12">
+          <rect x="0" y="8" width="2.5" height="4" rx="0.5" />
+          <rect x="4" y="5.5" width="2.5" height="6.5" rx="0.5" />
+          <rect x="8" y="3" width="2.5" height="9" rx="0.5" />
+          <rect x="12" y="0.5" width="2.5" height="11.5" rx="0.5" />
+        </svg>
+        <!-- Battery Icon 28% -->
+        <div class="flex items-center gap-0.5">
+          <div class="w-5 h-2.5 border border-stone-800 rounded-2xs p-0.5 flex items-center">
+            <div class="h-full bg-stone-900 rounded-3xs w-[28%]"></div>
+          </div>
+          <span class="text-[10px] font-bold">28%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. Top Bar / Header with Store Title, Back, Heart & Share -->
+    <header class="w-full px-4 py-2.5 flex items-center justify-between bg-[#f6f4ee] sticky top-[33px] z-40">
+      <div class="flex items-center gap-3 min-w-0">
+        <!-- Back Button Circular -->
+        <button onclick="goBack()" class="w-10 h-10 rounded-full bg-white text-stone-900 flex items-center justify-center shadow-xs border border-stone-200/80 active:scale-95 transition cursor-pointer shrink-0">
+          <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <!-- Store Name & Locality -->
+        <div class="min-w-0">
+          <h1 id="storeNameText" class="text-base font-black text-stone-900 tracking-tight leading-tight truncate">
+            The Beer Cafe
+          </h1>
+          <p id="storeLocalityText" class="text-xs text-stone-500 font-medium truncate">
+            Gurushankar Apartments, Ramdaspeth
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Buttons (Favorite & Share) -->
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="favBtn" onclick="toggleFavorite()" class="w-10 h-10 rounded-full bg-white text-stone-800 flex items-center justify-center shadow-xs border border-stone-200/80 active:scale-95 transition cursor-pointer">
+          <svg id="favIcon" class="w-5 h-5 text-stone-800 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </button>
+        <button onclick="shareStore()" class="w-10 h-10 rounded-full bg-white text-stone-800 flex items-center justify-center shadow-xs border border-stone-200/80 active:scale-95 transition cursor-pointer">
+          <svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. Navigation Tabs (Exact Pill Style from Screenshot) -->
+    <div class="px-4 py-2 sticky top-[80px] z-30 bg-[#f6f4ee]/95 backdrop-blur-xs">
+      <div class="bg-[#ede8dc] rounded-full p-1 flex items-center gap-1 overflow-x-auto no-scrollbar shadow-2xs">
+        <button onclick="switchTab('Offers')" id="tabOffers" class="px-4 py-1.5 rounded-full text-xs font-black bg-stone-950 text-white shadow-xs transition">
+          Offers
+        </button>
+        <button onclick="switchTab('Menu')" id="tabMenu" class="px-4 py-1.5 rounded-full text-xs font-bold text-stone-700 hover:text-stone-900 transition">
+          Menu
+        </button>
+        <button onclick="switchTab('Photos')" id="tabPhotos" class="px-4 py-1.5 rounded-full text-xs font-bold text-stone-700 hover:text-stone-900 transition">
+          Photos
+        </button>
+        <button onclick="switchTab('Amenities')" id="tabAmenities" class="px-4 py-1.5 rounded-full text-xs font-bold text-stone-700 hover:text-stone-900 transition">
+          Amenities
+        </button>
+        <button onclick="switchTab('Similar Places')" id="tabSimilar" class="px-4 py-1.5 rounded-full text-xs font-bold text-stone-700 hover:text-stone-900 whitespace-nowrap transition">
+          Similar Places
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. "Offers for you" Section (EXACT MATCH TO REFERENCE SCREENSHOT) -->
+    <section id="sec-offers" class="px-4 pt-3 space-y-2">
+      <!-- Section Title -->
+      <h2 class="text-[19px] font-black text-stone-950 tracking-tight">
+        Offers for you
+      </h2>
+
+      <!-- TOP WHITE OFFER CARD -->
+      <div class="bg-white rounded-3xl p-4 shadow-sm border border-stone-200/70 relative overflow-hidden text-center">
+        <!-- Gift Watermark in bottom left -->
+        <svg class="gift-watermark text-rose-500 fill-current" viewBox="0 0 24 24">
+          <path d="M20 4H16.82C16.93 3.7 17 3.36 17 3C17 1.34 15.66 0 14 0C12.89 0 11.93 0.61 11.41 1.5H12.59C12.07 0.61 11.11 0 10 0C8.34 0 7 1.34 7 3C7 3.36 7.07 3.7 7.18 4H4C2.9 4 2.01 4.9 2.01 6L2 20C2 21.1 2.9 22 4 22H20C21.1 22 22 21.1 22 20V6C22 4.9 21.1 4 20 4ZM14 2C14.55 2 15 2.45 15 3C15 3.55 14.55 4 14 4H12.22C12.56 2.84 13.19 2 14 2ZM9 3C9 2.45 9.45 2 10 2C10.81 2 11.44 2.84 11.78 4H10C9.45 4 9 3.55 9 3ZM20 20H4V8H20V20Z" />
+        </svg>
+
+        <!-- Segment Selector (Pre-booking vs Walk-in) -->
+        <div class="bg-[#ede8dc] p-1 rounded-full flex items-center justify-between mb-3 w-full max-w-[310px] mx-auto">
+          <button id="segPreBook" onclick="selectOfferSegment('PRE_BOOK')" class="flex-1 py-1.5 px-3 rounded-full text-xs font-black bg-stone-950 text-white shadow-xs transition">
+            Pre-booking offers
+          </button>
+          <button id="segWalkIn" onclick="selectOfferSegment('WALK_IN')" class="flex-1 py-1.5 px-3 rounded-full text-xs font-bold text-stone-700 hover:text-stone-950 transition">
+            Walk-in offers
+          </button>
+        </div>
+
+        <!-- Badges Row: "one EXCLUSIVE | GIRF SPECIAL" -->
+        <div id="offerBadgesRow" class="flex items-center justify-center gap-2 mb-1.5">
+          <span class="inline-flex items-center gap-1 font-black text-xs text-[#ea4a36] tracking-wide">
+            <span class="w-3.5 h-3.5 rounded-full bg-[#ea4a36] text-white flex items-center justify-center text-[9px] font-black">1</span>
+            <span class="font-extrabold uppercase text-[11px] tracking-wider">one EXCLUSIVE</span>
+          </span>
+          <span class="text-stone-300 font-light text-xs">|</span>
+          <span class="font-black text-xs uppercase tracking-wider text-[#1e255e]">
+            GIRF SPECIAL
+          </span>
+        </div>
+
+        <!-- Offer Main Headline with right chevron -->
+        <div class="flex items-center justify-center py-0.5">
+          <h3 id="offerHeadline" onclick="onOfferCardClick()" class="text-xl font-black text-stone-950 tracking-tight flex items-center justify-center gap-1 cursor-pointer active:opacity-80 transition">
+            <span>Flat 50% off on Total Bill</span>
+            <span class="text-stone-900 font-black text-xl">›</span>
+          </h3>
+        </div>
+
+        <!-- Subtitle -->
+        <p id="offerSubtitle" class="text-xs text-stone-500 font-medium mt-0.5">
+          Available on Mon-Sun • Valid on min bill ₹1,000
+        </p>
+
+        <!-- Pagination Dots: Orange active + black dots -->
+        <div class="flex items-center justify-center gap-1.5 mt-3">
+          <span id="dot0" onclick="setOfferIndex(0)" class="w-2 h-2 rounded-full active-dot transition-all cursor-pointer"></span>
+          <span id="dot1" onclick="setOfferIndex(1)" class="w-1.5 h-1.5 rounded-full bg-stone-900/80 transition-all cursor-pointer"></span>
+          <span id="dot2" onclick="setOfferIndex(2)" class="w-1.5 h-1.5 rounded-full bg-stone-900/80 transition-all cursor-pointer"></span>
+        </div>
+      </div>
+
+      <!-- OVERLAPPING PLUS CONNECTOR BADGE -->
+      <div class="relative flex justify-center -my-3 z-10">
+        <div class="w-6 h-6 rounded-full bg-stone-950 text-white flex items-center justify-center text-xs font-black shadow-md border-2 border-[#f6f4ee]">
+          +
+        </div>
+      </div>
+
+      <!-- CONNECTED PERKS CARD (Two-Column Cashback + Bank Offer + Dark Bottom Banner) -->
+      <div class="bg-white rounded-3xl shadow-sm border border-stone-200/70 overflow-hidden">
+        
+        <!-- Two-column split perks -->
+        <div class="p-3.5 flex items-center justify-between divide-x divide-stone-200">
+          
+          <!-- Left: 20% Cashback -->
+          <div class="flex items-center gap-2.5 pr-2 flex-1">
+            <div class="w-7 h-7 hex-coin bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 text-stone-950 font-black text-[10px] flex items-center justify-center shadow-xs shrink-0 border border-amber-300">
+              2X
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-stone-900 leading-tight truncate">
+                20% cashback
+              </p>
+              <p class="text-[10.5px] text-stone-500 leading-tight truncate mt-0.5">
+                on every bill paym...
+              </p>
+            </div>
+          </div>
+
+          <!-- Divider Plus -->
+          <div class="px-2 text-stone-300 font-bold text-xs select-none">+</div>
+
+          <!-- Right: Flat 10% off Bank Offer -->
+          <div class="flex items-center gap-2.5 pl-2 flex-1">
+            <div class="w-6 h-6 rounded bg-stone-100 border border-rose-500/40 p-0.5 flex items-center justify-center shrink-0">
+              <!-- HDFC Red/Blue Square or UPI -->
+              <div class="w-full h-full bg-blue-700 flex items-center justify-center text-white text-[7px] font-black">
+                HDFC
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-bold text-stone-900 leading-tight truncate">
+                Flat 10% off*
+              </p>
+              <p class="text-[10.5px] text-stone-500 leading-tight truncate mt-0.5">
+                use HDFCINFINIA
+              </p>
+            </div>
+            <!-- Pagination sub-dots -->
+            <div class="flex items-center gap-0.5 shrink-0 pl-1">
+              <span class="w-1 h-1 rounded-full bg-rose-500"></span>
+              <span class="w-1 h-1 rounded-full bg-stone-300"></span>
+              <span class="w-1 h-1 rounded-full bg-stone-300"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attached Dark Green / Dark Purple DineCash Banner -->
+        <div class="perk-banner-bg px-4 py-2.5 flex items-center justify-between text-xs font-bold">
+          <div class="flex items-center gap-2">
+            <span id="dineCashLabel" class="font-black tracking-tight flex items-center gap-0.5">
+              <span>DineCash</span><sup class="text-[9px] font-black">2X</sup>
+            </span>
+            <span class="text-white/40">|</span>
+            <span class="text-white text-xs font-semibold">
+              Earn &amp; Redeem 2X DineCash
+            </span>
+          </div>
+          <!-- Info Icon -->
+          <svg class="w-4 h-4 text-white/90 shrink-0 cursor-pointer" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. FLASH SALE DEALS (3) SECTION -->
+    <section class="px-4 pt-5 space-y-2.5">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-black text-stone-950 tracking-tight">
+          Flash Sale Deals (3)
+        </h2>
+        <span class="text-xs font-bold text-orange-600 cursor-pointer">View all (3)</span>
+      </div>
+
+      <!-- Horizontal Deals Cards -->
+      <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+        <!-- Deal 1 -->
+        <div class="w-48 shrink-0 bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-xs flex flex-col justify-between">
+          <div class="h-28 relative bg-stone-100">
+            <img 
+              alt="Crispy Peri Peri Fries" 
+              class="w-full h-full object-cover" 
+              src="https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=600&q=80" 
+            />
+            <div class="absolute top-2 right-2 bg-white/95 rounded px-1.5 py-0.5 text-[8.5px] font-black tracking-tighter text-stone-900 border border-stone-200">
+              BEER CAFE
+            </div>
+            <div class="absolute bottom-2 left-2 bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
+              50% OFF
+            </div>
+          </div>
+          <div class="p-2.5">
+            <h4 class="text-xs font-bold text-stone-900 truncate">Crispy Peri Peri Fries</h4>
+            <div class="flex items-baseline gap-1.5 mt-1">
+              <span class="text-xs font-black text-stone-900">₹149</span>
+              <span class="text-[10px] text-stone-400 line-through">₹299</span>
+            </div>
+            <button onclick="onClaimDeal('Crispy Peri Peri Fries', 149)" class="w-full mt-2 py-1 rounded-lg border border-orange-500 text-orange-600 hover:bg-orange-50 font-bold text-[11px] transition">
+              Claim Deal
+            </button>
+          </div>
+        </div>
+
+        <!-- Deal 2 -->
+        <div class="w-48 shrink-0 bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-xs flex flex-col justify-between">
+          <div class="h-28 relative bg-stone-100">
+            <img 
+              alt="Loaded Cheesy Nachos" 
+              class="w-full h-full object-cover" 
+              src="https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?auto=format&fit=crop&w=600&q=80" 
+            />
+            <div class="absolute top-2 right-2 bg-white/95 rounded px-1.5 py-0.5 text-[8.5px] font-black tracking-tighter text-stone-900 border border-stone-200">
+              BEER CAFE
+            </div>
+            <div class="absolute bottom-2 left-2 bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
+              40% OFF
+            </div>
+          </div>
+          <div class="p-2.5">
+            <h4 class="text-xs font-bold text-stone-900 truncate">Loaded Cheesy Nachos</h4>
+            <div class="flex items-baseline gap-1.5 mt-1">
+              <span class="text-xs font-black text-stone-900">₹219</span>
+              <span class="text-[10px] text-stone-400 line-through">₹365</span>
+            </div>
+            <button onclick="onClaimDeal('Loaded Cheesy Nachos', 219)" class="w-full mt-2 py-1 rounded-lg border border-orange-500 text-orange-600 hover:bg-orange-50 font-bold text-[11px] transition">
+              Claim Deal
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. USEFUL BITS DECORATIVE DIVIDER (Matches Screenshot 2) -->
+    <div class="px-8 py-5 flex items-center justify-center select-none text-stone-400">
+      <div class="flex items-center gap-2 text-xs font-bold tracking-widest uppercase">
+        <span>— 𖥞 —</span>
+        <span>USEFUL BITS</span>
+        <span>— 𖥞 —</span>
+      </div>
+    </div>
+
+    <!-- 6. MENU SECTION -->
+    <section id="sec-menu" class="px-4 space-y-2.5">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-black text-stone-950 tracking-tight">Menu</h2>
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-stone-700 cursor-pointer" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span class="text-xs font-bold text-stone-600 cursor-pointer">View all (8)</span>
+        </div>
+      </div>
+
+      <!-- Menu Image Mosaic -->
+      <div class="grid grid-cols-2 gap-2">
+        <div class="h-44 rounded-2xl overflow-hidden border border-stone-200 shadow-xs relative">
+          <img alt="Menu Page 1" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80" />
+          <span class="absolute top-2 left-2 bg-stone-950/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+            Food Menu
+          </span>
+        </div>
+        <div class="space-y-2">
+          <div class="h-20 rounded-2xl overflow-hidden border border-stone-200 shadow-xs relative">
+            <img alt="Beverages Menu" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80" />
+            <span class="absolute top-1.5 left-1.5 bg-stone-950/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+              Drinks
+            </span>
+          </div>
+          <div class="h-20 rounded-2xl overflow-hidden border border-stone-200 shadow-xs relative">
+            <img alt="Desserts Menu" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=800&q=80" />
+            <div class="absolute inset-0 bg-stone-950/60 backdrop-blur-[1px] flex items-center justify-center text-white font-black text-sm">
+              +6 Pages
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. PHOTOS & AMBIANCE SECTION -->
+    <section id="sec-photos" class="px-4 pt-5 space-y-2.5">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-black text-stone-950 tracking-tight">Photos &amp; Ambiance</h2>
+        <span class="text-xs font-bold text-stone-600 cursor-pointer">View all (14)</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div class="h-44 rounded-2xl overflow-hidden border border-stone-200 shadow-xs">
+          <img alt="Dining Area" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80" />
+        </div>
+        <div class="space-y-2">
+          <div class="h-20 rounded-2xl overflow-hidden border border-stone-200 shadow-xs">
+            <img alt="Bar Counter" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=800&q=80" />
+          </div>
+          <div class="h-20 rounded-2xl overflow-hidden border border-stone-200 shadow-xs relative">
+            <img alt="Outdoor Seating" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?auto=format&fit=crop&w=800&q=80" />
+            <div class="absolute inset-0 bg-stone-950/60 backdrop-blur-[1px] flex items-center justify-center text-white font-black text-sm">
+              +12 Photos
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. VERIFIED AMENITIES SECTION -->
+    <section id="sec-amenities" class="px-4 pt-5 space-y-2.5">
+      <h2 class="text-base font-black text-stone-950 tracking-tight">Verified Amenities</h2>
+      <div class="bg-white rounded-2xl border border-stone-200/80 p-4 shadow-xs">
+        <div class="grid grid-cols-2 gap-3 text-xs font-bold text-stone-800">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-stone-100 flex items-center justify-center text-stone-700">❄️</span>
+            <span>Air Conditioned</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-stone-100 flex items-center justify-center text-stone-700">📶</span>
+            <span>Free Wi-Fi</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-stone-100 flex items-center justify-center text-stone-700">🚗</span>
+            <span>Valet Parking</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-stone-100 flex items-center justify-center text-stone-700">💳</span>
+            <span>Cards &amp; UPI Accepted</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-stone-100 flex items-center justify-center text-stone-700">🍸</span>
+            <span>Bar &amp; Cocktails</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-stone-100 flex items-center justify-center text-stone-700">🎵</span>
+            <span>Live Music</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. LOCATION & MAP PREVIEW -->
+    <section id="sec-location" class="px-4 pt-5 space-y-2.5">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-black text-stone-950 tracking-tight">Location</h2>
+        <span class="text-xs font-bold text-stone-600">0.8 km away</span>
+      </div>
+      <div class="bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-xs">
+        <div class="h-32 bg-stone-200 relative">
+          <img alt="Map Preview" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=800&q=80" />
+          <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-8 h-8 rounded-full bg-stone-950 text-white flex items-center justify-center shadow-lg border-2 border-white">
+              📍
+            </div>
+          </div>
+        </div>
+        <div class="p-3.5 flex items-center justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold text-stone-900 truncate">Gurushankar Apartments, Ramdaspeth</p>
+            <p class="text-[11px] text-stone-500 mt-0.5 truncate">Nagpur Central, Maharashtra 440010</p>
+          </div>
+          <button onclick="openMaps()" class="px-3.5 py-1.5 rounded-xl bg-stone-950 text-white text-xs font-bold shrink-0 active:scale-95 transition">
+            Navigate
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 10. FLOATING STICKY BOTTOM ACTION BAR (EXACT MATCH TO REFERENCE) -->
+    <!-- ========================================================================= -->
+    <footer class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[428px] z-50 px-3 pb-3 pt-1 bg-gradient-to-t from-[#f6f4ee] via-[#f6f4ee]/95 to-transparent">
+      
+      <!-- Top Attached Frosted Mint Strip: "🪙 2X Earn 20% DineCash on bill payment ⓘ" -->
+      <div class="mb-2 bg-[#e8f5e9]/95 backdrop-blur-md border border-[#c8e6c9] rounded-2xl px-3.5 py-1.5 flex items-center justify-between text-xs shadow-xs">
+        <div class="flex items-center gap-2">
+          <div class="w-5 h-5 hex-coin bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 text-stone-950 font-black text-[9px] flex items-center justify-center shadow-xs">
+            2X
+          </div>
+          <span id="bottomStripText" class="text-[11px] font-bold text-emerald-950">
+            Earn 20% DineCash on bill payment
+          </span>
+        </div>
+        <svg class="w-4 h-4 text-emerald-800 shrink-0 cursor-pointer" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+      </div>
+
+      <!-- Dual Action Buttons -->
+      <div class="flex items-center gap-2.5">
+        <!-- "Book a table" Secondary CTA -->
+        <button id="bookTableBtn" onclick="openTableBooking()" class="secondary-cta flex-1 py-3.5 px-4 rounded-2xl font-black text-sm active:scale-98 transition shadow-sm text-center cursor-pointer">
+          Book a table
+        </button>
+        <!-- "Pay bill now" Primary CTA -->
+        <button id="payBillBtn" onclick="openPayBill()" class="accent-cta flex-1 py-3.5 px-4 rounded-2xl font-black text-sm active:scale-98 transition shadow-md text-center cursor-pointer">
+          Pay bill now
+        </button>
+      </div>
+    </footer>
+
+    <!-- ========================================================================= -->
+    <!-- SLIDE-UP MODAL: BOOK TABLE VIEW (Matches Screenshot media_1793529327814) -->
+    <!-- ========================================================================= -->
+    <div id="bookingModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center">
+      <div class="w-full max-w-[428px] bg-[#f6f4ee] rounded-t-3xl max-h-[92vh] overflow-y-auto no-scrollbar p-4 flex flex-col justify-between shadow-2xl animate-in slide-in-from-bottom duration-200">
+        <div>
+          <!-- Header -->
+          <div class="flex items-center justify-between pb-3 border-b border-stone-200">
+            <div class="flex items-center gap-2.5">
+              <button onclick="closeModals()" class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-stone-800 shadow-xs">
+                ←
+              </button>
+              <div>
+                <h3 class="text-base font-black text-stone-900 leading-tight">Book table</h3>
+                <p class="text-xs text-stone-500">The Beer Cafe</p>
+              </div>
+            </div>
+            <button onclick="closeModals()" class="text-xs font-bold text-stone-500 hover:text-stone-900">
+              ✕ Close
+            </button>
+          </div>
+
+          <!-- Perks strip -->
+          <div class="my-3 bg-emerald-50 border border-dashed border-emerald-300 rounded-xl p-2.5 flex items-center gap-2 text-xs font-bold text-emerald-900">
+            <span>₹</span>
+            <span>Get flat 10% DineCash on your bill payment</span>
+          </div>
+
+          <!-- Number of Guests -->
+          <div class="space-y-2 mt-4">
+            <h4 class="text-sm font-black text-stone-900">Number of guest(s)</h4>
+            <div class="flex gap-2 overflow-x-auto no-scrollbar">
+              <button class="w-12 h-10 rounded-xl bg-white border border-stone-200 font-bold text-stone-700">1</button>
+              <button class="w-12 h-10 rounded-xl bg-[#fff2ec] border border-orange-500 text-orange-600 font-black">2</button>
+              <button class="w-12 h-10 rounded-xl bg-white border border-stone-200 font-bold text-stone-700">3</button>
+              <button class="w-12 h-10 rounded-xl bg-white border border-stone-200 font-bold text-stone-700">4</button>
+              <button class="w-12 h-10 rounded-xl bg-white border border-stone-200 font-bold text-stone-700">5</button>
+              <button class="w-12 h-10 rounded-xl bg-white border border-stone-200 font-bold text-stone-700">6+</button>
+            </div>
+          </div>
+
+          <!-- Date Selector -->
+          <div class="space-y-2 mt-4">
+            <h4 class="text-sm font-black text-stone-900">When are you visiting?</h4>
+            <div class="flex gap-2">
+              <div class="flex-1 bg-[#fff2ec] border border-orange-500 rounded-2xl p-2.5 text-center">
+                <p class="text-xs font-bold text-stone-500">Oct</p>
+                <p class="text-base font-black text-orange-600">Today</p>
+                <span class="inline-block mt-1 bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">20% off</span>
+              </div>
+              <div class="flex-1 bg-white border border-stone-200 rounded-2xl p-2.5 text-center">
+                <p class="text-xs font-bold text-stone-500">30</p>
+                <p class="text-base font-black text-stone-800">Tomorrow</p>
+                <span class="inline-block mt-1 bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">15% off</span>
+              </div>
+              <div class="flex-1 bg-white border border-stone-200 rounded-2xl p-2.5 text-center">
+                <p class="text-xs font-bold text-stone-500">31</p>
+                <p class="text-base font-black text-stone-800">Sat</p>
+                <span class="inline-block mt-1 bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">15% off</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Time Slots -->
+          <div class="bg-white rounded-2xl p-3 border border-stone-200 mt-4 space-y-3">
+            <div class="bg-stone-100 p-1 rounded-xl flex items-center text-xs font-bold">
+              <button class="flex-1 py-1 rounded-lg bg-stone-900 text-white">☀️ Lunch</button>
+              <button class="flex-1 py-1 rounded-lg text-stone-600">🌙 Dinner</button>
+            </div>
+            <div class="grid grid-cols-4 gap-2 text-center">
+              <div class="p-2 rounded-xl border border-stone-200 bg-stone-50 text-[11px] font-bold">
+                12:45 PM<br><span class="text-[9px] text-stone-400">15% off</span>
+              </div>
+              <div class="p-2 rounded-xl border border-orange-500 bg-[#fff2ec] text-[11px] font-black text-orange-600">
+                01:45 PM<br><span class="text-[9px] text-emerald-700">20% off</span>
+              </div>
+              <div class="p-2 rounded-xl border border-stone-200 bg-stone-50 text-[11px] font-bold">
+                02:15 PM<br><span class="text-[9px] text-stone-400">20% off</span>
+              </div>
+              <div class="p-2 rounded-xl border border-stone-200 bg-stone-50 text-[11px] font-bold">
+                02:45 PM<br><span class="text-[9px] text-stone-400">20% off</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confirm CTA -->
+        <div class="pt-4 mt-4 border-t border-stone-200">
+          <button onclick="confirmBooking()" class="w-full py-3.5 rounded-2xl bg-emerald-600 text-white font-black text-sm active:scale-98 transition shadow-md">
+            Proceed to book • ₹50 cover charge
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SLIDE-UP MODAL: PAY BILL INSTANT VIEW -->
+    <!-- ========================================================================= -->
+    <div id="payBillModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center">
+      <div class="w-full max-w-[428px] bg-white rounded-t-3xl max-h-[92vh] overflow-y-auto no-scrollbar p-4 flex flex-col justify-between shadow-2xl animate-in slide-in-from-bottom duration-200">
+        <div>
+          <!-- Header -->
+          <div class="flex items-center justify-between pb-3 border-b border-stone-200">
+            <div class="flex items-center gap-2.5">
+              <button onclick="closeModals()" class="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-800 shadow-xs">
+                ←
+              </button>
+              <div>
+                <h3 class="text-base font-black text-stone-900 leading-tight">Pay Dining Bill</h3>
+                <p class="text-xs text-stone-500">The Beer Cafe • Nagpur</p>
+              </div>
+            </div>
+            <button onclick="closeModals()" class="text-xs font-bold text-stone-500 hover:text-stone-900">
+              ✕ Close
+            </button>
+          </div>
+
+          <!-- Bill Input -->
+          <div class="my-4">
+            <label class="text-xs font-black text-stone-800 uppercase tracking-wide block mb-1">
+              Enter Total Food Bill Amount (₹)
+            </label>
+            <div class="relative">
+              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-base">₹</span>
+              <input 
+                id="billInput"
+                type="number" 
+                value="1000" 
+                oninput="calcDiscount()"
+                class="w-full pl-8 pr-3 py-3 rounded-xl border border-stone-300 font-black text-lg text-stone-900 focus:outline-hidden focus:border-stone-900" 
+              />
+            </div>
+          </div>
+
+          <!-- Applied Offer Pill -->
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-black text-emerald-900" id="appliedOfferTitle">
+                Flat 50% off on Total Bill
+              </p>
+              <p class="text-[11px] text-emerald-700">
+                Discount auto-applied up to ₹500
+              </p>
+            </div>
+            <span class="text-sm font-black text-emerald-800" id="discountText">-₹500</span>
+          </div>
+
+          <!-- Summary Breakdown -->
+          <div class="mt-4 p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-2 text-xs">
+            <div class="flex justify-between text-stone-600">
+              <span>Item Total</span>
+              <span id="subtotalText" class="font-bold">₹1,000</span>
+            </div>
+            <div class="flex justify-between text-emerald-700 font-bold">
+              <span>Offer Savings</span>
+              <span id="savingsText">-₹500</span>
+            </div>
+            <div class="pt-2 border-t border-stone-200 flex justify-between text-sm font-black text-stone-950">
+              <span>To Pay</span>
+              <span id="finalPayableText">₹500</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Proceed to Pay -->
+        <div class="pt-4 mt-4 border-t border-stone-200">
+          <button onclick="completePayment()" class="accent-cta w-full py-3.5 rounded-2xl font-black text-sm active:scale-98 transition shadow-md text-center">
+            Pay ₹500 via UPI / Card
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT: DATA INTERACTIVITY & SPEC LOGIC -->
+  <!-- ========================================================================= -->
+  <script>
+    // State
+    let currentTheme = 'swiggy'; // 'swiggy' | 'pinak'
+    let currentSegment = 'PRE_BOOK'; // 'PRE_BOOK' | 'WALK_IN'
+    let offerIndex = 0;
+    let isFavorited = false;
+
+    // Pre-booking Offers Data
+    const preBookOffers = [
+      {
+        title: "Flat 50% off on Total Bill",
+        subtitle: "Available on Mon-Sun • Valid on min bill ₹1,000",
+        badges: ["one EXCLUSIVE", "GIRF SPECIAL"],
+        discountVal: 50,
+        cap: 500
+      },
+      {
+        title: "Flat 25% off on Total Bill",
+        subtitle: "Available on Mon-Sun • All dining slots",
+        badges: ["one EXCLUSIVE", "SPECIAL DEAL"],
+        discountVal: 25,
+        cap: 300
+      },
+      {
+        title: "Flat 20% off on Total Bill",
+        subtitle: "Available on Weekdays • Lunch & Dinner",
+        badges: ["one EXCLUSIVE", "INSTANT"],
+        discountVal: 20,
+        cap: 250
+      }
+    ];
+
+    // Walk-in Offers Data
+    const walkInOffers = [
+      {
+        title: "Flat 20% Instant OFF on Bill Pay",
+        subtitle: "Valid for direct walk-in guests • Auto-applied",
+        badges: ["one EXCLUSIVE", "WALK-IN SPECIAL"],
+        discountVal: 20,
+        cap: 250
+      },
+      {
+        title: "5% Extra Cashback on Total Bill",
+        subtitle: "Pay via app at billing counter • Instant Coins",
+        badges: ["one EXCLUSIVE", "INSTANT CASHBACK"],
+        discountVal: 5,
+        cap: 100
+      }
+    ];
+
+    // Toggle Theme
+    function setTheme(theme) {
+      currentTheme = theme;
+      document.body.classList.remove('theme-swiggy', 'theme-pinak');
+      document.body.classList.add(`theme-${theme}`);
+
+      const swiggyBtn = document.getElementById('themeSwiggyBtn');
+      const pinakBtn = document.getElementById('themePinakBtn');
+      const dineCashLabel = document.getElementById('dineCashLabel');
+      const bottomStripText = document.getElementById('bottomStripText');
+      const specTitle = document.getElementById('specTitle');
+
+      if (theme === 'swiggy') {
+        swiggyBtn.className = "px-2.5 py-1 rounded-md font-bold text-[11px] bg-white text-stone-900 shadow-xs transition";
+        pinakBtn.className = "px-2.5 py-1 rounded-md font-bold text-[11px] text-stone-500 hover:text-stone-800 transition";
+        dineCashLabel.innerHTML = `<span>DineCash</span><sup class="text-[9px] font-black">2X</sup>`;
+        bottomStripText.innerText = "Earn 20% DineCash on bill payment";
+        specTitle.innerText = "Screen 11: Exact Spec";
+      } else {
+        pinakBtn.className = "px-2.5 py-1 rounded-md font-bold text-[11px] bg-white text-stone-900 shadow-xs transition";
+        swiggyBtn.className = "px-2.5 py-1 rounded-md font-bold text-[11px] text-stone-500 hover:text-stone-800 transition";
+        dineCashLabel.innerHTML = `<span>PINAK Coins</span><sup class="text-[9px] font-black">2X</sup>`;
+        bottomStripText.innerText = "Earn 20% PINAK Coins on bill payment";
+        specTitle.innerText = "Screen 11: PINAK Palette";
+      }
+      renderOffer();
+    }
+
+    // Toggle Segment (Pre-booking vs Walk-in)
+    function selectOfferSegment(seg) {
+      currentSegment = seg;
+      offerIndex = 0;
+      const preBtn = document.getElementById('segPreBook');
+      const walkBtn = document.getElementById('segWalkIn');
+
+      if (seg === 'PRE_BOOK') {
+        preBtn.className = "flex-1 py-1.5 px-3 rounded-full text-xs font-black bg-stone-950 text-white shadow-xs transition";
+        walkBtn.className = "flex-1 py-1.5 px-3 rounded-full text-xs font-bold text-stone-700 hover:text-stone-950 transition";
+      } else {
+        walkBtn.className = "flex-1 py-1.5 px-3 rounded-full text-xs font-black bg-stone-950 text-white shadow-xs transition";
+        preBtn.className = "flex-1 py-1.5 px-3 rounded-full text-xs font-bold text-stone-700 hover:text-stone-950 transition";
+      }
+      renderOffer();
+    }
+
+    // Set offer index
+    function setOfferIndex(idx) {
+      offerIndex = idx;
+      renderOffer();
+    }
+
+    // Render Offer UI
+    function renderOffer() {
+      const activeList = currentSegment === 'PRE_BOOK' ? preBookOffers : walkInOffers;
+      const off = activeList[offerIndex] || activeList[0];
+
+      document.getElementById('offerHeadline').innerHTML = `<span>${off.title}</span><span class="text-stone-900 font-black text-xl">›</span>`;
+      document.getElementById('offerSubtitle').innerText = off.subtitle;
+
+      // Badges
+      const b0 = off.badges[0] || "one EXCLUSIVE";
+      const b1 = off.badges[1] || "SPECIAL DEAL";
+      const badge0Text = currentTheme === 'pinak' ? b0.replace(/one/gi, 'pinak') : b0;
+      const badge1Text = currentTheme === 'pinak' ? b1.replace(/GIRF/gi, 'PINAK') : b1;
+
+      document.getElementById('offerBadgesRow').innerHTML = `
+        <span class="inline-flex items-center gap-1 font-black text-xs text-[#ea4a36] tracking-wide">
+          <span class="w-3.5 h-3.5 rounded-full bg-[#ea4a36] text-white flex items-center justify-center text-[9px] font-black">1</span>
+          <span class="font-extrabold uppercase text-[11px] tracking-wider">${badge0Text}</span>
+        </span>
+        <span class="text-stone-300 font-light text-xs">|</span>
+        <span class="font-black text-xs uppercase tracking-wider text-[#1e255e]">
+          ${badge1Text}
+        </span>
+      `;
+
+      // Dots
+      for (let i = 0; i < 3; i++) {
+        const dot = document.getElementById(`dot${i}`);
+        if (dot) {
+          if (i === offerIndex) {
+            dot.className = "w-2 h-2 rounded-full active-dot transition-all cursor-pointer";
+          } else {
+            dot.className = "w-1.5 h-1.5 rounded-full bg-stone-900/80 transition-all cursor-pointer";
+          }
+        }
+      }
+    }
+
+    // Offer Card Click: routes to table booking if pre-booking, or pay bill if walk-in
+    function onOfferCardClick() {
+      if (currentSegment === 'PRE_BOOK') {
+        openTableBooking();
+      } else {
+        openPayBill();
+      }
+    }
+
+    // Tab switcher
+    function switchTab(tabName) {
+      ['Offers', 'Menu', 'Photos', 'Amenities', 'Similar Places'].forEach(t => {
+        const btnId = t === 'Similar Places' ? 'tabSimilar' : `tab${t}`;
+        const el = document.getElementById(btnId);
+        if (el) {
+          if (t === tabName) {
+            el.className = "px-4 py-1.5 rounded-full text-xs font-black bg-stone-950 text-white shadow-xs transition";
+          } else {
+            el.className = "px-4 py-1.5 rounded-full text-xs font-bold text-stone-700 hover:text-stone-900 transition";
+          }
+        }
+      });
+      const secMap = {
+        'Offers': 'sec-offers',
+        'Menu': 'sec-menu',
+        'Photos': 'sec-photos',
+        'Amenities': 'sec-amenities',
+        'Location': 'sec-location'
+      };
+      if (secMap[tabName]) {
+        const el = document.getElementById(secMap[tabName]);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    // Favorite toggle
+    function toggleFavorite() {
+      isFavorited = !isFavorited;
+      const icon = document.getElementById('favIcon');
+      if (isFavorited) {
+        icon.classList.remove('text-stone-800');
+        icon.classList.add('text-rose-500', 'fill-rose-500');
+      } else {
+        icon.classList.remove('text-rose-500', 'fill-rose-500');
+        icon.classList.add('text-stone-800');
+      }
+    }
+
+    // Share action
+    function shareStore() {
+      if (navigator.share) {
+        navigator.share({ title: 'The Beer Cafe', text: 'Check out 50% OFF offers at The Beer Cafe!', url: window.location.href }).catch(() => {});
+      } else {
+        alert('Store link copied to clipboard!');
+      }
+    }
+
+    // Back action
+    function goBack() {
+      alert('Back button pressed (returns to Discovery Feed)');
+    }
+
+    // Map navigate
+    function openMaps() {
+      window.open('https://maps.google.com/?q=21.112813,79.059906', '_blank');
+    }
+
+    // Modals
+    function openTableBooking() {
+      document.getElementById('bookingModal').classList.remove('hidden');
+    }
+    function openPayBill() {
+      document.getElementById('payBillModal').classList.remove('hidden');
+      calcDiscount();
+    }
+    function closeModals() {
+      document.getElementById('bookingModal').classList.add('hidden');
+      document.getElementById('payBillModal').classList.add('hidden');
+    }
+
+    // Discount Calculation for Pay Bill
+    function calcDiscount() {
+      const raw = parseFloat(document.getElementById('billInput').value) || 0;
+      const activeList = currentSegment === 'PRE_BOOK' ? preBookOffers : walkInOffers;
+      const off = activeList[offerIndex] || activeList[0];
+      const discount = Math.min((raw * off.discountVal) / 100, off.cap);
+      const payable = Math.max(raw - discount, 0);
+
+      document.getElementById('subtotalText').innerText = `₹${raw.toLocaleString('en-IN')}`;
+      document.getElementById('discountText').innerText = `-₹${discount.toLocaleString('en-IN')}`;
+      document.getElementById('savingsText').innerText = `-₹${discount.toLocaleString('en-IN')}`;
+      document.getElementById('finalPayableText').innerText = `₹${payable.toLocaleString('en-IN')}`;
+      document.getElementById('appliedOfferTitle').innerText = off.title;
+    }
+
+    function confirmBooking() {
+      alert('Table Confirmed for 2 Guests! Reference: #PNK-TB-' + Math.floor(100000 + Math.random()*900000));
+      closeModals();
+    }
+
+    function completePayment() {
+      alert('Payment Successful! Saved with auto-applied offer.');
+      closeModals();
+    }
+
+    function onClaimDeal(dealName, price) {
+      alert(`Claimed Deal: ${dealName} for ₹${price}! Added to your active bill.`);
+    }
+
+    // Initialize
+    renderOffer();
+  </script>
+</body>
+</html>

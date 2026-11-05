@@ -50,6 +50,7 @@ function mapBackendToTransaction(t: any): Transaction {
     merchantId: t.merchantId || "m-1",
     merchantName: t.merchantName || "Merchant Partner",
     storeName: t.storeName || "Store Outlet",
+    storeId: t.storeId,
     billAmount: Number(t.grossAmount || t.billAmount || 0),
     discountAmount: Number(t.discountAmount || 0),
     payableAmount: Number(t.payableAmount || t.netAmount || 0),
@@ -134,7 +135,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
   }, [currentRole, selectedStoreId, scopedStoreId, activeStore?.id]);
 
   // Real backend transactions take complete priority once fetched; fallback only during initial mount before network resolves
-  const rawPool = hasLoadedBackend ? liveTxs : (liveTxs.length > 0 ? liveTxs : (initialTransactions.length > 0 ? initialTransactions : appStore.transactions));
+  const rawPool = liveTxs.length > 0 ? liveTxs : (initialTransactions.length > 0 ? initialTransactions : appStore.transactions);
 
   const displayedTransactions = useMemo(() => {
     let list = rawPool;

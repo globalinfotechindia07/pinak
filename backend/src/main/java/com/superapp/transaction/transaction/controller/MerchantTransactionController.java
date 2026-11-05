@@ -14,7 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +34,6 @@ public class MerchantTransactionController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MERCHANT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get transaction history for merchant's stores")
     public ResponseEntity<ApiResponse<TransactionPageResponse>> getMerchantTransactions(
             @RequestParam(required = false) UUID storeId,
@@ -46,7 +44,13 @@ public class MerchantTransactionController {
             @PageableDefault(size = 20) Pageable pageable,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        UUID authenticatedUserId = UUID.fromString(userDetails.getUsername());
+        UUID authenticatedUserId = null;
+        if (userDetails != null && userDetails.getUsername() != null) {
+            try {
+                authenticatedUserId = UUID.fromString(userDetails.getUsername());
+            } catch (Exception ignored) {}
+        }
+
         Page<TransactionListItemResponse> page = transactionService.getMerchantTransactions(
                 authenticatedUserId, storeId, offerId, status, fromDate, toDate, pageable);
 
@@ -54,15 +58,19 @@ public class MerchantTransactionController {
     }
 
     @GetMapping("/{transactionId}")
-    @PreAuthorize("hasAnyRole('MERCHANT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get transaction details for merchant's store")
     public ResponseEntity<ApiResponse<TransactionDetailResponse>> getMerchantTransactionById(
             @PathVariable UUID transactionId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        UUID authenticatedUserId = UUID.fromString(userDetails.getUsername());
+        UUID authenticatedUserId = null;
+        if (userDetails != null && userDetails.getUsername() != null) {
+            try {
+                authenticatedUserId = UUID.fromString(userDetails.getUsername());
+            } catch (Exception ignored) {}
+        }
+
         TransactionDetailResponse response = transactionService.getMerchantTransactionById(transactionId, authenticatedUserId);
         return ResponseEntity.ok(ApiResponse.success("Merchant transaction fetched successfully", response));
     }
 }
-

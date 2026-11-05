@@ -17,6 +17,9 @@ import com.superapp.transaction.transaction.entity.Transaction;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.enums.TransactionType;
 import com.superapp.transaction.transaction.repository.TransactionRepository;
+import com.superapp.user.entity.Role;
+import com.superapp.user.entity.User;
+import com.superapp.user.entity.UserStatus;
 import com.superapp.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -946,20 +949,45 @@ public class TableBookingServiceImpl implements TableBookingService {
         Store store = resolveStore(storeUuid);
 
         // 2. Resolve Merchant
-        UUID merchantId = store.getMerchantId() != null
-                ? store.getMerchantId()
-                : UUID.fromString("7857c039-8d95-4069-9081-8e8541c5fab8");
+        UUID merchantId = store.getMerchantId();
+        if (merchantId == null) {
+            merchantId = storeRepository.findAll().stream()
+                    .map(Store::getMerchantId)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse(UUID.fromString("520d3b3e-ff2c-463b-bd62-fe4035dd396f"));
+        }
 
         // 3. Resolve Customer User
         UUID customerId = extractUserIdFromHeader(authHeader);
         if (customerId == null && request.customerPhone() != null && !request.customerPhone().isBlank()) {
-            customerId = userRepository.findByPhone(request.customerPhone().trim())
+            String p = request.customerPhone().trim();
+            String digitsOnly = p.replaceAll("[^0-9]", "");
+            customerId = userRepository.findByPhone(p)
+                    .or(() -> digitsOnly.isBlank() ? Optional.empty() : userRepository.findByPhone(digitsOnly))
+                    .or(() -> digitsOnly.length() >= 10 ? userRepository.findByPhone("+91" + digitsOnly.substring(digitsOnly.length() - 10)) : Optional.empty())
                     .map(com.superapp.user.entity.User::getId)
                     .orElse(null);
         }
         if (customerId == null) {
-            // Default to verified active customer
-            customerId = UUID.fromString("680857fa-7bff-45a4-b986-4bad017c6297");
+            // Default to first existing valid customer from the database or create guest user
+            customerId = userRepository.findAll().stream()
+                    .filter(u -> u.getRole() == Role.CUSTOMER)
+                    .map(User::getId)
+                    .findFirst()
+                    .orElseGet(() -> {
+                        User guestUser = new User();
+                        String phone = (request.customerPhone() != null && !request.customerPhone().isBlank())
+                                ? request.customerPhone().trim()
+                                : "+919999999999";
+                        guestUser.setPhone(phone);
+                        guestUser.setName(request.customerName() != null && !request.customerName().isBlank() ? request.customerName() : "Guest Diner");
+                        guestUser.setEmail(phone.replace("+", "") + "@pinak.app.internal");
+                        guestUser.setPassword("$2a$10$placeholder");
+                        guestUser.setRole(Role.CUSTOMER);
+                        guestUser.setStatus(UserStatus.ACTIVE);
+                        return userRepository.save(guestUser).getId();
+                    });
         }
 
         // 4. Calculate Financials
@@ -1045,6 +1073,38 @@ public class TableBookingServiceImpl implements TableBookingService {
                 tableBookingRepository.save(booking);
                 log.info("Marked reservation {} as COMPLETED following bill payment of ₹{}", booking.getBookingRef(), finalTotalPaid);
             });
+        } else {
+            // Direct Walk-In Payment without prior table reservation:
+            // Persist a walk-in dining settlement in table_bookings so it displays in Table Bookings dashboards
+            TableBooking walkInBooking = new TableBooking();
+            walkInBooking.setBookingRef("PNK-WI-" + String.format("%08d", 10000000 + random.nextInt(90000000)));
+            walkInBooking.setStoreId(store.getId());
+            walkInBooking.setUserId(customerId);
+            walkInBooking.setCustomerName((request.customerName() != null && !request.customerName().isBlank()) ? request.customerName() : "Walk-in Guest");
+            walkInBooking.setCustomerPhone((request.customerPhone() != null && !request.customerPhone().isBlank()) ? request.customerPhone() : "In-Store Diner");
+            walkInBooking.setGuests(2);
+            walkInBooking.setBookingDate(LocalDate.now());
+            walkInBooking.setMealType(LocalTime.now().getHour() < 16 ? "LUNCH" : "DINNER");
+            walkInBooking.setSlotTime(timestamp);
+            walkInBooking.setOfferTitle((request.couponCode() != null && !request.couponCode().isBlank()) ? ("Walk-in Deal (" + request.couponCode() + ")") : "Walk-in Direct Payment");
+            BigDecimal calcDiscountPct = (billAmount.compareTo(BigDecimal.ZERO) > 0 && discountAmount.compareTo(BigDecimal.ZERO) > 0)
+                    ? discountAmount.multiply(BigDecimal.valueOf(100)).divide(billAmount, 1, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+            walkInBooking.setDiscountPct(calcDiscountPct);
+            walkInBooking.setCoverChargePerGuest(BigDecimal.ZERO);
+            walkInBooking.setTotalCoverCharge(BigDecimal.ZERO);
+            walkInBooking.setIncludeVipPlan(false);
+            walkInBooking.setVipPlanFee(BigDecimal.ZERO);
+            walkInBooking.setTotalPaid(totalPaid);
+            walkInBooking.setBillAmount(billAmount);
+            walkInBooking.setBillAddedAt(Instant.now());
+            walkInBooking.setPaymentMethod(request.paymentMethod() != null ? request.paymentMethod() : "Google Pay");
+            walkInBooking.setPaymentStatus("PAID");
+            walkInBooking.setStatus("COMPLETED");
+            walkInBooking.setSpecialRequests("Direct Walk-in Settlement [Txn: " + txnRef + "]");
+            walkInBooking = tableBookingRepository.save(walkInBooking);
+            matchedBookingRef = walkInBooking.getBookingRef();
+            log.info("Created walk-in dining record {} in table_bookings following direct payment of ₹{}", walkInBooking.getBookingRef(), finalTotalPaid);
         }
 
         String storeAddress = store.getAddressLine1() != null

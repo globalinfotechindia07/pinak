@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import tableBookingApi from "@/api/tableBookingApi";
 import { useAppStore } from "@/hooks/useAppStore";
+import { dataStore } from "@/services/dataStore";
 
 export interface CouponItem {
   id: string;
@@ -364,6 +365,33 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
       setConfirmedPaymentDetails(details);
       setPayStep("success");
       window.scrollTo({ top: 0, behavior: "smooth" });
+
+      try {
+        dataStore.recordTransaction({
+          id: details.txnId,
+          paymentIntentId: details.txnId,
+          referenceType: "OFFER",
+          referenceId: selectedCoupon?.id || "walkin_direct",
+          customerName: effectiveCustomerName || "Guest Diner",
+          customerPhone: effectiveCustomerPhone || "",
+          merchantId: "m-1",
+          merchantName: details.storeName || storeName,
+          storeName: details.storeName || storeName,
+          billAmount: Number(details.billAmount),
+          discountAmount: Number(details.discount),
+          payableAmount: Number(details.totalPaid),
+          payeeVpa: `${(details.storeName || storeName).toLowerCase().replace(/[^a-z0-9]/g, "")}@hdfcbank`,
+          upiIntentUrl: `upi://pay?pa=merchant@upi&pn=${encodeURIComponent(details.storeName || storeName)}&am=${details.totalPaid}&cu=INR`,
+          utr: `UTR${details.txnId.replace(/[^0-9]/g, "").slice(-8) || "88491023"}`,
+          signatureValid: true,
+          status: "SUCCESS",
+          settlementStatus: "SETTLED",
+          pointsEarned: details.coinsEarned || 0,
+          timestamp: "Just now"
+        });
+      } catch (e) {
+        console.warn("Could not save to local dataStore:", e);
+      }
 
       toast.success("Payment Successful!", {
         description: `Settled ₹${details.totalPaid} at ${details.storeName}`
