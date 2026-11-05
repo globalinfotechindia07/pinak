@@ -13,6 +13,12 @@ import com.superapp.store.repository.StoreRepository;
 import com.superapp.transaction.transaction.dto.TransactionDetailResponse;
 import com.superapp.transaction.transaction.dto.TransactionListItemResponse;
 import com.superapp.transaction.transaction.dto.TransactionResponse;
+import com.superapp.transaction.transaction.dto.TransactionStatsResponse;
+import com.superapp.wallet.repository.MerchantPayoutRequestRepository;
+import com.superapp.wallet.entity.MerchantPayoutRequest;
+import com.superapp.wallet.enums.PayoutStatus;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import com.superapp.transaction.transaction.entity.Transaction;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.mapper.TransactionMapper;
@@ -50,6 +56,9 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Autowired(required = false)
     private StaffMemberRepository staffMemberRepository;
+
+    @Autowired(required = false)
+    private MerchantPayoutRequestRepository payoutRequestRepository;
 
     @Autowired
     public TransactionServiceImpl(
@@ -314,6 +323,66 @@ public class TransactionServiceImpl implements TransactionService {
         Page<Transaction> page = transactionRepository.findAll(spec, effectivePageable);
 
         return enrichListItems(page, effectivePageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransactionStatsResponse getTransactionStats() {
+        BigDecimal totalGross = transactionRepository.sumGrossGmv();
+        BigDecimal totalNet = transactionRepository.sumNetCollected();
+        BigDecimal totalDiscounts = transactionRepository.sumDiscounts();
+
+        if (totalGross == null) totalGross = BigDecimal.ZERO;
+        if (totalNet == null) totalNet = BigDecimal.ZERO;
+        if (totalDiscounts == null) totalDiscounts = BigDecimal.ZERO;
+
+        if (totalGross.compareTo(BigDecimal.ZERO) == 0 && totalNet.compareTo(BigDecimal.ZERO) > 0) {
+            totalGross = totalNet.add(totalDiscounts);
+        }
+
+        long totalTx = transactionRepository.count();
+        long successTx = transactionRepository.countByStatus(TransactionStatus.SUCCESS);
+        long pendingTx = transactionRepository.countByStatus(TransactionStatus.PENDING);
+        long failedTx = transactionRepository.countByStatus(TransactionStatus.FAILED);
+
+        long merchantWallets = Math.max(merchantRepository.count(), transactionRepository.countDistinctMerchants());
+        long activeStores = Math.max(storeRepository.count(), transactionRepository.countDistinctStores());
+
+        BigDecimal escrowBalance = totalNet;
+        BigDecimal commission = totalGross.multiply(BigDecimal.valueOf(0.05)).setScale(2, RoundingMode.HALF_UP);
+
+        long pendingPayoutCount = 0;
+        BigDecimal pendingPayoutVolume = BigDecimal.ZERO;
+        if (payoutRequestRepository != null) {
+            try {
+                List<MerchantPayoutRequest> pending = payoutRequestRepository.findByStatus(PayoutStatus.PROCESSING);
+                pending.addAll(payoutRequestRepository.findByStatus(PayoutStatus.INITIATED));
+                pendingPayoutCount = pending.size();
+                for (MerchantPayoutRequest p : pending) {
+                    if (p.getAmount() != null) {
+                        pendingPayoutVolume = pendingPayoutVolume.add(p.getAmount());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Could not load pending payout stats: {}", e.getMessage());
+            }
+        }
+
+        return new TransactionStatsResponse(
+                totalGross,
+                totalNet,
+                escrowBalance,
+                commission,
+                totalDiscounts,
+                totalTx,
+                successTx,
+                pendingTx,
+                failedTx,
+                merchantWallets,
+                activeStores,
+                pendingPayoutCount,
+                pendingPayoutVolume
+        );
     }
 
     @Override

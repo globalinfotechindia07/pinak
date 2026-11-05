@@ -371,7 +371,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
           id: details.txnId,
           paymentIntentId: details.txnId,
           referenceType: "OFFER",
-          referenceId: selectedCoupon?.id || "walkin_direct",
+          referenceId: appliedCoupon?.id || "walkin_direct",
           customerName: effectiveCustomerName || "Guest Diner",
           customerPhone: effectiveCustomerPhone || "",
           merchantId: "m-1",
@@ -1401,40 +1401,6 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
               </div>
             )}
           </div>
-
-          {/* Locked Table Offer Card on Screen 1 */}
-          {resolvedOfferDiscountPct > 0 && (
-            <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300/80 dark:border-emerald-800/80 rounded-3xl p-4 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-emerald-800 dark:text-emerald-300 tracking-wider">
-                  LOCKED TABLE RESERVATION OFFER
-                </span>
-                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-200/70 text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-200 uppercase">
-                  APPLIED
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                    <Percent size={15} className="stroke-[3]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-black text-slate-900 dark:text-white truncate">
-                      {resolvedOfferTitle || `${resolvedOfferDiscountPct}% OFF on Dining Bill`}
-                    </p>
-                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                      {tableOfferDiscount > 0
-                        ? `✓ ₹${tableOfferDiscount.toLocaleString("en-IN")} instant discount applied in Bill Details`
-                        : `✓ Flat ${resolvedOfferDiscountPct}% OFF will apply automatically on your bill`}
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-600 text-white shrink-0">
-                  {resolvedOfferDiscountPct}% OFF
-                </span>
-              </div>
-            </div>
-          )}
 
           {/* Coupons Preview Card */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs space-y-3">

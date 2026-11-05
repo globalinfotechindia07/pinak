@@ -12,9 +12,25 @@ export interface BackendTransactionItem {
   grossAmount: number;
   discountAmount: number;
   payableAmount: number;
-  status: "INITIATED" | "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
+  status: "INITIATED" | "PENDING" | "COMPLETED" | "SUCCESS" | "FAILED" | "REFUNDED";
   paymentMethod?: string;
   createdAt: string;
+}
+
+export interface BackendTransactionStats {
+  totalPlatformGmv: number;
+  totalNetCollected: number;
+  totalEscrowBalance: number;
+  netCommissionEarned: number;
+  totalDiscountSavings: number;
+  totalTransactions: number;
+  successfulTransactions: number;
+  pendingTransactions: number;
+  failedTransactions: number;
+  totalMerchantWallets: number;
+  activeStores: number;
+  pendingPayoutCount: number;
+  pendingPayoutVolume: number;
 }
 
 export interface InitiatePaymentPayload {
@@ -47,6 +63,17 @@ export const transactionApi = {
     } catch (err) {
       console.warn("[Transaction API] Admin transactions fetch:", err);
       return [];
+    }
+  },
+
+  // Admin: get platform-wide settlement overview & transaction stats from backend database
+  getAdminStats: async (): Promise<BackendTransactionStats | null> => {
+    try {
+      const res = await apiClient.get<ApiResponse<BackendTransactionStats>>("/admin/transactions/stats");
+      return res.data?.data || null;
+    } catch (err) {
+      console.warn("[Transaction API] Admin stats fetch:", err);
+      return null;
     }
   },
 

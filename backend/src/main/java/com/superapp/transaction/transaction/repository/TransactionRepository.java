@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
@@ -68,4 +69,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     );
 
     long countByStatus(TransactionStatus status);
+
+    @Query("SELECT COALESCE(SUM(t.grossAmount), 0) FROM Transaction t WHERE t.status = com.superapp.transaction.transaction.enums.TransactionStatus.SUCCESS")
+    BigDecimal sumGrossGmv();
+
+    @Query("SELECT COALESCE(SUM(t.payableAmount), 0) FROM Transaction t WHERE t.status = com.superapp.transaction.transaction.enums.TransactionStatus.SUCCESS")
+    BigDecimal sumNetCollected();
+
+    @Query("SELECT COALESCE(SUM(t.discountAmount), 0) FROM Transaction t WHERE t.status = com.superapp.transaction.transaction.enums.TransactionStatus.SUCCESS")
+    BigDecimal sumDiscounts();
+
+    @Query("SELECT COUNT(DISTINCT t.merchantId) FROM Transaction t WHERE t.merchantId IS NOT NULL")
+    long countDistinctMerchants();
+
+    @Query("SELECT COUNT(DISTINCT t.storeId) FROM Transaction t WHERE t.storeId IS NOT NULL")
+    long countDistinctStores();
 }

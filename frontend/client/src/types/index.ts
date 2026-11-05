@@ -54,6 +54,7 @@ export interface Store {
   merchantId: string;
   merchantName: string;
   storeName: string;
+  storeId?: string;
   branchName: string;
   address: string;
   city: string;
@@ -202,6 +203,7 @@ export interface Transaction {
   merchantId: string;
   merchantName: string;
   storeName: string;
+  storeId?: string;
   billAmount: number;
   discountAmount: number;
   payableAmount: number;

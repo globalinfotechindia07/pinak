@@ -1184,17 +1184,18 @@ export const appStore = {
   },
 
   getPlatformSettlementOverview(): PlatformSettlementOverview {
+    const txs = this.getTransactions();
     const wallets = getStored<MerchantWallet[]>(STORAGE_KEYS.WALLETS, []);
     const payouts = this.getMerchantPayouts();
 
-    const gmv = wallets.reduce((acc, w) => acc + (w.lifetimeVolume || 617900), 4850000.0);
-    const escrow = wallets.reduce((acc, w) => acc + (w.availableBalance || 185400), 1240000.0);
+    const gmv = txs.reduce((acc, t) => acc + (t.status === "SUCCESS" ? Number(t.billAmount || t.payableAmount || 0) : 0), 0);
+    const escrow = txs.reduce((acc, t) => acc + (t.status === "SUCCESS" ? Number(t.payableAmount || 0) : 0), 0);
 
     return {
       totalPlatformGmv: gmv,
       totalEscrowBalance: escrow,
-      netCommissionEarned: gmv * 0.025,
-      totalMerchantWallets: Math.max(wallets.length, 42),
+      netCommissionEarned: Math.round(gmv * 0.05 * 100) / 100,
+      totalMerchantWallets: Math.max(wallets.length, 1),
       pendingPayoutCount: payouts.filter(p => p.status === "PROCESSING" || p.status === "INITIATED").length,
       pendingPayoutVolume: payouts.filter(p => p.status === "PROCESSING" || p.status === "INITIATED").reduce((acc, p) => acc + p.amount, 0),
       failedPayoutCount: payouts.filter(p => p.status === "FAILED" || p.status === "HELD").length

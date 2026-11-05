@@ -3,6 +3,7 @@ package com.superapp.transaction.transaction.service;
 import com.superapp.transaction.transaction.dto.TransactionDetailResponse;
 import com.superapp.transaction.transaction.dto.TransactionListItemResponse;
 import com.superapp.transaction.transaction.dto.TransactionResponse;
+import com.superapp.transaction.transaction.dto.TransactionStatsResponse;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -54,6 +55,9 @@ public interface TransactionService {
     );
 
     TransactionDetailResponse getAdminTransactionById(UUID transactionId, UUID adminUserId, String requestId);
+
+    // Platform aggregate statistics for settlement consoles & overview cards
+    TransactionStatsResponse getTransactionStats();
 
     // Backwards compatibility methods
     TransactionResponse getTransactionById(UUID transactionId, UUID authenticatedUserId, boolean isAdmin);

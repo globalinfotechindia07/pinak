@@ -4,6 +4,7 @@ import com.superapp.common.response.ApiResponse;
 import com.superapp.transaction.transaction.dto.TransactionDetailResponse;
 import com.superapp.transaction.transaction.dto.TransactionListItemResponse;
 import com.superapp.transaction.transaction.dto.TransactionPageResponse;
+import com.superapp.transaction.transaction.dto.TransactionStatsResponse;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -76,6 +77,13 @@ public class AdminTransactionController {
         );
 
         return ResponseEntity.ok(ApiResponse.success("Admin transactions fetched successfully", TransactionPageResponse.of(page)));
+    }
+
+    @GetMapping("/stats")
+    @Operation(summary = "Get platform transaction statistics and settlement metrics from backend")
+    public ResponseEntity<ApiResponse<TransactionStatsResponse>> getTransactionStats() {
+        TransactionStatsResponse stats = transactionService.getTransactionStats();
+        return ResponseEntity.ok(ApiResponse.success("Transaction stats fetched successfully", stats));
     }
 
     @GetMapping("/{transactionId}")

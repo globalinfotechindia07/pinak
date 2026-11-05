@@ -30,7 +30,7 @@ import { cn } from "../../lib/utils";
 import { toast } from "sonner";
 import { dataStore } from "../../services/dataStore";
 import { useAppStore } from "../../hooks/useAppStore";
-import { transactionApi } from "../../api/transactionApi";
+import { transactionApi, BackendTransactionStats } from "../../api/transactionApi";
 
 export interface TransactionMonitorProps {
   transactions?: Transaction[];
@@ -85,6 +85,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
   const [liveTxs, setLiveTxs] = useState<Transaction[]>([]);
   const [hasLoadedBackend, setHasLoadedBackend] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [backendStats, setBackendStats] = useState<BackendTransactionStats | null>(null);
 
   // Settlement Overview and Payouts State (Admin only)
   const [payouts, setPayouts] = useState(() => dataStore.getMerchantPayouts());
@@ -117,9 +118,15 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
           setLiveTxs(res.map(mapBackendToTransaction));
         }
       } else {
-        const res = await transactionApi.getAdminTransactions();
-        if (Array.isArray(res)) {
-          setLiveTxs(res.map(mapBackendToTransaction));
+        const [txsRes, statsRes] = await Promise.all([
+          transactionApi.getAdminTransactions(),
+          transactionApi.getAdminStats()
+        ]);
+        if (Array.isArray(txsRes)) {
+          setLiveTxs(txsRes.map(mapBackendToTransaction));
+        }
+        if (statsRes) {
+          setBackendStats(statsRes);
         }
       }
       setHasLoadedBackend(true);
@@ -187,6 +194,40 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
 
     return { grossGmv, netPayable, totalDiscount, successCount, totalCount: displayedTransactions.length };
   }, [displayedTransactions]);
+
+  // Backend-Driven Platform Overview (Admin Console)
+  const settlementOverview = useMemo(() => {
+    if (backendStats) {
+      return {
+        totalPlatformGmv: Number(backendStats.totalPlatformGmv || 0),
+        totalEscrowBalance: Number(backendStats.totalEscrowBalance || backendStats.totalNetCollected || 0),
+        netCommissionEarned: Number(backendStats.netCommissionEarned || 0),
+        totalMerchantWallets: Number(backendStats.totalMerchantWallets || 1),
+        activeStores: Number(backendStats.activeStores || 1),
+        pendingPayoutCount: Number(backendStats.pendingPayoutCount || 0),
+        pendingPayoutVolume: Number(backendStats.pendingPayoutVolume || 0),
+        totalTransactions: Number(backendStats.totalTransactions || 0),
+        successfulTransactions: Number(backendStats.successfulTransactions || 0),
+      };
+    }
+
+    const gmv = metrics.grossGmv;
+    const net = metrics.netPayable;
+    const commission = Math.round(gmv * 0.05 * 100) / 100;
+    const distinctMerchants = Math.max(1, new Set(displayedTransactions.map((t) => t.merchantId)).size);
+
+    return {
+      totalPlatformGmv: gmv,
+      totalEscrowBalance: net,
+      netCommissionEarned: commission,
+      totalMerchantWallets: distinctMerchants,
+      activeStores: Math.max(1, new Set(displayedTransactions.map((t) => (t as any).storeId)).size),
+      pendingPayoutCount: payouts.filter(p => p.status === "PROCESSING" || p.status === "INITIATED").length,
+      pendingPayoutVolume: payouts.filter(p => p.status === "PROCESSING" || p.status === "INITIATED").reduce((acc, p) => acc + p.amount, 0),
+      totalTransactions: metrics.totalCount,
+      successfulTransactions: metrics.successCount,
+    };
+  }, [backendStats, metrics, displayedTransactions, payouts]);
 
   // Table Columns
   const columns: Column<Transaction>[] = useMemo(() => [
@@ -373,7 +414,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
                     : "border-slate-200 dark:border-slate-800 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                 )}
               >
-                Global Payout Queue ({overview.pendingPayoutCount})
+                Global Payout Queue ({settlementOverview.pendingPayoutCount})
               </button>
             </>
           )}
@@ -392,9 +433,9 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
             </div>
             <div className="mt-2">
               <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-                ₹{overview.totalPlatformGmv.toLocaleString("en-IN")}
+                ₹{settlementOverview.totalPlatformGmv.toLocaleString("en-IN")}
               </span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">Across {overview.totalMerchantWallets} Merchant Wallets</span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">Across {settlementOverview.totalMerchantWallets} Merchant Partner{settlementOverview.totalMerchantWallets === 1 ? "" : "s"}</span>
             </div>
           </div>
 
@@ -407,7 +448,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
             </div>
             <div className="mt-2">
               <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-                ₹{overview.totalEscrowBalance.toLocaleString("en-IN")}
+                ₹{settlementOverview.totalEscrowBalance.toLocaleString("en-IN")}
               </span>
               <span className="text-[11px] text-emerald-600 font-semibold block mt-0.5">Held in RBI Escrow Account</span>
             </div>
@@ -422,7 +463,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
             </div>
             <div className="mt-2">
               <span className="text-2xl font-extrabold text-pink-600 dark:text-pink-400 font-mono">
-                ₹{overview.netCommissionEarned.toLocaleString("en-IN")}
+                ₹{settlementOverview.netCommissionEarned.toLocaleString("en-IN")}
               </span>
               <span className="text-[11px] text-slate-400 block mt-0.5">Platform Revenue Share</span>
             </div>
@@ -437,9 +478,9 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
             </div>
             <div className="mt-2">
               <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-                ₹{overview.pendingPayoutVolume.toLocaleString("en-IN")}
+                ₹{settlementOverview.pendingPayoutVolume.toLocaleString("en-IN")}
               </span>
-              <span className="text-[11px] text-amber-600 font-semibold block mt-0.5">{overview.pendingPayoutCount} Payouts Awaiting Clearing</span>
+              <span className="text-[11px] text-amber-600 font-semibold block mt-0.5">{settlementOverview.pendingPayoutCount} Payout{settlementOverview.pendingPayoutCount === 1 ? "" : "s"} Awaiting Clearing</span>
             </div>
           </div>
         </div>
