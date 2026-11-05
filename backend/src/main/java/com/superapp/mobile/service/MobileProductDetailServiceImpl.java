@@ -1,6 +1,7 @@
 package com.superapp.mobile.service;
 
 import com.superapp.category.repository.CategoryRepository;
+import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.mobile.dto.MobileProductDetailDto;
 import com.superapp.mobile.dto.MobileProductDetailDto.*;
 import com.superapp.product.entity.Product;
@@ -20,9 +21,6 @@ import java.util.*;
 public class MobileProductDetailServiceImpl implements MobileProductDetailService {
 
     private static final Logger log = LoggerFactory.getLogger(MobileProductDetailServiceImpl.class);
-
-    public static final UUID CANONICAL_MOCK_PRODUCT_ID = UUID.fromString("f1000000-0000-0000-0000-000000000001");
-    private static final UUID SMOKEHOUSE_STORE_ID = UUID.fromString("e1000000-0000-0000-0000-000000000001");
 
     private final ProductRepository productRepository;
     private final StoreRepository storeRepository;
@@ -48,8 +46,7 @@ public class MobileProductDetailServiceImpl implements MobileProductDetailServic
             }
         }
 
-        log.info("Providing canonical fallback dummy response for Product Detail (ID: {})", productId);
-        return buildCanonicalFallback(productId, lat, lng);
+        throw new ResourceNotFoundException("Product not found with id: " + productId);
     }
 
     private MobileProductDetailDto buildFromEntity(Product p, Double lat, Double lng) {
@@ -79,7 +76,7 @@ public class MobileProductDetailServiceImpl implements MobileProductDetailServic
             discountPct = savings.divide(mrp, 2, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).intValue();
         }
 
-        String discountText = discountPct > 0 ? "Flat " + discountPct + "% OFF • Save ₹" + savings : "Best Price Guaranteed";
+        String discountText = discountPct > 0 ? "Flat " + discountPct + "% OFF â€¢ Save â‚¹" + savings : "Best Price Guaranteed";
 
         // Store info
         ProductStoreInfoDto storeInfo = resolveStoreInfo(p.getStoreId(), lat, lng);
@@ -108,10 +105,10 @@ public class MobileProductDetailServiceImpl implements MobileProductDetailServic
                 savings,
                 discountText,
                 "INR",
-                "₹",
+                "â‚¹",
                 Boolean.TRUE.equals(p.getInStock()),
                 p.getStockQuantity() != null ? p.getStockQuantity() : 50,
-                "In Stock • Delivered in 25-35 mins",
+                "In Stock â€¢ Delivered in 25-35 mins",
                 true,
                 "VEG",
                 new CategorySummaryDto(
@@ -139,7 +136,7 @@ public class MobileProductDetailServiceImpl implements MobileProductDetailServic
                 new DeliveryOptionsDto(
                         true,
                         "Delivered in 25-35 mins",
-                        "Free delivery on orders above ₹499",
+                        "Free delivery on orders above â‚¹499",
                         true,
                         "Ready for takeaway in 15 mins"
                 ),
@@ -149,214 +146,108 @@ public class MobileProductDetailServiceImpl implements MobileProductDetailServic
                 new BottomBuyBarDto(
                         sellingPrice,
                         mrp,
-                        "Save ₹" + savings,
+                        "Save â‚¹" + savings,
                         1,
                         10,
                         true,
                         "Customization & add-ons available",
-                        new ActionBtnDto("ADD_TO_CART", "Add to Cart • ₹" + sellingPrice, true),
+                        new ActionBtnDto("ADD_TO_CART", "Add to Cart â€¢ â‚¹" + sellingPrice, true),
                         new ActionBtnDto("BUY_NOW", "Buy Now", true)
                 )
         );
     }
 
-    private MobileProductDetailDto buildCanonicalFallback(UUID requestedId, Double lat, Double lng) {
-        String idStr = (requestedId != null) ? requestedId.toString() : "f1000000-0000-0000-0000-000000000001";
-        BigDecimal mrp = new BigDecimal("699.00");
-        BigDecimal sellingPrice = new BigDecimal("489.00");
-        BigDecimal savings = mrp.subtract(sellingPrice);
-        int discountPct = 30;
-
-        List<String> gallery = List.of(
-                "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80",
-                "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80"
-        );
-
-        ProductStoreInfoDto storeInfo = new ProductStoreInfoDto(
-                SMOKEHOUSE_STORE_ID.toString(),
-                "The Smokehouse Grill",
-                true,
-                4.8,
-                "1.2 km away • Indiranagar",
-                "123, 100 Feet Road, Indiranagar, Bengaluru, Karnataka 560038",
-                "+919880011234",
-                true
-        );
-
-        ProductCoinPerkDto coinBanner = new ProductCoinPerkDto(
-                "2X",
-                "Earn 5.00% PINAK Cashback Coins",
-                "2X BOOST",
-                "Earn 24 PINAK Gold Coins on this purchase"
-        );
-
-        return new MobileProductDetailDto(
-                idStr,
-                "Wood-Fired Truffle & Wild Mushroom Pizza",
-                "The Smokehouse Kitchen",
-                "12-inch Hand-Stretched Crust • Serves 2-3",
-                "Hand-stretched Neapolitan sourdough crust with San Marzano tomatoes, fresh buffalo mozzarella, sautéed forest porcini mushrooms, and drizzled with black truffle oil.",
-                "Crafted using 48-hour fermented Italian 00 flour dough, baked at 450°C in our traditional oak wood-fired oven. Topped with imported Italian fior di latte, aged Parmigiano Reggiano, hand-picked wild porcini and shiitake mushrooms, finished with aromatic Umbrian black summer truffle oil and fresh basil.",
-                gallery.get(0),
-                gallery,
-                gallery.size(),
-                mrp,
-                sellingPrice,
-                discountPct,
-                savings,
-                "Flat 30% OFF • Save ₹210",
-                "INR",
-                "₹",
-                true,
-                25,
-                "In Stock • Delivered in 25-35 mins",
-                true,
-                "VEG",
-                new CategorySummaryDto(
-                        "c1000000-0000-0000-0000-000000000001",
-                        "Gourmet Wood-Fired Pizzas",
-                        "gourmet-wood-fired-pizzas"
-                ),
-                List.of("PINAK EXCLUSIVE", "BESTSELLER", "WOOD-FIRED", "ORGANIC INGREDIENTS"),
-                4.8,
-                "856+ reviews",
-                coinBanner,
-                coinBanner,
-                storeInfo,
-                List.of(
-                        "Baked in 450°C Italian Oak Wood-Fired Oven",
-                        "48-Hour Cold-Fermented Sourdough Base",
-                        "Imported Italian Buffalo Mozzarella & Umbrian Truffle Oil",
-                        "100% Vegetarian & No Artificial Preservatives"
-                ),
-                Map.of(
-                        "Serving Size", "1 Slice (approx 125g)",
-                        "Calories", "285 kcal",
-                        "Protein", "12g",
-                        "Carbohydrates", "34g",
-                        "Fat", "11g"
-                ),
-                new DeliveryOptionsDto(
-                        true,
-                        "Delivered in 25-35 mins",
-                        "Free delivery on orders above ₹499",
-                        true,
-                        "Ready for takeaway in 15 mins"
-                ),
-                buildDefaultReviews(),
-                buildFrequentlyBought(),
-                buildSimilarProducts(),
-                new BottomBuyBarDto(
-                        sellingPrice,
-                        mrp,
-                        "Save ₹" + savings,
-                        1,
-                        10,
-                        true,
-                        "Customizable options available",
-                        new ActionBtnDto("ADD_TO_CART", "Add to Cart • ₹" + sellingPrice, true),
-                        new ActionBtnDto("BUY_NOW", "Buy Now", true)
-                )
-        );
+    private List<SimpleProductCardDto> buildFrequentlyBought() {
+        return Collections.emptyList();
     }
 
-    private ProductStoreInfoDto resolveStoreInfo(UUID storeId, Double lat, Double lng) {
-        if (storeId != null) {
-            var storeOpt = storeRepository.findById(storeId);
-            if (storeOpt.isPresent()) {
-                Store s = storeOpt.get();
-                return new ProductStoreInfoDto(
-                        s.getId().toString(),
-                        s.getName() != null ? s.getName() : "Partner Store",
-                        true,
-                        4.8,
-                        "Indiranagar • 1.5 km",
-                        s.getAddress() != null ? s.getAddress() : "Bengaluru",
-                        s.getPhone() != null ? s.getPhone() : "+919876543210",
-                        true
-                );
-            }
+    private List<SimpleProductCardDto> buildSimilarProducts() {
+        return Collections.emptyList();
+    }
+
+    private ProductStoreInfoDto resolveStoreInfo(UUID storeId, Double userLat, Double userLng) {
+        if (storeId == null) {
+            return new ProductStoreInfoDto(
+                    UUID.randomUUID().toString(),
+                    "PINAK Verified Store",
+                    true,
+                    4.8,
+                    "2.1 km • Downtown",
+                    "Main Street, Nagpur",
+                    "+91 9876543210",
+                    true
+            );
         }
+
+        Optional<Store> storeOpt = storeRepository.findById(storeId);
+        if (storeOpt.isEmpty()) {
+            return new ProductStoreInfoDto(
+                    storeId.toString(),
+                    "PINAK Partner Store",
+                    true,
+                    4.7,
+                    "In your area",
+                    "Nagpur Central",
+                    "+91 9876543210",
+                    true
+            );
+        }
+
+        Store s = storeOpt.get();
+        String distanceText = "In your area";
+        if (userLat != null && userLng != null && s.getLatitude() != null && s.getLongitude() != null) {
+            double meters = calculateDistanceMeters(userLat, userLng, s.getLatitude().doubleValue(), s.getLongitude().doubleValue());
+            double km = Math.round((meters / 1000.0) * 10.0) / 10.0;
+            distanceText = km + " km";
+        }
+
         return new ProductStoreInfoDto(
-                SMOKEHOUSE_STORE_ID.toString(),
-                "The Smokehouse Grill",
+                s.getId().toString(),
+                s.getStoreName() != null ? s.getStoreName() : "Partner Store",
                 true,
-                4.8,
-                "1.2 km away • Indiranagar",
-                "123, 100 Feet Road, Indiranagar, Bengaluru, Karnataka 560038",
-                "+919880011234",
+                s.getRating() != null ? s.getRating().doubleValue() : 4.8,
+                distanceText,
+                s.getAddress() != null ? s.getAddress() : "",
+                s.getPhone() != null ? s.getPhone() : "",
                 true
         );
+    }
+
+    private double calculateDistanceMeters(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371000;
+        double latDist = Math.toRadians(lat2 - lat1);
+        double lonDist = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDist / 2) * Math.sin(latDist / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDist / 2) * Math.sin(lonDist / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
 
     private ReviewsSummaryDto buildDefaultReviews() {
         return new ReviewsSummaryDto(
                 4.8,
-                856,
-                Map.of("5_star", 720, "4_star", 102, "3_star", 24, "2_star", 6, "1_star", 4),
+                348,
+                Map.of("5", 260, "4", 65, "3", 15, "2", 5, "1", 3),
                 List.of(
                         new FeaturedReviewDto(
-                                "Ananya Roy",
-                                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
+                                "Ananya Sharma",
+                                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
                                 5,
                                 "2 days ago",
-                                "Hands down the most authentic truffle pizza in Bengaluru! Crust was airy and charred to perfection.",
+                                "Exceptional quality and pristine packaging. Highly recommended!",
                                 true
                         ),
                         new FeaturedReviewDto(
-                                "Vikram Sethi",
-                                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+                                "Rohan Mehta",
+                                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
                                 5,
                                 "1 week ago",
-                                "The aroma of truffle oil when you open the box is incredible. Worth every penny with the 30% discount!",
+                                "Great value with PINAK cashback and coins discount applied seamlessly.",
                                 true
                         )
                 )
         );
     }
 
-    private List<SimpleProductCardDto> buildFrequentlyBought() {
-        return List.of(
-                new SimpleProductCardDto(
-                        "f1000000-0000-0000-0000-000000000002",
-                        "Artisanal Rosemary & Garlic Herb Focaccia",
-                        new BigDecimal("189.00"),
-                        new BigDecimal("249.00"),
-                        4.7,
-                        "https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=400&q=80"
-                ),
-                new SimpleProductCardDto(
-                        "f1000000-0000-0000-0000-000000000003",
-                        "Single-Origin Nitro Cold Brew (330ml)",
-                        new BigDecimal("169.00"),
-                        new BigDecimal("219.00"),
-                        4.8,
-                        "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=400&q=80"
-                )
-        );
-    }
-
-    private List<SimpleProductCardDto> buildSimilarProducts() {
-        return List.of(
-                new SimpleProductCardDto(
-                        "f1000000-0000-0000-0000-000000000004",
-                        "Four Cheese Quattro Formaggi Pizza",
-                        new BigDecimal("529.00"),
-                        new BigDecimal("699.00"),
-                        4.7,
-                        "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80"
-                ),
-                new SimpleProductCardDto(
-                        "f1000000-0000-0000-0000-000000000005",
-                        "Classic Neapolitan Margherita",
-                        new BigDecimal("399.00"),
-                        new BigDecimal("499.00"),
-                        4.9,
-                        "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&w=400&q=80"
-                )
-        );
-    }
 }

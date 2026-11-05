@@ -14,13 +14,15 @@ interface FormStepperProps {
   currentStep: number;
   onStepClick?: (stepId: number) => void;
   className?: string;
+  allowAllSteps?: boolean;
 }
 
 export const FormStepper: React.FC<FormStepperProps> = ({
   steps,
   currentStep,
   onStepClick,
-  className
+  className,
+  allowAllSteps = false
 }) => {
   return (
     <div className={cn("px-6 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40", className)}>
@@ -29,6 +31,7 @@ export const FormStepper: React.FC<FormStepperProps> = ({
           const isCompleted = step.id < currentStep;
           const isCurrent = step.id === currentStep;
           const isUpcoming = step.id > currentStep;
+          const isClickable = allowAllSteps || isCompleted || isCurrent;
 
           return (
             <React.Fragment key={step.id}>
@@ -36,14 +39,14 @@ export const FormStepper: React.FC<FormStepperProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (onStepClick && (isCompleted || isCurrent)) {
+                  if (onStepClick && isClickable) {
                     onStepClick(step.id);
                   }
                 }}
-                disabled={isUpcoming}
+                disabled={!isClickable}
                 className={cn(
                   "flex items-center gap-2 group transition-all text-left",
-                  isUpcoming ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                  !isClickable ? "cursor-not-allowed opacity-50" : "cursor-pointer"
                 )}
               >
                 {/* Step Circle / Icon */}

@@ -105,4 +105,15 @@ public class AdminStoreController {
         storeService.deleteStore(storeId, adminUserId, true);
         return ResponseEntity.ok(ApiResponse.success("Store deleted successfully", null));
     }
+
+    @PostMapping("/{storeId}/resend-invite")
+    @Operation(summary = "Admin resend manager activation / welcome email for the store branch", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<Void>> resendInviteAdmin(
+            @PathVariable String storeId,
+            @RequestBody(required = false) com.superapp.store.dto.ResendStoreInviteRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID adminUserId = userDetails != null ? UUID.fromString(userDetails.getUsername()) : null;
+        storeService.resendStoreInvite(storeId, adminUserId, request);
+        return ResponseEntity.ok(ApiResponse.success("Store manager invite email dispatched successfully", null));
+    }
 }

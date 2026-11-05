@@ -244,8 +244,11 @@ export const StoreLocationPicker: React.FC<StoreLocationPickerProps> = ({
   };
 
   // Search locality / street using OpenStreetMap Nominatim
-  const handleSearchAddress = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearchAddress = async (e?: React.FormEvent | React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!searchQuery.trim()) return;
 
     setIsSearching(true);
@@ -316,23 +319,31 @@ export const StoreLocationPicker: React.FC<StoreLocationPickerProps> = ({
     <div className={`space-y-2 ${className}`}>
       {/* Search Bar + Quick Locate */}
       <div className="flex gap-1.5 items-center">
-        <form onSubmit={handleSearchAddress} className="flex-1 relative flex items-center">
+        <div className="flex-1 relative flex items-center">
           <Search size={14} className="absolute left-3 text-slate-400 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSearchAddress(e);
+              }
+            }}
             placeholder="Search landmark, street, or area..."
             className="w-full pl-8 pr-20 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-hidden focus:border-purple-500 transition-colors shadow-2xs"
           />
           <button
-            type="submit"
+            type="button"
+            onClick={handleSearchAddress}
             disabled={isSearching || !searchQuery.trim()}
-            className="absolute right-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 transition-colors"
+            className="absolute right-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 transition-colors cursor-pointer"
           >
             {isSearching ? <Loader2 size={12} className="animate-spin" /> : "Search"}
           </button>
-        </form>
+        </div>
 
         <button
           type="button"

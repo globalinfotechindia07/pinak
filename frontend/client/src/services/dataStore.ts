@@ -81,14 +81,17 @@ function setStored<T>(key: string, value: T) {
 export interface CurrentUserProfile {
   id?: string;
   merchantId?: string;
+  storeId?: string;
   name: string;
   email: string;
+  phone?: string;
   role: UserRole;
   staffScope?: string;
   staffRoleId?: string;
   staffRoleName?: string;
   permissions?: Record<string, boolean>;
   status?: string;
+  kycStatus?: string;
 }
 
 // ==========================================
@@ -159,7 +162,11 @@ export const appStore = {
     storeId?: string,
     userMeta?: {
       id?: string;
+      merchantId?: string;
+      storeId?: string;
       name?: string;
+      phone?: string;
+      mobile?: string;
       roleName?: string;
       staffRoleName?: string;
       staffRoleId?: string;
@@ -170,7 +177,7 @@ export const appStore = {
   ) {
     inMemoryIsAuthenticated = true;
     inMemoryUserRole = role;
-    inMemoryActiveStoreId = storeId || null;
+    inMemoryActiveStoreId = storeId || userMeta?.storeId || inMemoryActiveStoreId || null;
 
     let parsedPermissions: Record<string, boolean> | undefined;
     if (typeof userMeta?.permissions === "string") {
@@ -196,8 +203,11 @@ export const appStore = {
 
     inMemoryCurrentUser = {
       id: userMeta?.id,
+      merchantId: userMeta?.merchantId,
+      storeId: storeId || userMeta?.storeId,
       name: userMeta?.name || (role === "admin" ? "Platform Administrator" : role === "store" ? "Store Manager" : "Merchant Partner"),
       email: email || (role === "admin" ? "admin@pinak.app" : "partner@pinak.app"),
+      phone: userMeta?.phone || userMeta?.mobile,
       role,
       staffScope: userMeta?.staffScope,
       staffRoleId: userMeta?.staffRoleId,
@@ -216,6 +226,9 @@ export const appStore = {
         ...updates,
         permissions: updates.permissions !== undefined ? updates.permissions : inMemoryCurrentUser.permissions,
       };
+      if (updates.storeId && !inMemoryActiveStoreId) {
+        inMemoryActiveStoreId = updates.storeId;
+      }
       emitChange();
     }
   },

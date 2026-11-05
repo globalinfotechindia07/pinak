@@ -1135,6 +1135,312 @@ Includes:
 
 ---
 
+# 🍽️ Screen 11 Next — Table Booking & Pre-Booking Reservation (Full Flow)
+
+This module powers the complete 4-step Table Booking and Slot Reservation flow initiated when a user taps **"Book a table"** on Screen 11. It covers live slot availability, dynamic party size selection, pre-book checkout with cover charge calculation, VIP plan upsells, reservation confirmation, host verification PINs, and automated full cover charge refunds on cancellation.
+
+---
+
+### 14c. Fetch Table Booking Slot & Offer Availability
+Returns store overview, party size configuration (1–8 guests), upcoming 7 calendar days with discount badges, lunch & dinner time slots, pre-book exclusive discount offers (with redeemable cover charges), regular zero-charge table booking, PINAK 1-Month VIP Plan upsell, supported payment methods, and offer terms.
+
+- **Method**: `GET`
+- **URL**: `/api/v1/mobile/table-bookings/availability`
+- **Alternative URLs**:
+  - `/api/v1/mobile/stores/{storeId}/booking-availability`
+  - `//api/v1/mobile/table-bookings/availability`
+- **Query Parameters**:
+  - `storeIdQuery` (*optional UUID*): Store ID (defaults to active flagship store if omitted)
+  - `lat` (*optional Double*): Customer latitude
+  - `lng` (*optional Double*): Customer longitude
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table booking availability fetched successfully",
+  "data": {
+    "store": {
+      "storeId": "97aabe53-9349-439d-952e-40f723bb8f51",
+      "storeName": "Haldiram's Sweets & Snacks - Nagpur Flagship",
+      "storeAddress": "West High Court Road, Dharampeth",
+      "cuisines": "North Indian, Sweets & Snacks",
+      "coverImageUrl": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80",
+      "contactPhone": "+919145776684",
+      "latitude": 21.1458,
+      "longitude": 79.0882,
+      "cancellationPolicyText": "Free cancellation before dining start time. 100% cover charge refund.",
+      "isTableBookingEnabled": true
+    },
+    "guestConfig": {
+      "minGuests": 1,
+      "maxGuests": 8,
+      "defaultGuests": 2,
+      "availableGuestCounts": [1, 2, 3, 4, 5, 6, 7, 8]
+    },
+    "upcomingDates": [
+      {
+        "key": "2026-11-02",
+        "dateFormatted": "02 Nov 2026",
+        "month": "Nov",
+        "dayNum": "02",
+        "dayName": "Today",
+        "discountBadge": "20% off",
+        "isAvailable": true
+      },
+      {
+        "key": "2026-11-03",
+        "dateFormatted": "03 Nov 2026",
+        "month": "Nov",
+        "dayNum": "03",
+        "dayName": "Tomorrow",
+        "discountBadge": "15% off",
+        "isAvailable": true
+      }
+    ],
+    "lunchSlots": [
+      { "time": "12:45 PM", "discountBadge": "15% off", "status": "AVAILABLE", "isAvailable": true },
+      { "time": "01:00 PM", "discountBadge": "20% off", "status": "AVAILABLE", "isAvailable": true },
+      { "time": "01:45 PM", "discountBadge": "20% off", "status": "AVAILABLE", "isAvailable": true }
+    ],
+    "dinnerSlots": [
+      { "time": "07:00 PM", "discountBadge": "20% off", "status": "AVAILABLE", "isAvailable": true },
+      { "time": "07:45 PM", "discountBadge": "20% off", "status": "AVAILABLE", "isAvailable": true },
+      { "time": "08:30 PM", "discountBadge": "15% off", "status": "AVAILABLE", "isAvailable": true }
+    ],
+    "exclusiveOffers": [
+      {
+        "id": "opt_primary",
+        "title": "Flat 20% off on Total Bill",
+        "discountPct": 20.00,
+        "coverChargePerGuest": 25.00,
+        "isExclusive": true,
+        "perkHighlight": "Redeem it by paying final bill via PINAK"
+      },
+      {
+        "id": "opt_15",
+        "title": "Flat 15% off on Total Bill",
+        "discountPct": 15.00,
+        "coverChargePerGuest": 10.00,
+        "isExclusive": true,
+        "perkHighlight": "Redeem it by paying final bill via PINAK"
+      }
+    ],
+    "regularOffer": {
+      "id": "opt_regular",
+      "title": "Standard table booking",
+      "discountPct": 0.00,
+      "coverChargePerGuest": 0.00,
+      "isExclusive": false,
+      "isRegular": true,
+      "perkHighlight": "Free table reservation without cover charge"
+    },
+    "vipPlan": {
+      "id": "pinak_vip_1m",
+      "title": "PINAK 1 Month Plan",
+      "price": 1.00,
+      "originalPrice": 99.00,
+      "subtitle": "Enjoy unlimited access to pre-book offers on 7500+ restaurants.",
+      "isDefaultAdded": true
+    },
+    "paymentMethods": [
+      "Google Pay",
+      "PhonePe UPI",
+      "Paytm UPI",
+      "Credit or Debit Card",
+      "Netbanking"
+    ],
+    "termsAndConditions": [
+      "Standard terms and conditions apply.",
+      "The deal must be redeemed / bill paid within 6 hours of the dining start time, or the offer will expire.",
+      "Discount, if any, can only be availed when you pay your bill via PINAK.",
+      "The paid cover charge will be redeemed automatically when you pay your bill via PINAK.",
+      "Cover charges will be fully refunded only if booking is cancelled before the dining start time.",
+      "A maximum of Rs. 3,00,000 can be paid in a single bill payment transaction via PINAK."
+    ],
+    "cancellationPolicy": {
+      "freeCancellationBeforeHours": 0,
+      "refundPercentage": 100,
+      "description": "Free cancellation up to dining slot start time. 100% of cover charge is automatically refunded to original payment method."
+    }
+  }
+}
+```
+
+---
+
+### 14d. Create Table Reservation / Pre-Book Checkout
+Confirms party size, slot time, cover charge calculation, and optional ₹1 VIP plan. Generates a unique human-readable reservation reference (`PNK-TB-YYYYMM-XXXXXX`), a 4-digit host verification PIN, and locks the offer discount.
+
+- **Method**: `POST`
+- **URL**: `/api/v1/mobile/table-bookings`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer {{accessToken}}` *(optional)*
+
+#### Request Body:
+```json
+{
+  "storeId": "97aabe53-9349-439d-952e-40f723bb8f51",
+  "bookingDate": "2026-11-02",
+  "mealType": "LUNCH",
+  "slotTime": "01:45 PM",
+  "guests": 2,
+  "offerId": "opt_primary",
+  "offerTitle": "Flat 20% off on Total Bill",
+  "discountPct": 20.00,
+  "coverChargePerGuest": 25.00,
+  "includeVipPlan": true,
+  "vipPlanFee": 1.00,
+  "customerName": "Rohan Sharma",
+  "customerPhone": "+919876543210",
+  "customerEmail": "rohan@pinak.app",
+  "paymentMethod": "Google Pay",
+  "specialRequests": "Window table if available"
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table reservation confirmed successfully",
+  "data": {
+    "bookingId": "a5e6284a-9b12-4f3b-871c-3081e7d9b231",
+    "bookingRef": "PNK-TB-202611-382910",
+    "storeId": "97aabe53-9349-439d-952e-40f723bb8f51",
+    "storeName": "Haldiram's Sweets & Snacks - Nagpur Flagship",
+    "storeAddress": "West High Court Road, Dharampeth",
+    "coverImageUrl": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80",
+    "contactPhone": "+919145776684",
+    "guests": 2,
+    "bookingDate": "2026-11-02",
+    "formattedDate": "02 Nov 2026",
+    "mealType": "LUNCH",
+    "slotTime": "01:45 PM",
+    "offerTitle": "Flat 20% off on Total Bill",
+    "discountPct": 20.00,
+    "coverChargePerGuest": 25.00,
+    "totalCoverCharge": 50.00,
+    "includeVipPlan": true,
+    "vipPlanFee": 1.00,
+    "totalPaid": 51.00,
+    "paymentMethod": "Google Pay",
+    "paymentStatus": "PAID",
+    "status": "CONFIRMED",
+    "verificationCode": "8492",
+    "qrCodeData": "{\"bookingRef\":\"PNK-TB-202611-382910\",\"storeId\":\"97aabe53-9349-439d-952e-40f723bb8f51\",\"pin\":\"8492\",\"guests\":2}",
+    "canCancel": true,
+    "isCancelled": false,
+    "coinsEarned": 60,
+    "diningInstructions": [
+      "Please arrive at Haldiram's Sweets & Snacks 10 minutes prior to your booking slot.",
+      "Show your Reservation ID (PNK-TB-202611-382910) or 4-digit PIN to the restaurant host upon arrival.",
+      "Tables are held for a maximum 15-minute grace period from the slot time.",
+      "Pay your final dining bill through the PINAK app at the table to automatically redeem your ₹50.00 cover charge and unlock locked offer discount."
+    ],
+    "specialRequests": "Window table if available",
+    "createdAt": "2026-11-02T12:20:00Z"
+  }
+}
+```
+
+---
+
+### 14e. Fetch Table Booking Details by ID or Booking Ref
+Retrieves complete reservation status, restaurant directions, host verification PIN, dining instructions, and cancellation eligibility.
+
+- **Method**: `GET`
+- **URL**: `/api/v1/mobile/table-bookings/{idOrRef}`
+- **Path Parameter**: `idOrRef` (*UUID or booking reference string, e.g. `PNK-TB-202611-382910`*)
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table booking details fetched successfully",
+  "data": {
+    "bookingRef": "PNK-TB-202611-382910",
+    "storeName": "Haldiram's Sweets & Snacks - Nagpur Flagship",
+    "guests": 2,
+    "bookingDate": "2026-11-02",
+    "formattedDate": "02 Nov 2026",
+    "slotTime": "01:45 PM",
+    "status": "CONFIRMED",
+    "verificationCode": "8492",
+    "totalPaid": 51.00,
+    "canCancel": true,
+    "isCancelled": false
+  }
+}
+```
+
+---
+
+### 14f. Cancel Table Booking & Process Cover Charge Refund
+Cancels an active table reservation. Computes refund according to policy: 100% of cover charge is automatically refunded to original payment method, and a unique ARN refund reference (`REF-PNK-XXXXX`) is generated.
+
+- **Method**: `POST`
+- **URL**: `/api/v1/mobile/table-bookings/{idOrRef}/cancel`
+
+#### Request Body:
+```json
+{
+  "cancellationReason": "Change of plans",
+  "comments": "Need to reschedule for next weekend"
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table reservation cancelled successfully. Refund initiated.",
+  "data": {
+    "bookingRef": "PNK-TB-202611-382910",
+    "storeName": "Haldiram's Sweets & Snacks - Nagpur Flagship",
+    "status": "CANCELLED",
+    "canCancel": false,
+    "isCancelled": true,
+    "cancellationReason": "Change of plans",
+    "refundAmount": 50.00,
+    "refundStatus": "INITIATED",
+    "refundRef": "REF-PNK-9E2B4A1C",
+    "cancelledAt": "2026-11-02T12:25:00Z"
+  }
+}
+```
+
+---
+
+### 14g. List Customer Table Reservations
+Fetches historical and upcoming table bookings for a customer by mobile number or authenticated user session.
+
+- **Method**: `GET`
+- **URL**: `/api/v1/mobile/table-bookings`
+- **Query Parameter**: `phone` (*e.g. `+919876543210`*)
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table reservations retrieved successfully",
+  "data": [
+    {
+      "bookingRef": "PNK-TB-202611-382910",
+      "storeName": "Haldiram's Sweets & Snacks - Nagpur Flagship",
+      "guests": 2,
+      "bookingDate": "2026-11-02",
+      "slotTime": "01:45 PM",
+      "status": "CANCELLED",
+      "totalPaid": 51.00
+    }
+  ]
+}
+```
+
+---
+
 # 📱 Screen 12 — Deal Details & Live Bill Calculator
 
 ### 15. Fetch Deal Details & Store Overview Feed

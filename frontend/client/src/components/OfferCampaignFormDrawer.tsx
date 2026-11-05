@@ -122,10 +122,13 @@ export const RETAIL_PRODUCT_PRESETS = [
 ];
 
 export interface OfferCampaignFormDrawerProps {
+  role?: "admin" | "merchant" | "store";
   merchants?: Merchant[];
   stores?: Store[];
   merchantId?: string;
   merchantName?: string;
+  scopedStoreId?: string;
+  scopedMerchantId?: string;
   initialData?: Offer | null;
   isEdit?: boolean;
   onClose: () => void;
@@ -204,15 +207,21 @@ const PRESET_TERMS = [
 ];
 
 export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = ({
+  role,
   merchants = [],
   stores = [],
   merchantId: propMerchantId = "",
   merchantName: propMerchantName = "",
+  scopedStoreId,
+  scopedMerchantId,
   initialData = null,
   isEdit = false,
   onClose,
   onSave
 }) => {
+  const effectiveRole: "admin" | "merchant" | "store" =
+    role || (scopedStoreId ? "store" : (merchants && merchants.length > 1 ? "admin" : "merchant"));
+
   // Logical 3-Step Streamlined Sequence:
   // Step 1: Offer Essentials & Store (Who, Target, Title & Visual)
   // Step 2: Deal, Pricing & Validity (Discount, Slots, Dates, Schedule)
@@ -220,42 +229,64 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   // STEP 1: MERCHANT & STORE SELECTION
-  const [selectedMerchantId, setSelectedMerchantId] = useState<string>(
-    initialData?.merchantId || propMerchantId || (merchants.length > 0 ? merchants[0].id : "")
-  );
+  const initialMerchantId =
+    initialData?.merchantId ||
+    scopedMerchantId ||
+    propMerchantId ||
+    (stores.find((s) => s.id === scopedStoreId)?.merchantId) ||
+    (merchants.length > 0 ? merchants[0].id : (stores.length > 0 ? stores[0].merchantId : ""));
+
+  const [selectedMerchantId, setSelectedMerchantId] = useState<string>(initialMerchantId);
 
   const selectedMerchant = useMemo(() => {
     return merchants.find((m) => m.id === selectedMerchantId);
   }, [merchants, selectedMerchantId]);
 
   const merchantDisplayName =
-    propMerchantName || selectedMerchant?.businessName || "Selected Brand";
+    propMerchantName ||
+    selectedMerchant?.businessName ||
+    (stores.find((s) => s.merchantId === selectedMerchantId)?.merchantName) ||
+    (stores.length > 0 ? stores[0].merchantName : "") ||
+    "Selected Brand";
 
-  // Stores strictly belonging to the selected merchant
+  // Stores strictly belonging to the selected merchant (or locked to scopedStoreId if store role)
   const availableStoresForMerchant = useMemo(() => {
-    if (!selectedMerchantId) return [];
-    return stores.filter((s) => s.merchantId === selectedMerchantId);
-  }, [stores, selectedMerchantId]);
+    if (effectiveRole === "store" && scopedStoreId) {
+      const matched = stores.filter((s) => s.id === scopedStoreId);
+      if (matched.length > 0) return matched;
+      return stores;
+    }
+    if (!selectedMerchantId) return stores;
+    const filtered = stores.filter((s) => s.merchantId === selectedMerchantId);
+    return filtered.length > 0 ? filtered : stores;
+  }, [stores, selectedMerchantId, effectiveRole, scopedStoreId]);
 
   // Specific Store selection ('all' or specific store ID)
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(
-    initialData?.storeId || (initialData?.applicableStoreIds && initialData.applicableStoreIds[0]) || "all"
-  );
+  const initialStoreId =
+    effectiveRole === "store"
+      ? (scopedStoreId || initialData?.storeId || (availableStoresForMerchant[0]?.id ?? "all"))
+      : (initialData?.storeId || (initialData?.applicableStoreIds && initialData.applicableStoreIds[0]) || "all");
+
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId);
 
   // Auto-update selectedStoreId when merchant changes
   useEffect(() => {
-    if (availableStoresForMerchant.length > 0) {
+    if (effectiveRole === "store" && scopedStoreId) {
+      setSelectedStoreId(scopedStoreId);
+    } else if (availableStoresForMerchant.length > 0) {
       if (selectedStoreId !== "all" && !availableStoresForMerchant.some((s) => s.id === selectedStoreId)) {
         setSelectedStoreId(availableStoresForMerchant[0].id);
       }
-    } else {
+    } else if (effectiveRole !== "store") {
       setSelectedStoreId("all");
     }
-  }, [selectedMerchantId, availableStoresForMerchant]);
+  }, [selectedMerchantId, availableStoresForMerchant, effectiveRole, scopedStoreId]);
 
   const selectedStore = useMemo(() => {
-    return availableStoresForMerchant.find((s) => s.id === selectedStoreId);
-  }, [availableStoresForMerchant, selectedStoreId]);
+    return availableStoresForMerchant.find((s) => s.id === selectedStoreId) ||
+           stores.find((s) => s.id === selectedStoreId) ||
+           (availableStoresForMerchant.length > 0 ? availableStoresForMerchant[0] : undefined);
+  }, [availableStoresForMerchant, stores, selectedStoreId]);
 
   // OFFER TARGET FORMAT
   // "PRE_BOOK" = Pre-booking Table Reservation
@@ -813,11 +844,11 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   // Step Validation & Navigation
   const handleNextStep = () => {
     if (currentStep === 1) {
-      if (!selectedMerchantId) {
+      if (!selectedMerchantId && effectiveRole !== "store") {
         toast.error("Please select a merchant brand.");
         return;
       }
-      if (availableStoresForMerchant.length === 0) {
+      if (availableStoresForMerchant.length === 0 && effectiveRole !== "store") {
         toast.error("This merchant has no registered stores. Please create a store branch first.");
         return;
       }
@@ -928,12 +959,12 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     }
 
     setErrors({});
-    const isChainWide = selectedStoreId === "all";
-    const resolvedStoreId = isChainWide ? undefined : selectedStoreId;
+    const isChainWide = effectiveRole !== "store" && selectedStoreId === "all";
+    const resolvedStoreId = isChainWide ? undefined : (effectiveRole === "store" ? (scopedStoreId || selectedStoreId) : selectedStoreId);
 
     try {
       await onSave({
-        merchantId: selectedMerchantId,
+        merchantId: selectedMerchantId || selectedStore?.merchantId || stores[0]?.merchantId,
         merchantName: merchantDisplayName,
         storeId: resolvedStoreId,
         storeName: isChainWide ? "All Brand Outlets" : (selectedStore?.branchName || selectedStore?.storeName || "Branch Outlet"),
@@ -1007,10 +1038,14 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  {isEdit ? "Edit Offer Campaign" : "Create Store Offer"}
+                  {isEdit
+                    ? "Edit Campaign Offer"
+                    : effectiveRole === "store"
+                    ? "Create Branch Deal & Offer"
+                    : "Create Campaign Offer"}
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  Step {currentStep} of 3 • {STEPS_NAV[currentStep - 1]?.title}
+                  Step {currentStep} of 3 • {STEPS_NAV[currentStep - 1]?.title} • {effectiveRole === "store" ? (selectedStore?.branchName || "Store Outlet") : merchantDisplayName}
                 </p>
               </div>
             </div>
@@ -1089,17 +1124,26 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <Building2 size={14} className="text-pink-600" />
-                      <span>Select Merchant Brand & Outlet *</span>
+                      <span>
+                        {effectiveRole === "admin"
+                          ? "Select Merchant Brand & Outlet *"
+                          : effectiveRole === "merchant"
+                          ? "Merchant Brand & Target Outlets"
+                          : "Store Branch Outlet (Locked to this store)"}
+                      </span>
                     </span>
                     <span className="text-[10px] font-semibold text-slate-400">
-                      {availableStoresForMerchant.length} branch(es) found
+                      {effectiveRole === "store"
+                        ? "1 Store Branch"
+                        : `${availableStoresForMerchant.length} branch(es) found`}
                     </span>
                   </div>
 
-                  {merchants.length > 0 && (
+                  {/* Super Admin: Full Brand Selector */}
+                  {effectiveRole === "admin" && merchants.length > 0 && (
                     <div>
                       <label className="text-[11px] font-semibold text-slate-500 block mb-1">
-                        Parent Brand
+                        Parent Brand *
                       </label>
                       <select
                         value={selectedMerchantId}
@@ -1115,45 +1159,89 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     </div>
                   )}
 
-                  {/* Branch Outlet Selector Chips */}
-                  <div>
-                    <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
-                      Applicable Store Branch
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedStoreId("all")}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition",
-                          selectedStoreId === "all"
-                            ? "bg-pink-600 text-white border-pink-600 shadow-xs"
-                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
-                        )}
-                      >
-                        <Building2 size={12} />
-                        <span>All Brand Outlets</span>
-                      </button>
+                  {/* Merchant & Store: Locked Brand Card */}
+                  {effectiveRole !== "admin" && (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-950/60 text-pink-600 dark:text-pink-400 flex items-center justify-center font-bold text-xs">
+                          <Building2 size={16} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                            {merchantDisplayName}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {effectiveRole === "merchant" ? "Your Brand Organization" : "Parent Brand"}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        {effectiveRole === "merchant" ? "Brand Owner" : "Parent Organization"}
+                      </span>
+                    </div>
+                  )}
 
-                      {availableStoresForMerchant.map((s) => (
+                  {/* Branch Outlet Selection */}
+                  {effectiveRole === "store" ? (
+                    /* Store User: Locked to this specific branch only */
+                    <div className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-pink-200 dark:border-pink-900/40 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <StoreIcon size={13} className="text-pink-600" />
+                          <span>Assigned Store Branch</span>
+                        </label>
+                        <span className="text-[10px] font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/50 px-2 py-0.5 rounded-md border border-pink-200 dark:border-pink-800">
+                          This Branch Only
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        {selectedStore?.branchName || selectedStore?.storeName || "Your Branch Outlet"}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {selectedStore?.address || selectedStore?.city || "Nagpur"} • Offers created here will be redeemed exclusively at this branch.
+                      </p>
+                    </div>
+                  ) : (
+                    /* Admin & Merchant: Select specific branch or All Brand Outlets */
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
+                        Applicable Store Branch
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
                         <button
-                          key={s.id}
                           type="button"
-                          onClick={() => setSelectedStoreId(s.id)}
+                          onClick={() => setSelectedStoreId("all")}
                           className={cn(
                             "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition",
-                            selectedStoreId === s.id
+                            selectedStoreId === "all"
                               ? "bg-pink-600 text-white border-pink-600 shadow-xs"
                               : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
                           )}
                         >
-                          <StoreIcon size={12} />
-                          <span>{s.branchName || s.storeName}</span>
-                          <span className="text-[10px] opacity-75 font-normal">({s.city || "Nagpur"})</span>
+                          <Building2 size={12} />
+                          <span>All Brand Outlets</span>
                         </button>
-                      ))}
+
+                        {availableStoresForMerchant.map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => setSelectedStoreId(s.id)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition",
+                              selectedStoreId === s.id
+                                ? "bg-pink-600 text-white border-pink-600 shadow-xs"
+                                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                            )}
+                          >
+                            <StoreIcon size={12} />
+                            <span>{s.branchName || s.storeName}</span>
+                            <span className="text-[10px] opacity-75 font-normal">({s.city || "Nagpur"})</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Offer Category / Format Selection */}
@@ -2538,7 +2626,13 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                   className="btn-gradient flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-white font-extrabold text-xs shadow-md cursor-pointer"
                 >
                   <Sparkles size={14} />
-                  <span>Publish Offer to Store</span>
+                  <span>
+                    {isEdit
+                      ? "Update Campaign Offer"
+                      : effectiveRole === "store"
+                      ? "Publish Deal to Branch"
+                      : "Publish Campaign Offer"}
+                  </span>
                 </button>
               )}
             </div>

@@ -1,6 +1,6 @@
 export type UserRole = "admin" | "merchant" | "store" | "operations" | "analyst";
 
-export type KycStatus = "SUBMITTED" | "PENDING_REVIEW" | "PENDING" | "APPROVED" | "REJECTED" | "DRAFT";
+export type KycStatus = "SUBMITTED" | "PENDING_REVIEW" | "PENDING" | "APPROVED" | "VERIFIED" | "REJECTED" | "DRAFT";
 
 export type StoreStatus = "ACTIVE" | "PENDING_APPROVAL" | "INACTIVE" | "SUSPENDED" | "CLOSED" | "TEMPORARILY_CLOSED";
 
@@ -81,6 +81,9 @@ export interface Store {
   maxCashbackAmount?: number;
   minTransactionForCashback?: number;
   isCashbackEnabled?: boolean;
+  isTableBookingEnabled?: boolean;
+  allowFreeStandardBooking?: boolean;
+  defaultStandardCoverCharge?: number;
 }
 
 export interface CashbackSetting {

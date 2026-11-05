@@ -30,6 +30,7 @@ export const LiveBillingFeed: React.FC<LiveBillingFeedProps> = ({
   const isMyMerchant = (id?: string) => !currentMerchantId || !id || id === currentMerchantId || id === store.currentUser?.merchantId || id === "m-1";
 
   const [liveTxs, setLiveTxs] = useState<Transaction[]>([]);
+  const [hasLoadedBackend, setHasLoadedBackend] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Fetch live backend transactions scoped to storeId
@@ -43,23 +44,22 @@ export const LiveBillingFeed: React.FC<LiveBillingFeedProps> = ({
         const res = await apiClient.get(`/merchant/transactions${query}`);
         if (res.data?.data) {
           const list = Array.isArray(res.data.data) ? res.data.data : res.data.data.content || [];
-          if (list.length > 0) {
-            setLiveTxs(list.map((t: any) => ({
-              id: t.id,
-              customerName: t.customerName || t.userName || "Customer",
-              customerPhone: t.customerPhone || t.userPhone || "",
-              merchantId: t.merchantId || currentMerchantId || "",
-              merchantName: t.merchantName || currentMerchantName,
-              storeName: t.storeName || activeStore?.branchName || "Store Outlet",
-              billAmount: Number(t.billAmount || t.amount || 0),
-              discountAmount: Number(t.discountAmount || 0),
-              payableAmount: Number(t.payableAmount || t.netAmount || 0),
-              status: t.status || "SUCCESS",
-              settlementStatus: t.settlementStatus || "SETTLED",
-              createdAt: t.createdAt || new Date().toISOString(),
-              referenceId: t.referenceId || "OFFER-REDEEM"
-            })));
-          }
+          setLiveTxs(list.map((t: any) => ({
+            id: t.id,
+            customerName: t.customerName || t.userName || "Customer",
+            customerPhone: t.customerPhone || t.userPhone || "",
+            merchantId: t.merchantId || currentMerchantId || "",
+            merchantName: t.merchantName || currentMerchantName,
+            storeName: t.storeName || activeStore?.branchName || "Store Outlet",
+            billAmount: Number(t.billAmount || t.amount || 0),
+            discountAmount: Number(t.discountAmount || 0),
+            payableAmount: Number(t.payableAmount || t.netAmount || 0),
+            status: t.status || "SUCCESS",
+            settlementStatus: t.settlementStatus || "SETTLED",
+            createdAt: t.createdAt || new Date().toISOString(),
+            referenceId: t.referenceId || "OFFER-REDEEM"
+          })));
+          setHasLoadedBackend(true);
         }
       } catch (e) {
         console.error("Failed to load live store transactions:", e);
@@ -74,7 +74,9 @@ export const LiveBillingFeed: React.FC<LiveBillingFeedProps> = ({
   const [voucherCode, setVoucherCode] = useState("");
   const [isVerifyingVoucher, setIsVerifyingVoucher] = useState(false);
 
-  const displayTransactions = liveTxs.length > 0 
+  const displayTransactions = hasLoadedBackend
+    ? liveTxs
+    : liveTxs.length > 0 
     ? liveTxs 
     : (store.role === "store" || isStorePortal) && activeStore?.id
     ? transactions.filter((t) => t.storeName?.toLowerCase().includes(activeStore.branchName?.toLowerCase() || ""))

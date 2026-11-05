@@ -66,7 +66,7 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
      */
     @Query(value = """
             SELECT s.* FROM stores s
-            WHERE s.approval_status = 'APPROVED' AND s.status = 'ACTIVE'
+            WHERE (s.approval_status = 'APPROVED' OR s.approval_status = 'PENDING_APPROVAL') AND s.status = 'ACTIVE'
             AND (
                 6371000 * acos(
                     LEAST(1.0, GREATEST(-1.0,
@@ -88,7 +88,7 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
             """,
             countQuery = """
             SELECT count(*) FROM stores s
-            WHERE s.approval_status = 'APPROVED' AND s.status = 'ACTIVE'
+            WHERE (s.approval_status = 'APPROVED' OR s.approval_status = 'PENDING_APPROVAL') AND s.status = 'ACTIVE'
             AND (
                 6371000 * acos(
                     LEAST(1.0, GREATEST(-1.0,
@@ -109,7 +109,7 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
 
     @Query(value = """
             SELECT s.* FROM stores s
-            WHERE s.approval_status = 'APPROVED' AND s.status = 'ACTIVE'
+            WHERE (s.approval_status = 'APPROVED' OR s.approval_status = 'PENDING_APPROVAL') AND s.status = 'ACTIVE'
             AND s.rating >= :minRating
             AND (
                 6371000 * acos(
@@ -132,7 +132,7 @@ public interface StoreRepository extends JpaRepository<Store, UUID> {
             """,
             countQuery = """
             SELECT count(*) FROM stores s
-            WHERE s.approval_status = 'APPROVED' AND s.status = 'ACTIVE'
+            WHERE (s.approval_status = 'APPROVED' OR s.approval_status = 'PENDING_APPROVAL') AND s.status = 'ACTIVE'
             AND s.rating >= :minRating
             AND (
                 6371000 * acos(

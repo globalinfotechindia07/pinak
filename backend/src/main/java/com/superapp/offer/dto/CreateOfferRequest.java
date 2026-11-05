@@ -26,8 +26,11 @@ public record CreateOfferRequest(
         String title,
 
         @Size(max = 2000, message = "Description cannot exceed 2000 characters")
-        @JsonAlias({"tagline", "terms", "termsAndConditions"})
+        @JsonAlias({"tagline"})
         String description,
+
+        @JsonAlias({"terms", "terms_and_conditions", "termsAndConditions"})
+        String termsAndConditions,
 
         @NotNull(message = "Offer type is required")
         @JsonProperty("offerType")
@@ -124,7 +127,7 @@ public record CreateOfferRequest(
             String badgeText,
             String ctaText
     ) {
-        this(storeId, title, description, offerType, value, minTransactionAmount, maxDiscountAmount,
+        this(storeId, title, description, null, offerType, value, minTransactionAmount, maxDiscountAmount,
              usageLimit, perCustomerLimit, validFrom, validTo,
              offerScope, originalMrp, flashSellingPrice, isFlash, remainingQuantity, bonusCoins, imageUrl, badgeText, ctaText,
              "BOTH", 0, 1, 1, false, null, 1, 6, 5, BigDecimal.ZERO, 15, null, null, null, null, null);
@@ -144,7 +147,7 @@ public record CreateOfferRequest(
             Instant validFrom,
             Instant validTo
     ) {
-        this(storeId, title, description, offerType, value, minTransactionAmount, maxDiscountAmount,
+        this(storeId, title, description, null, offerType, value, minTransactionAmount, maxDiscountAmount,
              usageLimit, perCustomerLimit, validFrom, validTo,
              "SERVICE", null, null, false, 50, 100, null, null, "Book & Pay", "BOTH", 0, 1, 1, false, null, 1, 6, 5, BigDecimal.ZERO, 15, null, null, null, null, null);
     }

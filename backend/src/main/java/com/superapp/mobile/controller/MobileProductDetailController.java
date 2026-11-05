@@ -41,11 +41,15 @@ public class MobileProductDetailController {
     )
     public ResponseEntity<ApiResponse<MobileProductDetailDto>> getProductDetail(
             @PathVariable(required = false) @Parameter(description = "Product UUID", example = "p1000000-0000-0000-0000-000000000001") UUID productId,
-            @RequestParam(required = false) @Parameter(description = "Customer Device Latitude", example = "12.9716") Double lat,
-            @RequestParam(required = false) @Parameter(description = "Customer Device Longitude", example = "77.6412") Double lng
+            @RequestParam(required = false) @Parameter(description = "Customer Device Latitude (short)", example = "12.9716") Double lat,
+            @RequestParam(required = false) @Parameter(description = "Customer Device Latitude", example = "12.9716") Double latitude,
+            @RequestParam(required = false) @Parameter(description = "Customer Device Longitude (short)", example = "77.6412") Double lng,
+            @RequestParam(required = false) @Parameter(description = "Customer Device Longitude", example = "77.6412") Double longitude
     ) {
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
         UUID effectiveId = productId != null ? productId : DEFAULT_PRODUCT_ID;
-        MobileProductDetailDto response = productDetailService.getProductDetail(effectiveId, lat, lng);
+        MobileProductDetailDto response = productDetailService.getProductDetail(effectiveId, effectiveLat, effectiveLng);
         return ResponseEntity.ok(ApiResponse.success("Product detail fetched successfully", response));
     }
 }

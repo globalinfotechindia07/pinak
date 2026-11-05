@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "../hooks/useAppStore";
-import { UserRole, ADMIN_PERMISSION_KEYS, Merchant } from "../types";
+import { UserRole, ADMIN_PERMISSION_KEYS, Merchant, Store } from "../types";
 import { Sidebar } from "../features/layout/Sidebar";
 import { Topbar } from "../features/layout/Topbar";
 import { NotificationDrawer } from "../features/layout/NotificationDrawer";
@@ -37,6 +37,7 @@ import { CounterQRModal } from "../features/merchant/CounterQRModal";
 import { StoreStaffManager } from "../features/merchant/StoreStaffManager";
 import { StoreBranchDashboard } from "../features/store/StoreBranchDashboard";
 import { MerchantWalletDashboard } from "../features/merchant/MerchantWalletDashboard";
+import TableBookingsManager from "../features/bookings/TableBookingsManager";
 
 
 import { useTheme } from "../contexts/ThemeContext";
@@ -79,14 +80,19 @@ export default function Home() {
           const isStore = staffScope === "STORE" || userRoleStr.includes("STORE") || userRoleStr.includes("BRANCH");
           const resolvedRole: UserRole = isPlatform ? "admin" : isStore ? "store" : "merchant";
 
-          store.login(resolvedRole, bootUser.email, bootUser.storeId, {
+          const userStoreId = bootUser.storeId || (bootUser as any).storeId;
+          const userMerchantId = (bootUser as any).merchantId;
+          store.login(resolvedRole, bootUser.email, userStoreId, {
             id: bootUser.id,
             name: bootUser.name,
+            phone: bootUser.phone || (bootUser as any).mobile,
             roleName: (bootUser as any).staffRoleName || (bootUser as any).roleName,
             staffRoleId: bootUser.staffRoleId,
             staffScope: bootUser.staffScope,
             permissions: bootUser.permissions,
             status: bootUser.status,
+            merchantId: userMerchantId,
+            storeId: userStoreId,
           });
         }
       } catch (err) {
@@ -137,6 +143,8 @@ export default function Home() {
         return !!perms.canManageMerchants || !!perms.canVerifyKYC;
       case "Stores":
         return !!perms.canManageMerchants;
+      case "Bookings":
+        return hasAnyPermission;
       case "Offers":
         return !!perms.canModerateOffers;
       case "Transactions":
@@ -171,7 +179,7 @@ export default function Home() {
           setAdminTab(resolved.tab);
         } else {
           const candidateTabs = [
-            "Overview", "Discovery", "Merchants", "Stores", "Offers",
+            "Overview", "Discovery", "Merchants", "Stores", "Bookings", "Offers",
             "Transactions", "Rewards", "Customers", "Categories",
             "AdminStaff", "Audit", "Settings"
           ];
@@ -211,9 +219,58 @@ export default function Home() {
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isQROpen, setIsQROpen] = useState(false);
 
-  // Active store resolution
-  const activeStore =
-    store.stores.find((s) => s.id === store.activeStoreId) || store.stores[0];
+  // Active store resolution with multi-level fallback
+  const activeStore: Store | undefined = useMemo(() => {
+    if (store.activeStoreId) {
+      const found = store.stores.find((s) => s.id === store.activeStoreId);
+      if (found) return found;
+    }
+    const userStoreId = (store.currentUser as any)?.storeId;
+    if (userStoreId) {
+      const found = store.stores.find((s) => s.id === userStoreId);
+      if (found) return found;
+    }
+    if (store.currentUser?.merchantId) {
+      const found = store.stores.find((s) => s.merchantId === store.currentUser?.merchantId);
+      if (found) return found;
+    }
+    if (store.stores.length > 0) return store.stores[0];
+    if (store.role === "store") {
+      return {
+        id: store.activeStoreId || userStoreId || "store-1",
+        merchantId: store.currentUser?.merchantId || "m-1",
+        merchantName: store.currentUser?.name || "Merchant Store",
+        storeName: store.currentUser?.name ? `${store.currentUser.name} Branch` : "Flagship Store",
+        branchName: store.currentUser?.name ? `${store.currentUser.name} Branch` : "Flagship Store",
+        address: "Main Central Commercial Road",
+        city: "Nagpur",
+        state: "Maharashtra",
+        district: "Nagpur",
+        pincode: "440010",
+        latitude: 21.1458,
+        longitude: 79.0882,
+        status: "ACTIVE" as const,
+        phone: "+91 712 2550000",
+        operatingHours: "10:00 AM – 10:00 PM (Daily)",
+        hasActiveOffer: true,
+        createdAt: new Date().toISOString(),
+        category: "Dining & Retail",
+        storeEmail: store.currentUser?.email || "store@pinak.app",
+        managerName: store.currentUser?.name || "Store Manager",
+        managerEmail: store.currentUser?.email || "manager@pinak.app",
+        managerPhone: "+91 98220 00000",
+        menuImages: [],
+        photos: [],
+        amenities: ["Air Conditioned", "Cards & UPI Accepted", "Free High-Speed Wi-Fi"],
+        posTerminalId: "POS-01",
+        qrCodePayload: `PINAK:STORE:${store.activeStoreId || userStoreId || "store-1"}`,
+        isTableBookingEnabled: true,
+        allowFreeStandardBooking: true,
+        defaultStandardCoverCharge: 0,
+      };
+    }
+    return undefined;
+  }, [store.stores, store.activeStoreId, store.currentUser, store.role]);
 
   // Sync tab with role
   const currentTab =
@@ -297,6 +354,9 @@ export default function Home() {
             parsedPermissions = cleanPerms;
           }
 
+          const meStoreId = (me as any).storeId || store.currentUser?.storeId;
+          const meMerchantId = (me as any).merchantId || store.currentUser?.merchantId;
+
           store.updateCurrentUser({
             name: me.name || store.currentUser?.name,
             email: me.email || store.currentUser?.email,
@@ -305,7 +365,12 @@ export default function Home() {
             staffRoleName: (me as any).staffRoleName || (me as any).roleName || store.currentUser?.staffRoleName,
             permissions: parsedPermissions,
             status: me.status || store.currentUser?.status,
+            merchantId: meMerchantId,
+            storeId: meStoreId,
           });
+          if (meStoreId && !store.activeStoreId) {
+            store.setActiveStoreId(meStoreId);
+          }
         }
       } catch (meErr) {
         console.warn("[Home] Could not sync user profile:", meErr);
@@ -319,6 +384,7 @@ export default function Home() {
             store.updateCurrentUser({
               name: profile.businessName || store.currentUser?.name,
               merchantId: profile.id,
+              kycStatus: profile.kycStatus,
             });
           }
         } catch (mErr) {
@@ -352,6 +418,20 @@ export default function Home() {
       let backendStores: any[] = [];
       if (store.role === "merchant") {
         backendStores = await storeApi.getMyStores().catch(() => []);
+      } else if (store.role === "store") {
+        backendStores = await storeApi.getMyStores().catch(() => []);
+        if (backendStores.length === 0) {
+          const assignedStoreId = store.activeStoreId || (store.currentUser as any)?.storeId;
+          if (assignedStoreId) {
+            const singleStore = await storeApi.getPublicStoreById(assignedStoreId).catch(() => null);
+            if (singleStore) {
+              backendStores = [singleStore];
+            }
+          }
+        }
+        if (backendStores.length === 0) {
+          backendStores = await storeApi.getAllStores().catch(() => []);
+        }
       } else {
         const adminRes = await storeApi.getAllStoresAdmin().catch(() => null);
         backendStores = adminRes?.content || (Array.isArray(adminRes) ? adminRes : []);
@@ -362,37 +442,42 @@ export default function Home() {
         ? (backendStores as any).content
         : [];
 
-      store.setStores(
-        rawStoresList.map((s: any) => ({
-          id: s.id,
-          merchantId: s.merchantId || "",
-          merchantName: s.merchantName || "Partner Brand",
-          storeName: s.storeName || s.name || s.branchName || "Store Location",
-          branchName: s.storeName || s.name || s.branchName || "Store Location",
-          address: s.address || s.addressLine1 || "",
-          city: s.cityName || s.cityId || s.city || "Nagpur",
-          state: s.state || "Maharashtra",
-          pincode: s.pincode || "",
-          latitude: s.latitude ? Number(s.latitude) : 21.1458,
-          longitude: s.longitude ? Number(s.longitude) : 79.0669,
-          status: s.status || "ACTIVE",
-          phone: s.contactPhone || s.phone || "",
-          operatingHours: s.operatingHours || (s.openingTime && s.closingTime ? `${s.openingTime} – ${s.closingTime} (${s.operatingDays || "Daily"})` : "10:00 AM – 10:00 PM (Daily)"),
-          hasActiveOffer: true,
-          createdAt: s.createdAt || new Date().toISOString(),
-          district: s.district || s.addressLine2 || "",
-          category: s.category || s.cuisineOrCategory || "Dining & Restaurant",
-          storeEmail: s.storeEmail || s.contactEmail || s.managerEmail || "",
-          managerName: s.managerName || "Store Manager",
-          managerEmail: s.managerEmail || s.storeEmail || "",
-          managerPhone: s.managerPhone || s.phone || s.contactPhone || "",
-          menuImages: Array.isArray(s.menuImages) ? s.menuImages : (Array.isArray(s.menu_images) ? s.menu_images : []),
-          photos: Array.isArray(s.photos) ? s.photos : (Array.isArray(s.storePhotos) ? s.storePhotos : []),
-          amenities: Array.isArray(s.amenities) ? s.amenities : [],
-          posTerminalId: s.posTerminalId || "POS-01",
-          qrCodePayload: `PINAK:STORE:${s.id}`,
-        }))
-      );
+      if (rawStoresList.length > 0) {
+        store.setStores(
+          rawStoresList.map((s: any) => ({
+            id: s.id,
+            merchantId: s.merchantId || "",
+            merchantName: s.merchantName || "Partner Brand",
+            storeName: s.storeName || s.name || s.branchName || "Store Location",
+            branchName: s.storeName || s.name || s.branchName || "Store Location",
+            address: s.address || s.addressLine1 || "",
+            city: s.cityName || s.cityId || s.city || "Nagpur",
+            state: s.state || "Maharashtra",
+            pincode: s.pincode || "",
+            latitude: s.latitude ? Number(s.latitude) : 21.1458,
+            longitude: s.longitude ? Number(s.longitude) : 79.0669,
+            status: s.status || "ACTIVE",
+            phone: s.contactPhone || s.phone || "",
+            operatingHours: s.operatingHours || (s.openingTime && s.closingTime ? `${s.openingTime} – ${s.closingTime} (${s.operatingDays || "Daily"})` : "10:00 AM – 10:00 PM (Daily)"),
+            hasActiveOffer: true,
+            createdAt: s.createdAt || new Date().toISOString(),
+            district: s.district || s.addressLine2 || "",
+            category: s.category || s.cuisineOrCategory || "Dining & Restaurant",
+            storeEmail: s.storeEmail || s.contactEmail || s.managerEmail || "",
+            managerName: s.managerName || "Store Manager",
+            managerEmail: s.managerEmail || s.storeEmail || "",
+            managerPhone: s.managerPhone || s.phone || s.contactPhone || "",
+            menuImages: Array.isArray(s.menuImages) ? s.menuImages : (Array.isArray(s.menu_images) ? s.menu_images : []),
+            photos: Array.isArray(s.photos) ? s.photos : (Array.isArray(s.storePhotos) ? s.storePhotos : []),
+            amenities: Array.isArray(s.amenities) ? s.amenities : [],
+            posTerminalId: s.posTerminalId || "POS-01",
+            qrCodePayload: `PINAK:STORE:${s.id}`,
+            isTableBookingEnabled: s.isTableBookingEnabled ?? true,
+            allowFreeStandardBooking: s.allowFreeStandardBooking ?? true,
+            defaultStandardCoverCharge: s.defaultStandardCoverCharge ?? 0,
+          }))
+        );
+      }
 
       // 3. Fetch merchants from Spring Boot (admin)
       if (store.role === "admin") {
@@ -441,12 +526,18 @@ export default function Home() {
 
       // 4. Fetch offers from Spring Boot
       let backendOffers: any[] = [];
-      if (store.role === "merchant") {
+      if (store.role === "merchant" || store.role === "store") {
         backendOffers = await offerApi.getMyOffers().catch(() => []);
+        if (backendOffers.length === 0 && store.role === "store") {
+          const assignedStoreId = store.activeStoreId || (store.currentUser as any)?.storeId;
+          if (assignedStoreId) {
+            backendOffers = await offerApi.getStoreOffers(assignedStoreId).catch(() => []);
+          }
+        }
       } else {
         backendOffers = await offerApi.getAdminOffers().catch(() => []);
       }
-      if (Array.isArray(backendOffers)) {
+      if (Array.isArray(backendOffers) && backendOffers.length > 0) {
         store.setOffers(
           backendOffers.map((o: any) => {
             const matchedMerchant = store.merchants.find((m) => m.id === o.merchantId);
@@ -863,19 +954,28 @@ export default function Home() {
   };
 
   const handleAddStore = async (draft: any) => {
+    // 0. Enforce Merchant KYC Check before creating or onboarding store
+    const resolvedMerchantId = draft.merchantId || store.currentUser?.merchantId;
+    const targetMerchant = (store.merchants || []).find((m) => m.id === resolvedMerchantId);
+    if (targetMerchant && targetMerchant.kycStatus !== "APPROVED" && targetMerchant.kycStatus !== "VERIFIED") {
+      const msg = `Merchant KYC must be verified before onboarding store branches. Current KYC status: ${targetMerchant.kycStatus || "PENDING"}`;
+      toast.error(msg);
+      throw new Error(msg);
+    }
+
     // 1. Authoritative Backend Validation for Store Manager Email
     if (draft.managerEmail && draft.managerEmail.trim()) {
       const email = draft.managerEmail.trim().toLowerCase();
       try {
         const valRes = await staffApi.validateStaffEmail(email, draft.merchantId, "STORE");
         if (valRes && valRes.valid === false && valRes.message) {
+          toast.error(valRes.message);
           throw new Error(valRes.message);
         }
       } catch (valErr: any) {
-        const valMsg = valErr?.response?.data?.message || valErr?.message;
-        if (valMsg && (valMsg.includes("cannot use") || valMsg.includes("conflict") || valMsg.includes("already"))) {
-          throw new Error(valMsg);
-        }
+        const valMsg = valErr?.response?.data?.message || valErr?.message || "Invalid store manager email";
+        toast.error(valMsg);
+        throw new Error(valMsg);
       }
     }
 
@@ -901,11 +1001,14 @@ export default function Home() {
       }
     }
 
+    const assignedStoreEmail = (draft.storeEmail || draft.managerEmail || "").trim();
+    const assignedManagerPhone = (draft.managerPhone || draft.phone || "").trim();
+
     try {
       const createdStore = await storeApi.createStore({
         merchantId: draft.merchantId,
         storeName: draft.branchName || draft.storeName || draft.name || "New Branch",
-        contactPhone: cleanPhone || "9876543210",
+        contactPhone: cleanPhone || store.currentUser?.phone || "9145776682",
         address: draft.address && draft.address.trim().length >= 5 ? draft.address.trim() : "Main Road Outlet",
         cityId: (draft.city || "Nagpur").toLowerCase(),
         state: draft.state || "Maharashtra",
@@ -918,17 +1021,19 @@ export default function Home() {
         menuImages: draft.menuImages || [],
         photos: draft.photos || [],
         amenities: draft.amenities || [],
+        managerName: draft.managerName?.trim() || `${draft.branchName || "Store"} Manager`,
+        managerEmail: assignedStoreEmail || undefined,
+        managerPhone: assignedManagerPhone || cleanPhone || undefined,
       });
 
       const storeId = createdStore?.id;
 
       // Save branch locally with manager details
-      const assignedStoreEmail = (draft.storeEmail || draft.managerEmail || "").trim();
-      const assignedManagerPhone = (draft.managerPhone || draft.phone || "").trim();
       store.addStore({
         ...draft,
         id: storeId || draft.id,
-        phone: assignedManagerPhone || "9876543210",
+        status: (assignedStoreEmail || draft.managerEmail) ? "INACTIVE" : (draft.status || "ACTIVE"),
+        phone: assignedManagerPhone || cleanPhone || store.currentUser?.phone || "",
         storeEmail: assignedStoreEmail || undefined,
         managerEmail: assignedStoreEmail || undefined,
         managerName: draft.managerName || "Store Manager",
@@ -1115,13 +1220,28 @@ export default function Home() {
 
   const handleAddOffer = async (draft: any) => {
     try {
-      const merchantStores = store.stores.filter((s) => s.merchantId === draft.merchantId);
-      if (!merchantStores || merchantStores.length === 0) {
-        toast.error("The merchant must have at least one store before creating an offer.");
-        throw new Error("Merchant has no stores configured");
+      const isStoreRole = store.role?.toLowerCase() === "store";
+      const isAdminRole = store.role?.toLowerCase() === "admin";
+      const isMerchantRole = store.role?.toLowerCase() === "merchant";
+
+      let chosenStoreId: string | null = null;
+      let targetMerchantId = draft.merchantId;
+
+      if (isStoreRole) {
+        const effectiveStore = activeStore || store.stores.find((s) => s.id === draft.storeId);
+        chosenStoreId = effectiveStore?.id || draft.storeId || null;
+        targetMerchantId = targetMerchantId || effectiveStore?.merchantId || store.currentUser?.merchantId;
+      } else {
+        const merchantStores = store.stores.filter((s) => s.merchantId === draft.merchantId);
+        if (isAdminRole && (!merchantStores || merchantStores.length === 0)) {
+          const anyStores = store.stores.some((s) => s.merchantId === draft.merchantId);
+          if (!anyStores) {
+            toast.error("The merchant must have at least one store before creating an offer.");
+            throw new Error("Merchant has no stores configured");
+          }
+        }
+        chosenStoreId = (draft.storeId && draft.storeId !== "all" && String(draft.storeId).trim() !== "") ? draft.storeId : null;
       }
-      // If a specific store is selected, target that store; if 'all' or empty, pass null for brand-wide / all branches
-      const chosenStoreId = (draft.storeId && draft.storeId !== "all" && String(draft.storeId).trim() !== "") ? draft.storeId : null;
 
       const isProduct = draft.scopeType === "PRODUCT" || draft.offerScope === "STORE_PRODUCT";
       const resolvedValue = isProduct && draft.originalPrice && draft.dealPrice && draft.originalPrice > draft.dealPrice
@@ -1141,10 +1261,11 @@ export default function Home() {
         : (draft.tagline || draft.terms || draft.description || "Offer details");
 
       const payload: any = {
-        merchantId: draft.merchantId,
+        merchantId: targetMerchantId,
         storeId: chosenStoreId,
         title: (draft.title || draft.productName || "Special Deal").trim(),
         description: resolvedDescription,
+        termsAndConditions: draft.terms || undefined,
         type: resolvedOfferType,
         offerType: resolvedOfferType,
         value: resolvedValue,
@@ -1178,9 +1299,8 @@ export default function Home() {
         minAdvanceHours: draft.minAdvanceHours ? Number(draft.minAdvanceHours) : 0,
       };
 
-      const isAdmin = store.role?.toLowerCase() === "admin" || !store.currentUser?.merchantId;
       let createdResponse: any;
-      if (isAdmin) {
+      if (isAdminRole) {
         createdResponse = await offerApi.createAdminOffer(payload);
       } else {
         createdResponse = await offerApi.createOffer(payload);
@@ -1415,6 +1535,10 @@ export default function Home() {
                         />
                       )}
 
+                      {currentTab === "Bookings" && (
+                        <TableBookingsManager role="admin" />
+                      )}
+
                       {currentTab === "Offers" && (
                         <OfferGovernance
                           offers={store.offers}
@@ -1483,6 +1607,14 @@ export default function Home() {
                     />
                   )}
 
+                  {currentTab === "Transactions" && (
+                    <TransactionMonitor
+                      transactions={store.transactions}
+                      role="merchant"
+                      scopedMerchantId={store.currentUser?.merchantId || store.currentUser?.id}
+                    />
+                  )}
+
                   {currentTab === "MerchantWallet" && (
                     <MerchantWalletDashboard
                       merchantId={store.currentUser?.merchantId || store.currentUser?.id || "m-1"}
@@ -1496,13 +1628,11 @@ export default function Home() {
                       onAddStore={handleAddStore}
                       onUpdateStore={handleUpdateStore}
                       onDeleteStore={handleDeleteStore}
-                      onLoginAsStore={(targetStore) => {
-                        store.login("store", targetStore.storeEmail, targetStore.id);
-                        setStoreTab("StoreDashboard");
-                        setLocation("/store/dashboard");
-                        toast.success(`Logged in as ${targetStore.branchName} store portal!`);
-                      }}
                     />
+                  )}
+
+                  {currentTab === "Bookings" && (
+                    <TableBookingsManager role="merchant" />
                   )}
 
                   {currentTab === "StoreStaff" && (
@@ -1511,10 +1641,22 @@ export default function Home() {
 
                   {currentTab === "OfferStudio" && (
                     <OfferStudio
+                      role="merchant"
+                      scopedMerchantId={store.currentUser?.merchantId || store.currentUser?.id}
                       offers={store.offers}
                       stores={store.stores}
+                      merchants={store.merchants}
                       onAddOffer={handleAddOffer}
+                      onUpdateOfferStatus={handleUpdateOfferStatus}
+                      onDeleteOffer={handleDeleteOffer}
+                      onCloneOffer={(id) => {
+                        const cloned = store.cloneOffer(id);
+                        if (cloned) {
+                          toast.success(`Campaign cloned as "${cloned.title}"`);
+                        }
+                      }}
                       onOpenQR={() => setIsQROpen(true)}
+                      onRefresh={syncBackendData}
                     />
                   )}
 
@@ -1549,6 +1691,19 @@ export default function Home() {
                     />
                   )}
 
+                  {currentTab === "Transactions" && (
+                    <TransactionMonitor
+                      transactions={store.transactions}
+                      role="store"
+                      scopedStoreId={activeStore.id}
+                      scopedMerchantId={activeStore.merchantId}
+                    />
+                  )}
+
+                  {currentTab === "Bookings" && (
+                    <TableBookingsManager role="store" scopedStoreId={activeStore.id} />
+                  )}
+
                   {currentTab === "StoreWallet" && (
                     <MerchantWalletDashboard
                       merchantId={activeStore.merchantId || "m-1"}
@@ -1557,18 +1712,31 @@ export default function Home() {
                   )}
 
                   {currentTab === "OfferStudio" && (
-
                     <OfferStudio
+                      role="store"
+                      scopedStoreId={activeStore.id}
+                      scopedMerchantId={activeStore.merchantId}
+                      currentStore={activeStore}
                       offers={store.offers}
-                      stores={[activeStore]}
+                      stores={store.stores.length > 0 ? store.stores : [activeStore]}
+                      merchants={store.merchants}
                       onAddOffer={handleAddOffer}
+                      onUpdateOfferStatus={handleUpdateOfferStatus}
+                      onDeleteOffer={handleDeleteOffer}
+                      onCloneOffer={(id) => {
+                        const cloned = store.cloneOffer(id);
+                        if (cloned) {
+                          toast.success(`Campaign cloned as "${cloned.title}"`);
+                        }
+                      }}
                       onOpenQR={() => setIsQROpen(true)}
+                      onRefresh={syncBackendData}
                     />
                   )}
 
                   {currentTab === "StoreStaff" && (
                     <StoreStaffManager
-                      stores={store.stores}
+                      stores={store.stores.length > 0 ? store.stores : [activeStore]}
                       scopedStoreId={activeStore.id}
                       isStorePortal={true}
                     />
@@ -1647,6 +1815,17 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {/* Fallback default view if an unmapped tab was loaded */}
+                  {!["StoreDashboard", "Transactions", "Bookings", "StoreWallet", "OfferStudio", "StoreStaff", "LiveBilling", "StoreSettings"].includes(currentTab) && (
+                    <StoreBranchDashboard
+                      currentStore={activeStore}
+                      transactions={store.transactions}
+                      offers={store.offers}
+                      onNavigateTab={setCurrentTab}
+                      onOpenQR={() => setIsQROpen(true)}
+                    />
                   )}
                 </>
               )}

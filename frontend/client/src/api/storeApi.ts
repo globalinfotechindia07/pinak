@@ -20,8 +20,37 @@ export const storeApi = {
 
   // Get Store Branch by ID
   getStoreById: async (id: string): Promise<StoreDTO> => {
-    const res = await apiClient.get<ApiResponse<StoreDTO>>(`/merchant/stores/${id}`);
-    return res.data?.data || (res.data as unknown as StoreDTO);
+    try {
+      const res = await apiClient.get<ApiResponse<StoreDTO>>(`/merchant/stores/${id}`);
+      return res.data?.data || (res.data as unknown as StoreDTO);
+    } catch {
+      const res = await apiClient.get<ApiResponse<StoreDTO>>(`/stores/${id}`);
+      return res.data?.data || (res.data as unknown as StoreDTO);
+    }
+  },
+
+  // Public / Authenticated: Get Store by ID (fallback)
+  getPublicStoreById: async (id: string): Promise<StoreDTO | null> => {
+    try {
+      const res = await apiClient.get<ApiResponse<StoreDTO>>(`/stores/${id}`);
+      return res.data?.data || (res.data as unknown as StoreDTO) || null;
+    } catch {
+      return null;
+    }
+  },
+
+  // Public / Authenticated: List All Stores
+  getAllStores: async (params?: PaginationParams): Promise<StoreDTO[]> => {
+    try {
+      const res = await apiClient.get<ApiResponse<any>>("/stores", { params });
+      const data = res.data?.data;
+      if (Array.isArray(data)) return data;
+      if (data && "content" in data && Array.isArray(data.content)) return data.content;
+      if (Array.isArray(res.data)) return res.data as any;
+      return [];
+    } catch {
+      return [];
+    }
   },
 
   // Get Stores Belonging to a Merchant
@@ -63,9 +92,18 @@ export const storeApi = {
 
   // Create New Store Branch with Lat & Lng (works for both Admin and Merchant)
   createStore: async (payload: any): Promise<StoreDTO> => {
+    const managerEmail = payload.managerEmail || payload.storeEmail || undefined;
+    const managerName = payload.managerName || undefined;
+    const managerPhone = payload.managerPhone || payload.contactPhone || payload.phone || undefined;
+
     if (payload.merchantId) {
       try {
-        const res = await apiClient.post<ApiResponse<StoreDTO>>("/stores", payload);
+        const res = await apiClient.post<ApiResponse<StoreDTO>>("/stores", {
+          ...payload,
+          managerEmail,
+          managerName,
+          managerPhone,
+        });
         return res.data?.data || (res.data as unknown as StoreDTO);
       } catch (adminErr) {
         // Fallback to merchant endpoint if /stores fails
@@ -90,10 +128,21 @@ export const storeApi = {
         imageUrl: payload.imageUrl || null,
         photos: payload.photos || [],
         amenities: payload.amenities || [],
+        isTableBookingEnabled: payload.isTableBookingEnabled ?? true,
+        allowFreeStandardBooking: payload.allowFreeStandardBooking ?? true,
+        defaultStandardCoverCharge: payload.defaultStandardCoverCharge ?? 0,
+        managerEmail,
+        managerName,
+        managerPhone,
       });
       return res.data?.data || (res.data as unknown as StoreDTO);
     } catch {
-      const res = await apiClient.post<ApiResponse<StoreDTO>>("/stores", payload);
+      const res = await apiClient.post<ApiResponse<StoreDTO>>("/stores", {
+        ...payload,
+        managerEmail,
+        managerName,
+        managerPhone,
+      });
       return res.data?.data || (res.data as unknown as StoreDTO);
     }
   },
@@ -149,7 +198,18 @@ export const storeApi = {
   },
 
   // Resend Store Manager Activation / Password Setup Email
-  resendStoreInvite: async (id: string): Promise<void> => {
-    await apiClient.post(`/merchant/stores/${id}/resend-invite`);
+  resendStoreInvite: async (
+    id: string,
+    payload?: { email?: string; managerName?: string; branchName?: string }
+  ): Promise<void> => {
+    try {
+      await apiClient.post(`/merchant/stores/${id}/resend-invite`, payload || {});
+    } catch (err: any) {
+      if (err?.response?.status === 403 || err?.response?.status === 404) {
+        await apiClient.post(`/admin/stores/${id}/resend-invite`, payload || {});
+        return;
+      }
+      throw err;
+    }
   },
 };

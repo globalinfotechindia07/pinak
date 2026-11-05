@@ -24,6 +24,8 @@ public interface StoreService {
 
     void resendStoreInvite(UUID storeId, UUID currentUserId);
 
+    void resendStoreInvite(String storeId, UUID currentUserId, ResendStoreInviteRequest request);
+
     // Admin store operations
     Page<StoreResponse> getAllStoresAdmin(Pageable pageable, StoreStatus status, ApprovalStatus approvalStatus, String cityId);
 

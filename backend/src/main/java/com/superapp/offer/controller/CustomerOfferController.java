@@ -34,8 +34,14 @@ public class CustomerOfferController {
             @Parameter(description = "Customer latitude", example = "12.9716")
             @RequestParam(required = false) Double latitude,
 
+            @Parameter(description = "Customer latitude (short)", example = "12.9716")
+            @RequestParam(required = false) Double lat,
+
             @Parameter(description = "Customer longitude", example = "77.6412")
             @RequestParam(required = false) Double longitude,
+
+            @Parameter(description = "Customer longitude (short)", example = "77.6412")
+            @RequestParam(required = false) Double lng,
 
             @Parameter(description = "Search radius in kilometers", example = "5.0")
             @RequestParam(required = false, defaultValue = "5.0") Double radiusKm,
@@ -49,8 +55,11 @@ public class CustomerOfferController {
             @Parameter(description = "Cursor for pagination")
             @RequestParam(required = false) String cursor) {
 
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
         NearbyServiceOffersResponse response = offerService.getNearbyServiceOffers(
-                type, latitude, longitude, radiusKm, categoryId, limit, cursor);
+                type, effectiveLat, effectiveLng, radiusKm, categoryId, limit, cursor);
         return ResponseEntity.ok(ApiResponse.success("Nearby service offers fetched successfully", response));
     }
 
@@ -61,8 +70,14 @@ public class CustomerOfferController {
             @Parameter(description = "Customer latitude", example = "12.9716")
             @RequestParam(required = false) Double latitude,
 
+            @Parameter(description = "Customer latitude (short)", example = "12.9716")
+            @RequestParam(required = false) Double lat,
+
             @Parameter(description = "Customer longitude", example = "77.6412")
             @RequestParam(required = false) Double longitude,
+
+            @Parameter(description = "Customer longitude (short)", example = "77.6412")
+            @RequestParam(required = false) Double lng,
 
             @Parameter(description = "Category ID filter")
             @RequestParam(required = false) UUID categoryId,
@@ -73,8 +88,11 @@ public class CustomerOfferController {
             @Parameter(description = "Cursor for pagination")
             @RequestParam(required = false) String cursor) {
 
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
         FlashDealsResponse response = offerService.getActiveFlashDeals(
-                latitude, longitude, categoryId, limit, cursor);
+                effectiveLat, effectiveLng, categoryId, limit, cursor);
         return ResponseEntity.ok(ApiResponse.success("Flash deals fetched successfully", response));
     }
 

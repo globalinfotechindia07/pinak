@@ -32,13 +32,18 @@ public class CustomerMerchantDiscoveryController {
     @Operation(summary = "Get featured merchants for Discover screen")
     public ResponseEntity<ApiResponse<FeaturedMerchantsResponse>> getFeaturedMerchants(
             @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Double lng,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false, defaultValue = "10") Integer limit,
             @RequestParam(required = false) String cursor) {
 
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
         FeaturedMerchantsResponse response = discoveryService.getFeaturedMerchants(
-                latitude, longitude, categoryId, limit, cursor);
+                effectiveLat, effectiveLng, categoryId, limit, cursor);
 
         return ResponseEntity.ok(ApiResponse.success("Featured merchants fetched successfully", response));
     }
@@ -47,7 +52,9 @@ public class CustomerMerchantDiscoveryController {
     @Operation(summary = "Get nearby popular merchants for Discover screen")
     public ResponseEntity<ApiResponse<PopularMerchantsResponse>> getPopularMerchants(
             @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Double lng,
             @RequestParam(required = false, defaultValue = "10.0") Double radiusKm,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false, defaultValue = "4.0") Double minRating,
@@ -55,8 +62,11 @@ public class CustomerMerchantDiscoveryController {
             @RequestParam(required = false, defaultValue = "10") Integer limit,
             @RequestParam(required = false) String cursor) {
 
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
         PopularMerchantsResponse response = discoveryService.getNearbyPopularMerchants(
-                latitude, longitude, radiusKm, categoryId, minRating, sort, limit, cursor);
+                effectiveLat, effectiveLng, radiusKm, categoryId, minRating, sort, limit, cursor);
 
         return ResponseEntity.ok(ApiResponse.success("Popular merchants fetched successfully", response));
     }
@@ -65,12 +75,17 @@ public class CustomerMerchantDiscoveryController {
     @Operation(summary = "Get newly added merchants for Discover screen")
     public ResponseEntity<ApiResponse<NewlyAddedMerchantsResponse>> getNewlyAddedMerchants(
             @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Double lng,
             @RequestParam(required = false, defaultValue = "10") Integer limit,
             @RequestParam(required = false) String cursor) {
 
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
         NewlyAddedMerchantsResponse response = discoveryService.getNewlyAddedMerchants(
-                latitude, longitude, limit, cursor);
+                effectiveLat, effectiveLng, limit, cursor);
 
         return ResponseEntity.ok(ApiResponse.success("Newly added merchants fetched successfully", response));
     }

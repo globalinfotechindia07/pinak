@@ -24,7 +24,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/merchant/offers")
-@org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('MERCHANT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN')")
+@org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('MERCHANT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN', 'STORE', 'STORE_MANAGER')")
 @Tag(name = "Merchant Offers", description = "Endpoints for merchants to create and manage store offers")
 @SecurityRequirement(name = "bearerAuth")
 public class MerchantOfferController {

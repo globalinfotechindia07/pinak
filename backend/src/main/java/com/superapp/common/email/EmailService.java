@@ -191,6 +191,38 @@ public class EmailService {
         }
     }
 
+    /**
+     * Sends a welcome onboarding email to an onboarded branch store manager with a secure password setup link.
+     */
+    @Async
+    public void sendStoreWelcomeEmail(String toEmail, String recipientName, String storeName, String businessName, String inviteUrl) {
+        if (!isSmtpConfigured()) {
+            log.info("📧 [MOCK-SMTP / GMAIL UNCONFIGURED] Store Welcome to {} ({}) for store [{}] under brand [{}] -> Invite URL: {}",
+                    recipientName, toEmail, storeName, businessName, inviteUrl);
+            return;
+        }
+
+        log.info("📧 [GMAIL-SMTP] Dispatching store manager welcome email to {} from {} via Gmail SMTP...", toEmail, fromEmail);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail, "PINAK Partner Platform");
+            helper.setTo(toEmail);
+            helper.setSubject("Welcome to PINAK — Store Manager Portal Provisioned for " + storeName);
+
+            String html = buildStoreWelcomeHtml(recipientName, storeName, businessName, toEmail, inviteUrl);
+            helper.setText(html, true);
+            attachLogoIfAvailable(helper);
+
+            mailSender.send(message);
+            log.info("✅ [GMAIL-SMTP SUCCESS] Store welcome email successfully delivered to {} for store [{}]", toEmail, storeName);
+        } catch (Exception e) {
+            log.error("❌ [GMAIL-SMTP ERROR] Failed to send store welcome email to {}: {}. Cause: {}",
+                    toEmail, e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "none", e);
+        }
+    }
+
     private String buildInvitationHtml(String recipientName, String roleName, String inviteUrl) {
         return """
             <!DOCTYPE html>
@@ -522,5 +554,140 @@ public class EmailService {
             </body>
             </html>
             """.formatted(recipientName, businessName, email, inviteUrl, inviteUrl, inviteUrl);
+    }
+
+    private String buildStoreWelcomeHtml(String recipientName, String storeName, String businessName, String email, String inviteUrl) {
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Welcome to PINAK Store Operations</title>
+            </head>
+            <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #0f172a;">
+              <table width="100%%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 40px 16px 60px 16px;">
+                <tr>
+                  <td align="center">
+                    <!-- Main Card Container -->
+                    <table width="100%%" border="0" cellpadding="0" cellspacing="0" style="max-width: 540px; background-color: #ffffff; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);">
+                      
+                      <!-- Top Gradient Accent Bar -->
+                      <tr>
+                        <td style="height: 3px; background-color: #d0087a; background: linear-gradient(90deg, #ff9e00 0%%, #e00570 52%%, #6817c8 100%%);"></td>
+                      </tr>
+
+                      <!-- Header with PINAK Brand Logo -->
+                      <tr>
+                        <td style="padding: 28px 32px 20px 32px; border-bottom: 1px solid #f1f5f9;">
+                          <table border="0" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td style="vertical-align: middle; width: 40px;">
+                                <img src="cid:pinakLogo" width="40" height="40" alt="PINAK" style="display: block; width: 40px; height: 40px; border-radius: 10px 4px 10px 4px; border: 0; outline: none;" />
+                              </td>
+                              <td style="padding-left: 12px; vertical-align: middle;">
+                                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 19px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; line-height: 1;">
+                                  PINAK
+                                </div>
+                                <div style="font-size: 11px; font-weight: 600; color: #94a3b8; letter-spacing: 0.2px; margin-top: 3px;">
+                                  Store &amp; Branch Operations
+                                </div>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+
+                      <!-- Body Content -->
+                      <tr>
+                        <td style="padding: 28px 32px;">
+                          <h1 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px;">
+                            Welcome to PINAK Store Operations
+                          </h1>
+                          
+                          <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #1e293b;">
+                            Hi %s,
+                          </p>
+
+                          <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 22px; color: #475569;">
+                            Your store branch management account for <strong>%s</strong> (under brand <strong>%s</strong>) has been successfully provisioned on PINAK. Complete your onboarding and set up your master security password to access your branch store and POS operations console.
+                          </p>
+
+                          <!-- Credentials Card -->
+                          <table width="100%%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 24px;">
+                            <tr>
+                              <td style="padding: 16px 20px;">
+                                <table width="100%%" border="0" cellpadding="0" cellspacing="0">
+                                  <tr>
+                                    <td style="font-size: 12px; color: #64748b; padding-bottom: 6px;">Login Email:</td>
+                                    <td align="right" style="font-size: 13px; font-weight: 600; color: #0f172a; padding-bottom: 6px; font-family: monospace;">%s</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="font-size: 12px; color: #64748b; padding-bottom: 6px;">Assigned Role:</td>
+                                    <td align="right" style="font-size: 12px; font-weight: 700; color: #7017c8; padding-bottom: 6px;">Store Manager / Branch Operator</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="font-size: 12px; color: #64748b; padding-bottom: 6px;">Store Branch:</td>
+                                    <td align="right" style="font-size: 12px; font-weight: 600; color: #0f172a; padding-bottom: 6px;">%s</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="font-size: 12px; color: #64748b; padding-bottom: 6px;">Merchant Brand:</td>
+                                    <td align="right" style="font-size: 12px; font-weight: 600; color: #0f172a; padding-bottom: 6px;">%s</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="font-size: 12px; color: #64748b; padding-bottom: 6px;">Access Scope:</td>
+                                    <td align="right" style="font-size: 12px; font-weight: 700; color: #16a34a; padding-bottom: 6px;">Branch Terminal &amp; Store Console</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="font-size: 12px; color: #64748b;">Link Validity:</td>
+                                    <td align="right" style="font-size: 12px; font-weight: 600; color: #e11d48;">48 Hours (Single-Use)</td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+
+                          <!-- Call to Action Button -->
+                          <table width="100%%" border="0" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+                            <tr>
+                              <td align="center">
+                                <table border="0" cellpadding="0" cellspacing="0">
+                                  <tr>
+                                    <td align="center" style="border-radius: 8px; background-color: #d0087a; background: linear-gradient(135deg, #ff9e00 0%%, #e00570 52%%, #6817c8 100%%); box-shadow: 0 4px 14px rgba(208, 8, 122, 0.28);">
+                                      <a href="%s" target="_blank" style="display: inline-block; padding: 13px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 8px; letter-spacing: 0.2px;">
+                                        Set Password &amp; Activate Store Console &rarr;
+                                      </a>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+
+                          <div style="margin: 20px 0; padding: 12px 14px; background-color: #f1f5f9; border-radius: 8px; font-size: 11px; color: #475569; word-break: break-all;">
+                            <strong>Direct Setup Link:</strong><br/>
+                            <a href="%s" target="_blank" style="color: #c026d3; text-decoration: underline;">%s</a>
+                          </div>
+
+                          <p style="margin: 0; font-size: 12px; line-height: 18px; color: #64748b; background-color: #eff6ff; border: 1px solid #dbeafe; padding: 10px 14px; border-radius: 8px;">
+                            <strong>Security Notice:</strong> This single-use setup link will expire in 48 hours. After choosing your master password, you will be able to sign in to your branch store portal and POS operations console.
+                          </p>
+                        </td>
+                      </tr>
+
+                      <!-- Footer -->
+                      <tr>
+                        <td style="padding: 20px 32px; background-color: #fafbfc; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8; text-align: center;">
+                          &copy; 2026 PINAK Platform Governance &bull; Store &amp; Branch Operations
+                        </td>
+                      </tr>
+
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </body>
+            </html>
+            """.formatted(recipientName, storeName, businessName, email, storeName, businessName, inviteUrl, inviteUrl, inviteUrl);
     }
 }

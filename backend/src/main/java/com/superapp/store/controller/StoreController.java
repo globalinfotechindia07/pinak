@@ -146,4 +146,16 @@ public class StoreController {
         Page<StoreResponse> response = storeService.findNearbyStores(latitude, longitude, radiusMeters, pageable);
         return ResponseEntity.ok(ApiResponse.success("Nearby stores found", response));
     }
+
+    @PostMapping("/stores/{id}/resend-invite")
+    @Operation(summary = "Resend manager activation / welcome email for the store branch", security = @SecurityRequirement(name = "bearerAuth"))
+    @PreAuthorize("hasAnyRole('MERCHANT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> resendStoreInvite(
+            @PathVariable UUID id,
+            @RequestBody(required = false) com.superapp.store.dto.ResendStoreInviteRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID currentUserId = userDetails != null ? UUID.fromString(userDetails.getUsername()) : null;
+        storeService.resendStoreInvite(id != null ? id.toString() : null, currentUserId, request);
+        return ResponseEntity.ok(ApiResponse.success("Store manager invite email dispatched successfully", null));
+    }
 }

@@ -55,13 +55,34 @@ public record MerchantCreateStoreRequest(
 
         List<String> photos,
 
-        List<String> amenities
+        List<String> amenities,
+        Boolean isTableBookingEnabled,
+        Boolean allowFreeStandardBooking,
+        BigDecimal defaultStandardCoverCharge,
+        String managerName,
+        String managerEmail,
+        String managerPhone
 ) {
+    public MerchantCreateStoreRequest(
+            String name, String description, String addressLine1, String addressLine2,
+            String cityId, String state, String pincode, BigDecimal latitude, BigDecimal longitude,
+            String phone, String openingTime, String closingTime, String operatingDays,
+            String imageUrl, List<String> menuImages, List<String> photos, List<String> amenities,
+            Boolean isTableBookingEnabled, Boolean allowFreeStandardBooking,
+            BigDecimal defaultStandardCoverCharge
+    ) {
+        this(name, description, addressLine1, addressLine2, cityId, state, pincode,
+                latitude, longitude, phone, openingTime, closingTime, operatingDays,
+                imageUrl, menuImages, photos, amenities, isTableBookingEnabled,
+                allowFreeStandardBooking, defaultStandardCoverCharge, null, null, null);
+    }
+
     public MerchantCreateStoreRequest(String name, String description, String addressLine1,
                                      String addressLine2, String cityId, String state,
                                      String pincode, BigDecimal latitude, BigDecimal longitude,
                                      String phone) {
         this(name, description, addressLine1, addressLine2, cityId, state, pincode,
-             latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", null, null, null, null);
+             latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", null, null, null, null, true, true, BigDecimal.ZERO,
+             null, null, null);
     }
 }

@@ -146,6 +146,15 @@ public class Store {
     @Column(name = "is_cashback_enabled")
     private Boolean isCashbackEnabled = true;
 
+    @Column(name = "is_table_booking_enabled")
+    private Boolean isTableBookingEnabled = true;
+
+    @Column(name = "allow_free_standard_booking")
+    private Boolean allowFreeStandardBooking = true;
+
+    @Column(name = "default_standard_cover_charge", precision = 10, scale = 2)
+    private BigDecimal defaultStandardCoverCharge = BigDecimal.ZERO;
+
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
@@ -521,6 +530,27 @@ public class Store {
     }
     public void setIsCashbackEnabled(Boolean isCashbackEnabled) {
         this.isCashbackEnabled = isCashbackEnabled;
+    }
+
+    public Boolean getIsTableBookingEnabled() {
+        return isTableBookingEnabled != null ? isTableBookingEnabled : true;
+    }
+    public void setIsTableBookingEnabled(Boolean isTableBookingEnabled) {
+        this.isTableBookingEnabled = isTableBookingEnabled;
+    }
+
+    public Boolean getAllowFreeStandardBooking() {
+        return allowFreeStandardBooking != null ? allowFreeStandardBooking : true;
+    }
+    public void setAllowFreeStandardBooking(Boolean allowFreeStandardBooking) {
+        this.allowFreeStandardBooking = allowFreeStandardBooking;
+    }
+
+    public BigDecimal getDefaultStandardCoverCharge() {
+        return defaultStandardCoverCharge != null ? defaultStandardCoverCharge : BigDecimal.ZERO;
+    }
+    public void setDefaultStandardCoverCharge(BigDecimal defaultStandardCoverCharge) {
+        this.defaultStandardCoverCharge = defaultStandardCoverCharge;
     }
 
 public boolean isApproved() {

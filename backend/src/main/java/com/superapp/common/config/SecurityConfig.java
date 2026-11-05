@@ -85,6 +85,18 @@ public class SecurityConfig {
                         "//api/v1/mobile/services/**",
                         "/api/v1/mobile/products/**",
                         "//api/v1/mobile/products/**",
+                        "/api/v1/mobile/table-bookings/**",
+                        "//api/v1/mobile/table-bookings/**",
+                        "/api/v1/mobile/dining/**",
+                        "//api/v1/mobile/dining/**",
+                        "/api/v1/admin/table-bookings/**",
+                        "//api/v1/admin/table-bookings/**",
+                        "/api/v1/merchant/table-bookings/**",
+                        "//api/v1/merchant/table-bookings/**",
+                        "/api/v1/store/table-bookings/**",
+                        "//api/v1/store/table-bookings/**",
+                        "/api/v1/mobile/my-bookings",
+                        "//api/v1/mobile/my-bookings",
                         "/api/v1/locations/**",
                         "//api/v1/locations/**"
                 ).permitAll()
@@ -156,7 +168,7 @@ public class SecurityConfig {
 
                 // Role-based access control
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                .requestMatchers("/api/v1/merchant/**").hasAnyRole("MERCHANT", "VENDOR", "ADMIN", "SUPER_ADMIN")
+                .requestMatchers("/api/v1/merchant/**").hasAnyRole("MERCHANT", "VENDOR", "ADMIN", "SUPER_ADMIN", "STORE", "STORE_MANAGER")
                 .requestMatchers("/api/v1/customer/**").hasAnyRole("CUSTOMER", "ADMIN", "SUPER_ADMIN")
 
                 // All other endpoints require authentication

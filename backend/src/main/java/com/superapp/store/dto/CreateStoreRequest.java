@@ -52,10 +52,34 @@ public record CreateStoreRequest(
         BigDecimal cashbackPercentage,
         BigDecimal maxCashbackAmount,
         BigDecimal minTransactionForCashback,
-        Boolean isCashbackEnabled
+        Boolean isCashbackEnabled,
+        Boolean isTableBookingEnabled,
+        Boolean allowFreeStandardBooking,
+        BigDecimal defaultStandardCoverCharge,
+        String managerName,
+        String managerEmail,
+        String managerPhone
 ) {
+    public CreateStoreRequest(
+            UUID merchantId, String storeName, String address, String cityId,
+            String state, String pincode, BigDecimal latitude, BigDecimal longitude,
+            String contactPhone, String imageUrl, List<String> menuImages, List<String> photos,
+            List<String> amenities, BigDecimal cashbackPercentage, BigDecimal maxCashbackAmount,
+            BigDecimal minTransactionForCashback, Boolean isCashbackEnabled,
+            Boolean isTableBookingEnabled, Boolean allowFreeStandardBooking,
+            BigDecimal defaultStandardCoverCharge
+    ) {
+        this(merchantId, storeName, address, cityId, state, pincode, latitude, longitude,
+                contactPhone, imageUrl, menuImages, photos, amenities, cashbackPercentage,
+                maxCashbackAmount, minTransactionForCashback, isCashbackEnabled,
+                isTableBookingEnabled, allowFreeStandardBooking, defaultStandardCoverCharge,
+                null, null, null);
+    }
+
     public CreateStoreRequest(UUID merchantId, String storeName, String address, String cityId,
                               String state, String pincode, BigDecimal latitude, BigDecimal longitude) {
-        this(merchantId, storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null, null, null, null, null, null);
+        this(merchantId, storeName, address, cityId, state, pincode, latitude, longitude,
+                null, null, null, null, null, null, null, null, null, true, true, BigDecimal.ZERO,
+                null, null, null);
     }
 }

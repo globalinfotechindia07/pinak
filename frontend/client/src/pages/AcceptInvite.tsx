@@ -18,6 +18,7 @@ import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
 import { toast } from "sonner";
+import { appStore } from "../services/dataStore";
 
 export default function AcceptInvite() {
   const [, setLocation] = useLocation();
@@ -82,13 +83,21 @@ export default function AcceptInvite() {
 
     setIsSubmitting(true);
     try {
-      await staffApi.acceptInvite({
+      const response = await staffApi.acceptInvite({
         token,
         password,
       });
 
+      if (response?.storeId) {
+        appStore.updateStore(response.storeId, { status: "ACTIVE" });
+      }
+
       setIsSuccess(true);
-      toast.success("Account activated successfully! Redirecting to login...");
+      toast.success(
+        response?.storeId
+          ? "Account & store branch activated successfully! Redirecting to login..."
+          : "Account activated successfully! Redirecting to login..."
+      );
       setTimeout(() => {
         setLocation(`/login?email=${encodeURIComponent(inviteData?.email || "")}`);
       }, 2000);

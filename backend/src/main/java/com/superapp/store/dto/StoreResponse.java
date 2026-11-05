@@ -45,7 +45,10 @@ public record StoreResponse(
         BigDecimal cashbackPercentage,
         BigDecimal maxCashbackAmount,
         BigDecimal minTransactionForCashback,
-        Boolean isCashbackEnabled
+        Boolean isCashbackEnabled,
+        Boolean isTableBookingEnabled,
+        Boolean allowFreeStandardBooking,
+        BigDecimal defaultStandardCoverCharge
 ) {
     public static StoreResponse fromEntity(Store store) {
         return fromEntity(store, null, null, null);
@@ -96,7 +99,10 @@ public record StoreResponse(
                 store.getCashbackPercentage(),
                 store.getMaxCashbackAmount(),
                 store.getMinTransactionForCashback(),
-                store.getIsCashbackEnabled()
+                store.getIsCashbackEnabled(),
+                store.getIsTableBookingEnabled(),
+                store.getAllowFreeStandardBooking(),
+                store.getDefaultStandardCoverCharge()
         );
     }
 
@@ -133,7 +139,8 @@ public record StoreResponse(
                 latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", null, java.util.Collections.emptyList(), java.util.Collections.emptyList(), java.util.Collections.emptyList(),
                 status, approvalStatus, rejectionReason, suspensionReason,
                 distanceMeters, approvedAt, createdAt, updatedAt,
-                BigDecimal.valueOf(5.00), BigDecimal.valueOf(150.00), BigDecimal.valueOf(100.00), true
+                BigDecimal.valueOf(5.00), BigDecimal.valueOf(150.00), BigDecimal.valueOf(100.00), true,
+                true, true, BigDecimal.ZERO
         );
     }
 
@@ -174,7 +181,8 @@ public record StoreResponse(
                 null,
                 createdAt,
                 updatedAt,
-                BigDecimal.valueOf(5.00), BigDecimal.valueOf(150.00), BigDecimal.valueOf(100.00), true
+                BigDecimal.valueOf(5.00), BigDecimal.valueOf(150.00), BigDecimal.valueOf(100.00), true,
+                true, true, BigDecimal.ZERO
         );
     }
 }

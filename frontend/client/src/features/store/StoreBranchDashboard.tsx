@@ -102,10 +102,12 @@ export const StoreBranchDashboard: React.FC<StoreBranchDashboardProps> = ({
         setLiveTransactions(mappedTxs);
       } else {
         // Fallback filter on prop transactions if API returns empty
+        const branchLower = (currentStore?.branchName || "").toLowerCase();
+        const cityLower = (currentStore?.city || "").toLowerCase();
         const storeTxs = initialTransactions.filter(
           (t) =>
-            t.storeName.toLowerCase().includes(currentStore.branchName.toLowerCase()) ||
-            t.storeName.toLowerCase().includes(currentStore.city.toLowerCase())
+            (branchLower && (t.storeName || "").toLowerCase().includes(branchLower)) ||
+            (cityLower && (t.storeName || "").toLowerCase().includes(cityLower))
         );
         setLiveTransactions(storeTxs);
       }
@@ -359,7 +361,7 @@ export const StoreBranchDashboard: React.FC<StoreBranchDashboardProps> = ({
             </div>
           </div>
           <button
-            onClick={() => onNavigateTab("LiveBilling")}
+            onClick={() => onNavigateTab("Transactions")}
             className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
           >
             <span>View All</span>

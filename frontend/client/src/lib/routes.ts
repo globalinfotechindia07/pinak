@@ -6,6 +6,7 @@ export const ADMIN_TAB_PATHS: Record<string, string> = {
   Discovery: "/admin/discovery",
   Merchants: "/admin/merchants",
   Stores: "/admin/stores",
+  Bookings: "/admin/bookings",
   Offers: "/admin/offers",
   Transactions: "/admin/transactions",
   Rewards: "/admin/rewards",
@@ -19,6 +20,8 @@ export const ADMIN_TAB_PATHS: Record<string, string> = {
 // Merchant Tab -> URL Path
 export const MERCHANT_TAB_PATHS: Record<string, string> = {
   MerchantDashboard: "/merchant/dashboard",
+  Transactions: "/merchant/transactions",
+  Bookings: "/merchant/bookings",
   MerchantWallet: "/merchant/wallet",
   BranchStores: "/merchant/stores",
   StoreStaff: "/merchant/staff",
@@ -34,6 +37,8 @@ export const MERCHANT_TAB_PATHS: Record<string, string> = {
 // Store Tab -> URL Path
 export const STORE_TAB_PATHS: Record<string, string> = {
   StoreDashboard: "/store/dashboard",
+  Transactions: "/store/transactions",
+  Bookings: "/store/bookings",
   StoreWallet: "/store/wallet",
   OfferStudio: "/store/offers",
   StoreStaff: "/store/staff",
@@ -41,7 +46,6 @@ export const STORE_TAB_PATHS: Record<string, string> = {
   LiveBilling: "/store/billing",
   StoreSettings: "/store/settings",
 };
-
 
 /**
  * Get the browser URL path for a given role and tab
@@ -78,6 +82,9 @@ export function resolveTabFromPath(
   if (clean === "/admin/stores" || clean === "/stores" || clean === "/branches") {
     return { role: "admin", tab: "Stores", isKnown: true };
   }
+  if (clean === "/admin/bookings" || clean === "/bookings" || clean === "/table-bookings") {
+    return { role: "admin", tab: "Bookings", isKnown: true };
+  }
   if (clean === "/admin/offers" || clean === "/offers") {
     return { role: "admin", tab: "Offers", isKnown: true };
   }
@@ -111,6 +118,9 @@ export function resolveTabFromPath(
   // Merchant routes
   if (clean === "/merchant" || clean === "/merchant/dashboard" || clean === "/merchant/overview") {
     return { role: "merchant", tab: "MerchantDashboard", isKnown: true };
+  }
+  if (clean === "/merchant/bookings" || clean === "/merchant/table-bookings") {
+    return { role: "merchant", tab: "Bookings", isKnown: true };
   }
   if (
     clean === "/merchant/wallet" ||
@@ -159,10 +169,20 @@ export function resolveTabFromPath(
   if (clean === "/merchant/profile" || clean === "/merchant/merchantprofile") {
     return { role: "merchant", tab: "MerchantProfile", isKnown: true };
   }
+  if (
+    clean === "/merchant/transactions" ||
+    clean === "/merchant/payments" ||
+    clean === "/merchant/upi"
+  ) {
+    return { role: "merchant", tab: "Transactions", isKnown: true };
+  }
 
   // Store routes
   if (clean === "/store" || clean === "/store/dashboard" || clean === "/store/overview") {
     return { role: "store", tab: "StoreDashboard", isKnown: true };
+  }
+  if (clean === "/store/bookings" || clean === "/store/table-bookings") {
+    return { role: "store", tab: "Bookings", isKnown: true };
   }
   if (
     clean === "/store/wallet" ||
@@ -189,6 +209,13 @@ export function resolveTabFromPath(
   }
   if (clean === "/store/settings" || clean === "/store/storesettings") {
     return { role: "store", tab: "StoreSettings", isKnown: true };
+  }
+  if (
+    clean === "/store/transactions" ||
+    clean === "/store/payments" ||
+    clean === "/store/upi"
+  ) {
+    return { role: "store", tab: "Transactions", isKnown: true };
   }
 
   // Root or generic fallback based on current role

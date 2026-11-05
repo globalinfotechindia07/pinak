@@ -7,6 +7,7 @@ import com.superapp.common.exception.ResourceNotFoundException;
 import com.superapp.common.response.ApiError;
 import com.superapp.merchant.dto.UpdateApprovalStatusRequest;
 import com.superapp.merchant.entity.ApprovalStatus;
+import com.superapp.merchant.entity.KycStatus;
 import com.superapp.merchant.entity.Merchant;
 import com.superapp.merchant.repository.MerchantRepository;
 import com.superapp.store.dto.*;
@@ -24,6 +25,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,8 @@ import java.util.Optional;
 import java.util.UUID;
 import com.superapp.user.entity.Role;
 import com.superapp.user.entity.User;
+import com.superapp.user.entity.StaffMember;
+import com.superapp.user.entity.UserStatus;
 
 @Service
 public class StoreServiceImpl implements StoreService {
@@ -48,6 +52,9 @@ public class StoreServiceImpl implements StoreService {
     private final AuditService auditService;
     private final StoreMapper storeMapper;
     private final com.superapp.user.repository.UserRepository userRepository;
+    private final com.superapp.common.email.EmailService emailService;
+    private final com.superapp.user.repository.StaffMemberRepository staffMemberRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Autowired
     public StoreServiceImpl(
@@ -56,7 +63,10 @@ public class StoreServiceImpl implements StoreService {
             CityRepository cityRepository,
             AuditService auditService,
             StoreMapper storeMapper,
-            @Autowired(required = false) com.superapp.user.repository.UserRepository userRepository
+            @Autowired(required = false) com.superapp.user.repository.UserRepository userRepository,
+            @Autowired(required = false) com.superapp.common.email.EmailService emailService,
+            @Autowired(required = false) com.superapp.user.repository.StaffMemberRepository staffMemberRepository,
+            @Autowired(required = false) org.springframework.security.crypto.password.PasswordEncoder passwordEncoder
     ) {
         this.storeRepository = storeRepository;
         this.merchantRepository = merchantRepository;
@@ -64,6 +74,33 @@ public class StoreServiceImpl implements StoreService {
         this.auditService = auditService;
         this.storeMapper = storeMapper != null ? storeMapper : new StoreMapper();
         this.userRepository = userRepository;
+        this.emailService = emailService;
+        this.staffMemberRepository = staffMemberRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public StoreServiceImpl(
+            StoreRepository storeRepository,
+            MerchantRepository merchantRepository,
+            CityRepository cityRepository,
+            AuditService auditService,
+            StoreMapper storeMapper,
+            com.superapp.user.repository.UserRepository userRepository,
+            com.superapp.common.email.EmailService emailService,
+            com.superapp.user.repository.StaffMemberRepository staffMemberRepository
+    ) {
+        this(storeRepository, merchantRepository, cityRepository, auditService, storeMapper, userRepository, emailService, staffMemberRepository, null);
+    }
+
+    public StoreServiceImpl(
+            StoreRepository storeRepository,
+            MerchantRepository merchantRepository,
+            CityRepository cityRepository,
+            AuditService auditService,
+            StoreMapper storeMapper,
+            com.superapp.user.repository.UserRepository userRepository
+    ) {
+        this(storeRepository, merchantRepository, cityRepository, auditService, storeMapper, userRepository, null, null, null);
     }
 
     public StoreServiceImpl(
@@ -73,12 +110,12 @@ public class StoreServiceImpl implements StoreService {
             AuditService auditService,
             StoreMapper storeMapper
     ) {
-        this(storeRepository, merchantRepository, cityRepository, auditService, storeMapper, null);
+        this(storeRepository, merchantRepository, cityRepository, auditService, storeMapper, null, null, null, null);
     }
 
     // Overloaded constructor for backward compatibility with existing unit tests
     public StoreServiceImpl(StoreRepository storeRepository, MerchantRepository merchantRepository) {
-        this(storeRepository, merchantRepository, null, null, new StoreMapper(), null);
+        this(storeRepository, merchantRepository, null, null, new StoreMapper(), null, null, null, null);
     }
 
     // =========================================================================
@@ -89,6 +126,19 @@ public class StoreServiceImpl implements StoreService {
     @Transactional
     public StoreResponse createMerchantStore(MerchantCreateStoreRequest request, UUID currentUserId) {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
+
+        if (merchant.getKycStatus() != KycStatus.VERIFIED) {
+            throw new AppException(
+                    "Merchant KYC must be verified before creating or onboarding branch stores. Current KYC status: "
+                            + (merchant.getKycStatus() != null ? merchant.getKycStatus().name() : "PENDING"),
+                    ApiError.VALIDATION_FAILED,
+                    400
+            );
+        }
+
+        if (request.managerEmail() != null && !request.managerEmail().isBlank()) {
+            validateStoreManagerEmail(request.managerEmail(), merchant.getId());
+        }
 
         validateCoordinates(request.latitude(), request.longitude());
         String reqPhone = request.phone() != null ? request.phone().replaceAll("[\\s\\-()]", "").trim() : null;
@@ -135,12 +185,30 @@ public class StoreServiceImpl implements StoreService {
         if (request.amenities() != null) {
             store.setAmenities(request.amenities());
         }
+        if (request.isTableBookingEnabled() != null) {
+            store.setIsTableBookingEnabled(request.isTableBookingEnabled());
+        }
+        if (request.allowFreeStandardBooking() != null) {
+            store.setAllowFreeStandardBooking(request.allowFreeStandardBooking());
+        }
+        if (request.defaultStandardCoverCharge() != null) {
+            store.setDefaultStandardCoverCharge(request.defaultStandardCoverCharge());
+        }
+
+        if (request.managerEmail() != null && !request.managerEmail().isBlank()) {
+            store.setStatus(StoreStatus.INACTIVE);
+            store.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        }
 
         store.setCreatedBy(currentUserId.toString());
         store.setUpdatedBy(currentUserId.toString());
 
         Store saved = storeRepository.save(store);
         log.info("Created store id={} name='{}' for merchantId={}", saved.getId(), saved.getName(), merchant.getId());
+
+        if (request.managerEmail() != null && !request.managerEmail().isBlank()) {
+            provisionStoreManagerAndSendWelcome(saved, merchant, request.managerEmail(), request.managerName(), request.phone(), currentUserId);
+        }
 
         if (auditService != null) {
             auditService.record(AuditEventType.STORE_CREATED, currentUserId, null, null, MDC.get("requestId"),
@@ -154,6 +222,20 @@ public class StoreServiceImpl implements StoreService {
     @Transactional(readOnly = true)
     public Page<StoreResponse> getMerchantStores(UUID currentUserId, Pageable pageable, StoreStatus status, ApprovalStatus approvalStatus) {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
+
+        // If authenticated user is store-scoped staff, return only their assigned store
+        if (staffMemberRepository != null) {
+            var staffList = staffMemberRepository.findByUserId(currentUserId);
+            if (!staffList.isEmpty()) {
+                var staff = staffList.get(0);
+                if (staff.getStoreId() != null) {
+                    Page<StoreResponse> singleStorePage = storeRepository.findById(staff.getStoreId())
+                            .map(s -> (Page<StoreResponse>) new PageImpl<StoreResponse>(java.util.List.of(storeMapper.toResponse(s, merchant.getBusinessName(), getCityName(s.getCityId()))), pageable, 1))
+                            .orElseGet(() -> new PageImpl<StoreResponse>(java.util.List.of(), pageable, 0));
+                    return singleStorePage;
+                }
+            }
+        }
 
         Page<Store> stores;
         if (status != null && approvalStatus != null) {
@@ -173,6 +255,15 @@ public class StoreServiceImpl implements StoreService {
     @Transactional(readOnly = true)
     public StoreResponse getMerchantStoreById(UUID storeId, UUID currentUserId) {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
+        if (staffMemberRepository != null) {
+            var staffList = staffMemberRepository.findByUserId(currentUserId);
+            if (!staffList.isEmpty()) {
+                var staff = staffList.get(0);
+                if (staff.getStoreId() != null && !staff.getStoreId().equals(storeId)) {
+                    throw new AppException("You do not have permission to access this store", ApiError.STORE_ACCESS_DENIED, 403);
+                }
+            }
+        }
         Store store = getOwnedStore(storeId, merchant.getId());
         return storeMapper.toResponse(store, merchant.getBusinessName(), getCityName(store.getCityId()));
     }
@@ -238,6 +329,15 @@ public class StoreServiceImpl implements StoreService {
         }
         if (request.amenities() != null) {
             store.setAmenities(request.amenities());
+        }
+        if (request.isTableBookingEnabled() != null) {
+            store.setIsTableBookingEnabled(request.isTableBookingEnabled());
+        }
+        if (request.allowFreeStandardBooking() != null) {
+            store.setAllowFreeStandardBooking(request.allowFreeStandardBooking());
+        }
+        if (request.defaultStandardCoverCharge() != null) {
+            store.setDefaultStandardCoverCharge(request.defaultStandardCoverCharge());
         }
         store.setUpdatedBy(currentUserId.toString());
 
@@ -445,6 +545,19 @@ public class StoreServiceImpl implements StoreService {
             throw new AppException("You are not authorized to create stores for this merchant", ApiError.FORBIDDEN, 403);
         }
 
+        if (merchant.getKycStatus() != KycStatus.VERIFIED) {
+            throw new AppException(
+                    "Merchant KYC must be verified before creating or onboarding branch stores. Current KYC status: "
+                            + (merchant.getKycStatus() != null ? merchant.getKycStatus().name() : "PENDING"),
+                    ApiError.VALIDATION_FAILED,
+                    400
+            );
+        }
+
+        if (request.managerEmail() != null && !request.managerEmail().isBlank()) {
+            validateStoreManagerEmail(request.managerEmail(), merchant.getId());
+        }
+
         validateCoordinates(request.latitude(), request.longitude());
         String reqPhone = request.contactPhone() != null ? request.contactPhone().replaceAll("[\\s\\-()]", "").trim() : null;
         if (reqPhone != null && !reqPhone.isBlank()) {
@@ -471,10 +584,17 @@ public class StoreServiceImpl implements StoreService {
             store.setPhone(reqPhone);
         }
 
-        if (isAdmin) {
+        if (request.managerEmail() != null && !request.managerEmail().isBlank()) {
+            // When store is onboarded with a manager who must set password, status remains INACTIVE until password setup
+            store.setStatus(StoreStatus.INACTIVE);
+            store.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        } else if (isAdmin) {
             store.setStatus(StoreStatus.ACTIVE);
             store.setApprovalStatus(ApprovalStatus.APPROVED);
             store.setApprovedAt(Instant.now());
+        } else {
+            store.setStatus(StoreStatus.INACTIVE);
+            store.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
         if (request.imageUrl() != null && !request.imageUrl().isBlank()) {
             store.setImageUrl(request.imageUrl().trim());
@@ -500,11 +620,30 @@ public class StoreServiceImpl implements StoreService {
         if (request.isCashbackEnabled() != null) {
             store.setIsCashbackEnabled(request.isCashbackEnabled());
         }
+        if (request.isTableBookingEnabled() != null) {
+            store.setIsTableBookingEnabled(request.isTableBookingEnabled());
+        }
+        if (request.allowFreeStandardBooking() != null) {
+            store.setAllowFreeStandardBooking(request.allowFreeStandardBooking());
+        }
+        if (request.defaultStandardCoverCharge() != null) {
+            store.setDefaultStandardCoverCharge(request.defaultStandardCoverCharge());
+        }
+        if (request.managerEmail() != null && !request.managerEmail().isBlank()) {
+            store.setStatus(StoreStatus.INACTIVE);
+            store.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        }
+
         store.setCreatedBy(currentUserId.toString());
         store.setUpdatedBy(currentUserId.toString());
 
         Store saved = storeRepository.save(store);
         log.info("Created store id={} name='{}' for merchantId={} (isAdmin={})", saved.getId(), saved.getStoreName(), merchant.getId(), isAdmin);
+
+        if (request.managerEmail() != null && !request.managerEmail().isBlank()) {
+            provisionStoreManagerAndSendWelcome(saved, merchant, request.managerEmail(), request.managerName(), request.contactPhone(), currentUserId);
+        }
+
         return StoreResponse.fromEntity(saved, merchant.getBusinessName());
     }
 
@@ -590,6 +729,15 @@ public class StoreServiceImpl implements StoreService {
         if (request.isCashbackEnabled() != null) {
             store.setIsCashbackEnabled(request.isCashbackEnabled());
         }
+        if (request.isTableBookingEnabled() != null) {
+            store.setIsTableBookingEnabled(request.isTableBookingEnabled());
+        }
+        if (request.allowFreeStandardBooking() != null) {
+            store.setAllowFreeStandardBooking(request.allowFreeStandardBooking());
+        }
+        if (request.defaultStandardCoverCharge() != null) {
+            store.setDefaultStandardCoverCharge(request.defaultStandardCoverCharge());
+        }
 
         Store updated = storeRepository.save(store);
         log.info("Updated store id={} name='{}'", updated.getId(), updated.getStoreName());
@@ -622,24 +770,291 @@ public class StoreServiceImpl implements StoreService {
         }
     }
 
+    private void validateStoreManagerEmail(String email, UUID merchantId) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        String normalizedEmail = email.trim().toLowerCase();
+
+        // 1. Check parent merchant owner email or owner user record
+        if (merchantId != null && merchantRepository != null) {
+            var merchantOpt = merchantRepository.findById(merchantId);
+            if (merchantOpt.isPresent()) {
+                var m = merchantOpt.get();
+                String ownerEmail = m.getEmail();
+                if (ownerEmail != null && ownerEmail.trim().equalsIgnoreCase(normalizedEmail)) {
+                    throw new AppException(
+                            "Store manager cannot use the Merchant Owner's email (" + normalizedEmail + "). A separate dedicated email must be provided for the store branch manager.",
+                            ApiError.VALIDATION_FAILED,
+                            400
+                    );
+                }
+                if (m.getOwnerUserId() != null && userRepository != null) {
+                    var ownerUserOpt = userRepository.findById(m.getOwnerUserId());
+                    if (ownerUserOpt.isPresent() && ownerUserOpt.get().getEmail() != null
+                            && ownerUserOpt.get().getEmail().trim().equalsIgnoreCase(normalizedEmail)) {
+                        throw new AppException(
+                                "Store manager cannot use the Merchant Owner's account email (" + normalizedEmail + "). A separate dedicated email must be provided for the store branch manager.",
+                                ApiError.VALIDATION_FAILED,
+                                400
+                        );
+                    }
+                }
+            }
+        }
+
+        // 2. Global check: is this email registered as a MERCHANT owner in users table?
+        if (userRepository != null) {
+            var userOpt = userRepository.findByEmail(normalizedEmail);
+            if (userOpt.isPresent()) {
+                User existing = userOpt.get();
+                if (Role.MERCHANT.equals(existing.getRole())) {
+                    throw new AppException(
+                            "This email is registered as a Merchant Owner account (" + normalizedEmail + "). Store branch managers must have a separate dedicated email address.",
+                            ApiError.VALIDATION_FAILED,
+                            400
+                    );
+                }
+            }
+        }
+    }
+
+    private void provisionStoreManagerAndSendWelcome(
+            Store store,
+            Merchant merchant,
+            String managerEmail,
+            String managerName,
+            String managerPhone,
+            UUID invitedByUserId
+    ) {
+        if (managerEmail == null || managerEmail.isBlank()) {
+            return;
+        }
+
+        String email = managerEmail.trim().toLowerCase();
+        String name = (managerName != null && !managerName.isBlank())
+                ? managerName.trim()
+                : (store.getStoreName() != null ? store.getStoreName() : "Branch") + " Manager";
+
+        // Find or provision User
+        User user = null;
+        if (userRepository != null) {
+            user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) {
+                String[] parts = name.split(" ", 2);
+                String first = parts[0];
+                String last = parts.length > 1 ? parts[1] : "";
+                String initialHash = passwordEncoder != null
+                        ? passwordEncoder.encode(UUID.randomUUID().toString())
+                        : UUID.randomUUID().toString();
+                user = new User(
+                        email,
+                        name,
+                        first,
+                        last,
+                        initialHash,
+                        Role.CUSTOMER
+                );
+                if (managerPhone != null && !managerPhone.isBlank()) {
+                    String cleanPhone = managerPhone.replaceAll("[\\s\\-()]", "").trim();
+                    user.setPhone(cleanPhone);
+                    user.setMobile(cleanPhone);
+                }
+                user.setEmailVerified(false);
+                user.setStatus(UserStatus.INACTIVE);
+                user = userRepository.save(user);
+                log.info("Provisioned user account for store manager email={} name='{}'", email, name);
+            }
+        }
+
+        UUID userId = user != null ? user.getId() : null;
+        if (userId == null) {
+            log.warn("Cannot provision store manager without user ID for email={}", email);
+            return;
+        }
+
+        // Generate 48-hour secure one-time invite token
+        String inviteToken = UUID.randomUUID().toString().replace("-", "")
+                + UUID.randomUUID().toString().replace("-", "");
+        Instant inviteExpiresAt = Instant.now().plus(48, java.time.temporal.ChronoUnit.HOURS);
+        String inviteUrl = "http://localhost:3000/accept-invite?token=" + inviteToken;
+
+        String permissionsJson = "{\"inviteToken\":\"" + inviteToken + "\",\"inviteExpiresAt\":\"" + inviteExpiresAt + "\"}";
+
+        if (staffMemberRepository != null) {
+            List<StaffMember> existing = staffMemberRepository.findByStoreId(store.getId());
+            StaffMember staff = existing.stream()
+                    .filter(s -> Objects.equals(s.getUserId(), userId) && "STORE".equalsIgnoreCase(s.getScope()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (staff == null) {
+                staff = new StaffMember(
+                        userId,
+                        "STORE_MANAGER",
+                        "STORE",
+                        merchant.getId(),
+                        store.getId(),
+                        null,
+                        "INVITED",
+                        permissionsJson,
+                        invitedByUserId
+                );
+            } else {
+                staff.setRoleId("STORE_MANAGER");
+                staff.setStatus("INVITED");
+                staff.setCustomPermissions(permissionsJson);
+                staff.setInvitedBy(invitedByUserId);
+            }
+            staffMemberRepository.save(staff);
+            log.info("Saved StaffMember STORE_MANAGER for storeId={} userId={} status=INVITED", store.getId(), userId);
+        }
+
+        if (emailService != null) {
+            emailService.sendStoreWelcomeEmail(email, name, store.getStoreName(), merchant.getBusinessName(), inviteUrl);
+            log.info("📧 Dispatched store welcome email with direct password setup link to {}: {}", email, inviteUrl);
+        }
+
+        if (auditService != null) {
+            auditService.record(AuditEventType.STAFF_INVITED, invitedByUserId, null, null,
+                    MDC.get("requestId"),
+                    "{\"storeId\":\"" + store.getId() + "\",\"email\":\"" + email + "\",\"role\":\"STORE_MANAGER\"}");
+        }
+    }
+
     @Override
     @Transactional
     public void resendStoreInvite(UUID storeId, UUID currentUserId) {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
+        resendStoreInvite(storeId != null ? storeId.toString() : null, currentUserId, null);
+    }
 
-        Merchant merchant = merchantRepository.findById(store.getMerchantId())
-                .orElseThrow(() -> new ResourceNotFoundException("Merchant", "id", store.getMerchantId()));
-
-        if (!merchant.getOwnerUserId().equals(currentUserId)) {
-            throw new AppException("You are not authorized to resend invites for this store", ApiError.FORBIDDEN, 403);
+    @Override
+    @Transactional
+    public void resendStoreInvite(String storeId, UUID currentUserId, ResendStoreInviteRequest request) {
+        UUID storeUuid = null;
+        if (storeId != null && !storeId.isBlank()) {
+            try {
+                storeUuid = UUID.fromString(storeId.trim());
+            } catch (IllegalArgumentException ignored) {
+                log.debug("Non-UUID storeId '{}' provided for resend invite", storeId);
+            }
         }
 
-        log.info("Dispatched store manager activation invite for store id={} by user={}", storeId, currentUserId);
+        Store store = null;
+        Merchant merchant = null;
+        if (storeUuid != null) {
+            store = storeRepository.findById(storeUuid).orElse(null);
+            if (store != null) {
+                merchant = merchantRepository.findById(store.getMerchantId()).orElse(null);
+            }
+        }
+
+        // Authorization check: Admin, Super Admin, Merchant Owner, or assigned Staff
+        boolean isAdmin = false;
+        if (userRepository != null && currentUserId != null) {
+            var uOpt = userRepository.findById(currentUserId);
+            if (uOpt.isPresent()) {
+                Role r = uOpt.get().getRole();
+                if (r == Role.ADMIN || r == Role.SUPER_ADMIN) {
+                    isAdmin = true;
+                }
+            }
+        }
+
+        if (!isAdmin && merchant != null && currentUserId != null && !merchant.getOwnerUserId().equals(currentUserId)) {
+            boolean isAssigned = false;
+            if (staffMemberRepository != null) {
+                var userStaff = staffMemberRepository.findByUserId(currentUserId);
+                final UUID finalStoreUuid = storeUuid;
+                final UUID merchantId = merchant.getId();
+                isAssigned = userStaff.stream().anyMatch(s ->
+                        (finalStoreUuid != null && finalStoreUuid.equals(s.getStoreId())) ||
+                        (merchantId != null && merchantId.equals(s.getMerchantId()))
+                );
+            }
+            if (!isAssigned) {
+                throw new AppException("You are not authorized to resend invites for this store", ApiError.FORBIDDEN, 403);
+            }
+        }
+
+        // Determine recipient email and name
+        String targetEmail = null;
+        String targetName = null;
+        String branchName = store != null ? store.getStoreName() : (request != null && request.branchName() != null ? request.branchName() : "Branch Store");
+
+        // 1. From request body
+        if (request != null && request.email() != null && !request.email().isBlank()) {
+            targetEmail = request.email().trim();
+        }
+        if (request != null && request.managerName() != null && !request.managerName().isBlank()) {
+            targetName = request.managerName().trim();
+        }
+
+        // 2. From assigned staff in repository if store exists
+        com.superapp.user.entity.StaffMember assignedStaff = null;
+        if (storeUuid != null && staffMemberRepository != null) {
+            var staffList = staffMemberRepository.findByStoreId(storeUuid);
+            if (!staffList.isEmpty()) {
+                assignedStaff = staffList.get(0);
+                if (userRepository != null && assignedStaff.getUserId() != null) {
+                    var staffUser = userRepository.findById(assignedStaff.getUserId()).orElse(null);
+                    if (staffUser != null) {
+                        if (targetEmail == null || targetEmail.isBlank()) {
+                            targetEmail = staffUser.getEmail();
+                        }
+                        if (targetName == null || targetName.isBlank()) {
+                            targetName = staffUser.getName();
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback to merchant registered email
+        if ((targetEmail == null || targetEmail.isBlank()) && merchant != null) {
+            targetEmail = merchant.getEmail();
+            if (targetName == null || targetName.isBlank()) {
+                targetName = merchant.getLegalName() != null ? merchant.getLegalName() : merchant.getBusinessName();
+            }
+        }
+
+        if (targetEmail == null || targetEmail.isBlank()) {
+            throw new AppException("No recipient email address found for store manager invitation", ApiError.VALIDATION_ERROR, 400);
+        }
+
+        if (targetName == null || targetName.isBlank()) {
+            targetName = "Store Manager";
+        }
+
+        // Generate fresh 48-hour invitation token and onboarding URL
+        String inviteToken = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+        Instant inviteExpiresAt = Instant.now().plus(48, java.time.temporal.ChronoUnit.HOURS);
+        String inviteUrl = "http://localhost:3000/accept-invite?token=" + inviteToken;
+
+        String permissionsJson = "{\"inviteToken\":\"" + inviteToken + "\",\"inviteExpiresAt\":\"" + inviteExpiresAt + "\"}";
+
+        if (assignedStaff != null && staffMemberRepository != null) {
+            assignedStaff.setCustomPermissions(permissionsJson);
+            assignedStaff.setStatus("INVITED");
+            if (currentUserId != null) {
+                assignedStaff.setInvitedBy(currentUserId);
+            }
+            staffMemberRepository.save(assignedStaff);
+        }
+
+        // Send email via EmailService
+        if (emailService != null) {
+            String bizName = merchant != null ? merchant.getBusinessName() : "PINAK Merchant";
+            emailService.sendStoreWelcomeEmail(targetEmail, targetName, branchName, bizName, inviteUrl);
+            log.info("✅ [STORE MANAGER WELCOME EMAIL DELIVERED] Recipient: {} ({}) | Store: '{}' (id={}) | Brand: '{}' | Link: {}",
+                    targetName, targetEmail, branchName, storeId, bizName, inviteUrl);
+        } else {
+            log.warn("⚠️ [STORE MANAGER INVITE] EmailService not available; logging fallback URL: {}", inviteUrl);
+        }
 
         if (auditService != null) {
             auditService.record(AuditEventType.STORE_INVITE_RESENT, currentUserId, null, null, MDC.get("requestId"),
-                    "{\"storeId\":\"" + storeId + "\",\"branchName\":\"" + store.getStoreName() + "\"}");
+                    "{\"storeId\":\"" + storeId + "\",\"branchName\":\"" + branchName + "\",\"recipient\":\"" + targetEmail + "\"}");
         }
     }
 
@@ -694,13 +1109,31 @@ public class StoreServiceImpl implements StoreService {
     // =========================================================================
 
     private Merchant getAuthenticatedMerchant(UUID currentUserId) {
-        Merchant merchant = merchantRepository.findByOwnerUserId(currentUserId)
-                .orElseThrow(() -> new AppException("Merchant not found for current user", ApiError.MERCHANT_NOT_FOUND, 404));
-
-        if (merchant.isSuspended()) {
-            throw new AppException("Merchant is suspended", ApiError.ACCOUNT_INACTIVE, 403);
+        var ownerOpt = merchantRepository.findByOwnerUserId(currentUserId);
+        if (ownerOpt.isPresent()) {
+            Merchant merchant = ownerOpt.get();
+            if (merchant.isSuspended()) {
+                throw new AppException("Merchant is suspended", ApiError.ACCOUNT_INACTIVE, 403);
+            }
+            return merchant;
         }
-        return merchant;
+
+        if (staffMemberRepository != null) {
+            var staffList = staffMemberRepository.findByUserId(currentUserId);
+            if (!staffList.isEmpty()) {
+                var staff = staffList.get(0);
+                if (staff.getMerchantId() != null) {
+                    Merchant merchant = merchantRepository.findById(staff.getMerchantId())
+                            .orElseThrow(() -> new AppException("Merchant not found for current user", ApiError.MERCHANT_NOT_FOUND, 404));
+                    if (merchant.isSuspended()) {
+                        throw new AppException("Merchant is suspended", ApiError.ACCOUNT_INACTIVE, 403);
+                    }
+                    return merchant;
+                }
+            }
+        }
+
+        throw new AppException("Merchant not found for current user", ApiError.MERCHANT_NOT_FOUND, 404);
     }
 
     private Store getOwnedStore(UUID storeId, UUID merchantId) {

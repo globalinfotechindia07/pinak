@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   RotateCw,
@@ -7,6 +7,7 @@ import {
   Sparkles,
   CheckCircle2,
   Heart,
+  ChevronLeft,
   ChevronRight,
   ShieldCheck,
   Zap,
@@ -24,13 +25,24 @@ import {
   Users,
   Store,
   Tag,
-  Plus
+  Plus,
+  Navigation,
+  MapPinOff,
+  RefreshCw,
+  Crosshair,
+  Sliders,
+  Globe,
+  X,
+  Percent
 } from "lucide-react";
 import { Link } from "wouter";
 import apiClient from "@/api/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ServiceDetailPreviewView } from "@/components/ServiceDetailPreviewView";
+import { CustomerOrdersView } from "@/components/CustomerOrdersView";
+import { TableBookingView } from "@/components/TableBookingView";
+import tableBookingApi, { TableBookingDetails } from "@/api/tableBookingApi";
 
 interface NearbyOffer {
   id?: string;
@@ -56,6 +68,7 @@ interface NearbyOffer {
   buyQuantity?: number;
   getQuantity?: number;
   redemptionType?: string;
+  storeId?: string;
   merchant?: {
     merchantId?: string;
     name?: string;
@@ -324,9 +337,21 @@ function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
 export default function CustomerHomePreviewPage() {
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const initialStoreId = searchParams?.get("storeId");
-  const [activeScreen, setActiveScreen] = useState<"home" | "detail">(initialStoreId ? "detail" : "home");
+  const [activeScreen, setActiveScreen] = useState<"home" | "detail" | "orders" | "booking_pass">(initialStoreId ? "detail" : "home");
   const [initialDetailView, setInitialDetailView] = useState<"detail" | "booking">("detail");
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "97aabe53-9349-439d-952e-40f723bb8f51");
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "");
+  const [isPayingBill, setIsPayingBill] = useState<boolean>(false);
+  const [activeBooking, setActiveBooking] = useState<TableBookingDetails | null>(null);
+  const [activeBookingsList, setActiveBookingsList] = useState<TableBookingDetails[]>([]);
+  const [selectedBookingForPass, setSelectedBookingForPass] = useState<TableBookingDetails | null>(null);
+  const [dismissedBookingRefs, setDismissedBookingRefs] = useState<Set<string>>(new Set());
+  const [activeBookingCarouselIndex, setActiveBookingCarouselIndex] = useState<number>(0);
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+
+  const effectivePassBooking = selectedBookingForPass || activeBooking;
+  const visibleBookings = activeBookingsList.filter(
+    (b) => !dismissedBookingRefs.has(b.bookingRef || b.bookingId)
+  );
   const [offers, setOffers] = useState<NearbyOffer[]>([]);
   const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
   const [featuredStores, setFeaturedStores] = useState<FeaturedMerchant[]>([]);
@@ -339,44 +364,217 @@ export default function CustomerHomePreviewPage() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [seconds, setSeconds] = useState(10);
   const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
-  const [userLocation, setUserLocation] = useState({
-    name: "West High Court Rd, Dharampeth",
-    city: "Nagpur, Maharashtra",
-    latitude: 21.1458,
-    longitude: 79.0882,
-    radiusKm: 15.0
+  const [isGpsLoading, setIsGpsLoading] = useState(false);
+  const [isApplyingCoords, setIsApplyingCoords] = useState(false);
+
+  // Initialize coordinates from localStorage so manual user settings persist across reloads
+  const [userLocation, setUserLocation] = useState<{
+    name: string;
+    city: string;
+    latitude: number;
+    longitude: number;
+    radiusKm: number;
+  }>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const qLat = params.get("lat");
+        const qLng = params.get("lng");
+        const qName = params.get("name");
+        if (qLat && qLng && !isNaN(Number(qLat)) && !isNaN(Number(qLng))) {
+          const latNum = Number(qLat);
+          const lngNum = Number(qLng);
+          return {
+            name: qName ? decodeURIComponent(qName) : `Branch Location (${latNum.toFixed(4)}, ${lngNum.toFixed(4)})`,
+            city: "Selected Outlet Location",
+            latitude: latNum,
+            longitude: lngNum,
+            radiusKm: 15.0
+          };
+        }
+
+        const saved = localStorage.getItem("pinak_preview_coords");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed.latitude === "number" && typeof parsed.longitude === "number") {
+            return {
+              name: parsed.name || "The Bombay Canteen (Nagpur)",
+              city: parsed.city || "Nagpur, Maharashtra",
+              latitude: Number(parsed.latitude),
+              longitude: Number(parsed.longitude),
+              radiusKm: Number(parsed.radiusKm || 15.0)
+            };
+          }
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return {
+      name: "The Bombay Canteen (Nagpur)",
+      city: "Nagpur, Maharashtra",
+      latitude: 21.112875,
+      longitude: 79.059910,
+      radiusKm: 15.0
+    };
   });
+
+  // Numeric text inputs for live custom coordinate setting
+  const [customLatInput, setCustomLatInput] = useState<string>(() => userLocation.latitude.toString());
+  const [customLngInput, setCustomLngInput] = useState<string>(() => userLocation.longitude.toString());
+  const [customRadiusInput, setCustomRadiusInput] = useState<string>(() => (userLocation.radiusKm || 15).toString());
+
+  // Keep inputs synchronized when userLocation changes & persist to localStorage
+  useEffect(() => {
+    setCustomLatInput(userLocation.latitude.toString());
+    setCustomLngInput(userLocation.longitude.toString());
+    setCustomRadiusInput((userLocation.radiusKm || 15).toString());
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("pinak_preview_coords", JSON.stringify(userLocation));
+      } catch {
+        // ignore
+      }
+    }
+  }, [userLocation]);
 
   const PRESET_LOCATIONS = [
     {
+      name: "The Bombay Canteen (Flagship Outlet)",
+      city: "Nagpur, Maharashtra",
+      latitude: 21.112875,
+      longitude: 79.059910,
+      radiusKm: 15.0
+    },
+    {
       name: "West High Court Rd, Dharampeth",
       city: "Nagpur, Maharashtra",
-      latitude: 21.1458,
-      longitude: 79.0882,
+      latitude: 21.145800,
+      longitude: 79.088200,
       radiusKm: 15.0
     },
     {
       name: "Residency Rd, Sadar",
       city: "Nagpur, Maharashtra",
-      latitude: 21.1610,
-      longitude: 79.0830,
+      latitude: 21.161000,
+      longitude: 79.083000,
       radiusKm: 15.0
     },
     {
-      name: "Central Bazaar Rd, Ramdaspeth",
-      city: "Nagpur, Maharashtra",
-      latitude: 21.1390,
-      longitude: 79.0760,
+      name: "FC Road, Shivajinagar",
+      city: "Pune, Maharashtra",
+      latitude: 18.520400,
+      longitude: 73.856700,
+      radiusKm: 15.0
+    },
+    {
+      name: "Bandra Kurla Complex (BKC)",
+      city: "Mumbai, Maharashtra",
+      latitude: 19.065700,
+      longitude: 72.868700,
       radiusKm: 15.0
     },
     {
       name: "100ft Rd, Indiranagar",
       city: "Bengaluru, Karnataka",
-      latitude: 12.9716,
-      longitude: 77.6412,
+      latitude: 12.971600,
+      longitude: 77.641200,
+      radiusKm: 15.0
+    },
+    {
+      name: "Connaught Place, Central",
+      city: "New Delhi, Delhi",
+      latitude: 28.631500,
+      longitude: 77.216700,
       radiusKm: 15.0
     }
   ];
+
+  const applyCustomCoordinates = async (
+    latVal: string | number,
+    lngVal: string | number,
+    radiusVal?: string | number,
+    overrideName?: string
+  ) => {
+    const lat = typeof latVal === "number" ? latVal : parseFloat(latVal);
+    const lng = typeof lngVal === "number" ? lngVal : parseFloat(lngVal);
+    const radius = radiusVal != null ? (typeof radiusVal === "number" ? radiusVal : parseFloat(radiusVal)) : (userLocation.radiusKm || 15);
+
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      toast.error("Please enter a valid Latitude between -90 and 90");
+      return;
+    }
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      toast.error("Please enter a valid Longitude between -180 and 180");
+      return;
+    }
+    const finalRadius = isNaN(radius) || radius <= 0 ? 15 : radius;
+
+    setIsApplyingCoords(true);
+    let resolvedName = overrideName || `Custom Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+    let resolvedCity = `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+    if (!overrideName) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 2500);
+        const revRes = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`,
+          { headers: { "Accept-Language": "en" }, signal: controller.signal }
+        );
+        clearTimeout(timer);
+        if (revRes.ok) {
+          const rev = await revRes.json();
+          const addr = rev.address || {};
+          const locality = addr.suburb || addr.neighbourhood || addr.road || addr.residential || addr.village || addr.city || "Custom Location";
+          const city = addr.city || addr.town || addr.county || addr.state_district || addr.state || "";
+          resolvedName = locality;
+          resolvedCity = city ? `${city} (${lat.toFixed(4)}, ${lng.toFixed(4)})` : `Coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+        }
+      } catch {
+        // Fallback to coordinates
+      }
+    }
+
+    const updated = {
+      name: resolvedName,
+      city: resolvedCity,
+      latitude: Number(lat.toFixed(6)),
+      longitude: Number(lng.toFixed(6)),
+      radiusKm: finalRadius
+    };
+
+    setUserLocation(updated);
+    setIsApplyingCoords(false);
+    setIsLocationMenuOpen(false);
+    toast.success(`Active GPS set to ${lat.toFixed(4)}, ${lng.toFixed(4)} (${finalRadius}km radius)`);
+  };
+
+  const requestCurrentLocation = (explicit = false) => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      if (explicit) toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setIsGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        await applyCustomCoordinates(lat, lng, userLocation.radiusKm);
+        setIsGpsLoading(false);
+        if (explicit) {
+          toast.success(`Device GPS acquired: ${lat}, ${lng}`);
+        }
+      },
+      (err) => {
+        setIsGpsLoading(false);
+        if (explicit) {
+          toast.error(`GPS Error: ${err.message}. Please allow location access in your browser.`);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  };
 
   const fetchNearbyOffers = async () => {
     setLoading(true);
@@ -386,27 +584,14 @@ export default function CustomerHomePreviewPage() {
           type: "SERVICE",
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
           radiusKm: userLocation.radiusKm,
           limit: 10
         }
       });
       const data = res.data?.data;
-      let list = Array.isArray(data?.offers) ? data.offers : Array.isArray(data) ? data : [];
-      if (list.length === 0) {
-        // Fallback: If no service deals within exact radius of this location, fetch platform active deals
-        try {
-          const fallbackRes = await apiClient.get("/offers/nearby", {
-            params: {
-              type: "SERVICE",
-              limit: 10
-            }
-          });
-          const fbData = fallbackRes.data?.data;
-          list = Array.isArray(fbData?.offers) ? fbData.offers : Array.isArray(fbData) ? fbData : [];
-        } catch (fErr: any) {
-          console.warn("Fallback service offers error:", fErr?.message);
-        }
-      }
+      const list = Array.isArray(data?.offers) ? data.offers : Array.isArray(data) ? data : [];
       setOffers(list);
       if (list.length > 0 && !searchParams?.get("storeId")) {
         const firstStore = list[0].branch?.branchId || list[0].branchSummary?.storeId;
@@ -416,15 +601,7 @@ export default function CustomerHomePreviewPage() {
       }
     } catch (err: any) {
       console.warn("Could not fetch live service offers:", err?.message);
-      try {
-        const fallbackRes = await apiClient.get("/offers/nearby", {
-          params: { type: "SERVICE", limit: 10 }
-        });
-        const fbData = fallbackRes.data?.data;
-        setOffers(Array.isArray(fbData?.offers) ? fbData.offers : []);
-      } catch {
-        setOffers([]);
-      }
+      setOffers([]);
     }
 
     try {
@@ -433,27 +610,14 @@ export default function CustomerHomePreviewPage() {
           type: "PRODUCT",
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
           radiusKm: userLocation.radiusKm,
           limit: 10
         }
       });
       const pData = pRes.data?.data;
-      let pList = Array.isArray(pData?.offers) ? pData.offers : Array.isArray(pData) ? pData : [];
-      if (pList.length === 0) {
-        // Fallback: If no product deals within exact radius of this location, fetch platform active product deals
-        try {
-          const pFallbackRes = await apiClient.get("/offers/nearby", {
-            params: {
-              type: "PRODUCT",
-              limit: 10
-            }
-          });
-          const pFbData = pFallbackRes.data?.data;
-          pList = Array.isArray(pFbData?.offers) ? pFbData.offers : Array.isArray(pFbData) ? pFbData : [];
-        } catch (fErr: any) {
-          console.warn("Fallback product deals error:", fErr?.message);
-        }
-      }
+      const pList = Array.isArray(pData?.offers) ? pData.offers : Array.isArray(pData) ? pData : [];
       setProductDeals(
         pList.map((item: any) => {
           const orig = item.originalMrp ? Number(item.originalMrp) : undefined;
@@ -492,35 +656,7 @@ export default function CustomerHomePreviewPage() {
       );
     } catch (err: any) {
       console.warn("Could not fetch live product deals:", err?.message);
-      try {
-        const pFallbackRes = await apiClient.get("/offers/nearby", {
-          params: { type: "PRODUCT", limit: 10 }
-        });
-        const pFbData = pFallbackRes.data?.data;
-        const pList = Array.isArray(pFbData?.offers) ? pFbData.offers : [];
-        setProductDeals(
-          pList.map((item: any) => {
-            const orig = item.originalMrp ? Number(item.originalMrp) : undefined;
-            const deal = item.flashSellingPrice ? Number(item.flashSellingPrice) : (Number(item.discountValue || item.value) || 0);
-            const pct = (orig && deal && orig > deal) ? Math.round(((orig - deal) / orig) * 100) : Number(item.discountValue || item.value || 0);
-            return {
-              id: item.offerId || item.id,
-              title: item.title,
-              unitOrWeight: item.subtitle || "Standard Pack",
-              dealPrice: deal,
-              originalPrice: orig,
-              discountPct: pct,
-              discountBadge: item.badgeText || (pct > 0 ? `${pct}% OFF` : "DEAL"),
-              imageUrl: item.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
-              merchantName: item.merchant?.name,
-              storeName: item.branch?.name,
-              storeId: item.branch?.branchId || item.branchSummary?.storeId
-            };
-          })
-        );
-      } catch {
-        setProductDeals([]);
-      }
+      setProductDeals([]);
     }
 
     try {
@@ -528,22 +664,17 @@ export default function CustomerHomePreviewPage() {
         params: {
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
           limit: 10
         }
       });
       const fData = fRes.data?.data;
-      let fList = Array.isArray(fData?.merchants) ? fData.merchants : [];
-      if (fList.length === 0) {
-        try {
-          const fFallbackRes = await apiClient.get("/merchants/featured", {
-            params: { limit: 10 }
-          });
-          fList = Array.isArray(fFallbackRes.data?.data?.merchants) ? fFallbackRes.data?.data?.merchants : [];
-        } catch (fErr: any) {
-          console.warn("Fallback featured merchants error:", fErr?.message);
-        }
-      }
+      const fList = Array.isArray(fData?.merchants) ? fData.merchants : [];
       setFeaturedStores(fList);
+      if (fList.length > 0 && !searchParams?.get("storeId")) {
+        setSelectedStoreId((prev) => (prev ? prev : fList[0]?.merchantId));
+      }
     } catch (err: any) {
       console.warn("Could not fetch live featured merchants:", err?.message);
       setFeaturedStores([]);
@@ -554,6 +685,8 @@ export default function CustomerHomePreviewPage() {
         params: {
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
           radiusKm: userLocation.radiusKm || 15.0,
           limit: 10,
         },
@@ -571,32 +704,17 @@ export default function CustomerHomePreviewPage() {
         params: {
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
           limit: 10,
         },
       });
       const fData = fRes.data?.data;
-      let fList = Array.isArray(fData?.deals) ? fData.deals : [];
-      if (fList.length === 0) {
-        try {
-          const flashFallback = await apiClient.get("/offers/flash", {
-            params: { limit: 10 }
-          });
-          fList = Array.isArray(flashFallback.data?.data?.deals) ? flashFallback.data?.data?.deals : [];
-        } catch {
-          // ignore
-        }
-      }
+      const fList = Array.isArray(fData?.deals) ? fData.deals : [];
       setFlashDeals(fList);
     } catch (err: any) {
       console.warn("Could not fetch live flash deals:", err?.message);
-      try {
-        const flashFallback = await apiClient.get("/offers/flash", {
-          params: { limit: 10 }
-        });
-        setFlashDeals(Array.isArray(flashFallback.data?.data?.deals) ? flashFallback.data?.data?.deals : []);
-      } catch {
-        setFlashDeals([]);
-      }
+      setFlashDeals([]);
     }
 
     try {
@@ -613,6 +731,8 @@ export default function CustomerHomePreviewPage() {
         params: {
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
           limit: 10
         }
       });
@@ -621,6 +741,27 @@ export default function CustomerHomePreviewPage() {
       setRecommendations(recList);
     } catch {
       setRecommendations([]);
+    }
+
+    // Nearby store resolution if no store selected yet
+    try {
+      const sRes = await apiClient.get("/discovery/nearby", {
+        params: {
+          lat: userLocation.latitude,
+          latitude: userLocation.latitude,
+          lng: userLocation.longitude,
+          longitude: userLocation.longitude,
+          radius: (userLocation.radiusKm || 15.0) * 1000,
+          size: 5
+        }
+      });
+      const sData = sRes.data?.data;
+      const sList = Array.isArray(sData) ? sData : [];
+      if (sList.length > 0 && !searchParams?.get("storeId")) {
+        setSelectedStoreId((prev) => (prev ? prev : sList[0].id));
+      }
+    } catch {
+      // Ignore discovery nearby fallback
     } finally {
       setLoading(false);
     }
@@ -638,6 +779,55 @@ export default function CustomerHomePreviewPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch active bookings for the home screen floating card (matches Swiggy/Dineout)
+  useEffect(() => {
+    const fetchActiveBookings = async () => {
+      try {
+        const list = await tableBookingApi.listBookings();
+        if (list && list.length > 0) {
+          // Strictly filter out any COMPLETED, payment-completed, or CANCELLED bookings
+          const validActive = list.filter((b) => {
+            const status = (b.status || "").toUpperCase();
+            const isCompleted = status === "COMPLETED" || b.isCompleted === true;
+            const isCancelled = status === "CANCELLED" || b.isCancelled === true;
+            const isDiningPaid =
+              (b.diningPaymentStatus || "").toUpperCase() === "PAID" ||
+              (b.billAmount != null && Number(b.billAmount) > 0 && isCompleted);
+            return !isCancelled && !isCompleted && !isDiningPaid;
+          });
+
+          setActiveBookingsList(validActive);
+          if (validActive.length > 0) {
+            setActiveBooking((prev) => {
+              if (
+                prev &&
+                validActive.some(
+                  (item) => (item.bookingRef || item.bookingId) === (prev.bookingRef || prev.bookingId)
+                )
+              ) {
+                return validActive.find(
+                  (item) => (item.bookingRef || item.bookingId) === (prev.bookingRef || prev.bookingId)
+                )!;
+              }
+              return validActive[0];
+            });
+          } else {
+            setActiveBooking(null);
+            setSelectedBookingForPass(null);
+          }
+        } else {
+          setActiveBookingsList([]);
+          setActiveBooking(null);
+          setSelectedBookingForPass(null);
+        }
+      } catch (err) {
+        console.warn("Could not fetch active bookings for home card:", err);
+      }
+    };
+
+    fetchActiveBookings();
+  }, [activeScreen]);
+
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -645,9 +835,19 @@ export default function CustomerHomePreviewPage() {
   };
 
   const handleOpenStoreDetail = (storeId?: string) => {
-    setSelectedStoreId(storeId || "e1000000-0000-0000-0000-000000000001");
-    setActiveScreen("detail");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const validStoreId =
+      storeId && storeId !== "e1000000-0000-0000-0000-000000000001"
+        ? storeId
+        : offers.find((o) => o.branch?.branchId || o.branchSummary?.storeId)?.branch?.branchId ||
+          offers.find((o) => o.branchSummary?.storeId)?.branchSummary?.storeId ||
+          "";
+    if (validStoreId) {
+      setSelectedStoreId(validStoreId);
+      setActiveScreen("detail");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      toast.info("No specific branch outlet linked to this offer yet.");
+    }
   };
 
   const handleClaimOffer = (title: string, storeName?: string, storeId?: string) => {
@@ -681,11 +881,14 @@ export default function CustomerHomePreviewPage() {
           </div>
         </div>
 
-        {/* Screen 10 / Screen 11 View Switcher */}
+        {/* Screen 10 / Screen 11 / Screen 12 View Switcher */}
         <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
           <button
             type="button"
-            onClick={() => setActiveScreen("home")}
+            onClick={() => {
+              setActiveScreen("home");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
             className={cn(
               "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
               activeScreen === "home"
@@ -703,11 +906,13 @@ export default function CustomerHomePreviewPage() {
                 const firstRealStore =
                   offers.find((o) => o.branch?.branchId || o.branchSummary?.storeId)?.branch?.branchId ||
                   offers.find((o) => o.branchSummary?.storeId)?.branchSummary?.storeId ||
-                  "97aabe53-9349-439d-952e-40f723bb8f51";
+                  featuredStores[0]?.merchantId ||
+                  "";
                 setSelectedStoreId(firstRealStore);
               }
               setInitialDetailView("detail");
               setActiveScreen("detail");
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }}
             className={cn(
               "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
@@ -719,27 +924,127 @@ export default function CustomerHomePreviewPage() {
             <UtensilsCrossed size={13} />
             <span>Screen 11: Service Detail</span>
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveScreen("orders");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className={cn(
+              "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
+              activeScreen === "orders"
+                ? "bg-purple-600 text-white shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <TicketPercent size={13} />
+            <span>Screen 12: Orders &amp; Bookings</span>
+          </button>
+          {activeBooking && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveScreen("booking_pass");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
+                activeScreen === "booking_pass"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-400 hover:text-slate-200"
+              )}
+            >
+              <CheckCircle2 size={13} />
+              <span>Booking Pass</span>
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Location status */}
-          <div className="hidden sm:flex items-center gap-1.5 text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg">
-            <MapPin size={13} className="text-purple-400" />
-            <span className="text-[11px]">
-              {userLocation.name.split(",")[0]} ({userLocation.latitude}, {userLocation.longitude})
-            </span>
+        {/* Active GPS Coordinate Simulator Toolbar */}
+        <div className="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 p-1.5 rounded-xl shadow-inner text-xs">
+          <div className="flex items-center gap-1.5 text-slate-300 font-semibold px-1">
+            <Crosshair size={13} className="text-purple-400" />
+            <span className="text-[11px] font-bold text-slate-200">GPS Coords:</span>
           </div>
 
+          {/* Latitude Input */}
+          <div className="flex items-center bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1">
+            <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">Lat:</span>
+            <input
+              type="number"
+              step="any"
+              value={customLatInput}
+              onChange={(e) => setCustomLatInput(e.target.value)}
+              placeholder="21.112875"
+              className="w-20 bg-transparent text-white font-mono text-[11px] focus:outline-none"
+              title="Latitude (-90 to +90)"
+            />
+          </div>
+
+          {/* Longitude Input */}
+          <div className="flex items-center bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1">
+            <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">Lng:</span>
+            <input
+              type="number"
+              step="any"
+              value={customLngInput}
+              onChange={(e) => setCustomLngInput(e.target.value)}
+              placeholder="79.059910"
+              className="w-20 bg-transparent text-white font-mono text-[11px] focus:outline-none"
+              title="Longitude (-180 to +180)"
+            />
+          </div>
+
+          {/* Radius Input */}
+          <div className="flex items-center bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1">
+            <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">Radius:</span>
+            <input
+              type="number"
+              min="1"
+              max="2000"
+              value={customRadiusInput}
+              onChange={(e) => setCustomRadiusInput(e.target.value)}
+              placeholder="15"
+              className="w-10 bg-transparent text-white font-mono text-[11px] focus:outline-none text-right"
+              title="Radius in kilometers"
+            />
+            <span className="text-[10px] text-slate-400 ml-0.5">km</span>
+          </div>
+
+          {/* Apply Coords Button */}
+          <button
+            type="button"
+            onClick={() => applyCustomCoordinates(customLatInput, customLngInput, customRadiusInput)}
+            disabled={isApplyingCoords || loading}
+            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+            title="Send these exact coordinates to backend APIs"
+          >
+            {isApplyingCoords ? <RefreshCw size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+            <span>Apply Coords</span>
+          </button>
+
+          {/* Location Presets Button */}
+          <button
+            type="button"
+            onClick={() => setIsLocationMenuOpen((v) => !v)}
+            className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+            title="Open Outlets & Cities presets"
+          >
+            <MapPin size={11} />
+            <span>Presets</span>
+          </button>
+
+          {/* Refresh Live Deals */}
           <button
             onClick={() => {
               fetchNearbyOffers();
               toast.info("Refreshed nearby service offers from database");
             }}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold transition-colors cursor-pointer shadow-sm"
+            className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+            title="Refresh API Data"
           >
-            <RotateCw size={13} className={loading ? "animate-spin" : ""} />
-            <span>{loading ? "Syncing..." : "Refresh Live Deals"}</span>
+            <RotateCw size={13} className={loading ? "animate-spin text-purple-400" : ""} />
           </button>
         </div>
       </header>
@@ -747,7 +1052,7 @@ export default function CustomerHomePreviewPage() {
       {/* Main Preview Container */}
       <main className="py-6 sm:py-10 px-2 sm:px-4 flex justify-center w-full">
         {/* iOS Mobile Phone Mockup Frame */}
-        <div className="w-full max-w-[430px] bg-[#fbfbff] min-h-[900px] text-slate-800 relative pb-28 shadow-2xl rounded-[36px] overflow-hidden border-[6px] border-slate-800 ring-1 ring-slate-700">
+        <div className="w-full max-w-[430px] bg-[#fbfbff] min-h-[900px] text-slate-800 relative pb-36 shadow-2xl rounded-[36px] overflow-hidden border-[6px] border-slate-800 ring-1 ring-slate-700">
           
           {/* iOS Status Bar */}
           <header className="sticky top-0 z-40 bg-[#fbfbff]/95 backdrop-blur-md pt-3 px-6 pb-1">
@@ -781,6 +1086,49 @@ export default function CustomerHomePreviewPage() {
                 setActiveScreen("home");
               }}
             />
+          ) : activeScreen === "booking_pass" && effectivePassBooking ? (
+            <TableBookingView
+              storeId={effectivePassBooking.storeId}
+              storeName={effectivePassBooking.storeName}
+              storeAddress={effectivePassBooking.storeAddress}
+              contactPhone={effectivePassBooking.contactPhone}
+              initialBookingStep="confirmed"
+              initialBookingRef={effectivePassBooking.bookingRef}
+              initialBookingDetails={effectivePassBooking}
+              initialGuests={effectivePassBooking.guests}
+              initialSlot={effectivePassBooking.slotTime}
+              initialOfferTitle={effectivePassBooking.offerTitle}
+              initialOfferDiscount={effectivePassBooking.discountPct ? Number(effectivePassBooking.discountPct) : undefined}
+              initialCoverCharge={effectivePassBooking.totalCoverCharge ? Number(effectivePassBooking.totalCoverCharge) : 0}
+              initialCustomerName={effectivePassBooking.customerName}
+              initialCustomerPhone={effectivePassBooking.customerPhone}
+              userLat={userLocation.latitude}
+              userLng={userLocation.longitude}
+              onBack={() => {
+                setActiveScreen("home");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onViewStoreDetails={(storeId) => {
+                if (storeId) setSelectedStoreId(storeId);
+                setInitialDetailView("detail");
+                setActiveScreen("detail");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
+          ) : activeScreen === "orders" ? (
+            <CustomerOrdersView
+              onBackToDiscover={() => {
+                setActiveScreen("home");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onSelectStore={(storeId) => {
+                setSelectedStoreId(storeId);
+                setInitialDetailView("detail");
+                setActiveScreen("detail");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onPayingBillChange={setIsPayingBill}
+            />
           ) : (
             <>
               {/* Top Brand Header */}
@@ -801,41 +1149,134 @@ export default function CustomerHomePreviewPage() {
                 <button
                   type="button"
                   onClick={() => setIsLocationMenuOpen((v) => !v)}
-                  className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 transition-colors max-w-[170px] rounded-lg text-left cursor-pointer"
+                  className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 transition-colors max-w-[190px] rounded-lg text-left cursor-pointer"
                 >
                   <MapPin className="w-3.5 h-3.5 text-purple-600 shrink-0" />
                   <div className="overflow-hidden">
                     <p className="text-[11px] font-bold text-slate-800 leading-tight truncate">{userLocation.name}</p>
-                    <p className="text-[9px] text-slate-500 truncate leading-none">{userLocation.city}</p>
+                    <p className="text-[9px] text-slate-500 truncate leading-none">
+                      {userLocation.city} • {userLocation.radiusKm}km
+                    </p>
                   </div>
                 </button>
 
                 {isLocationMenuOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 text-slate-900">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-2 py-1">
-                      Select GPS Discovery Point
-                    </span>
-                    {PRESET_LOCATIONS.map((loc, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => {
-                          setUserLocation(loc);
-                          setIsLocationMenuOpen(false);
-                          toast.success(`Switched GPS point to ${loc.name}`);
-                        }}
-                        className={cn(
-                          "w-full text-left p-2 rounded-lg text-xs transition-colors cursor-pointer flex items-start gap-2",
-                          userLocation.name === loc.name ? "bg-purple-50 text-purple-900 font-bold" : "hover:bg-slate-50 text-slate-700"
-                        )}
-                      >
-                        <MapPin size={12} className={userLocation.name === loc.name ? "text-purple-600 shrink-0 mt-0.5" : "text-slate-400 shrink-0 mt-0.5"} />
-                        <div className="min-w-0">
-                          <p className="truncate leading-tight">{loc.name}</p>
-                          <p className="text-[10px] text-slate-400 font-normal leading-tight">{loc.city} ({loc.latitude}, {loc.longitude})</p>
+                  <div className="absolute top-full left-0 mt-1 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-3 z-50 text-slate-900 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between px-1 mb-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        GPS Discovery Coordinates
+                      </span>
+                      {isApplyingCoords && (
+                        <span className="text-[9px] text-purple-600 font-semibold flex items-center gap-1">
+                          <RefreshCw size={10} className="animate-spin" /> Querying API...
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Coordinate Input Form */}
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 mb-2.5 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                            Latitude
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={customLatInput}
+                            onChange={(e) => setCustomLatInput(e.target.value)}
+                            placeholder="21.112875"
+                            className="w-full px-2 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                          />
                         </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                            Longitude
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={customLngInput}
+                            onChange={(e) => setCustomLngInput(e.target.value)}
+                            placeholder="79.059910"
+                            className="w-full px-2 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                            Search Radius (km)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="2000"
+                            value={customRadiusInput}
+                            onChange={(e) => setCustomRadiusInput(e.target.value)}
+                            placeholder="15"
+                            className="w-full px-2 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                          />
+                        </div>
+                        <div className="pt-4 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => applyCustomCoordinates(customLatInput, customLngInput, customRadiusInput)}
+                            disabled={isApplyingCoords}
+                            className="px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-xs flex items-center gap-1"
+                          >
+                            <CheckCircle2 size={12} />
+                            <span>Apply</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Presets Title */}
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block px-1 mb-1">
+                      Quick Preset Outlets &amp; Cities
+                    </span>
+                    <div className="space-y-1 max-h-48 overflow-y-auto pr-0.5">
+                      {PRESET_LOCATIONS.map((loc, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            applyCustomCoordinates(loc.latitude, loc.longitude, loc.radiusKm, loc.name);
+                          }}
+                          className={cn(
+                            "w-full text-left p-1.5 rounded-lg text-xs transition-colors cursor-pointer flex items-start gap-2",
+                            userLocation.name === loc.name ? "bg-purple-50 text-purple-900 font-bold border border-purple-200" : "hover:bg-slate-50 text-slate-700"
+                          )}
+                        >
+                          <MapPin size={11} className={userLocation.name === loc.name ? "text-purple-600 shrink-0 mt-0.5" : "text-slate-400 shrink-0 mt-0.5"} />
+                          <div className="min-w-0">
+                            <p className="truncate leading-tight text-[11px]">{loc.name}</p>
+                            <p className="text-[9px] text-slate-400 font-normal leading-tight font-mono">{loc.city} ({loc.latitude}, {loc.longitude})</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Auto-detect current device GPS */}
+                    <div className="mt-2.5 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => requestCurrentLocation(true)}
+                        disabled={isGpsLoading}
+                        className="w-full text-left p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Navigation size={12} className={isGpsLoading ? "animate-spin text-purple-600" : "text-purple-600"} />
+                          <div>
+                            <p className="text-[10px] font-bold leading-tight">Detect Real Device GPS</p>
+                            <p className="text-[8px] text-slate-400">Query browser HTML5 geolocation</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={12} className="text-slate-400" />
                       </button>
-                    ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -976,14 +1417,48 @@ export default function CustomerHomePreviewPage() {
 
             {/* Horizontal Service Cards Rail */}
             {displayedServiceOffers.length === 0 ? (
-              <div className="mx-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-xs text-center">
-                <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-2">
-                  <TicketPercent size={18} />
+              <div className="mx-4 p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs text-center space-y-3">
+                <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto shadow-xs">
+                  <MapPinOff size={20} />
                 </div>
-                <p className="text-xs font-bold text-slate-800">No Service Offers Nearby</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  There are no active service deals in this location right now.
-                </p>
+                <div>
+                  <p className="text-xs font-bold text-slate-800">
+                    No Service Deals Within {userLocation.radiusKm} km
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1 max-w-[260px] mx-auto leading-relaxed">
+                    Filtering strictly by coordinates ({userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}). No partner outlets have active service offers here.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      applyCustomCoordinates(21.112875, 79.059910, 15.0, "The Bombay Canteen (Nagpur)");
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <MapPin size={11} />
+                    <span>Set Coords: The Bombay Canteen</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextR = (userLocation.radiusKm || 15) >= 1000 ? 1000 : (userLocation.radiusKm || 15) + 50;
+                      applyCustomCoordinates(userLocation.latitude, userLocation.longitude, nextR);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Expand Radius (+50 km)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsLocationMenuOpen(true)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <Sliders size={11} />
+                    <span>Enter Custom Cords</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
@@ -997,8 +1472,6 @@ export default function CustomerHomePreviewPage() {
                 const distanceText = distanceMeters != null
                   ? (distanceMeters < 1000
                     ? `${distanceMeters}m away`
-                    : distanceMeters > 50000
-                    ? (branchName ? branchName.split("–")[0].trim() : "Nagpur Hub")
                     : `${(distanceMeters / 1000).toFixed(1)} km away`)
                   : "Nearby";
 
@@ -1046,7 +1519,7 @@ export default function CustomerHomePreviewPage() {
                 const rewardCoins = o.reward?.coins || o.rewardSummary?.coins || o.bonusCoins || 100;
                 const imageSrc = o.imageUrl || o.imgUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80";
 
-                const targetStoreId = o.branch?.branchId || o.branchSummary?.storeId || "e1000000-0000-0000-0000-000000000001";
+                const targetStoreId = o.branch?.branchId || o.branchSummary?.storeId || o.storeId;
 
                 return (
                   <article
@@ -1816,14 +2289,216 @@ export default function CustomerHomePreviewPage() {
             </>
           )}
 
-          {/* Bottom Fixed Navigation Bar (Discovery Feed only) */}
-          {activeScreen === "home" && (
+          {/* Floating Active Booking Card(s) - Matches Swiggy/Dineout Style with Multi-Booking Swipe */}
+          {activeScreen === "home" && visibleBookings.length > 0 && (
+            <div className="fixed bottom-[88px] left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[395px] z-40 animate-in slide-in-from-bottom-3 duration-300">
+              {/* Carousel container with CSS snap */}
+              <div
+                ref={carouselRef}
+                onScroll={(e) => {
+                  const target = e.currentTarget;
+                  const idx = Math.round(target.scrollLeft / (target.clientWidth || 1));
+                  if (idx !== activeBookingCarouselIndex && idx >= 0 && idx < visibleBookings.length) {
+                    setActiveBookingCarouselIndex(idx);
+                  }
+                }}
+                className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar w-full rounded-2xl shadow-xl shadow-slate-900/10 border border-emerald-300/80 dark:border-emerald-800/80 bg-white dark:bg-slate-900"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                {visibleBookings.map((b, idx) => {
+                  const todayStr = new Date().toISOString().split("T")[0];
+                  const isToday =
+                    b.bookingDate === todayStr || (b.bookingDate && b.bookingDate.startsWith(todayStr));
+                  const displayDate = isToday ? "Today" : b.formattedDate || b.bookingDate;
+
+                  return (
+                    <div
+                      key={b.bookingRef || b.bookingId || idx}
+                      onClick={() => {
+                        setSelectedBookingForPass(b);
+                        setActiveBooking(b);
+                        setActiveScreen("booking_pass");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="w-full shrink-0 snap-center cursor-pointer transition-all hover:scale-[1.005] active:scale-[0.995]"
+                    >
+                      {/* Top Mint-Green Offer Banner */}
+                      <div className="bg-[#d4f8e8] dark:bg-emerald-950/70 px-3 py-1.5 flex items-center justify-between gap-1.5 border-b border-emerald-200/60 dark:border-emerald-900/50">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                            <Percent size={10} className="stroke-[3]" />
+                          </span>
+                          <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 tracking-tight truncate">
+                            {b.discountPct && Number(b.discountPct) > 0
+                              ? `Flat ${Math.round(Number(b.discountPct))}% off on total bill`
+                              : b.offerTitle || "Flat 15% off on total bill"}
+                          </span>
+                        </div>
+
+                        {/* Right: Multi-card indicator + Dismiss Button */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {visibleBookings.length > 1 && (
+                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-600/15 text-emerald-900 dark:text-emerald-200 tracking-tight">
+                              Swipe • {idx + 1}/{visibleBookings.length}
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDismissedBookingRefs((prev) => {
+                                const next = new Set(prev);
+                                next.add(b.bookingRef || b.bookingId);
+                                return next;
+                              });
+                              toast.info("Reservation card dismissed");
+                            }}
+                            className="w-6 h-6 rounded-full bg-slate-200/70 hover:bg-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-300 flex items-center justify-center shrink-0 transition cursor-pointer"
+                            title="Dismiss this booking card"
+                          >
+                            <X size={13} className="stroke-[2.5]" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Bottom Restaurant Info */}
+                      <div className="px-3 py-2 flex items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <img
+                            src={
+                              b.coverImageUrl ||
+                              "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=200&q=80"
+                            }
+                            alt={b.storeName || "Restaurant"}
+                            className="w-11 h-11 rounded-xl object-cover shrink-0 border border-slate-100 dark:border-slate-800 shadow-2xs"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=200&q=80";
+                            }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate leading-tight">
+                              {b.storeName}
+                              {b.storeAddress ? `, ${b.storeAddress.split(",")[0]}` : ""}
+                            </p>
+                            <p className="text-[12px] font-black text-slate-900 dark:text-white truncate leading-snug mt-0.5">
+                              Booked for {displayDate}
+                              {b.slotTime ? `, ${b.slotTime}` : ""}
+                              {b.guests ? ` • ${b.guests} Guests` : ""}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Navigation chevron buttons (Only if multiple bookings) */}
+                        {visibleBookings.length > 1 && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const prevIdx = Math.max(0, idx - 1);
+                                carouselRef.current?.scrollTo({
+                                  left: prevIdx * (carouselRef.current?.clientWidth || 0),
+                                  behavior: "smooth"
+                                });
+                                setActiveBookingCarouselIndex(prevIdx);
+                              }}
+                              disabled={idx === 0}
+                              className={cn(
+                                "w-6 h-6 rounded-full flex items-center justify-center transition cursor-pointer",
+                                idx === 0
+                                  ? "opacity-20 cursor-not-allowed text-slate-400"
+                                  : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                              )}
+                              title="Previous reservation"
+                            >
+                              <ChevronLeft size={14} className="stroke-[2.5]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const nextIdx = Math.min(visibleBookings.length - 1, idx + 1);
+                                carouselRef.current?.scrollTo({
+                                  left: nextIdx * (carouselRef.current?.clientWidth || 0),
+                                  behavior: "smooth"
+                                });
+                                setActiveBookingCarouselIndex(nextIdx);
+                              }}
+                              disabled={idx === visibleBookings.length - 1}
+                              className={cn(
+                                "w-6 h-6 rounded-full flex items-center justify-center transition cursor-pointer",
+                                idx === visibleBookings.length - 1
+                                  ? "opacity-20 cursor-not-allowed text-slate-400"
+                                  : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                              )}
+                              title="Next reservation"
+                            >
+                              <ChevronRight size={14} className="stroke-[2.5]" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Dot Indicators (if multiple) */}
+              {visibleBookings.length > 1 && (
+                <div className="flex items-center justify-center gap-1.5 pt-1.5">
+                  {visibleBookings.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        carouselRef.current?.scrollTo({
+                          left: i * (carouselRef.current?.clientWidth || 0),
+                          behavior: "smooth"
+                        });
+                        setActiveBookingCarouselIndex(i);
+                      }}
+                      className={cn(
+                        "transition-all duration-200 rounded-full cursor-pointer",
+                        activeBookingCarouselIndex === i
+                          ? "w-4 h-1.5 bg-emerald-600 dark:bg-emerald-400"
+                          : "w-1.5 h-1.5 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400"
+                      )}
+                      title={`Go to booking ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Bottom Fixed Navigation Bar (Discovery & Orders) */}
+          {activeScreen !== "detail" && activeScreen !== "booking_pass" && !isPayingBill && (
             <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-3 py-2 z-50 flex items-center justify-around shadow-lg">
-              <button type="button" className="flex flex-col items-center text-purple-700 space-y-0.5 min-w-[54px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveScreen("home");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={cn(
+                  "flex flex-col items-center space-y-0.5 min-w-[54px] cursor-pointer transition-colors",
+                  activeScreen === "home" ? "text-purple-700" : "text-slate-500 hover:text-slate-800"
+                )}
+              >
                 <Compass size={20} />
-                <span className="text-[9px] font-bold">Discover</span>
+                <span className={cn("text-[9px]", activeScreen === "home" ? "font-bold" : "font-medium")}>Discover</span>
               </button>
-              <button type="button" className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px]">
+              <button
+                type="button"
+                onClick={() => {
+                  toast.info("Showing exclusive dining & retail offers");
+                  setActiveScreen("home");
+                }}
+                className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px] cursor-pointer transition-colors"
+              >
                 <Tag size={20} />
                 <span className="text-[9px] font-medium">Deals</span>
               </button>
@@ -1832,17 +2507,31 @@ export default function CustomerHomePreviewPage() {
                 <button
                   type="button"
                   onClick={() => toast.info("Opening In-Store UPI QR Scanner")}
-                  className="w-13 h-13 p-3 bg-purple-700 hover:bg-purple-800 text-white shadow-lg flex items-center justify-center rounded-xl transition-transform active:scale-95"
+                  className="w-13 h-13 p-3 bg-purple-700 hover:bg-purple-800 text-white shadow-lg flex items-center justify-center rounded-xl transition-transform active:scale-95 cursor-pointer"
                 >
                   <QrCode size={24} />
                 </button>
                 <span className="text-[9px] font-bold text-purple-950 mt-1">Scan & Pay</span>
               </div>
-              <button type="button" className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveScreen("orders");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={cn(
+                  "flex flex-col items-center space-y-0.5 min-w-[54px] cursor-pointer transition-colors",
+                  activeScreen === "orders" ? "text-purple-700" : "text-slate-500 hover:text-slate-800"
+                )}
+              >
                 <TicketPercent size={20} />
-                <span className="text-[9px] font-medium">Orders</span>
+                <span className={cn("text-[9px]", activeScreen === "orders" ? "font-bold" : "font-medium")}>Orders</span>
               </button>
-              <button type="button" className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px]">
+              <button
+                type="button"
+                onClick={() => toast.info("Pocket & Saved vouchers")}
+                className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px] cursor-pointer transition-colors"
+              >
                 <User size={20} />
                 <span className="text-[9px] font-medium">Pocket</span>
               </button>

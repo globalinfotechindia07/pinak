@@ -1,0 +1,4 @@
+-- ==============================================================================
+-- Migration V19: Store Table Booking Configurations
+-- (Table schema additions for store table booking settings integrated into V2 base schema)
+-- ==============================================================================

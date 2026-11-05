@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Layers,
   AlertCircle,
+  AlertTriangle,
   Trash2,
   Coins,
   Download,
@@ -304,6 +305,34 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
       )
     },
     {
+      header: "Table Booking",
+      sortable: false,
+      className: "w-32 text-center whitespace-nowrap",
+      render: (s) => {
+        if (s.isTableBookingEnabled === false) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+              Disabled
+            </span>
+          );
+        }
+        if (s.allowFreeStandardBooking === false && (s.defaultStandardCoverCharge || 0) > 0) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
+              <UtensilsCrossed size={10} />
+              ₹{s.defaultStandardCoverCharge} Cover
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+            <UtensilsCrossed size={10} />
+            Free Booking
+          </span>
+        );
+      }
+    },
+    {
       header: "Live Deals",
       sortable: false,
       className: "w-32 text-center whitespace-nowrap",
@@ -358,11 +387,14 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
             </span>
           );
         }
-        if (s.status === "PENDING_APPROVAL") {
+        if (s.status === "PENDING_APPROVAL" || s.managerEmail) {
           return (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60 whitespace-nowrap">
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60 whitespace-nowrap"
+              title={s.managerEmail ? "Store status will become Active once store manager completes password setup via invite" : "Under review"}
+            >
               <Clock size={11} />
-              Review
+              {s.managerEmail ? "Pending Invite" : "Review"}
             </span>
           );
         }
@@ -462,6 +494,38 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
                 >
                   <MapPin size={14} className="text-pink-500" />
                   <span>Copy Coordinates</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      await storeApi.resendStoreInvite(s.id, {
+                        email: s.managerEmail || s.storeEmail,
+                        managerName: s.managerName,
+                        branchName: s.branchName
+                      });
+                      toast.success(`Store manager activation & welcome email dispatched for ${s.branchName}!`);
+                    } catch (err: any) {
+                      toast.error(err?.response?.data?.message || err?.message || "Failed to dispatch invite email");
+                    }
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                >
+                  <Send size={14} className="text-indigo-600 dark:text-indigo-400" />
+                  <span>Resend Activation Email</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => {
+                    const token = `mgr_inv_${s.id}_${Date.now().toString(36)}`;
+                    const inviteUrl = `${window.location.origin}/accept-invite?token=${encodeURIComponent(token)}`;
+                    navigator.clipboard.writeText(inviteUrl);
+                    toast.success(`Manager password setup link copied for ${s.branchName}!`);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <Copy size={14} className="text-slate-400" />
+                  <span>Copy Password Invite</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
@@ -876,6 +940,38 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
                               >
                                 <MapPin size={14} className="text-pink-500" />
                                 <span>Copy Coordinates</span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  try {
+                                    await storeApi.resendStoreInvite(s.id, {
+                                      email: s.managerEmail || s.storeEmail,
+                                      managerName: s.managerName,
+                                      branchName: s.branchName
+                                    });
+                                    toast.success(`Store manager activation & welcome email dispatched for ${s.branchName}!`);
+                                  } catch (err: any) {
+                                    toast.error(err?.response?.data?.message || err?.message || "Failed to dispatch invite email");
+                                  }
+                                }}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                              >
+                                <Send size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                <span>Resend Activation Email</span>
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const token = `mgr_inv_${s.id}_${Date.now().toString(36)}`;
+                                  const inviteUrl = `${window.location.origin}/accept-invite?token=${encodeURIComponent(token)}`;
+                                  navigator.clipboard.writeText(inviteUrl);
+                                  toast.success(`Manager password setup link copied for ${s.branchName}!`);
+                                }}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                <Copy size={14} className="text-slate-400" />
+                                <span>Copy Password Invite</span>
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
@@ -1907,8 +2003,15 @@ function AddStoreDrawer({
   const [photos, setPhotos] = useState<string[]>([]);
   const [amenities, setAmenities] = useState<string[]>([]);
   const [storeType, setStoreType] = useState<"DINING" | "RETAIL" | "SERVICES">("DINING");
+  const [isTableBookingEnabled, setIsTableBookingEnabled] = useState<boolean>(true);
+  const [allowFreeStandardBooking, setAllowFreeStandardBooking] = useState<boolean>(true);
+  const [defaultStandardCoverCharge, setDefaultStandardCoverCharge] = useState<number>(0);
 
   const selectedMerchant = merchants.find((m) => m.id === merchantId);
+  const isSelectedMerchantKycVerified = Boolean(
+    selectedMerchant &&
+    (selectedMerchant.kycStatus === "APPROVED" || selectedMerchant.kycStatus === "VERIFIED")
+  );
 
   const ADD_STEPS = [
     { id: 1, title: "Basic Info", subtitle: "Brand & Hours" },
@@ -2041,10 +2144,20 @@ function AddStoreDrawer({
     }
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = (e?: React.MouseEvent | React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (currentStep === 1) {
       if (!merchantId) {
         toast.error("Please select a parent merchant brand");
+        return;
+      }
+      if (!isSelectedMerchantKycVerified) {
+        toast.error("Merchant KYC verification required", {
+          description: `Cannot onboard store for "${selectedMerchant?.businessName || "selected merchant"}". Merchant KYC status is "${selectedMerchant?.kycStatus || "PENDING"}". Please verify their KYC in Merchant Management first.`
+        });
         return;
       }
       if (!branchName.trim()) {
@@ -2052,7 +2165,9 @@ function AddStoreDrawer({
         return;
       }
       setCurrentStep(2);
-    } else if (currentStep === 2) {
+      return;
+    }
+    if (currentStep === 2) {
       if (!address.trim()) {
         toast.error("Please enter the street address");
         return;
@@ -2066,16 +2181,43 @@ function AddStoreDrawer({
         return;
       }
       setCurrentStep(3);
-    } else if (currentStep === 3) {
+      return;
+    }
+    if (currentStep === 3) {
       setCurrentStep(4);
+      return;
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFinalSave = async () => {
     if (!branchName.trim() || !address.trim() || !merchantId) {
       toast.error("Please fill required store details");
       return;
+    }
+
+    if (!isSelectedMerchantKycVerified) {
+      toast.error("Merchant KYC verification required", {
+        description: `Cannot onboard store for "${selectedMerchant?.businessName || "selected merchant"}". Merchant KYC status is "${selectedMerchant?.kycStatus || "PENDING"}". Please verify their KYC in Merchant Management first.`
+      });
+      return;
+    }
+
+    if (managerEmail.trim()) {
+      try {
+        const val = await staffApi.validateStaffEmail(managerEmail.trim(), merchantId, "STORE");
+        if (val && !val.valid && val.message) {
+          toast.error(val.message);
+          setManagerEmailNotice(val.message);
+          setCurrentStep(4);
+          return;
+        }
+      } catch (valErr: any) {
+        const msg = valErr?.response?.data?.message || valErr?.message || "Invalid manager email";
+        toast.error(msg);
+        setManagerEmailNotice(msg);
+        setCurrentStep(4);
+        return;
+      }
     }
 
     try {
@@ -2103,7 +2245,10 @@ function AddStoreDrawer({
         menuImages,
         photos,
         amenities,
-        status: "ACTIVE"
+        isTableBookingEnabled,
+        allowFreeStandardBooking,
+        defaultStandardCoverCharge,
+        status: managerEmail.trim() ? "INACTIVE" : "ACTIVE"
       });
       toast.success(`Store branch "${branchName}" registered successfully!`);
       onClose();
@@ -2113,6 +2258,16 @@ function AddStoreDrawer({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (currentStep < 4) {
+      handleNextStep(e);
+      return;
+    }
+    handleFinalSave();
   };
 
   return (
@@ -2164,12 +2319,33 @@ function AddStoreDrawer({
                   onChange={(e) => setMerchantId(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:border-purple-500"
                 >
-                  {merchants.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.businessName} ({m.city || "Nagpur"})
-                    </option>
-                  ))}
+                  {merchants.map((m) => {
+                    const isVerified = m.kycStatus === "APPROVED" || m.kycStatus === "VERIFIED";
+                    return (
+                      <option key={m.id} value={m.id}>
+                        {m.businessName} ({m.city || "Nagpur"}) — {isVerified ? "✅ KYC VERIFIED" : `⚠️ KYC ${m.kycStatus || "PENDING"}`}
+                      </option>
+                    );
+                  })}
                 </select>
+
+                {/* KYC Verification Enforcement Alert Banner */}
+                {selectedMerchant && !isSelectedMerchantKycVerified ? (
+                  <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in">
+                    <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Merchant KYC Verification Required (Status: {selectedMerchant.kycStatus || "PENDING"})</p>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5 leading-relaxed">
+                        Store onboarding is blocked for <strong>{selectedMerchant.businessName}</strong>. The merchant must have their KYC verified before any branch stores can be created. Please review and verify their KYC documents in Merchant Management first.
+                      </p>
+                    </div>
+                  </div>
+                ) : selectedMerchant && isSelectedMerchantKycVerified ? (
+                  <div className="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-300">
+                    <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="font-semibold text-[11px]">Merchant KYC Verified — Eligible for store branch onboarding</span>
+                  </div>
+                ) : null}
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
@@ -2202,6 +2378,99 @@ function AddStoreDrawer({
                   value={operatingHours}
                   onChange={(val) => setOperatingHours(val)}
                 />
+
+                {/* TABLE BOOKING & RESERVATION SETTINGS */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0">
+                        <UtensilsCrossed size={14} />
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
+                          Table Booking & Reservations
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          Allow customers to reserve dining slots and pre-book tables
+                        </span>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isTableBookingEnabled}
+                        onChange={(e) => setIsTableBookingEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-purple-600" />
+                    </label>
+                  </div>
+
+                  {isTableBookingEnabled && (
+                    <div className="pt-2.5 border-t border-slate-200/80 dark:border-slate-800 space-y-2.5 pl-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-bold text-slate-700 dark:text-slate-300 block text-[11px]">
+                            Allow Free Standard Table Booking
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            Guests can reserve a table with zero cover charge (Standard reservation)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setAllowFreeStandardBooking(true)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                              allowFreeStandardBooking
+                                ? "bg-emerald-500 text-white shadow-2xs"
+                                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                            }`}
+                          >
+                            Yes (Free)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAllowFreeStandardBooking(false)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                              !allowFreeStandardBooking
+                                ? "bg-purple-600 text-white shadow-2xs"
+                                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                            }`}
+                          >
+                            No (Charge)
+                          </button>
+                        </div>
+                      </div>
+
+                      {!allowFreeStandardBooking && (
+                        <div className="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-purple-200/60 dark:border-purple-900/40 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                              Default Standard Cover Charge (₹ per guest)
+                            </label>
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-400 text-xs">₹</span>
+                              <input
+                                type="number"
+                                min={0}
+                                step={5}
+                                value={defaultStandardCoverCharge}
+                                onChange={(e) => setDefaultStandardCoverCharge(Math.max(0, Number(e.target.value)))}
+                                className="w-20 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white text-right focus:outline-hidden focus:border-purple-500"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-purple-600 dark:text-purple-400">
+                            {defaultStandardCoverCharge > 0
+                              ? `Guests pay ₹${defaultStandardCoverCharge}/guest deposit, fully adjusted against their final bill.`
+                              : "With ₹0 cover charge and Free disabled, guests must book via an active pre-booking discount offer."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -2368,10 +2637,36 @@ function AddStoreDrawer({
                     <input
                       type="email"
                       value={managerEmail}
-                      onChange={(e) => setManagerEmail(e.target.value)}
+                      onChange={(e) => {
+                        setManagerEmail(e.target.value);
+                        setManagerEmailNotice(null);
+                      }}
+                      onBlur={async () => {
+                        if (managerEmail.trim()) {
+                          try {
+                            const val = await staffApi.validateStaffEmail(managerEmail.trim(), merchantId, "STORE");
+                            if (val && !val.valid && val.message) {
+                              setManagerEmailNotice(val.message);
+                            } else {
+                              setManagerEmailNotice(null);
+                            }
+                          } catch (err: any) {
+                            const msg = err?.response?.data?.message || err?.message;
+                            if (msg) setManagerEmailNotice(msg);
+                          }
+                        } else {
+                          setManagerEmailNotice(null);
+                        }
+                      }}
                       placeholder="e.g. rajesh.store@brand.com"
-                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                      className={`mt-1 w-full px-3 py-2 rounded-xl border ${managerEmailNotice ? "border-rose-400 bg-rose-50/20 dark:bg-rose-950/20" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"} text-xs text-slate-900 dark:text-white focus:outline-hidden`}
                     />
+                    {managerEmailNotice && (
+                      <div className="mt-1.5 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-[11px] text-rose-700 dark:text-rose-300 flex items-start gap-1.5">
+                        <AlertCircle size={14} className="shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                        <span>{managerEmailNotice}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -2401,9 +2696,14 @@ function AddStoreDrawer({
               <div className="flex items-center gap-2">
                 {currentStep > 1 && (
                   <button
+                    key="admin-add-back-btn"
                     type="button"
-                    onClick={() => setCurrentStep((s) => s - 1)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCurrentStep((s) => Math.max(1, s - 1));
+                    }}
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1 cursor-pointer"
                   >
                     <ChevronLeft size={14} />
                     <span>Back</span>
@@ -2412,18 +2712,35 @@ function AddStoreDrawer({
 
                 {currentStep < 4 ? (
                   <button
+                    key={`admin-add-next-step-${currentStep}`}
                     type="button"
                     onClick={handleNextStep}
-                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1"
+                    disabled={currentStep === 1 && !isSelectedMerchantKycVerified}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1 transition-all",
+                      currentStep === 1 && !isSelectedMerchantKycVerified
+                        ? "bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed border border-slate-300 dark:border-slate-600"
+                        : "btn-gradient text-white cursor-pointer"
+                    )}
                   >
-                    <span>Next: {ADD_STEPS[currentStep]?.title}</span>
+                    <span>
+                      {currentStep === 1 && !isSelectedMerchantKycVerified
+                        ? "KYC Verification Required"
+                        : `Next: ${ADD_STEPS[currentStep]?.title || "Manager"}`}
+                    </span>
                     <ChevronRight size={14} />
                   </button>
                 ) : (
                   <button
-                    type="submit"
-                    disabled={isSubmitting || !branchName || !address}
-                    className="btn-gradient px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1.5 disabled:opacity-60"
+                    key="admin-add-final-register-btn"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleFinalSave();
+                    }}
+                    disabled={isSubmitting || !branchName.trim() || !address.trim() || !merchantId || !isSelectedMerchantKycVerified}
+                    className="btn-gradient px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
                   >
                     {isSubmitting ? (
                       <>
@@ -2473,6 +2790,9 @@ function EditStoreDrawer({
   const [menuImages, setMenuImages] = useState<string[]>(store.menuImages || []);
   const [photos, setPhotos] = useState<string[]>(store.photos || []);
   const [amenities, setAmenities] = useState<string[]>(store.amenities || []);
+  const [isTableBookingEnabled, setIsTableBookingEnabled] = useState<boolean>(store.isTableBookingEnabled ?? true);
+  const [allowFreeStandardBooking, setAllowFreeStandardBooking] = useState<boolean>(store.allowFreeStandardBooking ?? true);
+  const [defaultStandardCoverCharge, setDefaultStandardCoverCharge] = useState<number>(store.defaultStandardCoverCharge ?? 0);
 
   const EDIT_STEPS = [
     { id: 1, title: "Basic Info", subtitle: "Name, Phone & Status" },
@@ -2480,8 +2800,17 @@ function EditStoreDrawer({
     { id: 3, title: "Media", subtitle: "Cover, Menu & Photos" },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFinalSave = () => {
+    if (!branchName.trim()) {
+      toast.error("Branch name is required");
+      setCurrentStep(1);
+      return;
+    }
+    if (!address.trim()) {
+      toast.error("Store address is required");
+      setCurrentStep(2);
+      return;
+    }
     onSave({
       branchName: branchName.trim(),
       phone: phone.trim(),
@@ -2497,8 +2826,48 @@ function EditStoreDrawer({
       imageUrl: imageUrl.trim() || undefined,
       menuImages,
       photos,
-      amenities
+      amenities,
+      isTableBookingEnabled,
+      allowFreeStandardBooking,
+      defaultStandardCoverCharge
     });
+  };
+
+  const handleNextStep = (e?: React.MouseEvent | React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (currentStep === 1) {
+      if (!branchName.trim()) {
+        toast.error("Branch name is required");
+        return;
+      }
+      setCurrentStep(2);
+      return;
+    }
+    if (currentStep === 2) {
+      if (!address.trim()) {
+        toast.error("Store address is required");
+        return;
+      }
+      setCurrentStep(3);
+      return;
+    }
+    if (currentStep === 3) {
+      handleFinalSave();
+      return;
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (currentStep < 3) {
+      handleNextStep(e);
+      return;
+    }
+    handleFinalSave();
   };
 
   return (
@@ -2527,6 +2896,7 @@ function EditStoreDrawer({
             steps={EDIT_STEPS}
             currentStep={currentStep}
             onStepClick={(s) => setCurrentStep(s)}
+            allowAllSteps={true}
           />
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
@@ -2571,6 +2941,99 @@ function EditStoreDrawer({
                   value={operatingHours}
                   onChange={(val) => setOperatingHours(val)}
                 />
+
+                {/* TABLE BOOKING & RESERVATION SETTINGS */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0">
+                        <UtensilsCrossed size={14} />
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
+                          Table Booking & Reservations
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          Allow customers to reserve dining slots and pre-book tables
+                        </span>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isTableBookingEnabled}
+                        onChange={(e) => setIsTableBookingEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-purple-600" />
+                    </label>
+                  </div>
+
+                  {isTableBookingEnabled && (
+                    <div className="pt-2.5 border-t border-slate-200/80 dark:border-slate-800 space-y-2.5 pl-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-bold text-slate-700 dark:text-slate-300 block text-[11px]">
+                            Allow Free Standard Table Booking
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            Guests can reserve a table with zero cover charge (Standard reservation)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setAllowFreeStandardBooking(true)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                              allowFreeStandardBooking
+                                ? "bg-emerald-500 text-white shadow-2xs"
+                                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                            }`}
+                          >
+                            Yes (Free)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAllowFreeStandardBooking(false)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                              !allowFreeStandardBooking
+                                ? "bg-purple-600 text-white shadow-2xs"
+                                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                            }`}
+                          >
+                            No (Charge)
+                          </button>
+                        </div>
+                      </div>
+
+                      {!allowFreeStandardBooking && (
+                        <div className="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-purple-200/60 dark:border-purple-900/40 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                              Default Standard Cover Charge (₹ per guest)
+                            </label>
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-400 text-xs">₹</span>
+                              <input
+                                type="number"
+                                min={0}
+                                step={5}
+                                value={defaultStandardCoverCharge}
+                                onChange={(e) => setDefaultStandardCoverCharge(Math.max(0, Number(e.target.value)))}
+                                className="w-20 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white text-right focus:outline-hidden focus:border-purple-500"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-purple-600 dark:text-purple-400">
+                            {defaultStandardCoverCharge > 0
+                              ? `Guests pay ₹${defaultStandardCoverCharge}/guest deposit, fully adjusted against their final bill.`
+                              : "With ₹0 cover charge and Free disabled, guests must book via an active pre-booking discount offer."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -2653,7 +3116,7 @@ function EditStoreDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
@@ -2661,9 +3124,14 @@ function EditStoreDrawer({
               <div className="flex items-center gap-2">
                 {currentStep > 1 && (
                   <button
+                    key="edit-back-btn"
                     type="button"
-                    onClick={() => setCurrentStep((s) => s - 1)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCurrentStep((s) => Math.max(1, s - 1));
+                    }}
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1 cursor-pointer"
                   >
                     <ChevronLeft size={14} />
                     <span>Back</span>
@@ -2672,17 +3140,24 @@ function EditStoreDrawer({
 
                 {currentStep < 3 ? (
                   <button
+                    key={`next-step-${currentStep}`}
                     type="button"
-                    onClick={() => setCurrentStep((s) => s + 1)}
-                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1"
+                    onClick={handleNextStep}
+                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1 cursor-pointer"
                   >
-                    <span>Next: {EDIT_STEPS[currentStep]?.title}</span>
+                    <span>Next: {EDIT_STEPS[currentStep]?.title || "Media"}</span>
                     <ChevronRight size={14} />
                   </button>
                 ) : (
                   <button
-                    type="submit"
-                    className="btn-gradient px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1.5"
+                    key="save-changes-btn"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleFinalSave();
+                    }}
+                    className="btn-gradient px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
                   >
                     <Check size={14} />
                     <span>Save Store Changes</span>

@@ -48,9 +48,9 @@ public interface DiscoveryRepository extends JpaRepository<Store, UUID> {
             JOIN merchants m ON s.merchant_id = m.id
             LEFT JOIN categories c ON m.category_id = c.id
             LEFT JOIN cities ct ON s.city_id = ct.id
-            WHERE s.approval_status = 'APPROVED'
+            WHERE (s.approval_status = 'APPROVED' OR s.approval_status = 'PENDING_APPROVAL')
             AND s.status = 'ACTIVE'
-            AND m.approval_status = 'APPROVED'
+            AND (m.approval_status = 'APPROVED' OR m.approval_status = 'PENDING_APPROVAL')
             AND m.status = 'ACTIVE'
             AND (:categoryId IS NULL OR m.category_id = :categoryId)
             AND (
@@ -100,9 +100,9 @@ public interface DiscoveryRepository extends JpaRepository<Store, UUID> {
             FROM stores s
             JOIN merchants m ON s.merchant_id = m.id
             LEFT JOIN categories c ON m.category_id = c.id
-            WHERE s.approval_status = 'APPROVED'
+            WHERE (s.approval_status = 'APPROVED' OR s.approval_status = 'PENDING_APPROVAL')
             AND s.status = 'ACTIVE'
-            AND m.approval_status = 'APPROVED'
+            AND (m.approval_status = 'APPROVED' OR m.approval_status = 'PENDING_APPROVAL')
             AND m.status = 'ACTIVE'
             AND (:categoryId IS NULL OR m.category_id = :categoryId)
             AND (
@@ -170,9 +170,9 @@ public interface DiscoveryRepository extends JpaRepository<Store, UUID> {
             JOIN merchants m ON s.merchant_id = m.id
             LEFT JOIN categories c ON m.category_id = c.id
             LEFT JOIN cities ct ON s.city_id = ct.id
-            WHERE s.approval_status = 'APPROVED'
+            WHERE (s.approval_status = 'APPROVED' OR s.approval_status = 'PENDING_APPROVAL')
             AND s.status = 'ACTIVE'
-            AND m.approval_status = 'APPROVED'
+            AND (m.approval_status = 'APPROVED' OR m.approval_status = 'PENDING_APPROVAL')
             AND m.status = 'ACTIVE'
             AND (:categoryId IS NULL OR m.category_id = :categoryId)
             AND (
@@ -221,9 +221,9 @@ public interface DiscoveryRepository extends JpaRepository<Store, UUID> {
             FROM stores s
             JOIN merchants m ON s.merchant_id = m.id
             LEFT JOIN categories c ON m.category_id = c.id
-            WHERE s.approval_status = 'APPROVED'
+            WHERE (s.approval_status = 'APPROVED' OR s.approval_status = 'PENDING_APPROVAL')
             AND s.status = 'ACTIVE'
-            AND m.approval_status = 'APPROVED'
+            AND (m.approval_status = 'APPROVED' OR m.approval_status = 'PENDING_APPROVAL')
             AND m.status = 'ACTIVE'
             AND (:categoryId IS NULL OR m.category_id = :categoryId)
             AND (

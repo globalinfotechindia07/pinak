@@ -17,7 +17,7 @@ function Router() {
     <Switch>
       <Route path={"/login"} component={Login} />
       <Route path={"/accept-invite"} component={AcceptInvite} />
-      <Route path={"/mobile"}>{() => <MobileHomeScreen />}</Route>
+      <Route path={"/mobile"} component={CustomerHomePreviewPage} />
       <Route path={"/customer-preview"} component={CustomerHomePreviewPage} />
       <Route path={"/preview"} component={CustomerHomePreviewPage} />
       <Route path={"/404"} component={NotFound} />

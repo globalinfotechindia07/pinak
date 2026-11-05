@@ -36,9 +36,13 @@ public class MobileAppController {
     @Operation(summary = "Get Geo-Radar Preview (Screen 09)", description = "Returns nearby merchant count, preview cards, and privacy shield before triggering native permission dialog")
     public ResponseEntity<ApiResponse<RadarPreviewResponse>> getRadarPreview(
             @RequestParam(value = "lat", required = false) Double lat,
-            @RequestParam(value = "lng", required = false) Double lng
+            @RequestParam(value = "latitude", required = false) Double latitude,
+            @RequestParam(value = "lng", required = false) Double lng,
+            @RequestParam(value = "longitude", required = false) Double longitude
     ) {
-        RadarPreviewResponse response = mobileAppService.getRadarPreview(lat, lng);
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+        RadarPreviewResponse response = mobileAppService.getRadarPreview(effectiveLat, effectiveLng);
         return ResponseEntity.ok(ApiResponse.success("Radar preview fetched successfully", response));
     }
 

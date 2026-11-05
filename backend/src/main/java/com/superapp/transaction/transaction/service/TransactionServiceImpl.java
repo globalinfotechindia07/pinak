@@ -17,6 +17,8 @@ import com.superapp.transaction.transaction.entity.Transaction;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.mapper.TransactionMapper;
 import com.superapp.transaction.transaction.repository.TransactionRepository;
+import com.superapp.user.entity.StaffMember;
+import com.superapp.user.repository.StaffMemberRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +47,9 @@ public class TransactionServiceImpl implements TransactionService {
     private final StoreRepository storeRepository;
     private final OfferRepository offerRepository;
     private final AuditService auditService;
+
+    @Autowired(required = false)
+    private StaffMemberRepository staffMemberRepository;
 
     @Autowired
     public TransactionServiceImpl(
@@ -126,14 +131,34 @@ public class TransactionServiceImpl implements TransactionService {
             Instant toDate,
             Pageable pageable) {
 
-        Merchant merchant = merchantRepository.findByOwnerUserId(merchantOwnerUserId)
-                .orElseThrow(() -> new AppException("Merchant account not found for user",
-                        ApiError.MERCHANT_NOT_FOUND, 404));
+        UUID effectiveMerchantId = null;
+        UUID effectiveStoreId = storeId;
 
-        if (storeId != null) {
-            Store store = storeRepository.findById(storeId)
+        Optional<Merchant> merchantOpt = merchantRepository.findByOwnerUserId(merchantOwnerUserId);
+        if (merchantOpt.isPresent()) {
+            effectiveMerchantId = merchantOpt.get().getId();
+        } else if (staffMemberRepository != null) {
+            List<StaffMember> staffMembers = staffMemberRepository.findByUserId(merchantOwnerUserId);
+            for (StaffMember sm : staffMembers) {
+                if (sm.getMerchantId() != null) {
+                    effectiveMerchantId = sm.getMerchantId();
+                    if (sm.getStoreId() != null && effectiveStoreId == null) {
+                        effectiveStoreId = sm.getStoreId();
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (effectiveMerchantId == null) {
+            throw new AppException("Merchant account not found for user",
+                    ApiError.MERCHANT_NOT_FOUND, 404);
+        }
+
+        if (effectiveStoreId != null) {
+            Store store = storeRepository.findById(effectiveStoreId)
                     .orElseThrow(() -> new AppException("Store not found", ApiError.STORE_NOT_FOUND, 404));
-            if (!store.getMerchantId().equals(merchant.getId())) {
+            if (!store.getMerchantId().equals(effectiveMerchantId)) {
                 throw new AppException("Store does not belong to merchant account", ApiError.STORE_ACCESS_DENIED, 403);
             }
         }
@@ -141,18 +166,21 @@ public class TransactionServiceImpl implements TransactionService {
         if (offerId != null) {
             Offer offer = offerRepository.findById(offerId)
                     .orElseThrow(() -> new AppException("Offer not found", ApiError.OFFER_NOT_FOUND, 404));
-            if (!offer.getMerchantId().equals(merchant.getId())) {
+            if (!offer.getMerchantId().equals(effectiveMerchantId)) {
                 throw new AppException("Offer does not belong to merchant account", ApiError.OFFER_ACCESS_DENIED, 403);
             }
         }
 
         Pageable effectivePageable = validateAndNormalizePageable(pageable);
 
+        final UUID targetMerchantId = effectiveMerchantId;
+        final UUID targetStoreId = effectiveStoreId;
+
         Specification<Transaction> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("merchantId"), merchant.getId()));
-            if (storeId != null) {
-                predicates.add(cb.equal(root.get("storeId"), storeId));
+            predicates.add(cb.equal(root.get("merchantId"), targetMerchantId));
+            if (targetStoreId != null) {
+                predicates.add(cb.equal(root.get("storeId"), targetStoreId));
             }
             if (offerId != null) {
                 predicates.add(cb.equal(root.get("offerId"), offerId));
@@ -179,11 +207,26 @@ public class TransactionServiceImpl implements TransactionService {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new AppException("Transaction not found", ApiError.TRANSACTION_NOT_FOUND, 404));
 
-        Merchant merchant = merchantRepository.findByOwnerUserId(merchantOwnerUserId)
-                .orElseThrow(() -> new AppException("Merchant account not found for user",
-                        ApiError.MERCHANT_NOT_FOUND, 404));
+        UUID effectiveMerchantId = null;
+        Optional<Merchant> merchantOpt = merchantRepository.findByOwnerUserId(merchantOwnerUserId);
+        if (merchantOpt.isPresent()) {
+            effectiveMerchantId = merchantOpt.get().getId();
+        } else if (staffMemberRepository != null) {
+            List<StaffMember> staffMembers = staffMemberRepository.findByUserId(merchantOwnerUserId);
+            for (StaffMember sm : staffMembers) {
+                if (sm.getMerchantId() != null) {
+                    effectiveMerchantId = sm.getMerchantId();
+                    break;
+                }
+            }
+        }
 
-        if (!Objects.equals(transaction.getMerchantId(), merchant.getId())) {
+        if (effectiveMerchantId == null) {
+            throw new AppException("Merchant account not found for user",
+                    ApiError.MERCHANT_NOT_FOUND, 404);
+        }
+
+        if (!Objects.equals(transaction.getMerchantId(), effectiveMerchantId)) {
             throw new AppException("You do not have permission to access this transaction",
                     ApiError.TRANSACTION_ACCESS_DENIED, 403);
         }
@@ -326,11 +369,26 @@ public class TransactionServiceImpl implements TransactionService {
             Instant toDate,
             Pageable pageable) {
 
-        Merchant merchant = merchantRepository.findByOwnerUserId(merchantOwnerUserId)
-                .orElseThrow(() -> new AppException("Merchant account not found for user",
-                        ApiError.MERCHANT_NOT_FOUND, 404));
+        UUID effectiveMerchantId = null;
+        Optional<Merchant> merchantOpt = merchantRepository.findByOwnerUserId(merchantOwnerUserId);
+        if (merchantOpt.isPresent()) {
+            effectiveMerchantId = merchantOpt.get().getId();
+        } else if (staffMemberRepository != null) {
+            List<StaffMember> staffMembers = staffMemberRepository.findByUserId(merchantOwnerUserId);
+            for (StaffMember sm : staffMembers) {
+                if (sm.getMerchantId() != null) {
+                    effectiveMerchantId = sm.getMerchantId();
+                    break;
+                }
+            }
+        }
 
-        List<Store> stores = storeRepository.findByMerchantId(merchant.getId());
+        if (effectiveMerchantId == null) {
+            throw new AppException("Merchant account not found for user",
+                    ApiError.MERCHANT_NOT_FOUND, 404);
+        }
+
+        List<Store> stores = storeRepository.findByMerchantId(effectiveMerchantId);
         if (stores.isEmpty()) {
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }

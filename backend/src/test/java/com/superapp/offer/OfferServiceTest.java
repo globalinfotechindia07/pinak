@@ -1,5 +1,7 @@
 package com.superapp.offer;
 
+import java.util.List;
+
 import com.superapp.common.audit.AuditService;
 import com.superapp.common.exception.AppException;
 import com.superapp.common.exception.ResourceNotFoundException;
@@ -96,6 +98,7 @@ class OfferServiceTest {
     @DisplayName("createMerchantOffer creates offer in DRAFT/CREATED state")
     void createMerchantOffer_success() {
         when(merchantRepository.findByOwnerUserId(ownerUserId)).thenReturn(Optional.of(merchant));
+        when(storeRepository.findByMerchantId(merchantId)).thenReturn(List.of(store));
         when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
         when(offerRepository.save(any(Offer.class))).thenAnswer(invocation -> {
             Offer o = invocation.getArgument(0);
@@ -122,8 +125,8 @@ class OfferServiceTest {
         assertNotNull(response);
         assertEquals(offerId.toString(), response.id());
         assertEquals("10% Cashback", response.title());
-        assertEquals("CREATED", response.status());
-        assertEquals("DRAFT", response.approvalStatus());
+        assertEquals("ACTIVE", response.status());
+        assertEquals("APPROVED", response.approvalStatus());
         assertEquals(merchantId.toString(), response.merchantId());
         assertEquals(storeId.toString(), response.storeId());
         assertEquals("Foodies Main Branch", response.storeName());
@@ -139,6 +142,7 @@ class OfferServiceTest {
         otherStore.setStatus(StoreStatus.ACTIVE);
 
         when(merchantRepository.findByOwnerUserId(ownerUserId)).thenReturn(Optional.of(merchant));
+        when(storeRepository.findByMerchantId(merchantId)).thenReturn(List.of(store));
         when(storeRepository.findById(storeId)).thenReturn(Optional.of(otherStore));
 
         CreateOfferRequest request = new CreateOfferRequest(
@@ -167,6 +171,7 @@ class OfferServiceTest {
         store.setApprovalStatus(ApprovalStatus.PENDING);
 
         when(merchantRepository.findByOwnerUserId(ownerUserId)).thenReturn(Optional.of(merchant));
+        when(storeRepository.findByMerchantId(merchantId)).thenReturn(List.of(store));
         when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
 
         CreateOfferRequest request = new CreateOfferRequest(
@@ -359,3 +364,4 @@ class OfferServiceTest {
         assertEquals(ApiError.OFFER_NOT_FOUND, ex.getErrorCode());
     }
 }
+

@@ -37,9 +37,14 @@ public class DiscoverFeedController {
     public ResponseEntity<ApiResponse<BannersResponse>> getBanners(
             @RequestParam(required = false, defaultValue = "DISCOVER") String placement,
             @RequestParam(required = false) Double latitude,
-            @RequestParam(required = false) Double longitude) {
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Double lng) {
 
-        BannersResponse response = discoverService.getBanners(placement, latitude, longitude);
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
+        BannersResponse response = discoverService.getBanners(placement, effectiveLat, effectiveLng);
         return ResponseEntity.ok(ApiResponse.success("Banners fetched successfully", response));
     }
 
@@ -50,14 +55,19 @@ public class DiscoverFeedController {
     @Operation(summary = "Get nearby retail product bargains and daily essentials")
     public ResponseEntity<ApiResponse<ProductDealsResponse>> getNearbyProductDeals(
             @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Double lng,
             @RequestParam(required = false, defaultValue = "5.0") Double radiusKm,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false, defaultValue = "10") Integer limit,
             @RequestParam(required = false) String cursor) {
 
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
         ProductDealsResponse response = discoverService.getNearbyProductDeals(
-                latitude, longitude, radiusKm, categoryId, limit, cursor);
+                effectiveLat, effectiveLng, radiusKm, categoryId, limit, cursor);
         return ResponseEntity.ok(ApiResponse.success("Product deals fetched successfully", response));
     }
 
@@ -68,13 +78,18 @@ public class DiscoverFeedController {
     @Operation(summary = "Get popular curated discovery collections")
     public ResponseEntity<ApiResponse<PopularCollectionsResponse>> getPopularCollections(
             @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Double lng,
             @RequestParam(required = false, defaultValue = "15.0") Double radiusKm,
             @RequestParam(required = false) String cityId,
             @RequestParam(required = false, defaultValue = "10") Integer limit) {
 
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
         PopularCollectionsResponse response = discoverService.getPopularCollections(
-                latitude, longitude, radiusKm, cityId, limit);
+                effectiveLat, effectiveLng, radiusKm, cityId, limit);
         return ResponseEntity.ok(ApiResponse.success("Popular collections fetched successfully", response));
     }
 
@@ -131,17 +146,23 @@ public class DiscoverFeedController {
     // Section 10: Personalized Recommendations
     // ==========================================
     @GetMapping("/recommendations")
-    @Operation(summary = "Get personalized recommendations based on interests and visits", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get personalized recommendations based on interests and visits")
     public ResponseEntity<ApiResponse<RecommendationsResponse>> getRecommendations(
             @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Double lng,
             @RequestParam(required = false, defaultValue = "10") Integer limit,
             Authentication authentication) {
 
-        UUID userId = resolveUserId(authentication);
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+        UUID userId = authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())
+                ? resolveUserId(authentication)
+                : null;
+
         RecommendationsResponse response = discoverService.getPersonalizedRecommendations(
-                userId, latitude, longitude, limit);
+                userId, effectiveLat, effectiveLng, limit);
         return ResponseEntity.ok(ApiResponse.success("Recommendations fetched successfully", response));
     }
 

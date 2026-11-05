@@ -24,7 +24,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/merchant/stores")
 @Tag(name = "Merchant Stores", description = "Current authenticated merchant store branch management and submission")
-@PreAuthorize("hasAnyRole('MERCHANT', 'VENDOR')")
+@PreAuthorize("hasAnyRole('MERCHANT', 'STORE', 'STORE_MANAGER', 'VENDOR', 'ADMIN', 'SUPER_ADMIN')")
 public class MerchantStoreController {
 
     private final StoreService storeService;
@@ -100,10 +100,11 @@ public class MerchantStoreController {
     @PostMapping("/{storeId}/resend-invite")
     @Operation(summary = "Resend manager activation / welcome email for the store branch", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<Void>> resendInvite(
-            @PathVariable UUID storeId,
+            @PathVariable String storeId,
+            @RequestBody(required = false) ResendStoreInviteRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
-        UUID currentUserId = UUID.fromString(userDetails.getUsername());
-        storeService.resendStoreInvite(storeId, currentUserId);
+        UUID currentUserId = userDetails != null ? UUID.fromString(userDetails.getUsername()) : null;
+        storeService.resendStoreInvite(storeId, currentUserId, request);
         return ResponseEntity.ok(ApiResponse.success("Store manager invite email dispatched successfully", null));
     }
 }

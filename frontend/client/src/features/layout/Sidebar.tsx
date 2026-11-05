@@ -21,7 +21,8 @@ import {
   X,
   LogOut,
   UserCheck,
-  Smartphone
+  Smartphone,
+  CalendarClock
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { UserRole, AdminPermissions, ADMIN_PERMISSION_KEYS } from "../../types";
@@ -72,6 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "Discovery", label: "Discovery Control", icon: MapPin, requiredPermissions: ["canModerateOffers", "canConfigurePlatform"] },
     { id: "Merchants", label: "Merchants & KYC", icon: Building2, count: pendingMerchantsCount, requiredPermissions: ["canManageMerchants", "canVerifyKYC"] },
     { id: "Stores", label: "Stores & Branches", icon: Store, count: pendingStoresCount, requiredPermissions: ["canManageMerchants"] },
+    { id: "Bookings", label: "Table Bookings", icon: CalendarClock },
     { id: "Offers", label: "Offers & Approval", icon: TicketPercent, count: pendingOffersCount, requiredPermissions: ["canModerateOffers"] },
     { id: "Transactions", label: "UPI Transactions", icon: WalletCards, requiredPermissions: ["canViewFinancials"] },
     { id: "Rewards", label: "Rewards Economy", icon: Sparkles, requiredPermissions: ["canViewFinancials", "canConfigurePlatform"] },
@@ -84,6 +86,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const storeNav: NavItem[] = [
     { id: "StoreDashboard", label: "Branch Overview", icon: LayoutDashboard },
+    { id: "Transactions", label: "UPI Transactions", icon: WalletCards },
+    { id: "Bookings", label: "Table Bookings", icon: CalendarClock },
     { id: "StoreWallet", label: "Branch Wallet & Settlements", icon: WalletCards },
     { id: "OfferStudio", label: "Store Deals & Offers", icon: TicketPercent, requiredPermissions: ["canManageOffers"] },
     { id: "StoreStaff", label: "In-Store Staff & Roles", icon: UserCheck },
@@ -94,8 +98,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const merchantNav: NavItem[] = [
     { id: "MerchantDashboard", label: "Console Overview", icon: LayoutDashboard },
+    { id: "Transactions", label: "UPI Transactions", icon: WalletCards },
     { id: "MerchantWallet", label: "Wallet & Settlements", icon: WalletCards },
     { id: "BranchStores", label: "Branch Stores", icon: Store },
+    { id: "Bookings", label: "Table Bookings", icon: CalendarClock },
     { id: "StoreStaff", label: "Staff & Custom Roles", icon: UserCheck },
     { id: "OfferStudio", label: "Offer Studio", icon: TicketPercent },
     { id: "CounterQR", label: "Counter QR Standee", icon: QrCode },

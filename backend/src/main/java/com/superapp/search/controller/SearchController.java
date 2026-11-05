@@ -33,13 +33,22 @@ public class SearchController {
             @Parameter(description = "Customer latitude for distance calculation", example = "12.9716")
             @RequestParam(required = false) Double latitude,
 
+            @Parameter(description = "Customer latitude (short)", example = "12.9716")
+            @RequestParam(required = false) Double lat,
+
             @Parameter(description = "Customer longitude for distance calculation", example = "77.6412")
             @RequestParam(required = false) Double longitude,
+
+            @Parameter(description = "Customer longitude (short)", example = "77.6412")
+            @RequestParam(required = false) Double lng,
 
             @Parameter(description = "Maximum suggestion items to return", example = "10")
             @RequestParam(required = false, defaultValue = "10") Integer limit) {
 
-        SearchSuggestionsResponse response = searchService.getSuggestions(q, latitude, longitude, limit);
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
+        SearchSuggestionsResponse response = searchService.getSuggestions(q, effectiveLat, effectiveLng, limit);
         return ResponseEntity.ok(ApiResponse.success("Search suggestions fetched successfully", response));
     }
 }

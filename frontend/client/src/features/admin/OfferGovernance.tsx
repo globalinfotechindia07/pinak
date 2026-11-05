@@ -30,7 +30,10 @@ import {
   MoreVertical,
   Smartphone,
   MapPin,
-  Store as StoreIcon
+  Store as StoreIcon,
+  RefreshCw,
+  QrCode,
+  Edit3
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -48,41 +51,81 @@ import { useAppStore } from "../../hooks/useAppStore";
 import { OfferCampaignFormDrawer } from "../../components/OfferCampaignFormDrawer";
 import { OfferDetailsDrawer } from "../../components/OfferDetailsDrawer";
 import { getOfferBenefitInfo } from "../../lib/offerBenefitHelper";
+import { offerApi } from "../../api/offerApi";
 
-interface OfferGovernanceProps {
-  offers: Offer[];
-  merchants: Merchant[];
+export interface OfferGovernanceProps {
+  role?: "admin" | "merchant" | "store";
+  scopedStoreId?: string;
+  scopedMerchantId?: string;
+  currentStore?: Store;
+  offers?: Offer[];
+  merchants?: Merchant[];
   stores?: Store[];
-  onAddOffer: (draft: Partial<Offer>) => Promise<any> | void;
-  onUpdateOfferStatus: (id: string, status: "ACTIVE" | "REJECTED" | "EXPIRED" | "PENDING_APPROVAL" | "PAUSED", reason?: string) => void | Promise<any>;
-  onDeleteOffer?: (id: string) => void;
+  onAddOffer?: (draft: Partial<Offer>) => Promise<any> | void;
+  onUpdateOfferStatus?: (id: string, status: "ACTIVE" | "REJECTED" | "EXPIRED" | "PENDING_APPROVAL" | "PAUSED", reason?: string) => void | Promise<any>;
+  onDeleteOffer?: (id: string) => void | Promise<any>;
   onCloneOffer?: (id: string) => void;
+  onOpenQR?: () => void;
+  onRefresh?: () => void | Promise<any>;
 }
 
 export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
-  offers,
-  merchants,
+  role = "admin",
+  scopedStoreId,
+  scopedMerchantId,
+  currentStore,
+  offers: propOffers,
+  merchants: propMerchants,
   stores: propStores,
   onAddOffer,
   onUpdateOfferStatus,
   onDeleteOffer,
-  onCloneOffer
+  onCloneOffer,
+  onOpenQR,
+  onRefresh
 }) => {
   const storeState = useAppStore();
+  const effectiveRole = role || storeState.role || "admin";
   const stores = propStores || storeState.stores;
+  const merchants = propMerchants || storeState.merchants;
+  const rawOffers = propOffers && propOffers.length > 0 ? propOffers : storeState.offers;
+
+  // Resolve current active store for branch label and GPS deep-linking
+  const effectiveStore =
+    currentStore ||
+    stores.find((s) => s.id === scopedStoreId) ||
+    storeState.stores.find((s) => s.id === scopedStoreId);
+
   const [filter, setFilter] = useState("ALL");
   const [domainFilter, setDomainFilter] = useState<"ALL" | "SERVICES" | "PRODUCTS" | "TABLES">("ALL");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [cardSearch, setCardSearch] = useState("");
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+  const [cloningOffer, setCloningOffer] = useState<Offer | null>(null);
   const [offerToDelete, setOfferToDelete] = useState<Offer | null>(null);
 
+  // Scoped offers according to persona
+  const scopedOffers = rawOffers.filter((o) => {
+    if (effectiveRole === "store" && (scopedStoreId || effectiveStore?.id)) {
+      const targetStoreId = scopedStoreId || effectiveStore?.id;
+      return !o.storeId || o.storeId === "all" || o.storeId === targetStoreId;
+    }
+    if (effectiveRole === "merchant" && (scopedMerchantId || storeState.currentUser?.merchantId)) {
+      const targetMerchantId = scopedMerchantId || storeState.currentUser?.merchantId;
+      return !o.merchantId || o.merchantId === targetMerchantId;
+    }
+    return true;
+  });
+
+  // Export CSV
   const handleExportOffersCsv = () => {
     const headers = [
       "ID",
       "Title",
       "Merchant Name",
+      "Store Branch",
       "Discount Type",
       "Value",
       "Min Bill",
@@ -91,10 +134,11 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       "Valid To",
       "Status"
     ];
-    const rows = offers.map((o) => [
+    const rows = scopedOffers.map((o) => [
       `"${o.id}"`,
       `"${(o.title || "").replace(/"/g, '""')}"`,
       `"${(o.merchantName || "").replace(/"/g, '""')}"`,
+      `"${(o.storeName || "").replace(/"/g, '""')}"`,
       `"${o.type}"`,
       `"${o.value}"`,
       `"${o.minBillAmount}"`,
@@ -112,15 +156,16 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     link.setAttribute("href", encodedUri);
     link.setAttribute(
       "download",
-      `PINAK_Campaign_Offers_${new Date().toISOString().slice(0, 10)}.csv`
+      `PINAK_Campaign_Offers_${effectiveRole}_${new Date().toISOString().slice(0, 10)}.csv`
     );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Exported ${offers.length} campaign offers to CSV!`);
+    toast.success(`Exported ${scopedOffers.length} campaign offers to CSV!`);
   };
 
-  const displayedOffers = offers.filter((o) => {
+  // Filtered displayed offers (status + domain)
+  const displayedOffers = scopedOffers.filter((o) => {
     if (filter !== "ALL" && o.status !== filter) return false;
     if (domainFilter === "SERVICES" && o.scopeType === "PRODUCT") return false;
     if (domainFilter === "PRODUCTS" && o.scopeType !== "PRODUCT") return false;
@@ -146,6 +191,50 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       return { text: formatted, isExpired: false, sub: `${diffDays}d remaining` };
     } catch {
       return { text: validTo, isExpired: false, sub: "" };
+    }
+  };
+
+  // Fallback status updater if not supplied
+  const handleUpdateStatus = async (
+    id: string,
+    status: "ACTIVE" | "REJECTED" | "EXPIRED" | "PENDING_APPROVAL" | "PAUSED",
+    reason?: string
+  ) => {
+    if (onUpdateOfferStatus) {
+      await onUpdateOfferStatus(id, status, reason);
+    } else {
+      try {
+        if (effectiveRole === "admin") {
+          if (status === "ACTIVE") await offerApi.approveOfferAdmin(id);
+          else if (status === "PAUSED") await offerApi.suspendOfferAdmin(id, reason);
+          else if (status === "REJECTED") await offerApi.rejectOfferAdmin(id, reason);
+        } else {
+          await offerApi.toggleOfferStatus(id, status);
+        }
+        storeState.updateOfferStatus(id, status);
+        toast.success(status === "PAUSED" ? "Campaign offer paused" : "Campaign offer resumed & active!");
+        if (onRefresh) await onRefresh();
+      } catch (err: any) {
+        console.error("Status update error:", err);
+        toast.error("Failed to update offer status");
+      }
+    }
+  };
+
+  // Fallback delete updater if not supplied
+  const handleDelete = async (id: string) => {
+    if (onDeleteOffer) {
+      await onDeleteOffer(id);
+    } else {
+      try {
+        await offerApi.deleteOffer(id);
+        storeState.deleteOffer(id);
+        toast.success("Offer deleted permanently");
+        if (onRefresh) await onRefresh();
+      } catch (err: any) {
+        console.error("Delete offer error:", err);
+        toast.error("Failed to delete offer");
+      }
     }
   };
 
@@ -231,12 +320,12 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       )
     },
     {
-      header: "Merchant & Store",
+      header: effectiveRole === "store" ? "Store Outlet & Location" : "Merchant & Store",
       sortable: true,
       className: "w-52 lg:w-56 min-w-0",
       accessor: "merchantName",
       render: (o) => {
-        const storeMatch = stores?.find((s) => s.id === o.storeId);
+        const storeMatch = stores?.find((s) => s.id === o.storeId) || (o.storeId === effectiveStore?.id ? effectiveStore : undefined);
         const isChainWide = !o.storeId || o.storeId === "all";
         const branchLabel = storeMatch?.branchName || storeMatch?.storeName || o.storeName || (isChainWide ? "All Brand Outlets" : "Main Branch");
         const cityLabel = storeMatch?.city || (storeMatch?.address ? storeMatch.address.split(",").slice(-2)[0]?.trim() : null);
@@ -407,10 +496,21 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 <span>Review Details</span>
               </DropdownMenuItem>
 
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditingOffer(o);
+                  setIsAddOpen(true);
+                }}
+                className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600"
+              >
+                <Edit3 size={14} />
+                <span>Edit Campaign</span>
+              </DropdownMenuItem>
+
               {o.status === "ACTIVE" && (
                 <DropdownMenuItem
                   onClick={() => {
-                    onUpdateOfferStatus(o.id, "PAUSED");
+                    handleUpdateStatus(o.id, "PAUSED");
                   }}
                   className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600"
                 >
@@ -422,7 +522,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
               {(o.status === "PAUSED" || o.status === "DEACTIVATED") && (
                 <DropdownMenuItem
                   onClick={() => {
-                    onUpdateOfferStatus(o.id, "ACTIVE");
+                    handleUpdateStatus(o.id, "ACTIVE");
                   }}
                   className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600"
                 >
@@ -431,10 +531,10 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 </DropdownMenuItem>
               )}
 
-              {o.status === "PENDING_APPROVAL" && (
+              {o.status === "PENDING_APPROVAL" && effectiveRole === "admin" && (
                 <DropdownMenuItem
                   onClick={() => {
-                    onUpdateOfferStatus(o.id, "ACTIVE");
+                    handleUpdateStatus(o.id, "ACTIVE");
                     toast.success(`Offer "${o.title}" approved & activated!`);
                   }}
                   className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600"
@@ -444,31 +544,29 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 </DropdownMenuItem>
               )}
 
-              {onCloneOffer && (
-                <DropdownMenuItem
-                  onClick={() => {
+              <DropdownMenuItem
+                onClick={() => {
+                  if (onCloneOffer) {
                     onCloneOffer(o.id);
-                    toast.success(`Campaign "${o.title}" duplicated as draft`);
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600"
-                >
-                  <Copy size={14} />
-                  <span>Duplicate Campaign</span>
-                </DropdownMenuItem>
-              )}
+                  } else {
+                    setCloningOffer(o);
+                    setIsAddOpen(true);
+                  }
+                }}
+                className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600"
+              >
+                <Copy size={14} />
+                <span>Duplicate Campaign</span>
+              </DropdownMenuItem>
 
-              {onDeleteOffer && (
-                <>
-                  <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
-                  <DropdownMenuItem
-                    onClick={() => setOfferToDelete(o)}
-                    className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600"
-                  >
-                    <Trash2 size={14} />
-                    <span>Delete Campaign</span>
-                  </DropdownMenuItem>
-                </>
-              )}
+              <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+              <DropdownMenuItem
+                onClick={() => setOfferToDelete(o)}
+                className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold cursor-pointer rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600"
+              >
+                <Trash2 size={14} />
+                <span>Delete Campaign</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -488,48 +586,102 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
     );
   });
 
+  const headerTitle =
+    effectiveRole === "store"
+      ? "Store Deals & Offers"
+      : effectiveRole === "merchant"
+      ? "Merchant Offer Studio"
+      : "Offers & Campaign Governance";
+
+  const headerSubtitle =
+    effectiveRole === "store"
+      ? "Manage active discount campaigns, happy hours, table deals, and local discovery promotions for this branch."
+      : effectiveRole === "merchant"
+      ? "Create and govern promotional discount campaigns with fraud caps, store targeting, and happy hours."
+      : "Review merchant discounts, enforce margin guardrails, and control mobile discovery campaign approvals.";
+
+  const previewUrl =
+    effectiveRole === "store" && effectiveStore?.latitude && effectiveStore?.longitude
+      ? `/customer-preview?lat=${effectiveStore.latitude}&lng=${effectiveStore.longitude}&name=${encodeURIComponent(effectiveStore.branchName || effectiveStore.storeName || "Branch Outlet")}`
+      : "/customer-preview";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl sm:text-2xl font-bold font-['Manrope'] text-slate-900 dark:text-white">
-              Offers & Campaign Governance
+              {headerTitle}
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 flex items-center gap-1 shadow-2xs">
               <Sparkles size={12} />
               Live Deal Discovery
             </span>
+            {effectiveRole === "store" && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 flex items-center gap-1.5 shadow-2xs">
+                <StoreIcon size={12} className="text-purple-600 dark:text-purple-400" />
+                <span>{effectiveStore?.branchName || effectiveStore?.storeName || "This Store Outlet"}</span>
+              </span>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Review merchant discounts, enforce margin guardrails, and control mobile discovery campaign approvals.
+            {headerSubtitle}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-2xs cursor-pointer"
+              title="Refresh Live Offers"
+            >
+              <RefreshCw size={14} />
+            </button>
+          )}
+
+          {onOpenQR && (
+            <button
+              type="button"
+              onClick={onOpenQR}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-2xs cursor-pointer"
+              title="Open Counter Standee QR"
+            >
+              <QrCode size={14} className="text-pink-600" />
+              <span>Standee QR</span>
+            </button>
+          )}
+
           <a
-            href="/customer-preview"
+            href={previewUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors shadow-2xs"
-            title="Preview customer mobile discover feed (public reference)"
+            title={effectiveRole === "store" ? "Preview customer mobile feed centered on this branch outlet" : "Preview customer mobile discovery feed"}
           >
             <Smartphone size={15} className="text-purple-600" />
             <span>Customer App Preview</span>
           </a>
+
           <button
             type="button"
             onClick={handleExportOffersCsv}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs cursor-pointer"
             title="Export campaigns as CSV"
           >
             <Download size={14} />
             <span>Export (.CSV)</span>
           </button>
+
           <button
-            onClick={() => setIsAddOpen(true)}
-            className="btn-gradient flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md"
+            onClick={() => {
+              setEditingOffer(null);
+              setCloningOffer(null);
+              setIsAddOpen(true);
+            }}
+            className="btn-gradient flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer"
           >
             <Plus size={16} />
             <span>Create Campaign Offer</span>
@@ -548,9 +700,11 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           </div>
           <div className="mt-2.5">
             <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
-              {offers.length}
+              {scopedOffers.length}
             </span>
-            <span className="text-xs text-slate-400 block mt-0.5">Catalog Deals & Promos</span>
+            <span className="text-xs text-slate-400 block mt-0.5">
+              {effectiveRole === "store" ? "Branch Deals & Promos" : "Catalog Deals & Promos"}
+            </span>
           </div>
         </div>
 
@@ -563,7 +717,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           </div>
           <div className="mt-2.5">
             <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
-              {offers.filter((o) => o.status === "ACTIVE").length}
+              {scopedOffers.filter((o) => o.status === "ACTIVE").length}
             </span>
             <span className="text-xs text-slate-400 block mt-0.5">Live on Mobile Discovery</span>
           </div>
@@ -578,7 +732,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           </div>
           <div className="mt-2.5">
             <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
-              {offers.filter((o) => o.status === "PENDING_APPROVAL").length}
+              {scopedOffers.filter((o) => o.status === "PENDING_APPROVAL").length}
             </span>
             <span className="text-xs text-slate-400 block mt-0.5">Awaiting Margin Audit</span>
           </div>
@@ -593,7 +747,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           </div>
           <div className="mt-2.5">
             <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
-              {offers.reduce((acc, o) => acc + (o.redemptions || 0), 0).toLocaleString()}
+              {scopedOffers.reduce((acc, o) => acc + (o.redemptions || 0), 0).toLocaleString()}
             </span>
             <span className="text-xs text-slate-400 block mt-0.5">Customer Redemptions</span>
           </div>
@@ -605,7 +759,14 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
         {/* Filter Status Chips */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
-          {["ALL", "ACTIVE", "PAUSED", "PENDING_APPROVAL", "EXPIRED", "REJECTED"].map((st) => (
+          {[
+            { id: "ALL", label: "All Campaigns" },
+            { id: "ACTIVE", label: "Active" },
+            { id: "PAUSED", label: "Paused" },
+            { id: "PENDING_APPROVAL", label: "Pending Approval" },
+            { id: "EXPIRED", label: "Expired" },
+            { id: "REJECTED", label: "Rejected" },
+          ].map(({ id: st, label }) => (
             <button
               key={st}
               onClick={() => setFilter(st)}
@@ -615,7 +776,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                   : "border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
-              {st === "ALL" ? "All Campaigns" : st.replace("_", " ")}
+              {label}
             </button>
           ))}
         </div>
@@ -712,12 +873,23 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       {/* Main Content: Table View OR Cards View */}
       {viewMode === "table" ? (
         <AdvancedTable
-          title="Discounts & Offers Registry"
-          subtitle={`${displayedOffers.length} discount campaigns active in catalog`}
+          title={
+            effectiveRole === "store"
+              ? "Store Promotional Registry"
+              : effectiveRole === "merchant"
+              ? "Merchant Campaign Registry"
+              : "Discounts & Offers Registry"
+          }
+          subtitle={
+            effectiveRole === "store"
+              ? `${displayedOffers.length} promotional campaign${displayedOffers.length === 1 ? "" : "s"} active for this branch`
+              : effectiveRole === "merchant"
+              ? `${displayedOffers.length} promotional campaign${displayedOffers.length === 1 ? "" : "s"} active across brand outlets`
+              : `${displayedOffers.length} discount campaign${displayedOffers.length === 1 ? "" : "s"} active in platform catalog`
+          }
           columns={columns}
           data={displayedOffers}
           keyExtractor={(o) => o.id}
-          
           searchPlaceholder="Search campaigns, merchants, terms..."
           searchFilter={(o, q) =>
             Boolean(
@@ -726,16 +898,16 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
               (o.terms && o.terms.toLowerCase().includes(q))
             )
           }
-          bulkActions={[
+          bulkActions={effectiveRole === "admin" ? [
             {
               label: "Approve Selected Deals",
               variant: "success",
               action: (selected) => {
-                selected.forEach((o) => onUpdateOfferStatus(o.id, "ACTIVE"));
+                selected.forEach((o) => handleUpdateStatus(o.id, "ACTIVE"));
                 toast.success(`Approved ${selected.length} campaigns for mobile discovery!`);
               }
             }
-          ]}
+          ] : undefined}
         />
       ) : (
         /* Cards View */
@@ -891,7 +1063,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                             <span className="truncate">{o.merchantName}</span>
                           </span>
                           {(() => {
-                            const storeMatch = stores?.find((s) => s.id === o.storeId);
+                            const storeMatch = stores?.find((s) => s.id === o.storeId) || (o.storeId === effectiveStore?.id ? effectiveStore : undefined);
                             const isChainWide = !o.storeId || o.storeId === "all";
                             const label = isChainWide ? "All Outlets" : (storeMatch?.city ? `${storeMatch.city} Branch` : (o.storeName || "Branch"));
                             return (
@@ -972,13 +1144,25 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                     {/* Card Actions Footer */}
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
                       <div className="flex items-center gap-1">
+                        {/* Edit */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingOffer(o);
+                            setIsAddOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                          title="Edit Campaign"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+
                         {/* Pause / Resume */}
                         {o.status === "ACTIVE" && (
                           <button
                             type="button"
                             onClick={() => {
-                              onUpdateOfferStatus(o.id, "PAUSED");
-                              toast.info(`Offer "${o.title}" paused`);
+                              handleUpdateStatus(o.id, "PAUSED");
                             }}
                             className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
                             title="Pause Campaign"
@@ -990,8 +1174,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              onUpdateOfferStatus(o.id, "ACTIVE");
-                              toast.success(`Offer "${o.title}" resumed`);
+                              handleUpdateStatus(o.id, "ACTIVE");
                             }}
                             className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
                             title="Resume Campaign"
@@ -1001,31 +1184,31 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                         )}
 
                         {/* Clone */}
-                        {onCloneOffer && (
-                          <button
-                            type="button"
-                            onClick={() => {
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onCloneOffer) {
                               onCloneOffer(o.id);
-                              toast.success(`Campaign "${o.title}" duplicated`);
-                            }}
-                            className="p-1.5 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
-                            title="Duplicate Campaign"
-                          >
-                            <Copy size={14} />
-                          </button>
-                        )}
+                            } else {
+                              setCloningOffer(o);
+                              setIsAddOpen(true);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
+                          title="Duplicate Campaign"
+                        >
+                          <Copy size={14} />
+                        </button>
 
                         {/* Delete */}
-                        {onDeleteOffer && (
-                          <button
-                            type="button"
-                            onClick={() => setOfferToDelete(o)}
-                            className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                            title="Delete Campaign"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setOfferToDelete(o)}
+                          className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                          title="Delete Campaign"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
 
                       <button
@@ -1051,9 +1234,9 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
           offer={selectedOffer}
           stores={stores}
           onClose={() => setSelectedOffer(null)}
-          isAdmin={true}
+          isAdmin={effectiveRole === "admin"}
           onUpdateStatus={(status, reason) => {
-            onUpdateOfferStatus(selectedOffer.id, status as any, reason);
+            handleUpdateStatus(selectedOffer.id, status as any, reason);
             setSelectedOffer(null);
           }}
         />
@@ -1062,12 +1245,36 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
       {/* Create / Edit Campaign Drawer */}
       {isAddOpen && (
         <OfferCampaignFormDrawer
-          onClose={() => setIsAddOpen(false)}
+          onClose={() => {
+            setIsAddOpen(false);
+            setEditingOffer(null);
+            setCloningOffer(null);
+          }}
           merchants={merchants}
           stores={stores}
+          role={effectiveRole}
+          scopedStoreId={scopedStoreId || effectiveStore?.id}
+          scopedMerchantId={scopedMerchantId || effectiveStore?.merchantId}
+          initialData={editingOffer || cloningOffer ? (editingOffer || cloningOffer) : undefined}
+          isEdit={Boolean(editingOffer)}
           onSave={async (draft) => {
-            await onAddOffer(draft);
+            if (editingOffer) {
+              try {
+                await offerApi.updateOffer(editingOffer.id, {
+                  ...draft,
+                  storeId: (draft.storeId && draft.storeId !== "all") ? draft.storeId : (scopedStoreId || effectiveStore?.id),
+                } as any);
+                toast.success(`Offer "${draft.title}" updated!`);
+                if (onRefresh) await onRefresh();
+              } catch (err: any) {
+                toast.error(err?.response?.data?.message || "Failed to update offer");
+              }
+            } else if (onAddOffer) {
+              await onAddOffer(draft);
+            }
             setIsAddOpen(false);
+            setEditingOffer(null);
+            setCloningOffer(null);
           }}
         />
       )}
@@ -1095,27 +1302,28 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Permanently deleting this campaign will remove it from all merchant listings and mobile discovery feeds.
+              {effectiveRole === "store"
+                ? "Permanently deleting this campaign will remove it from this branch's customer listings and mobile discovery feeds."
+                : effectiveRole === "merchant"
+                ? "Permanently deleting this campaign will remove it from all merchant listings and mobile discovery feeds."
+                : "Permanently deleting this campaign will remove it from catalog listings and mobile discovery feeds."}
             </p>
 
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setOfferToDelete(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  if (onDeleteOffer) {
-                    onDeleteOffer(offerToDelete.id);
-                  }
-                  toast.success(`Campaign "${offerToDelete.title}" deleted`);
+                  handleDelete(offerToDelete.id);
                   setOfferToDelete(null);
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors shadow-sm"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors shadow-sm cursor-pointer"
               >
                 Confirm Delete
               </button>

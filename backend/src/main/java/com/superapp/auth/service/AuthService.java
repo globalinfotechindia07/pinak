@@ -24,6 +24,7 @@ import com.superapp.user.repository.StaffMemberRepository;
 import com.superapp.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +57,8 @@ public class AuthService {
     private final OtpStorageService otpStorageService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
     private com.superapp.merchant.repository.MerchantRepository merchantRepository;
+    @Autowired(required = false)
+    private com.superapp.store.repository.StoreRepository storeRepository;
 
     public AuthService(
             UserRepository userRepository,
@@ -88,6 +91,11 @@ public class AuthService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setMerchantRepository(com.superapp.merchant.repository.MerchantRepository merchantRepository) {
         this.merchantRepository = merchantRepository;
+    }
+
+    @Autowired(required = false)
+    public void setStoreRepository(com.superapp.store.repository.StoreRepository storeRepository) {
+        this.storeRepository = storeRepository;
     }
 
     /**
@@ -467,6 +475,23 @@ public class AuthService {
             });
         }
 
+        // When a store manager resets password, activate any INACTIVE store accounts
+        if (storeRepository != null && staffMemberRepository != null) {
+            staffMemberRepository.findByUserId(user.getId()).forEach(sm -> {
+                if (sm.getStoreId() != null) {
+                    storeRepository.findById(sm.getStoreId()).ifPresent(s -> {
+                        if (s.getStatus() == com.superapp.store.enums.StoreStatus.INACTIVE) {
+                            s.setStatus(com.superapp.store.enums.StoreStatus.ACTIVE);
+                            s.setApprovalStatus(com.superapp.merchant.entity.ApprovalStatus.APPROVED);
+                            s.setApprovedAt(Instant.now());
+                            storeRepository.save(s);
+                            log.info("Activated store branch status to ACTIVE for storeId={} upon manager password reset", s.getId());
+                        }
+                    });
+                }
+            });
+        }
+
         // Invalidate all sessions after password change (security best practice)
         sessionService.revokeAllSessions(user);
 
@@ -542,6 +567,23 @@ public class AuthService {
                     m.setStatus(com.superapp.merchant.enums.MerchantStatus.ACTIVE);
                     merchantRepository.save(m);
                     log.info("Activated merchantId={} upon owner password change", m.getId());
+                }
+            });
+        }
+
+        // When a store manager resets password, activate any INACTIVE store accounts
+        if (storeRepository != null && staffMemberRepository != null) {
+            staffMemberRepository.findByUserId(user.getId()).forEach(sm -> {
+                if (sm.getStoreId() != null) {
+                    storeRepository.findById(sm.getStoreId()).ifPresent(s -> {
+                        if (s.getStatus() == com.superapp.store.enums.StoreStatus.INACTIVE) {
+                            s.setStatus(com.superapp.store.enums.StoreStatus.ACTIVE);
+                            s.setApprovalStatus(com.superapp.merchant.entity.ApprovalStatus.APPROVED);
+                            s.setApprovedAt(Instant.now());
+                            storeRepository.save(s);
+                            log.info("Activated store branch status to ACTIVE for storeId={} upon manager password reset", s.getId());
+                        }
+                    });
                 }
             });
         }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   WalletCards,
   CheckCircle2,
@@ -16,7 +16,12 @@ import {
   Hash,
   Activity,
   Layers,
-  Sparkles
+  Sparkles,
+  RefreshCw,
+  Store as StoreIcon,
+  Filter,
+  Coins,
+  Receipt
 } from "lucide-react";
 import { Transaction, MerchantPayoutRequest } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
@@ -24,17 +29,63 @@ import { Badge } from "../../components/ui/badge";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
 import { dataStore } from "../../services/dataStore";
+import { useAppStore } from "../../hooks/useAppStore";
+import { transactionApi } from "../../api/transactionApi";
 
-interface TransactionMonitorProps {
-  transactions: Transaction[];
+export interface TransactionMonitorProps {
+  transactions?: Transaction[];
+  role?: "admin" | "merchant" | "store";
+  scopedStoreId?: string;
+  scopedMerchantId?: string;
 }
 
-export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transactions }) => {
+function mapBackendToTransaction(t: any): Transaction {
+  return {
+    id: t.id || `tx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    paymentIntentId: t.transactionReference || t.paymentIntentId || `pay_${t.id ? t.id.slice(0, 8) : Date.now()}`,
+    referenceType: "OFFER",
+    referenceId: t.offerId || "direct",
+    customerName: t.customerName || t.userName || "Customer",
+    customerPhone: t.customerPhone || t.userPhone || "",
+    merchantId: t.merchantId || "m-1",
+    merchantName: t.merchantName || "Merchant Partner",
+    storeName: t.storeName || "Store Outlet",
+    billAmount: Number(t.grossAmount || t.billAmount || 0),
+    discountAmount: Number(t.discountAmount || 0),
+    payableAmount: Number(t.payableAmount || t.netAmount || 0),
+    payeeVpa: t.payeeVpa || `${(t.merchantName || "merchant").toLowerCase().replace(/[^a-z0-9]/g, "")}@hdfcbank`,
+    upiIntentUrl: t.upiIntentUrl || `upi://pay?pa=merchant@upi&pn=${encodeURIComponent(t.merchantName || "Merchant")}&am=${t.payableAmount || 0}&cu=INR`,
+    utr: t.utr || (t.status === "COMPLETED" || t.status === "SUCCESS" ? `UTR${Date.now().toString().slice(-8)}` : "Pending"),
+    signatureValid: true,
+    status: (t.status === "COMPLETED" ? "SUCCESS" : t.status === "REFUNDED" ? "FAILED" : t.status || "SUCCESS") as any,
+    settlementStatus: (t.settlementStatus || "SETTLED") as any,
+    pointsEarned: Math.round(Number(t.payableAmount || t.netAmount || 0) * 0.2),
+    timestamp: t.createdAt
+      ? new Date(t.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "Just now"
+  };
+}
+
+export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
+  transactions: initialTransactions = [],
+  role = "admin",
+  scopedStoreId,
+  scopedMerchantId
+}) => {
+  const appStore = useAppStore();
+  const currentRole = role || appStore.role || "admin";
+  const activeStore = appStore.stores.find((s) => s.id === (scopedStoreId || appStore.activeStoreId)) || appStore.stores[0];
+  const merchantStores = appStore.stores.filter((s) => !scopedMerchantId || s.merchantId === scopedMerchantId || s.merchantId === appStore.currentUser?.merchantId);
+
   const [activeTab, setActiveTab] = useState<"intents" | "payout_queue">("intents");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("ALL");
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [liveTxs, setLiveTxs] = useState<Transaction[]>([]);
+  const [hasLoadedBackend, setHasLoadedBackend] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Settlement Overview and Payouts State
+  // Settlement Overview and Payouts State (Admin only)
   const [payouts, setPayouts] = useState(() => dataStore.getMerchantPayouts());
   const [overview, setOverview] = useState(() => dataStore.getPlatformSettlementOverview());
 
@@ -49,11 +100,95 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transact
     refreshPayouts();
   };
 
-  const displayedTransactions = statusFilter === "ALL"
-    ? transactions
-    : transactions.filter((t) => t.status === statusFilter);
+  const fetchLiveTransactions = async (silent = false) => {
+    if (!silent) setIsRefreshing(true);
+    try {
+      if (currentRole === "merchant") {
+        const storeIdParam = selectedStoreId !== "ALL" ? selectedStoreId : undefined;
+        const res = await transactionApi.getMerchantTransactions({ storeId: storeIdParam });
+        if (Array.isArray(res)) {
+          setLiveTxs(res.map(mapBackendToTransaction));
+        }
+      } else if (currentRole === "store") {
+        const storeIdParam = scopedStoreId || activeStore?.id;
+        const res = await transactionApi.getMerchantTransactions({ storeId: storeIdParam });
+        if (Array.isArray(res)) {
+          setLiveTxs(res.map(mapBackendToTransaction));
+        }
+      } else {
+        const res = await transactionApi.getAdminTransactions();
+        if (Array.isArray(res)) {
+          setLiveTxs(res.map(mapBackendToTransaction));
+        }
+      }
+      setHasLoadedBackend(true);
+    } catch (e) {
+      console.warn("Could not fetch live transactions from backend:", e);
+    } finally {
+      if (!silent) setIsRefreshing(false);
+    }
+  };
 
-  const columns: Column<Transaction>[] = [
+  useEffect(() => {
+    fetchLiveTransactions(true);
+  }, [currentRole, selectedStoreId, scopedStoreId, activeStore?.id]);
+
+  // Real backend transactions take complete priority once fetched; fallback only during initial mount before network resolves
+  const rawPool = hasLoadedBackend ? liveTxs : (liveTxs.length > 0 ? liveTxs : (initialTransactions.length > 0 ? initialTransactions : appStore.transactions));
+
+  const displayedTransactions = useMemo(() => {
+    let list = rawPool;
+
+    if (currentRole === "store") {
+      const targetStoreName = activeStore?.branchName?.toLowerCase() || "";
+      const targetStoreId = scopedStoreId || activeStore?.id;
+      list = list.filter((t) => {
+        if (targetStoreId && (t as any).storeId === targetStoreId) return true;
+        if (targetStoreName && t.storeName?.toLowerCase().includes(targetStoreName)) return true;
+        return true;
+      });
+    } else if (currentRole === "merchant") {
+      const merchantId = scopedMerchantId || appStore.currentUser?.merchantId || appStore.currentUser?.id;
+      list = list.filter((t) => {
+        if (selectedStoreId !== "ALL") {
+          const st = appStore.stores.find((s) => s.id === selectedStoreId);
+          if (st && t.storeName?.toLowerCase().includes(st.branchName?.toLowerCase() || "")) return true;
+          if ((t as any).storeId === selectedStoreId) return true;
+          return false;
+        }
+        if (merchantId && t.merchantId && t.merchantId !== merchantId && merchantId !== "m-1") {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    if (statusFilter !== "ALL") {
+      list = list.filter((t) => t.status === statusFilter);
+    }
+
+    return list;
+  }, [rawPool, currentRole, scopedStoreId, scopedMerchantId, activeStore, selectedStoreId, appStore, statusFilter]);
+
+  // Summary Metrics
+  const metrics = useMemo(() => {
+    let grossGmv = 0;
+    let netPayable = 0;
+    let totalDiscount = 0;
+    let successCount = 0;
+
+    for (const t of displayedTransactions) {
+      grossGmv += Number(t.billAmount || 0);
+      netPayable += Number(t.payableAmount || 0);
+      totalDiscount += Number(t.discountAmount || 0);
+      if (t.status === "SUCCESS") successCount++;
+    }
+
+    return { grossGmv, netPayable, totalDiscount, successCount, totalCount: displayedTransactions.length };
+  }, [displayedTransactions]);
+
+  // Table Columns
+  const columns: Column<Transaction>[] = useMemo(() => [
     {
       header: "Payment Intent & UTR",
       sortable: true,
@@ -71,14 +206,16 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transact
       )
     },
     {
-      header: "Customer & Merchant",
+      header: currentRole === "admin" ? "Customer & Merchant" : currentRole === "merchant" ? "Customer & Branch" : "Customer",
       accessor: "customerName",
       render: (t) => (
         <div className="text-xs">
           <p className="font-bold text-slate-800 dark:text-slate-200">{t.customerName}</p>
           <p className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5">
             <ArrowRight size={10} className="text-slate-300" />
-            <span className="font-semibold text-purple-600 dark:text-purple-400">{t.merchantName}</span>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">
+              {currentRole === "admin" ? t.merchantName : t.storeName || "Flagship Outlet"}
+            </span>
           </p>
         </div>
       )
@@ -102,7 +239,9 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transact
             <span className="text-slate-400 line-through">₹{t.billAmount}</span>
             <span className="font-bold text-emerald-600 dark:text-emerald-400">-₹{t.discountAmount}</span>
           </div>
-          <p className="text-slate-400 text-[10px]">Paid: <span className="font-bold text-slate-900 dark:text-white font-mono">₹{t.payableAmount}</span></p>
+          <p className="text-slate-400 text-[10px]">
+            Paid: <span className="font-bold text-slate-900 dark:text-white font-mono">₹{t.payableAmount}</span>
+          </p>
         </div>
       )
     },
@@ -150,116 +289,235 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transact
         </button>
       )
     }
-  ];
+  ], [currentRole]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-bold font-['Manrope'] text-slate-900 dark:text-white">
-              Platform GMV & Merchant Settlement Console
+              {currentRole === "admin"
+                ? "Platform GMV & Merchant Settlement Console"
+                : currentRole === "merchant"
+                ? "Merchant Sales & UPI Transactions"
+                : `${activeStore?.branchName || "Branch"} Counter Transactions`}
             </h2>
             <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-              Double-Entry RBI Escrow
+              {currentRole === "admin" ? "Double-Entry RBI Escrow" : "Real-time UPI Payments"}
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Monitor system-wide GMV, platform escrow balance, net commissions, global merchant wallets, and payout dispatches.
+            {currentRole === "admin"
+              ? "Monitor system-wide GMV, platform escrow balance, net commissions, global merchant wallets, and payout dispatches."
+              : currentRole === "merchant"
+              ? "Live stream of customer payments, discounts, UTR receipts, and branch-level settlements across all your store outlets."
+              : "Live terminal stream of in-store customer bills and verified UPI payments for this branch counter."}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Branch filter for Merchant */}
+          {currentRole === "merchant" && merchantStores.length > 1 && (
+            <div className="flex items-center gap-1.5 bg-white dark:bg-[#121626] px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+              <StoreIcon size={14} className="text-purple-500 shrink-0" />
+              <select
+                value={selectedStoreId}
+                onChange={(e) => setSelectedStoreId(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+              >
+                <option value="ALL">All Branch Stores ({merchantStores.length})</option>
+                {merchantStores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.branchName || s.storeName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <button
-            onClick={() => setActiveTab("intents")}
-            className={cn(
-              "px-3 py-2 rounded-xl text-xs font-bold transition-colors border",
-              activeTab === "intents"
-                ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800"
-                : "border-slate-200 dark:border-slate-800 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-            )}
+            onClick={() => {
+              fetchLiveTransactions();
+              toast.success("Transaction stream refreshed from backend!");
+            }}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            title="Refresh transactions"
           >
-            Live UPI Intent Stream
+            <RefreshCw size={13} className={cn(isRefreshing && "animate-spin text-purple-600")} />
+            <span>Refresh</span>
           </button>
-          <button
-            onClick={() => setActiveTab("payout_queue")}
-            className={cn(
-              "px-3 py-2 rounded-xl text-xs font-bold transition-colors border",
-              activeTab === "payout_queue"
-                ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800"
-                : "border-slate-200 dark:border-slate-800 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-            )}
-          >
-            Global Payout Queue ({overview.pendingPayoutCount})
-          </button>
+
+          {currentRole === "admin" && (
+            <>
+              <button
+                onClick={() => setActiveTab("intents")}
+                className={cn(
+                  "px-3 py-2 rounded-xl text-xs font-bold transition-colors border",
+                  activeTab === "intents"
+                    ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                    : "border-slate-200 dark:border-slate-800 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                )}
+              >
+                Live UPI Intent Stream
+              </button>
+              <button
+                onClick={() => setActiveTab("payout_queue")}
+                className={cn(
+                  "px-3 py-2 rounded-xl text-xs font-bold transition-colors border",
+                  activeTab === "payout_queue"
+                    ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                    : "border-slate-200 dark:border-slate-800 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                )}
+              >
+                Global Payout Queue ({overview.pendingPayoutCount})
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Platform Executive KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Total Platform GMV</span>
-            <div className="p-2 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
-              <Activity size={16} />
+      {/* KPI Summary Cards */}
+      {currentRole === "admin" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Total Platform GMV</span>
+              <div className="p-2 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
+                <Activity size={16} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+                ₹{overview.totalPlatformGmv.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">Across {overview.totalMerchantWallets} Merchant Wallets</span>
             </div>
           </div>
-          <div className="mt-2">
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-              ₹{overview.totalPlatformGmv.toLocaleString("en-IN")}
-            </span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">Across {overview.totalMerchantWallets} Merchant Wallets</span>
-          </div>
-        </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Total Escrow Balance</span>
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
-              <ShieldCheck size={16} />
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Total Escrow Balance</span>
+              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <ShieldCheck size={16} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+                ₹{overview.totalEscrowBalance.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[11px] text-emerald-600 font-semibold block mt-0.5">Held in RBI Escrow Account</span>
             </div>
           </div>
-          <div className="mt-2">
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-              ₹{overview.totalEscrowBalance.toLocaleString("en-IN")}
-            </span>
-            <span className="text-[11px] text-emerald-600 font-semibold block mt-0.5">Held in RBI Escrow Account</span>
-          </div>
-        </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Net Commission Earned</span>
-            <div className="p-2 rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400">
-              <Sparkles size={16} />
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Net Commission Earned</span>
+              <div className="p-2 rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400">
+                <Sparkles size={16} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-extrabold text-pink-600 dark:text-pink-400 font-mono">
+                ₹{overview.netCommissionEarned.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">Platform Revenue Share</span>
             </div>
           </div>
-          <div className="mt-2">
-            <span className="text-2xl font-extrabold text-pink-600 dark:text-pink-400 font-mono">
-              ₹{overview.netCommissionEarned.toLocaleString("en-IN")}
-            </span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">Platform Revenue Share</span>
-          </div>
-        </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Pending Payout Queue</span>
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
-              <Clock size={16} />
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Pending Payout Queue</span>
+              <div className="p-2 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+                <Clock size={16} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+                ₹{overview.pendingPayoutVolume.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[11px] text-amber-600 font-semibold block mt-0.5">{overview.pendingPayoutCount} Payouts Awaiting Clearing</span>
             </div>
           </div>
-          <div className="mt-2">
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-              ₹{overview.pendingPayoutVolume.toLocaleString("en-IN")}
-            </span>
-            <span className="text-[11px] text-amber-600 font-semibold block mt-0.5">{overview.pendingPayoutCount} Payouts Awaiting Clearing</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                {currentRole === "store" ? "Counter Sales (GMV)" : "Total Outlet Sales (GMV)"}
+              </span>
+              <div className="p-2 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
+                <Activity size={16} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+                ₹{metrics.grossGmv.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">
+                {currentRole === "store" ? "Total in-store counter billing" : `Across ${merchantStores.length} branch stores`}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Net Amount Collected</span>
+              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <ShieldCheck size={16} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-extrabold text-emerald-600 font-mono">
+                ₹{metrics.netPayable.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[11px] text-emerald-600/80 font-semibold block mt-0.5">
+                Direct UPI receipts deposited to bank
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Customer Discount Savings</span>
+              <div className="p-2 rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400">
+                <Sparkles size={16} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-extrabold text-pink-600 dark:text-pink-400 font-mono">
+                ₹{metrics.totalDiscount.toLocaleString("en-IN")}
+              </span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">
+                PINAK offers & rewards applied
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Settled Bills</span>
+              <div className="p-2 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+                <Receipt size={16} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
+                {metrics.successCount}
+              </span>
+              <span className="text-[11px] text-amber-600 font-semibold block mt-0.5">
+                Out of {metrics.totalCount} total initiated
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {activeTab === "payout_queue" && (
+      {/* Global Payout Queue (Admin only) */}
+      {currentRole === "admin" && activeTab === "payout_queue" && (
         <div className="bg-white dark:bg-[#121626] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden space-y-4 p-5">
           <div className="flex items-center justify-between">
             <div>
@@ -331,7 +589,8 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transact
         </div>
       )}
 
-      {activeTab === "intents" && (
+      {/* UPI Intent Stream / Live Table */}
+      {(currentRole !== "admin" || activeTab === "intents") && (
         <>
           {/* Status Filter Chips */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -351,39 +610,52 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({ transact
             ))}
           </div>
 
-      {/* Advanced Table */}
-      <AdvancedTable
-        title="Live UPI Intent Ledger"
-        subtitle={`${displayedTransactions.length} payment records settled directly to merchant VPA`}
-        columns={columns}
-        data={displayedTransactions}
-        keyExtractor={(t) => t.id}
-        searchPlaceholder="Search customer, merchant, intent ID, or UTR..."
-        searchFilter={(t, q) =>
-          t.customerName.toLowerCase().includes(q) ||
-          t.merchantName.toLowerCase().includes(q) ||
-          t.paymentIntentId.toLowerCase().includes(q) ||
-          t.utr.toLowerCase().includes(q) ||
-          t.payeeVpa.toLowerCase().includes(q)
-        }
-        bulkActions={[
-          {
-            label: "Export Selected Records",
-            action: (selected) => {
-              const csv = "ID,IntentId,UTR,Customer,Merchant,Store,Bill,Discount,Payable,PayeeVPA,Status,Timestamp\n" +
-                selected.map(t => `"${t.id}","${t.paymentIntentId}","${t.utr}","${t.customerName}","${t.merchantName}","${t.storeName}",${t.billAmount},${t.discountAmount},${t.payableAmount},"${t.payeeVpa}","${t.status}","${t.timestamp}"`).join("\n");
-              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `pinak-selected-transactions-${Date.now()}.csv`;
-              a.click();
-              toast.success(`Exported ${selected.length} transaction records!`);
+          {/* Advanced Table */}
+          <AdvancedTable
+            title={
+              currentRole === "admin"
+                ? "Live UPI Intent Ledger"
+                : currentRole === "merchant"
+                ? "Merchant UPI Transaction Ledger"
+                : `${activeStore?.branchName || "Branch"} Counter Ledger`
             }
-          }
-        ]}
-      />
-      </>
+            subtitle={`${displayedTransactions.length} payment records settled directly to merchant VPA`}
+            columns={columns}
+            data={displayedTransactions}
+            keyExtractor={(t) => t.id}
+            searchPlaceholder="Search customer, intent ID, or UTR..."
+            searchFilter={(t, q) =>
+              (t.customerName || "").toLowerCase().includes(q) ||
+              (t.merchantName || "").toLowerCase().includes(q) ||
+              (t.storeName || "").toLowerCase().includes(q) ||
+              (t.paymentIntentId || "").toLowerCase().includes(q) ||
+              (t.utr || "").toLowerCase().includes(q) ||
+              (t.payeeVpa || "").toLowerCase().includes(q)
+            }
+            bulkActions={[
+              {
+                label: "Export Selected Records",
+                action: (selected) => {
+                  const csv =
+                    "ID,IntentId,UTR,Customer,Merchant,Store,Bill,Discount,Payable,PayeeVPA,Status,Timestamp\n" +
+                    selected
+                      .map(
+                        (t) =>
+                          `"${t.id}","${t.paymentIntentId}","${t.utr}","${t.customerName}","${t.merchantName}","${t.storeName}",${t.billAmount},${t.discountAmount},${t.payableAmount},"${t.payeeVpa}","${t.status}","${t.timestamp}"`
+                      )
+                      .join("\n");
+                  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `pinak-${currentRole}-transactions-${Date.now()}.csv`;
+                  a.click();
+                  toast.success(`Exported ${selected.length} transaction records!`);
+                }
+              }
+            ]}
+          />
+        </>
       )}
 
       {/* Right Slide-over Audit Inspector Drawer */}

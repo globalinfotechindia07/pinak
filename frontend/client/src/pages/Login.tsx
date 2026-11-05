@@ -121,11 +121,14 @@ export const Login: React.FC = () => {
         {
           id: authRes?.user?.id,
           name: authRes?.user?.name,
+          phone: authRes?.user?.phone || authRes?.user?.mobile,
           roleName: authRes?.user?.staffRoleName,
           staffRoleId: authRes?.user?.staffRoleId,
           staffScope: authRes?.user?.staffScope,
           permissions: authRes?.user?.permissions,
           status: authRes?.user?.status,
+          merchantId: authRes?.user?.merchantId,
+          storeId: authRes?.user?.storeId,
         }
       );
 

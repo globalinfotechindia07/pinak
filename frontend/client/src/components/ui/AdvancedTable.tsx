@@ -42,6 +42,7 @@ interface AdvancedTableProps<T> {
   onRowClick?: (row: T) => void;
   defaultPageSize?: number;
   emptyMessage?: string;
+  emptyState?: React.ReactNode;
   tableClassName?: string;
 }
 
@@ -58,6 +59,7 @@ export function AdvancedTable<T>({
   onRowClick,
   defaultPageSize = 10,
   emptyMessage = "No matching records found.",
+  emptyState,
   tableClassName = ""
 }: AdvancedTableProps<T>) {
   const [search, setSearch] = useState("");
@@ -266,7 +268,7 @@ export function AdvancedTable<T>({
       )}
 
       {/* Table Element */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs w-full">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs w-full">
         <table className={`w-full table-fixed text-left border-collapse text-xs sm:text-sm ${tableClassName || ""}`}>
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs tracking-wider">
@@ -321,9 +323,25 @@ export function AdvancedTable<T>({
               <tr>
                 <td
                   colSpan={columns.length + (bulkActions.length > 0 ? 1 : 0)}
-                  className="py-12 text-center text-slate-400 text-xs sm:text-sm"
+                  className="py-12 sm:py-16 px-4 text-center"
                 >
-                  {emptyMessage}
+                  {emptyState ? (
+                    emptyState
+                  ) : (
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center space-y-3 py-6">
+                      <div className="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-950/50 border border-purple-100 dark:border-purple-900/60 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-inner">
+                        <Search size={24} className="stroke-[2.2]" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          No matching records
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                          {emptyMessage}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </td>
               </tr>
             ) : (

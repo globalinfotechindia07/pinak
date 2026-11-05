@@ -55,13 +55,16 @@ public record MerchantUpdateStoreRequest(
 
         List<String> photos,
 
-        List<String> amenities
+        List<String> amenities,
+        Boolean isTableBookingEnabled,
+        Boolean allowFreeStandardBooking,
+        BigDecimal defaultStandardCoverCharge
 ) {
     public MerchantUpdateStoreRequest(String name, String description, String addressLine1,
                                      String addressLine2, String cityId, String state,
                                      String pincode, BigDecimal latitude, BigDecimal longitude,
                                      String phone) {
         this(name, description, addressLine1, addressLine2, cityId, state, pincode,
-             latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", null, null, null, null);
+             latitude, longitude, phone, "10:00", "22:00", "Daily (Mon - Sun)", null, null, null, null, true, true, BigDecimal.ZERO);
     }
 }

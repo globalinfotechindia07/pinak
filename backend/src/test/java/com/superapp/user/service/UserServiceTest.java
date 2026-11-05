@@ -11,6 +11,7 @@ import com.superapp.user.entity.User;
 import com.superapp.user.entity.UserStatus;
 import com.superapp.user.mapper.UserMapper;
 import com.superapp.user.repository.UserRepository;
+import com.superapp.user.repository.StaffMemberRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -45,6 +46,12 @@ class UserServiceTest {
     @Mock
     private com.superapp.merchant.repository.MerchantRepository merchantRepository;
 
+    @Mock
+    private StaffMemberRepository staffMemberRepository;
+
+    @Mock
+    private com.superapp.store.repository.StoreRepository storeRepository;
+
     private final UserMapper userMapper = new UserMapper();
     private UserService userService;
 
@@ -53,7 +60,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, null, null, passwordEncoder, userMapper, auditService, null, merchantRepository);
+        userService = new UserService(userRepository, null, staffMemberRepository, passwordEncoder, userMapper, auditService, null, merchantRepository, storeRepository);
 
         userId = UUID.randomUUID();
         sampleUser = new User("rohan@example.com", "Rohan User", "Rohan", "User", "hashed_pw", Role.CUSTOMER);
@@ -306,6 +313,35 @@ class UserServiceTest {
 
             // Should not throw
             userService.validateStaffAssignmentEmail("branch.manager@haldiram.com", "STORE", merchantId, null);
+        }
+
+        @Test
+        @DisplayName("Store manager setting password via invite activates the store status to ACTIVE")
+        void acceptInvite_storeManager_activatesStore() {
+            String token = "valid_invite_token_123";
+            UUID storeId = UUID.randomUUID();
+            UUID merchantId = UUID.randomUUID();
+
+            com.superapp.user.entity.StaffMember staff = new com.superapp.user.entity.StaffMember(
+                    userId, "STORE_MANAGER", "STORE", merchantId, storeId,
+                    null, "INVITED", "{\"inviteToken\":\"" + token + "\"}", null
+            );
+            when(staffMemberRepository.findByInviteToken(token)).thenReturn(Optional.of(staff));
+            when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
+            when(passwordEncoder.encode("SecurePass123")).thenReturn("encoded_pass");
+            when(staffMemberRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            com.superapp.store.entity.Store store = new com.superapp.store.entity.Store();
+            store.setId(storeId);
+            store.setStatus(com.superapp.store.enums.StoreStatus.INACTIVE);
+            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
+            when(storeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            userService.acceptInvite(token, "SecurePass123");
+
+            assertThat(store.getStatus()).isEqualTo(com.superapp.store.enums.StoreStatus.ACTIVE);
+            assertThat(store.getApprovalStatus()).isEqualTo(com.superapp.merchant.entity.ApprovalStatus.APPROVED);
+            verify(storeRepository).save(store);
         }
     }
 }

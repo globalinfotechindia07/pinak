@@ -2138,6 +2138,476 @@
               ]
             }
           ]
+        },
+        {
+          "name": "🍽️ Table Booking & Reservations (Screen 11 Next Screen / Screen 12)",
+          "item": [
+            {
+              "name": "24a. Get Table Booking Slot & Offer Availability (Screen 11 Next Screen)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/availability?storeIdQuery={{smokehouseStoreId}}&lat=21.1458&lng=79.0882",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "table-bookings",
+                    "availability"
+                  ],
+                  "query": [
+                    {
+                      "key": "storeIdQuery",
+                      "value": "{{smokehouseStoreId}}",
+                      "description": "Store Outlet UUID (Defaults to Nagpur Flagship if omitted)"
+                    },
+                    {
+                      "key": "lat",
+                      "value": "21.1458",
+                      "description": "Device GPS Latitude"
+                    },
+                    {
+                      "key": "lng",
+                      "value": "79.0882",
+                      "description": "Device GPS Longitude"
+                    }
+                  ]
+                },
+                "description": "### 🍽️ Screen 11 Next: Table Booking Slot & Pre-Book Offers Availability\n\nReturns dynamic slot availability, upcoming 7 calendar days with discount badges, lunch and dinner time slots, party size limits (1-8 guests), active pre-booking offers with redeemable cover charges, VIP membership upsell details, and cancellation policies."
+              },
+              "response": [
+                {
+                  "name": "200 OK - Table Booking Availability",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/availability?storeIdQuery={{smokehouseStoreId}}&lat=21.1458&lng=79.0882",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "mobile",
+                        "table-bookings",
+                        "availability"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Table booking availability fetched successfully\",\n  \"data\": {\n    \"store\": {\n      \"storeId\": \"97aabe53-9349-439d-952e-40f723bb8f51\",\n      \"storeName\": \"Haldiram's Sweets & Snacks - Nagpur Flagship\",\n      \"storeAddress\": \"West High Court Road, Dharampeth\",\n      \"cuisines\": \"North Indian, Sweets & Snacks\",\n      \"coverImageUrl\": \"https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80\",\n      \"contactPhone\": \"+919145776684\",\n      \"latitude\": 21.1458,\n      \"longitude\": 79.0882,\n      \"cancellationPolicyText\": \"Free cancellation before dining start time. 100% cover charge refund.\",\n      \"isTableBookingEnabled\": true\n    },\n    \"guestConfig\": {\n      \"minGuests\": 1,\n      \"maxGuests\": 8,\n      \"defaultGuests\": 2,\n      \"availableGuestCounts\": [\n        1,\n        2,\n        3,\n        4,\n        5,\n        6,\n        7,\n        8\n      ]\n    },\n    \"upcomingDates\": [\n      {\n        \"key\": \"2026-11-02\",\n        \"dateFormatted\": \"02 Nov 2026\",\n        \"month\": \"Nov\",\n        \"dayNum\": \"02\",\n        \"dayName\": \"Today\",\n        \"discountBadge\": \"20% off\",\n        \"isAvailable\": true\n      },\n      {\n        \"key\": \"2026-11-03\",\n        \"dateFormatted\": \"03 Nov 2026\",\n        \"month\": \"Nov\",\n        \"dayNum\": \"03\",\n        \"dayName\": \"Tomorrow\",\n        \"discountBadge\": \"15% off\",\n        \"isAvailable\": true\n      }\n    ],\n    \"lunchSlots\": [\n      {\n        \"time\": \"12:45 PM\",\n        \"discountBadge\": \"15% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      },\n      {\n        \"time\": \"01:00 PM\",\n        \"discountBadge\": \"20% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      },\n      {\n        \"time\": \"01:45 PM\",\n        \"discountBadge\": \"20% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      }\n    ],\n    \"dinnerSlots\": [\n      {\n        \"time\": \"07:00 PM\",\n        \"discountBadge\": \"20% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      },\n      {\n        \"time\": \"07:45 PM\",\n        \"discountBadge\": \"20% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      },\n      {\n        \"time\": \"08:30 PM\",\n        \"discountBadge\": \"15% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      }\n    ],\n    \"exclusiveOffers\": [\n      {\n        \"id\": \"opt_primary\",\n        \"title\": \"Flat 20% off on Total Bill\",\n        \"discountPct\": 20,\n        \"coverChargePerGuest\": 25,\n        \"isExclusive\": true,\n        \"perkHighlight\": \"Redeem it by paying final bill via PINAK\"\n      },\n      {\n        \"id\": \"opt_15\",\n        \"title\": \"Flat 15% off on Total Bill\",\n        \"discountPct\": 15,\n        \"coverChargePerGuest\": 10,\n        \"isExclusive\": true,\n        \"perkHighlight\": \"Redeem it by paying final bill via PINAK\"\n      }\n    ],\n    \"regularOffer\": {\n      \"id\": \"opt_regular\",\n      \"title\": \"Standard table booking\",\n      \"discountPct\": 0,\n      \"coverChargePerGuest\": 0,\n      \"isExclusive\": false,\n      \"isRegular\": true,\n      \"perkHighlight\": \"Free table reservation without cover charge\"\n    },\n    \"vipPlan\": {\n      \"id\": \"pinak_vip_1m\",\n      \"title\": \"PINAK 1 Month Plan\",\n      \"price\": 1,\n      \"originalPrice\": 99,\n      \"subtitle\": \"Enjoy unlimited access to pre-book offers on 7500+ restaurants.\",\n      \"isDefaultAdded\": true\n    },\n    \"paymentMethods\": [\n      \"Google Pay\",\n      \"PhonePe UPI\",\n      \"Paytm UPI\",\n      \"Credit or Debit Card\",\n      \"Netbanking\"\n    ],\n    \"termsAndConditions\": [\n      \"Standard terms and conditions apply.\",\n      \"The deal must be redeemed / bill paid within 6 hours of the dining start time, or the offer will expire.\",\n      \"Discount, if any, can only be availed when you pay your bill via PINAK.\",\n      \"The paid cover charge will be redeemed automatically when you pay your bill via PINAK.\",\n      \"Cover charges will be fully refunded only if booking is cancelled before the dining start time.\",\n      \"A maximum of Rs. 3,00,000 can be paid in a single bill payment transaction via PINAK.\"\n    ],\n    \"cancellationPolicy\": {\n      \"freeCancellationBeforeHours\": 0,\n      \"refundPercentage\": 100,\n      \"description\": \"Free cancellation up to dining slot start time. 100% of cover charge is automatically refunded to original payment method.\"\n    }\n  }\n}"
+                }
+              ],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
+                      "var json = pm.response.json();",
+                      "pm.test('[Contract] Valid availability structure', function () {",
+                      "    pm.expect(json.success).to.eql(true);",
+                      "    pm.expect(json.data.store).to.be.an('object');",
+                      "    pm.expect(json.data.upcomingDates).to.be.an('array');",
+                      "    pm.expect(json.data.lunchSlots).to.be.an('array');",
+                      "    pm.expect(json.data.vipPlan.price).to.eql(1.00);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "24b. Create Table Booking / Pre-book Reservation (Checkout)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"storeId\": \"97aabe53-9349-439d-952e-40f723bb8f51\",\n  \"bookingDate\": \"2026-11-02\",\n  \"mealType\": \"LUNCH\",\n  \"slotTime\": \"01:45 PM\",\n  \"guests\": 2,\n  \"offerId\": \"opt_primary\",\n  \"offerTitle\": \"Flat 20% off on Total Bill\",\n  \"discountPct\": 20,\n  \"coverChargePerGuest\": 25,\n  \"includeVipPlan\": true,\n  \"vipPlanFee\": 1,\n  \"customerName\": \"Rohan Sharma\",\n  \"customerPhone\": \"+919876543210\",\n  \"customerEmail\": \"rohan@pinak.app\",\n  \"paymentMethod\": \"Google Pay\",\n  \"specialRequests\": \"Window table if available\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "table-bookings"
+                  ]
+                },
+                "description": "### 💳 Pre-book Table Checkout & Reservation Creation\n\nCreates a confirmed table booking in `table_bookings` table, computes cover charge (2 guests * ₹25 = ₹50) + ₹1 VIP fee = ₹51 total, assigns a unique `PNK-TB-YYYYMM-XXXXXX` reference and 4-digit host verification PIN."
+              },
+              "response": [
+                {
+                  "name": "200 OK - Table Reservation Confirmed",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"storeId\":\"97aabe53-9349-439d-952e-40f723bb8f51\",\"bookingDate\":\"2026-11-02\",\"mealType\":\"LUNCH\",\"slotTime\":\"01:45 PM\",\"guests\":2,\"offerId\":\"opt_primary\",\"offerTitle\":\"Flat 20% off on Total Bill\",\"discountPct\":20,\"coverChargePerGuest\":25,\"includeVipPlan\":true,\"vipPlanFee\":1,\"customerName\":\"Rohan Sharma\",\"customerPhone\":\"+919876543210\",\"paymentMethod\":\"Google Pay\"}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "mobile",
+                        "table-bookings"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Table reservation confirmed successfully\",\n  \"data\": {\n    \"bookingId\": \"a5e6284a-9b12-4f3b-871c-3081e7d9b231\",\n    \"bookingRef\": \"PNK-TB-202611-382910\",\n    \"storeId\": \"97aabe53-9349-439d-952e-40f723bb8f51\",\n    \"storeName\": \"Haldiram's Sweets & Snacks - Nagpur Flagship\",\n    \"storeAddress\": \"West High Court Road, Dharampeth\",\n    \"coverImageUrl\": \"https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80\",\n    \"contactPhone\": \"+919145776684\",\n    \"guests\": 2,\n    \"bookingDate\": \"2026-11-02\",\n    \"formattedDate\": \"02 Nov 2026\",\n    \"mealType\": \"LUNCH\",\n    \"slotTime\": \"01:45 PM\",\n    \"offerTitle\": \"Flat 20% off on Total Bill\",\n    \"discountPct\": 20,\n    \"coverChargePerGuest\": 25,\n    \"totalCoverCharge\": 50,\n    \"includeVipPlan\": true,\n    \"vipPlanFee\": 1,\n    \"totalPaid\": 51,\n    \"paymentMethod\": \"Google Pay\",\n    \"paymentStatus\": \"PAID\",\n    \"status\": \"CONFIRMED\",\n    \"verificationCode\": \"8492\",\n    \"canCancel\": true,\n    \"isCancelled\": false,\n    \"coinsEarned\": 60,\n    \"diningInstructions\": [\n      \"Please arrive at Haldiram's Sweets & Snacks 10 minutes prior to your booking slot.\",\n      \"Show your Reservation ID (PNK-TB-202611-382910) or 4-digit PIN to the restaurant host upon arrival.\",\n      \"Pay your final dining bill through the PINAK app at the table to automatically redeem your ₹50.00 cover charge and unlock locked offer discount.\"\n    ]\n  }\n}"
+                }
+              ],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
+                      "var json = pm.response.json();",
+                      "pm.test('[Booking] Confirmed booking ref created', function () {",
+                      "    pm.expect(json.success).to.eql(true);",
+                      "    pm.expect(json.data.status).to.eql('CONFIRMED');",
+                      "    pm.expect(json.data.bookingRef).to.include('PNK-TB-');",
+                      "    pm.expect(json.data.totalPaid).to.eql(51.00);",
+                      "});",
+                      "if (json.data && json.data.bookingRef) {",
+                      "    pm.environment.set('tableBookingRef', json.data.bookingRef);",
+                      "    pm.environment.set('tableBookingId', json.data.bookingId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "24c. Fetch Table Booking Details by ID or Ref",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/{{tableBookingRef}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "table-bookings",
+                    "{{tableBookingRef}}"
+                  ]
+                },
+                "description": "### 🔍 Retrieve Reservation Details\n\nRetrieves full reservation details, restaurant address, directions, verification PIN, and cancellation eligibility by booking ID or human-readable reference."
+              },
+              "response": [
+                {
+                  "name": "200 OK - Reservation Details Found",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/PNK-TB-202611-382910",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "mobile",
+                        "table-bookings",
+                        "PNK-TB-202611-382910"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Table booking details fetched successfully\",\n  \"data\": {\n    \"bookingRef\": \"PNK-TB-202611-382910\",\n    \"storeName\": \"Haldiram's Sweets & Snacks - Nagpur Flagship\",\n    \"guests\": 2,\n    \"slotTime\": \"01:45 PM\",\n    \"status\": \"CONFIRMED\",\n    \"verificationCode\": \"8492\",\n    \"canCancel\": true\n  }\n}"
+                }
+              ],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
+                      "var json = pm.response.json();",
+                      "pm.test('[Lookup] Found reservation matches ref', function () {",
+                      "    pm.expect(json.success).to.eql(true);",
+                      "    pm.expect(json.data.bookingRef).to.be.a('string');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "24d. Cancel Table Booking & Process Cover Charge Refund",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"cancellationReason\": \"Change of plans\",\n  \"comments\": \"Need to reschedule for next weekend\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/{{tableBookingRef}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "table-bookings",
+                    "{{tableBookingRef}}",
+                    "cancel"
+                  ]
+                },
+                "description": "### ❌ Cancel Table Booking & Refund Cover Charge\n\nCancels the confirmed table booking. Automatically initiates 100% refund of the cover charge to the original payment method with a generated ARN refund reference code."
+              },
+              "response": [
+                {
+                  "name": "200 OK - Reservation Cancelled & Refund Initiated",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"cancellationReason\":\"Change of plans\",\"comments\":\"Need to reschedule for next weekend\"}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/PNK-TB-202611-382910/cancel",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "mobile",
+                        "table-bookings",
+                        "PNK-TB-202611-382910",
+                        "cancel"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Table reservation cancelled successfully. Refund initiated.\",\n  \"data\": {\n    \"bookingRef\": \"PNK-TB-202611-382910\",\n    \"status\": \"CANCELLED\",\n    \"isCancelled\": true,\n    \"canCancel\": false,\n    \"cancellationReason\": \"Change of plans\",\n    \"refundAmount\": 50,\n    \"refundStatus\": \"INITIATED\",\n    \"refundRef\": \"REF-PNK-9E2B4A1C\"\n  }\n}"
+                }
+              ],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
+                      "var json = pm.response.json();",
+                      "pm.test('[Cancellation] Status updated to CANCELLED with refund', function () {",
+                      "    pm.expect(json.success).to.eql(true);",
+                      "    pm.expect(json.data.status).to.eql('CANCELLED');",
+                      "    pm.expect(json.data.isCancelled).to.eql(true);",
+                      "    pm.expect(json.data.refundStatus).to.eql('INITIATED');",
+                      "    pm.expect(json.data.refundAmount).to.be.above(0);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "24e. List Customer Table Reservations",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings?phone=%2B919876543210",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "table-bookings"
+                  ],
+                  "query": [
+                    {
+                      "key": "phone",
+                      "value": "%2B919876543210",
+                      "description": "Customer mobile phone number"
+                    }
+                  ]
+                },
+                "description": "### 📋 List Customer Table Bookings\n\nLists all historical and active table bookings for a user by mobile phone or authenticated JWT bearer token."
+              },
+              "response": [
+                {
+                  "name": "200 OK - Customer Reservations List",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings?phone=%2B919876543210",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "mobile",
+                        "table-bookings"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": true,\n  \"message\": \"Table reservations retrieved successfully\",\n  \"data\": [\n    {\n      \"bookingRef\": \"PNK-TB-202611-382910\",\n      \"storeName\": \"Haldiram's Sweets & Snacks - Nagpur Flagship\",\n      \"guests\": 2,\n      \"bookingDate\": \"2026-11-02\",\n      \"slotTime\": \"01:45 PM\",\n      \"status\": \"CANCELLED\",\n      \"totalPaid\": 51\n    }\n  ]\n}"
+                }
+              ],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
+                      "var json = pm.response.json();",
+                      "pm.test('[Array] Reservations list returned', function () {",
+                      "    pm.expect(json.success).to.eql(true);",
+                      "    pm.expect(json.data).to.be.an('array');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     }
@@ -2195,6 +2665,18 @@
       "value": "f1000000-0000-0000-0000-000000000001",
       "type": "string",
       "description": "Canonical Mock Product UUID for Wood-Fired Truffle Pizza"
+    },
+    {
+      "key": "tableBookingRef",
+      "value": "PNK-TB-202611-382910",
+      "type": "string",
+      "description": "Active Table Booking Reference ID"
+    },
+    {
+      "key": "tableBookingId",
+      "value": "a5e6284a-9b12-4f3b-871c-3081e7d9b231",
+      "type": "string",
+      "description": "Active Table Booking UUID"
     }
   ]
 }

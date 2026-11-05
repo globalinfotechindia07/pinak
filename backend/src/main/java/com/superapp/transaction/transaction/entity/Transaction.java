@@ -42,6 +42,12 @@ public class Transaction {
     @Column(name = "customer_id", nullable = false)
     private UUID customerId;
 
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
+
+    @Column(name = "points_awarded")
+    private Integer pointsAwarded = 0;
+
     @Column(name = "merchant_id", nullable = false)
     private UUID merchantId;
 
@@ -97,6 +103,15 @@ public class Transaction {
         Instant now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;
+        if (this.userId == null && this.customerId != null) {
+            this.userId = this.customerId;
+        }
+        if (this.customerId == null && this.userId != null) {
+            this.customerId = this.userId;
+        }
+        if (this.pointsAwarded == null) {
+            this.pointsAwarded = 0;
+        }
         if (this.transactionReference == null) {
             this.transactionReference = "TXN_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
         }
@@ -144,6 +159,12 @@ public class Transaction {
 
     public UUID getCustomerId() { return customerId; }
     public void setCustomerId(UUID customerId) { this.customerId = customerId; }
+
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+
+    public Integer getPointsAwarded() { return pointsAwarded; }
+    public void setPointsAwarded(Integer pointsAwarded) { this.pointsAwarded = pointsAwarded; }
 
     public UUID getMerchantId() { return merchantId; }
     public void setMerchantId(UUID merchantId) { this.merchantId = merchantId; }

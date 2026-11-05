@@ -58,13 +58,16 @@ public class UserService {
     private final EmailService emailService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
     private com.superapp.merchant.repository.MerchantRepository merchantRepository;
+    @Autowired(required = false)
+    private com.superapp.store.repository.StoreRepository storeRepository;
 
     @Autowired
     public UserService(UserRepository userRepository, RoleRepository roleRepository,
                        StaffMemberRepository staffMemberRepository, PasswordEncoder passwordEncoder,
                        UserMapper userMapper, AuditService auditService,
                        @Autowired(required = false) EmailService emailService,
-                       @Autowired(required = false) com.superapp.merchant.repository.MerchantRepository merchantRepository) {
+                       @Autowired(required = false) com.superapp.merchant.repository.MerchantRepository merchantRepository,
+                       @Autowired(required = false) com.superapp.store.repository.StoreRepository storeRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.staffMemberRepository = staffMemberRepository;
@@ -73,6 +76,19 @@ public class UserService {
         this.auditService = auditService;
         this.emailService = emailService;
         this.merchantRepository = merchantRepository;
+        this.storeRepository = storeRepository;
+    }
+
+    public UserService(UserRepository userRepository, RoleRepository roleRepository,
+                       StaffMemberRepository staffMemberRepository, PasswordEncoder passwordEncoder,
+                       UserMapper userMapper, AuditService auditService,
+                       EmailService emailService,
+                       com.superapp.merchant.repository.MerchantRepository merchantRepository) {
+        this(userRepository, roleRepository, staffMemberRepository, passwordEncoder, userMapper, auditService, emailService, merchantRepository, null);
+    }
+
+    public void setStoreRepository(com.superapp.store.repository.StoreRepository storeRepository) {
+        this.storeRepository = storeRepository;
     }
 
     public UserService(UserRepository userRepository, RoleRepository roleRepository,
@@ -556,7 +572,19 @@ public class UserService {
         if (emailService != null) {
             String recipientName = request.name() != null && !request.name().isBlank() ? request.name() : email;
             String roleDisplayName = role != null && role.getName() != null ? role.getName() : request.roleId();
-            emailService.sendStaffInvitationEmail(email, recipientName, roleDisplayName, inviteUrl);
+            if ("STORE".equalsIgnoreCase(targetScope) || "STORE_MANAGER".equalsIgnoreCase(request.roleId())) {
+                String storeName = "Store Branch";
+                String merchantName = "PINAK Merchant";
+                if (targetStoreId != null && storeRepository != null) {
+                    storeName = storeRepository.findById(targetStoreId).map(com.superapp.store.entity.Store::getStoreName).orElse(storeName);
+                }
+                if (targetMerchantId != null && merchantRepository != null) {
+                    merchantName = merchantRepository.findById(targetMerchantId).map(com.superapp.merchant.entity.Merchant::getBusinessName).orElse(merchantName);
+                }
+                emailService.sendStoreWelcomeEmail(email, recipientName, storeName, merchantName, inviteUrl);
+            } else {
+                emailService.sendStaffInvitationEmail(email, recipientName, roleDisplayName, inviteUrl);
+            }
         }
 
         if (auditService != null) {
@@ -697,7 +725,19 @@ public class UserService {
 
         if (emailService != null) {
             String roleDisplayName = role != null && role.getName() != null ? role.getName() : saved.getRoleId();
-            emailService.sendStaffInvitationEmail(user.getEmail(), user.getName(), roleDisplayName, inviteUrl);
+            if ("STORE".equalsIgnoreCase(saved.getScope()) || "STORE_MANAGER".equalsIgnoreCase(saved.getRoleId())) {
+                String storeName = "Store Branch";
+                String merchantName = "PINAK Merchant";
+                if (saved.getStoreId() != null && storeRepository != null) {
+                    storeName = storeRepository.findById(saved.getStoreId()).map(com.superapp.store.entity.Store::getStoreName).orElse(storeName);
+                }
+                if (saved.getMerchantId() != null && merchantRepository != null) {
+                    merchantName = merchantRepository.findById(saved.getMerchantId()).map(com.superapp.merchant.entity.Merchant::getBusinessName).orElse(merchantName);
+                }
+                emailService.sendStoreWelcomeEmail(user.getEmail(), user.getName(), storeName, merchantName, inviteUrl);
+            } else {
+                emailService.sendStaffInvitationEmail(user.getEmail(), user.getName(), roleDisplayName, inviteUrl);
+            }
         }
 
         if (auditService != null) {
@@ -980,6 +1020,36 @@ public class UserService {
                     log.info("Activated owned merchant account status for merchantId={} upon owner password setup", m.getId());
                 }
             });
+        }
+
+        // When a store manager sets their password via invite, activate the store outlet status!
+        if (storeRepository != null) {
+            if (staff.getStoreId() != null) {
+                storeRepository.findById(staff.getStoreId()).ifPresent(s -> {
+                    if (s.getStatus() != com.superapp.store.enums.StoreStatus.SUSPENDED) {
+                        s.setStatus(com.superapp.store.enums.StoreStatus.ACTIVE);
+                        s.setApprovalStatus(com.superapp.merchant.entity.ApprovalStatus.APPROVED);
+                        s.setApprovedAt(java.time.Instant.now());
+                        storeRepository.save(s);
+                        log.info("Activated store branch status to ACTIVE for storeId={} upon store manager password setup", s.getId());
+                    }
+                });
+            }
+            if (staffMemberRepository != null) {
+                staffMemberRepository.findByUserId(user.getId()).forEach(sm -> {
+                    if (sm.getStoreId() != null && (staff.getStoreId() == null || !sm.getStoreId().equals(staff.getStoreId()))) {
+                        storeRepository.findById(sm.getStoreId()).ifPresent(s -> {
+                            if (s.getStatus() != com.superapp.store.enums.StoreStatus.SUSPENDED) {
+                                s.setStatus(com.superapp.store.enums.StoreStatus.ACTIVE);
+                                s.setApprovalStatus(com.superapp.merchant.entity.ApprovalStatus.APPROVED);
+                                s.setApprovedAt(java.time.Instant.now());
+                                storeRepository.save(s);
+                                log.info("Activated assigned store branch status to ACTIVE for storeId={} upon manager password setup", s.getId());
+                            }
+                        });
+                    }
+                });
+            }
         }
 
         // 2. Consume token and transition to ACTIVE status

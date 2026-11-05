@@ -48,10 +48,13 @@ public record UpdateStoreRequest(
         BigDecimal cashbackPercentage,
         BigDecimal maxCashbackAmount,
         BigDecimal minTransactionForCashback,
-        Boolean isCashbackEnabled
+        Boolean isCashbackEnabled,
+        Boolean isTableBookingEnabled,
+        Boolean allowFreeStandardBooking,
+        BigDecimal defaultStandardCoverCharge
 ) {
     public UpdateStoreRequest(String storeName, String address, String cityId, String state,
                               String pincode, BigDecimal latitude, BigDecimal longitude) {
-        this(storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null, null, null, null, null, null);
+        this(storeName, address, cityId, state, pincode, latitude, longitude, null, null, null, null, null, null, null, null, null, true, true, BigDecimal.ZERO);
     }
 }

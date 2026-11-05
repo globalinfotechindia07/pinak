@@ -485,14 +485,7 @@ export const OfferDetailsDrawer: React.FC<OfferDetailsDrawerProps> = ({
                         </div>
                       )}
 
-                      {offer.seatingAreas && offer.seatingAreas.length > 0 && (
-                        <div className="flex justify-between items-center pt-1 border-t border-indigo-100 dark:border-indigo-900/40">
-                          <span className="text-slate-500">Seating Areas:</span>
-                          <span className="font-semibold text-slate-700 dark:text-slate-300">
-                            {offer.seatingAreas.join(", ")}
-                          </span>
-                        </div>
-                      )}
+                      
 
                       <div className="flex justify-between items-center pt-1 border-t border-indigo-100 dark:border-indigo-900/40">
                         <span className="text-slate-500">Policy:</span>

@@ -37,6 +37,22 @@ CREATE TABLE IF NOT EXISTS offers (
     cta_text VARCHAR(64) DEFAULT 'Book & Pay',
     original_mrp NUMERIC(10, 2),
     flash_selling_price NUMERIC(10, 2),
+    redemption_type VARCHAR(32) NOT NULL DEFAULT 'BOTH',
+    min_advance_hours INTEGER DEFAULT 0,
+    buy_quantity INTEGER DEFAULT 1,
+    get_quantity INTEGER DEFAULT 1,
+    is_table_booking_enabled BOOLEAN DEFAULT FALSE,
+    booking_type VARCHAR(64),
+    min_party_size INTEGER DEFAULT 1,
+    max_party_size INTEGER DEFAULT 6,
+    available_tables_per_slot INTEGER DEFAULT 5,
+    cover_charge_amount NUMERIC(10, 2) DEFAULT 0.00,
+    grace_period_minutes INTEGER DEFAULT 15,
+    slot_times TEXT,
+    seating_areas TEXT,
+    active_days TEXT,
+    start_time VARCHAR(16),
+    end_time VARCHAR(16),
     created_by VARCHAR(64),
     updated_by VARCHAR(64),
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -51,6 +67,7 @@ CREATE INDEX IF NOT EXISTS idx_offers_approval ON offers(approval_status);
 CREATE INDEX IF NOT EXISTS idx_offers_validity ON offers(valid_from, valid_to);
 CREATE INDEX IF NOT EXISTS idx_offers_flash ON offers(is_flash);
 CREATE INDEX IF NOT EXISTS idx_offers_scope ON offers(offer_scope);
+CREATE INDEX IF NOT EXISTS idx_offers_redemption_type ON offers(redemption_type);
 
 -- 2. Offer Redemptions Table (Audit record of discount redemption per user)
 CREATE TABLE IF NOT EXISTS offer_redemptions (

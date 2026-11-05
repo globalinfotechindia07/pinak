@@ -34,6 +34,9 @@ export interface StoreDTO {
   maxCashbackAmount?: number;
   minTransactionForCashback?: number;
   isCashbackEnabled?: boolean;
+  isTableBookingEnabled?: boolean;
+  allowFreeStandardBooking?: boolean;
+  defaultStandardCoverCharge?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -60,6 +63,9 @@ export interface CreateStoreRequest {
   maxCashbackAmount?: number;
   minTransactionForCashback?: number;
   isCashbackEnabled?: boolean;
+  isTableBookingEnabled?: boolean;
+  allowFreeStandardBooking?: boolean;
+  defaultStandardCoverCharge?: number;
 }
 
 export interface UpdateStoreRequest {
@@ -83,6 +89,9 @@ export interface UpdateStoreRequest {
   maxCashbackAmount?: number;
   minTransactionForCashback?: number;
   isCashbackEnabled?: boolean;
+  isTableBookingEnabled?: boolean;
+  allowFreeStandardBooking?: boolean;
+  defaultStandardCoverCharge?: number;
 }
 
 export interface UpdateStoreStatusRequest {

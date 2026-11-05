@@ -20,6 +20,8 @@ import com.superapp.offer.validation.OfferValidator;
 import com.superapp.store.entity.Store;
 import com.superapp.store.enums.StoreStatus;
 import com.superapp.store.repository.StoreRepository;
+import com.superapp.user.entity.StaffMember;
+import com.superapp.user.repository.StaffMemberRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -34,9 +36,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.superapp.offer.enums.OfferType;
 
 @Service
 public class OfferServiceImpl implements OfferService {
@@ -50,6 +55,7 @@ public class OfferServiceImpl implements OfferService {
     private final OfferMapper offerMapper;
     private final AuditService auditService;
     private final com.superapp.common.audit.AuditLogRepository auditLogRepository;
+    private final StaffMemberRepository staffMemberRepository;
     private final CacheManager cacheManager;
 
     public OfferServiceImpl(
@@ -60,7 +66,7 @@ public class OfferServiceImpl implements OfferService {
             OfferMapper offerMapper,
             AuditService auditService,
             CacheManager cacheManager) {
-        this(offerRepository, merchantRepository, storeRepository, offerValidator, offerMapper, auditService, null, cacheManager);
+        this(offerRepository, merchantRepository, storeRepository, offerValidator, offerMapper, auditService, null, null, cacheManager);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -72,6 +78,7 @@ public class OfferServiceImpl implements OfferService {
             OfferMapper offerMapper,
             AuditService auditService,
             com.superapp.common.audit.AuditLogRepository auditLogRepository,
+            StaffMemberRepository staffMemberRepository,
             CacheManager cacheManager) {
         this.offerRepository = offerRepository;
         this.merchantRepository = merchantRepository;
@@ -80,6 +87,7 @@ public class OfferServiceImpl implements OfferService {
         this.offerMapper = offerMapper;
         this.auditService = auditService;
         this.auditLogRepository = auditLogRepository;
+        this.staffMemberRepository = staffMemberRepository;
         this.cacheManager = cacheManager;
     }
 
@@ -90,6 +98,41 @@ public class OfferServiceImpl implements OfferService {
             return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
         } catch (Exception e) {
             return obj.toString();
+        }
+    }
+
+    private String formatSlotTimes(Object obj) {
+        if (obj == null) return null;
+        List<String> list = new ArrayList<>();
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        if (obj instanceof String s) {
+            String trimmed = s.trim();
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                try {
+                    list = mapper.readValue(trimmed, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                } catch (Exception ignored) {
+                    list = Arrays.stream(trimmed.replaceAll("[\\[\\]\"']", "").split(","))
+                            .map(String::trim).filter(x -> !x.isEmpty()).toList();
+                }
+            } else if (!trimmed.isEmpty()) {
+                list = Arrays.stream(trimmed.split(",")).map(String::trim).filter(x -> !x.isEmpty()).toList();
+            }
+        } else if (obj instanceof List<?> l) {
+            list = l.stream().map(Object::toString).map(String::trim).filter(x -> !x.isEmpty()).toList();
+        }
+
+        if (list.isEmpty()) {
+            return formatJsonOrString(obj);
+        }
+
+        List<String> sorted = list.stream()
+                .distinct()
+                .sorted(Comparator.comparing(com.superapp.mobile.booking.service.TableBookingServiceImpl::parseSlotLocalTime))
+                .toList();
+        try {
+            return mapper.writeValueAsString(sorted);
+        } catch (Exception e) {
+            return formatJsonOrString(obj);
         }
     }
 
@@ -108,39 +151,52 @@ public class OfferServiceImpl implements OfferService {
             throw new AppException("Merchant must have at least one store before creating an offer", ApiError.STORE_NOT_ELIGIBLE, 400);
         }
 
+        StaffMember staff = getActiveStaffMember(currentUserId);
+        boolean isStoreStaff = staff != null && ("STORE".equalsIgnoreCase(staff.getScope()) || staff.getStoreId() != null);
+
         Store store = null;
-        if (request.storeId() != null) {
-            store = storeRepository.findById(request.storeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Store not found", ApiError.STORE_NOT_FOUND));
-
-            if (!store.getMerchantId().equals(merchant.getId())) {
-                throw new AppException("You do not have permission to access this store", ApiError.OFFER_ACCESS_DENIED, 403);
+        if (isStoreStaff) {
+            if (request.storeId() == null) {
+                throw new AppException("Store staff must create offers for their assigned store. Store ID cannot be empty.", ApiError.VALIDATION_ERROR, 400);
             }
-
-            if (store.getApprovalStatus() != ApprovalStatus.APPROVED || store.getStatus() != StoreStatus.ACTIVE) {
-                throw new AppException("Store is not active or approved", ApiError.STORE_NOT_ELIGIBLE, 400);
+            if (!request.storeId().equals(staff.getStoreId())) {
+                throw new AppException("You do not have permission to create offers for another store", ApiError.OFFER_ACCESS_DENIED, 403);
             }
+            store = storeRepository.findById(staff.getStoreId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Assigned store not found", ApiError.STORE_NOT_FOUND));
         } else {
-            store = merchantStores.stream()
-                    .filter(s -> s.getStatus() == StoreStatus.ACTIVE && s.getApprovalStatus() == ApprovalStatus.APPROVED)
-                    .findFirst()
-                    .orElse(merchantStores.get(0));
+            if (request.storeId() != null) {
+                store = storeRepository.findById(request.storeId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Store not found", ApiError.STORE_NOT_FOUND));
+
+                if (!store.getMerchantId().equals(merchant.getId())) {
+                    throw new AppException("You do not have permission to access this store", ApiError.OFFER_ACCESS_DENIED, 403);
+                }
+
+                if (store.getApprovalStatus() != ApprovalStatus.APPROVED || store.getStatus() != StoreStatus.ACTIVE) {
+                    throw new AppException("Store is not active or approved", ApiError.STORE_NOT_ELIGIBLE, 400);
+                }
+            }
         }
 
         Offer offer = new Offer();
         offer.setMerchantId(merchant.getId());
-        offer.setStoreId(store.getId());
+        offer.setStoreId(store != null ? store.getId() : null);
         offer.setCategoryId(merchant.getCategoryId());
         offer.setTitle(request.title().trim());
         offer.setDescription(request.description() != null ? request.description().trim() : null);
+        if (request.termsAndConditions() != null) {
+            offer.setTermsAndConditions(request.termsAndConditions().trim());
+        }
         offer.setType(request.offerType());
         offer.setValue(request.value());
-        offer.setMinTransactionAmount(request.minTransactionAmount());
+        offer.setMinTransactionAmount(request.minTransactionAmount() != null ? request.minTransactionAmount() : BigDecimal.ZERO);
         offer.setMaxDiscountAmount(request.maxDiscountAmount());
-        offer.setUsageLimit(request.usageLimit());
-        offer.setPerCustomerLimit(request.perCustomerLimit());
-        offer.setValidFrom(request.validFrom());
-        offer.setValidTo(request.validTo());
+        offer.setUsageLimit(request.usageLimit() != null ? request.usageLimit() : 1000);
+        offer.setPerCustomerLimit(request.perCustomerLimit() != null ? request.perCustomerLimit() : 1);
+        offer.setCurrentUsageCount(0);
+        offer.setValidFrom(request.validFrom() != null ? request.validFrom() : Instant.now());
+        offer.setValidTo(request.validTo() != null ? request.validTo() : Instant.now().plus(90, java.time.temporal.ChronoUnit.DAYS));
         if (request.offerScope() != null) offer.setOfferScope(request.offerScope());
         if (request.originalMrp() != null) offer.setOriginalMrp(request.originalMrp());
         if (request.flashSellingPrice() != null) offer.setFlashSellingPrice(request.flashSellingPrice());
@@ -149,7 +205,8 @@ public class OfferServiceImpl implements OfferService {
         if (request.bonusCoins() != null) offer.setBonusCoins(request.bonusCoins());
         if (request.imageUrl() != null) offer.setImageUrl(request.imageUrl());
         if (request.badgeText() != null) offer.setBadgeText(request.badgeText());
-        if (request.ctaText() != null) offer.setCtaText(request.ctaText());
+        String defaultCta = "PRODUCT".equalsIgnoreCase(offer.getOfferScope()) ? "Add to Cart" : "Book & Pay";
+        offer.setCtaText(request.ctaText() != null ? request.ctaText() : defaultCta);
         if (request.redemptionType() != null) offer.setRedemptionType(request.redemptionType());
         if (request.minAdvanceHours() != null) offer.setMinAdvanceHours(request.minAdvanceHours());
         if (request.buyQuantity() != null) offer.setBuyQuantity(request.buyQuantity());
@@ -161,13 +218,13 @@ public class OfferServiceImpl implements OfferService {
         if (request.availableTablesPerSlot() != null) offer.setAvailableTablesPerSlot(request.availableTablesPerSlot());
         if (request.coverChargeAmount() != null) offer.setCoverChargeAmount(request.coverChargeAmount());
         if (request.gracePeriodMinutes() != null) offer.setGracePeriodMinutes(request.gracePeriodMinutes());
-        if (request.slotTimes() != null) offer.setSlotTimes(formatJsonOrString(request.slotTimes()));
+        if (request.slotTimes() != null) offer.setSlotTimes(formatSlotTimes(request.slotTimes()));
         if (request.seatingAreas() != null) offer.setSeatingAreas(formatJsonOrString(request.seatingAreas()));
         if (request.activeDays() != null) offer.setActiveDays(formatJsonOrString(request.activeDays()));
         if (request.startTime() != null) offer.setStartTime(request.startTime());
         if (request.endTime() != null) offer.setEndTime(request.endTime());
-        offer.setStatus(OfferStatus.CREATED);
-        offer.setApprovalStatus(OfferApprovalStatus.DRAFT);
+        offer.setStatus(OfferStatus.ACTIVE);
+        offer.setApprovalStatus(OfferApprovalStatus.APPROVED);
         offer.setCreatedBy(currentUserId.toString());
         offer.setUpdatedBy(currentUserId.toString());
 
@@ -186,7 +243,7 @@ public class OfferServiceImpl implements OfferService {
         }
 
         evictOfferCaches(saved);
-        String storeName = store != null ? store.getStoreName() : null;
+        String storeName = store != null ? store.getStoreName() : getStoreName(saved.getStoreId());
         return offerMapper.toMerchantResponse(saved, storeName);
     }
 
@@ -200,9 +257,16 @@ public class OfferServiceImpl implements OfferService {
             UUID currentUserId) {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
 
+        StaffMember staff = getActiveStaffMember(currentUserId);
+        boolean isStoreStaff = staff != null && ("STORE".equalsIgnoreCase(staff.getScope()) || staff.getStoreId() != null);
+        UUID effectiveStoreId = storeId;
+        if (isStoreStaff && staff.getStoreId() != null) {
+            effectiveStoreId = staff.getStoreId();
+        }
+
         Specification<Offer> spec = OfferSpecification.filter(
                 merchant.getId(),
-                storeId,
+                effectiveStoreId,
                 null,
                 status,
                 approvalStatus,
@@ -239,6 +303,18 @@ public class OfferServiceImpl implements OfferService {
             throw new AppException("You do not have permission to access this offer", ApiError.OFFER_ACCESS_DENIED, 403);
         }
 
+        StaffMember staff = getActiveStaffMember(currentUserId);
+        boolean isStoreStaff = staff != null && ("STORE".equalsIgnoreCase(staff.getScope()) || staff.getStoreId() != null);
+
+        if (isStoreStaff) {
+            if (offer.getStoreId() == null || !offer.getStoreId().equals(staff.getStoreId())) {
+                throw new AppException("Store managers can only modify offers for their assigned store", ApiError.OFFER_ACCESS_DENIED, 403);
+            }
+            if (request.storeId() == null || !request.storeId().equals(staff.getStoreId())) {
+                throw new AppException("You do not have permission to assign this offer to another store", ApiError.OFFER_ACCESS_DENIED, 403);
+            }
+        }
+
         offerValidator.validateModifiable(offer);
         offerValidator.validateUpdateRequest(request);
 
@@ -258,6 +334,10 @@ public class OfferServiceImpl implements OfferService {
 
         offer.setStoreId(request.storeId());
         offer.setTitle(request.title().trim());
+        offer.setDescription(request.description() != null ? request.description().trim() : null);
+        if (request.termsAndConditions() != null) {
+            offer.setTermsAndConditions(request.termsAndConditions().trim());
+        }
         offer.setDescription(request.description() != null ? request.description().trim() : null);
         offer.setType(request.offerType());
         offer.setValue(request.value());
@@ -287,7 +367,7 @@ public class OfferServiceImpl implements OfferService {
         if (request.availableTablesPerSlot() != null) offer.setAvailableTablesPerSlot(request.availableTablesPerSlot());
         if (request.coverChargeAmount() != null) offer.setCoverChargeAmount(request.coverChargeAmount());
         if (request.gracePeriodMinutes() != null) offer.setGracePeriodMinutes(request.gracePeriodMinutes());
-        if (request.slotTimes() != null) offer.setSlotTimes(formatJsonOrString(request.slotTimes()));
+        if (request.slotTimes() != null) offer.setSlotTimes(formatSlotTimes(request.slotTimes()));
         if (request.seatingAreas() != null) offer.setSeatingAreas(formatJsonOrString(request.seatingAreas()));
         if (request.activeDays() != null) offer.setActiveDays(formatJsonOrString(request.activeDays()));
         if (request.startTime() != null) offer.setStartTime(request.startTime());
@@ -537,7 +617,7 @@ public class OfferServiceImpl implements OfferService {
         if (request.availableTablesPerSlot() != null) offer.setAvailableTablesPerSlot(request.availableTablesPerSlot());
         if (request.coverChargeAmount() != null) offer.setCoverChargeAmount(request.coverChargeAmount());
         if (request.gracePeriodMinutes() != null) offer.setGracePeriodMinutes(request.gracePeriodMinutes());
-        if (request.slotTimes() != null) offer.setSlotTimes(formatJsonOrString(request.slotTimes()));
+        if (request.slotTimes() != null) offer.setSlotTimes(formatSlotTimes(request.slotTimes()));
         if (request.seatingAreas() != null) offer.setSeatingAreas(formatJsonOrString(request.seatingAreas()));
         if (request.activeDays() != null) offer.setActiveDays(formatJsonOrString(request.activeDays()));
         if (request.startTime() != null) offer.setStartTime(request.startTime());
@@ -722,9 +802,27 @@ public class OfferServiceImpl implements OfferService {
     // Helpers
     // =========================================================================
 
+    private StaffMember getActiveStaffMember(UUID currentUserId) {
+        if (staffMemberRepository == null || currentUserId == null) return null;
+        return staffMemberRepository.findByUserId(currentUserId).stream()
+                .filter(s -> !"SUSPENDED".equalsIgnoreCase(s.getStatus()))
+                .findFirst()
+                .orElse(null);
+    }
+
     private Merchant getAuthenticatedMerchant(UUID currentUserId) {
-        return merchantRepository.findByOwnerUserId(currentUserId)
-                .orElseThrow(() -> new AppException("Merchant profile not found for authenticated user", ApiError.MERCHANT_NOT_FOUND, 404));
+        var ownerOpt = merchantRepository.findByOwnerUserId(currentUserId);
+        if (ownerOpt.isPresent()) {
+            return ownerOpt.get();
+        }
+
+        StaffMember staff = getActiveStaffMember(currentUserId);
+        if (staff != null && staff.getMerchantId() != null) {
+            return merchantRepository.findById(staff.getMerchantId())
+                    .orElseThrow(() -> new AppException("Merchant business not found for assigned staff member", ApiError.MERCHANT_NOT_FOUND, 404));
+        }
+
+        throw new AppException("Merchant profile not found for authenticated user", ApiError.MERCHANT_NOT_FOUND, 404);
     }
 
     private String getStoreName(UUID storeId) {
@@ -811,9 +909,22 @@ public class OfferServiceImpl implements OfferService {
                     .toList();
             List<UUID> safeMerchantIds = merchantIds.isEmpty() ? List.of(UUID.fromString("00000000-0000-0000-0000-000000000000")) : merchantIds;
             if (!storeIds.isEmpty()) {
-                offers = offerRepository.findActiveOffersByStoreOrMerchantIds(storeIds, safeMerchantIds, scopeFilter, now);
+                offers = new ArrayList<>(offerRepository.findActiveOffersByStoreOrMerchantIds(storeIds, safeMerchantIds, scopeFilter, now));
             }
-            // Strict Geo-filter: When coordinates are supplied, strictly return only matching nearby offers (no fallback)
+            // If nearby stores exist within radius but haven't created marketing vouchers yet,
+            // automatically include the verified store's default discovery deal so it shows up on customer feed
+            if ("SERVICE".equalsIgnoreCase(scopeFilter) || "ALL".equalsIgnoreCase(scopeFilter)) {
+                java.util.Set<UUID> storesWithOffers = offers.stream()
+                        .map(Offer::getStoreId)
+                        .filter(java.util.Objects::nonNull)
+                        .collect(java.util.stream.Collectors.toSet());
+                for (Store s : nearbyStoreList) {
+                    if (!storesWithOffers.contains(s.getId())) {
+                        offers.add(buildStoreDefaultOffer(s, now));
+                    }
+                }
+            }
+            // Strict Geo-filter: When coordinates are supplied, strictly return only matching nearby offers
             if (offers.size() > limitVal) {
                 offers = offers.subList(0, limitVal);
             }
@@ -835,7 +946,7 @@ public class OfferServiceImpl implements OfferService {
                         .filter(s -> o.getMerchantId().equals(s.getMerchantId()))
                         .findFirst()
                         .orElseGet(() -> storeRepository.findByMerchantId(o.getMerchantId()).stream()
-                                .filter(s -> s.getStatus() == StoreStatus.ACTIVE && s.getApprovalStatus() == ApprovalStatus.APPROVED)
+                                .filter(s -> s.getStatus() == StoreStatus.ACTIVE && (s.getApprovalStatus() == ApprovalStatus.APPROVED || s.getApprovalStatus() == ApprovalStatus.PENDING_APPROVAL))
                                 .findFirst()
                                 .orElse(null));
             }
@@ -949,5 +1060,41 @@ public class OfferServiceImpl implements OfferService {
                 * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
+    }
+
+    private Offer buildStoreDefaultOffer(Store store, Instant now) {
+        BigDecimal cashback = store.getCashbackPercentage() != null ? store.getCashbackPercentage() : new BigDecimal("5.00");
+        String title = store.getOpeningOffer() != null && !store.getOpeningOffer().isBlank()
+                ? store.getOpeningOffer()
+                : (Boolean.TRUE.equals(store.getIsTableBookingEnabled())
+                    ? "Weekend Table Feast: " + cashback.stripTrailingZeros().toPlainString() + "% Cashback on Bill Pay"
+                    : "PINAK Exclusive: " + cashback.stripTrailingZeros().toPlainString() + "% Cashback on Bill Pay");
+
+        String description = "Dine-in, reservations, and instant cashback at " + store.getStoreName();
+        String cta = Boolean.TRUE.equals(store.getIsTableBookingEnabled()) ? "Book & Pay" : "Pay Bill";
+        String redemptionType = Boolean.TRUE.equals(store.getIsTableBookingEnabled()) ? "BOTH" : "WALK_IN";
+
+        Offer o = new Offer();
+        o.setId(UUID.nameUUIDFromBytes(("store_offer_" + store.getId()).getBytes()));
+        o.setStoreId(store.getId());
+        o.setMerchantId(store.getMerchantId());
+        o.setTitle(title);
+        o.setDescription(description);
+        o.setType(OfferType.PERCENTAGE_DISCOUNT);
+        o.setValue(cashback);
+        o.setMinTransactionAmount(store.getMinTransactionForCashback() != null ? store.getMinTransactionForCashback() : BigDecimal.ZERO);
+        o.setMaxDiscountAmount(store.getMaxCashbackAmount() != null ? store.getMaxCashbackAmount() : new BigDecimal("200.00"));
+        o.setValidFrom(now.minus(java.time.Duration.ofDays(1)));
+        o.setValidTo(now.plus(java.time.Duration.ofDays(365)));
+        o.setStatus(OfferStatus.ACTIVE);
+        o.setApprovalStatus(OfferApprovalStatus.APPROVED);
+        o.setBonusCoins(100);
+        o.setBadgeText("PINAK EXCLUSIVE");
+        o.setImageUrl(store.getImageUrl());
+        o.setOfferScope("SERVICE");
+        o.setCtaText(cta);
+        o.setRedemptionType(redemptionType);
+        o.setIsTableBookingEnabled(store.getIsTableBookingEnabled());
+        return o;
     }
 }

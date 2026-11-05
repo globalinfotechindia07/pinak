@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import TableBookingView from "./TableBookingView";
+import PayBillView from "./PayBillView";
+import ProductOrderView from "./ProductOrderView";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -73,11 +75,19 @@ interface ServiceDetailData {
   longitude: number;
   address: string;
   googleMapsUrl: string;
-  coinPerkBanner: {
+  coinPerkBanner?: {
     multiplier?: string;
     title: string;
     tag?: string;
+    badgeText?: string;
   };
+  coinsPerkBanner?: {
+    multiplier?: string;
+    title: string;
+    tag?: string;
+    badgeText?: string;
+  };
+  cashbackPercentage?: number;
   availableTabs: string[];
   offersSection: {
     activeOffersCountText: string;
@@ -171,7 +181,7 @@ export interface ServiceDetailPreviewViewProps {
   userLat?: number;
   userLng?: number;
   onBack: () => void;
-  initialView?: "detail" | "booking";
+  initialView?: "detail" | "booking" | "pay_bill" | "product_order";
   initialOffer?: any;
 }
 
@@ -272,8 +282,8 @@ const StoreLocationMap: React.FC<StoreLocationMapProps> = ({
 
 export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> = ({
   storeId,
-  userLat = 12.9716,
-  userLng = 77.6412,
+  userLat,
+  userLng,
   onBack,
   initialView = "detail",
   initialOffer
@@ -281,12 +291,37 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   const [data, setData] = useState<ServiceDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<"detail" | "booking">(initialView);
+  const [currentView, setCurrentView] = useState<"detail" | "booking" | "pay_bill" | "product_order">(initialView || "detail");
   const [offerSegment, setOfferSegment] = useState<"PRE_BOOK" | "WALK_IN" | "PRODUCT">("PRE_BOOK");
   const [activeTab, setActiveTab] = useState("Offers");
   const [isFavorited, setIsFavorited] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [selectedImageZoom, setSelectedImageZoom] = useState<string | null>(null);
+
+  const [deviceCoords, setDeviceCoords] = useState<{ lat?: number; lng?: number }>({
+    lat: userLat,
+    lng: userLng
+  });
+
+  useEffect(() => {
+    if (userLat != null && userLng != null) {
+      setDeviceCoords({ lat: userLat, lng: userLng });
+    } else if (typeof window !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setDeviceCoords({
+            lat: Number(pos.coords.latitude.toFixed(6)),
+            lng: Number(pos.coords.longitude.toFixed(6))
+          });
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+      );
+    }
+  }, [userLat, userLng]);
+
+  const effectiveLat = deviceCoords.lat ?? userLat ?? 21.1458;
+  const effectiveLng = deviceCoords.lng ?? userLng ?? 79.0882;
 
   useEffect(() => {
     if (initialView) {
@@ -307,8 +342,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   const [activeOfferIndex, setActiveOfferIndex] = useState<number>(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
-  const DEFAULT_STORE_ID = "97aabe53-9349-439d-952e-40f723bb8f51";
-  const effectiveStoreId = storeId && storeId !== "undefined" && storeId !== "null" ? storeId : DEFAULT_STORE_ID;
+  const effectiveStoreId = storeId && storeId !== "undefined" && storeId !== "null" ? storeId : (data?.id || "");
 
   useEffect(() => {
     let isMounted = true;
@@ -316,8 +350,18 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
       try {
         setLoading(true);
         setError(null);
+        const targetStoreId = storeId && storeId !== "undefined" && storeId !== "null" ? storeId : "detail";
         const res = await apiClient.get<any>(
-          `/mobile/stores/${effectiveStoreId}/detail?lat=${userLat}&lng=${userLng}`
+          `/mobile/stores/${targetStoreId}/detail`,
+          {
+            params: {
+              lat: effectiveLat,
+              lng: effectiveLng,
+              latitude: effectiveLat,
+              longitude: effectiveLng,
+              ...(storeId && storeId !== "undefined" && storeId !== "null" ? { storeIdQuery: storeId } : {})
+            }
+          }
         );
         if (isMounted) {
           if (res.data?.success && res.data?.data) {
@@ -359,7 +403,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
     return () => {
       isMounted = false;
     };
-  }, [effectiveStoreId, userLat, userLng]);
+  }, [storeId, effectiveLat, effectiveLng]);
 
   // Sync active offer segment automatically to match available store offers (Restaurant vs Kirana vs Hybrid)
   useEffect(() => {
@@ -533,18 +577,81 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
         storeName={data.storeName}
         storeAddress={data.address}
         storeCuisines={data.cuisines}
+        storePhone={data.phone}
+        googleMapsUrl={data.googleMapsUrl}
+        latitude={data.latitude}
+        longitude={data.longitude}
+        userLat={effectiveLat}
+        userLng={effectiveLng}
+        openingTime={data.openingTime}
+        closingTime={data.closingTime}
+        coinPerkBanner={data.coinPerkBanner || data.coinsPerkBanner}
+        cashbackPercentage={data.cashbackPercentage}
+        preBookingOffers={data.offersSection?.preBookingOffers || []}
+        primaryOffer={currentHeroOffer || data.offersSection?.primaryOffer}
         initialGuests={selectedGuests}
         initialSlot={selectedSlot}
+        initialOfferId={currentHeroOffer?.id}
         initialOfferTitle={currentHeroOffer?.title}
-        initialOfferDiscount={currentHeroOffer?.discountValue ? Number(currentHeroOffer.discountValue) : 20}
-        initialCoverCharge={primaryOffer?.coverChargeAmount ? Number(primaryOffer.coverChargeAmount) : 25}
+        initialOfferDiscount={currentHeroOffer?.discountValue ? Number(currentHeroOffer.discountValue) : undefined}
+        initialCoverCharge={currentHeroOffer?.coverChargeAmount != null ? Number(currentHeroOffer.coverChargeAmount) : (primaryOffer?.coverChargeAmount != null ? Number(primaryOffer.coverChargeAmount) : 0)}
+        initialOfferTerms={currentHeroOffer?.termsAndConditions || primaryOffer?.termsAndConditions}
+        storeData={data}
         onBack={() => {
           setCurrentView("detail");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onPayBill={() => {
+          setCurrentView("pay_bill");
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         onBookingConfirmed={(details) => {
           toast.success(`Table Booked for ${details.guests} Guests!`, {
             description: `Confirmed at ${data.storeName} for ${details.date} at ${details.time}.`
+          });
+        }}
+      />
+    );
+  }
+
+  if (currentView === "pay_bill") {
+    return (
+      <PayBillView
+        storeId={effectiveStoreId}
+        storeName={data.storeName}
+        storeAddress={data.address}
+        coverImageUrl={heroImage}
+        distanceKm={data.distanceMeters ? Number((data.distanceMeters / 1000).toFixed(1)) : 88.1}
+        onBack={() => {
+          setCurrentView("detail");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onPaymentSuccess={(details) => {
+          toast.success(`Payment of ₹${details.totalPaid} Successful!`, {
+            description: `Paid to ${data.storeName}. Transaction #${details.txnId}`
+          });
+        }}
+      />
+    );
+  }
+
+  if (currentView === "product_order") {
+    return (
+      <ProductOrderView
+        storeId={effectiveStoreId}
+        storeName={data.storeName}
+        storeAddress={data.address}
+        coverImageUrl={heroImage}
+        distanceKm={data.distanceMeters ? Number((data.distanceMeters / 1000).toFixed(1)) : 88.1}
+        product={selectedProductForDeal || undefined}
+        initialQuantity={productOrderQuantity || 1}
+        onBack={() => {
+          setCurrentView("detail");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onOrderConfirmed={(orderDetails) => {
+          toast.success(`Payment of ₹${orderDetails.totalPaid} Successful!`, {
+            description: `Paid to ${data.storeName}. Saved ₹${orderDetails.totalSavings || 0} with offer applied.`
           });
         }}
       />
@@ -595,7 +702,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   };
 
   return (
-    <div className="w-full bg-[#fbfbff] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans pb-32 relative">
+    <div className="w-full bg-[#fbfbff] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans pb-40 relative">
       {/* ========================================================= */}
       {/* 1. HERO CAROUSEL & OVERLAY ACTIONS */}
       {/* ========================================================= */}
@@ -779,7 +886,8 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
               setCurrentView("booking");
               window.scrollTo({ top: 0, behavior: "smooth" });
             } else {
-              setShowPaymentModal(true);
+              setCurrentView("pay_bill");
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }
           }}
           className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-xs border border-slate-200/90 dark:border-slate-800 relative overflow-hidden text-center min-h-[162px] flex flex-col justify-between cursor-pointer hover:border-purple-300 dark:hover:border-purple-800 transition"
@@ -870,11 +978,27 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                 <h3
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (offerSegment === "PRE_BOOK" || currentHeroOffer?.redemptionType === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
+                    if (offerSegment === "PRE_BOOK" || currentHeroOffer?.redemptionType === "PRE_BOOK" || (data.bottomBar?.isTableBookingEnabled && offerSegment !== "PRODUCT")) {
                       setCurrentView("booking");
                       window.scrollTo({ top: 0, behavior: "smooth" });
+                    } else if (offerSegment === "PRODUCT" || currentHeroOffer?.redemptionType === "PRODUCT") {
+                      setSelectedProductForDeal({
+                        id: currentHeroOffer.id || "prod_deal",
+                        name: currentHeroOffer.title || "In-Store Item",
+                        brand: data.storeName,
+                        unit: currentHeroOffer.unit || "1 Unit",
+                        sellingPrice: currentHeroOffer.dealPrice || currentHeroOffer.discountValue || 0,
+                        mrp: currentHeroOffer.originalPrice || currentHeroOffer.mrp || 0,
+                        discountBadge: currentHeroOffer.discountValue ? `${currentHeroOffer.discountValue}% OFF IN-STORE` : "SPECIAL DEAL",
+                        imageUrl: currentHeroOffer.imageUrl || heroImage,
+                        description: currentHeroOffer.description || currentHeroOffer.termsAndConditions || ""
+                      });
+                      setProductOrderQuantity(1);
+                      setCurrentView("product_order");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     } else {
-                      setShowPaymentModal(true);
+                      setCurrentView("pay_bill");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }
                   }}
                   className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-1 cursor-pointer hover:text-purple-700 transition group text-center line-clamp-2 leading-snug"
@@ -1007,7 +1131,22 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                   key={off.id || idx}
                   onClick={() => {
                     setActiveOfferIndex(idx);
-                    if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
+                    if (off.redemptionType === "PRODUCT" || offerSegment === "PRODUCT") {
+                      setSelectedProductForDeal({
+                        id: off.id || "prod_deal",
+                        name: off.title || "In-Store Item",
+                        brand: data.storeName,
+                        unit: off.unit || "1 Unit",
+                        sellingPrice: off.dealPrice || off.discountValue || 0,
+                        mrp: off.originalPrice || off.mrp || 0,
+                        discountBadge: off.discountValue ? `${off.discountValue}% OFF IN-STORE` : "SPECIAL DEAL",
+                        imageUrl: off.imageUrl || heroImage,
+                        description: off.description || off.termsAndConditions || ""
+                      });
+                      setProductOrderQuantity(1);
+                      setCurrentView("product_order");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    } else if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || (data.bottomBar?.isTableBookingEnabled && offerSegment !== "WALK_IN")) {
                       setCurrentView("booking");
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     } else {
@@ -1050,11 +1189,27 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveOfferIndex(idx);
-                      if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
+                      if (off.redemptionType === "PRODUCT" || offerSegment === "PRODUCT") {
+                        setSelectedProductForDeal({
+                          id: off.id || "prod_deal",
+                          name: off.title || "In-Store Item",
+                          brand: data.storeName,
+                          unit: off.unit || "1 Unit",
+                          sellingPrice: off.dealPrice || off.discountValue || 0,
+                          mrp: off.originalPrice || off.mrp || 0,
+                          discountBadge: off.discountValue ? `${off.discountValue}% OFF IN-STORE` : "SPECIAL DEAL",
+                          imageUrl: off.imageUrl || heroImage,
+                          description: off.description || off.termsAndConditions || ""
+                        });
+                        setProductOrderQuantity(1);
+                        setCurrentView("product_order");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      } else if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || (data.bottomBar?.isTableBookingEnabled && offerSegment !== "WALK_IN")) {
                         setCurrentView("booking");
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       } else {
-                        setShowPaymentModal(true);
+                        setCurrentView("pay_bill");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
                       }
                     }}
                     className={`h-8 px-3.5 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer flex items-center justify-center ${
@@ -1126,7 +1281,20 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                 </div>
                 <div className="px-2.5 pb-2.5">
                   <button
-                    onClick={() => handleClaimDeal(deal.title)}
+                    onClick={() => {
+                      const dealProd = {
+                        id: deal.id || `deal_${deal.title}`,
+                        name: deal.title,
+                        sellingPrice: deal.dealPrice,
+                        mrp: deal.originalPrice || deal.dealPrice * 1.3,
+                        discountBadge: deal.discountBadge || "Flash Deal",
+                        imageUrl: deal.imageUrl || heroImage
+                      };
+                      setSelectedProductForDeal(dealProd);
+                      setProductOrderQuantity(1);
+                      setCurrentView("product_order");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
                     className="w-full py-1.5 rounded-lg border border-purple-700 text-purple-700 hover:bg-purple-700 hover:text-white font-bold text-xs transition cursor-pointer"
                     type="button"
                   >
@@ -1144,97 +1312,99 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
       {/* ========================================================= */}
       {data.productsSection?.items && data.productsSection.items.length > 0 && (
         <section id="sec-products" className="px-4 pt-4 space-y-3" data-purpose="store-products">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xs">
-                <ShoppingBag size={13} />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xs">
+                  <ShoppingBag size={13} />
+                </div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                  {data.productsSection?.title || "Store Shelf Products & Deals"}
+                </h2>
+                <span className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {data.productsSection.items.length} In Store
+                </span>
               </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
-                {data.productsSection.title || "Available Products"}
-              </h2>
-              <span className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {data.productsSection.items.length} In Store
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                In-Store Offers
               </span>
             </div>
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Retail Catalog
-            </span>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {data.productsSection.items.map((prod) => (
-              <div
-                key={prod.id}
-                onClick={() => {
-                  setSelectedProductForDeal(prod);
-                  setProductOrderQuantity(1);
-                  setShowProductModal(true);
-                }}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
-              >
-                <div>
-                  <div className="relative aspect-square w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                    <img
-                      src={prod.imageUrl || heroImage}
-                      alt={prod.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                    />
-                    {prod.discountBadge && (
-                      <span className="absolute top-2 left-2 bg-emerald-600 text-white font-extrabold text-[9.5px] px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wide">
-                        {prod.discountBadge}
-                      </span>
-                    )}
-                    {prod.inStock && (
-                      <span className="absolute bottom-2 right-2 bg-emerald-950/80 backdrop-blur-xs text-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span>In Stock</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="p-3 space-y-1">
-                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-purple-700 dark:text-purple-400">
-                      {prod.brand || "Store Special"}
-                    </p>
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white line-clamp-2 leading-tight">
-                      {prod.name}
-                    </h3>
-                    <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
-                      {prod.unit}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3 pt-0 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 mt-1">
+            <div className="grid grid-cols-2 gap-3">
+              {data.productsSection.items.map((prod: any) => (
+                <div
+                  key={prod.id}
+                  onClick={() => {
+                    setSelectedProductForDeal(prod);
+                    setProductOrderQuantity(1);
+                    setCurrentView("product_order");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+                >
                   <div>
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-sm font-black text-slate-900 dark:text-white">
-                        ₹{Number(prod.sellingPrice).toLocaleString("en-IN")}
-                      </span>
-                      {prod.mrp && Number(prod.mrp) > Number(prod.sellingPrice) && (
-                        <span className="text-[10.5px] line-through text-slate-400">
-                          ₹{Number(prod.mrp).toLocaleString("en-IN")}
+                    <div className="relative aspect-square w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <img
+                        src={prod.imageUrl || heroImage}
+                        alt={prod.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      />
+                      {prod.discountBadge && (
+                        <span className="absolute top-2 left-2 bg-emerald-600 text-white font-extrabold text-[9.5px] px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wide">
+                          {prod.discountBadge}
+                        </span>
+                      )}
+                      {prod.inStock && (
+                        <span className="absolute bottom-2 right-2 bg-emerald-950/80 backdrop-blur-xs text-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>On Shelf</span>
                         </span>
                       )}
                     </div>
+
+                    <div className="p-3 space-y-1">
+                      <p className="text-[10px] uppercase tracking-wider font-extrabold text-purple-700 dark:text-purple-400">
+                        {prod.brand || "Store Special"}
+                      </p>
+                      <h3 className="text-xs font-black text-slate-900 dark:text-white line-clamp-2 leading-tight">
+                        {prod.name}
+                      </h3>
+                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
+                        {prod.unit}
+                      </p>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedProductForDeal(prod);
-                      setProductOrderQuantity(1);
-                      setShowProductModal(true);
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-[11px] font-extrabold shadow-xs transition active:scale-95 cursor-pointer"
-                  >
-                    Claim
-                  </button>
+
+                  <div className="p-3 pt-0 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 mt-1">
+                    <div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-sm font-black text-slate-900 dark:text-white">
+                          ₹{Number(prod.sellingPrice).toLocaleString("en-IN")}
+                        </span>
+                        {prod.mrp && Number(prod.mrp) > Number(prod.sellingPrice) && (
+                          <span className="text-[10.5px] line-through text-slate-400">
+                            ₹{Number(prod.mrp).toLocaleString("en-IN")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProductForDeal(prod);
+                        setProductOrderQuantity(1);
+                        setCurrentView("product_order");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-[11px] font-extrabold shadow-xs transition active:scale-95 cursor-pointer"
+                    >
+                      Buy In-Store
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
       )}
 
       {/* ========================================================= */}
@@ -1637,42 +1807,66 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
       )}
 
       {/* ========================================================= */}
-      {/* 13. PERSISTENT BOTTOM ACTION BAR */}
+      {/* 13. PERSISTENT STICKY BOTTOM ACTION BAR */}
       {/* ========================================================= */}
-      <footer className="sticky bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-t-3xl border-t border-slate-200/90 dark:border-slate-800 shadow-2xl p-3.5">
+      <footer className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-t-2xl border-t border-slate-200/90 dark:border-slate-800 shadow-2xl p-3">
         {/* Floating Incentive Teaser Pill */}
-        <div className="mb-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2 flex items-center justify-between text-xs shadow-xs">
+        <div className="mb-2 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/40 dark:via-indigo-950/30 dark:to-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs shadow-xs">
           <div className="flex items-center gap-2">
             <span className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-300 to-amber-500 text-slate-900 font-black text-[9px] flex items-center justify-center border border-amber-400">
-              2X
+              🪙 2X
             </span>
-            <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
-              {data.bottomBar?.rewardTeaser?.text || "Earn 5% PINAK Coins on bill payment"}
+            <span className="text-[11px] font-bold text-purple-950 dark:text-purple-200">
+              {data.bottomBar?.rewardTeaser?.text || "Earn 20% PINAK Coins on bill payment"}
             </span>
           </div>
-          <Info size={14} className="text-emerald-600 dark:text-emerald-400 cursor-pointer shrink-0" />
+          <Info size={13} className="text-purple-600 dark:text-purple-400 cursor-pointer shrink-0" />
         </div>
 
-        {/* High-Impact Dual CTAs Matching Pinak Palette */}
+        {/* High-Impact Dual CTAs Matching PINAK Palette */}
         <div className="flex items-center gap-2.5">
-          {data.bottomBar?.isTableBookingEnabled && (
+          {data.bottomBar?.isTableBookingEnabled === false || offerSegment === "PRODUCT" ? (
+            (data.productsSection?.items && data.productsSection.items.length > 0) ? (
+              <button
+                onClick={() => {
+                  const targetEl = document.getElementById("sec-products");
+                  if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }}
+                className="flex-1 py-3 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 border-2 border-purple-600 text-purple-700 dark:text-purple-300 font-black active:scale-98 transition text-sm text-center cursor-pointer shadow-xs truncate"
+                type="button"
+              >
+                In-Store Deals
+              </button>
+            ) : null
+          ) : (
             <button
               onClick={() => {
+                if (preBookingOffers.length > 0 && currentHeroOffer?.redemptionType !== "PRE_BOOK") {
+                  const preBookIdx = activeSegmentOffers.findIndex((o) => o.redemptionType === "PRE_BOOK");
+                  if (preBookIdx >= 0) {
+                    setActiveOfferIndex(preBookIdx);
+                  }
+                }
                 setCurrentView("booking");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
-              className="flex-1 py-3 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-bold active:scale-98 transition text-sm text-center cursor-pointer shadow-xs"
+              className="flex-1 py-3 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 border-2 border-purple-600 text-purple-700 dark:text-purple-300 font-black active:scale-98 transition text-sm text-center cursor-pointer shadow-xs"
               type="button"
             >
-              Book a table
+              {data.bottomBar?.secondaryAction?.label || "Book a table"}
             </button>
           )}
           <button
-            onClick={() => setShowPaymentModal(true)}
-            className="flex-1 py-3 px-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold active:scale-98 transition text-sm shadow-md shadow-purple-600/20 text-center cursor-pointer"
+            onClick={() => {
+              setCurrentView("pay_bill");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="flex-1 py-3 px-3 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black active:scale-98 transition text-sm shadow-md shadow-purple-600/25 text-center cursor-pointer"
             type="button"
           >
-            Pay bill now
+            {data.bottomBar?.primaryAction?.label || "Pay bill now"}
           </button>
         </div>
       </footer>

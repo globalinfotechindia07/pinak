@@ -5,6 +5,7 @@ import com.superapp.common.exception.AppException;
 import com.superapp.common.response.ApiError;
 import com.superapp.merchant.dto.UpdateApprovalStatusRequest;
 import com.superapp.merchant.entity.ApprovalStatus;
+import com.superapp.merchant.entity.KycStatus;
 import com.superapp.merchant.entity.Merchant;
 import com.superapp.merchant.enums.MerchantStatus;
 import com.superapp.merchant.repository.MerchantRepository;
@@ -46,6 +47,10 @@ class StoreServiceTest {
     @Mock private MerchantRepository merchantRepository;
     @Mock private CityRepository cityRepository;
     @Mock private AuditService auditService;
+    @Mock private com.superapp.user.repository.UserRepository userRepository;
+    @Mock private com.superapp.common.email.EmailService emailService;
+    @Mock private com.superapp.user.repository.StaffMemberRepository staffMemberRepository;
+    @Mock private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     @Spy private StoreMapper storeMapper = new StoreMapper();
 
     @InjectMocks private StoreServiceImpl storeService;
@@ -63,6 +68,7 @@ class StoreServiceTest {
         ownerId = UUID.randomUUID();
         merchant = new Merchant(ownerId, "ABC Brands", null);
         merchant.setId(merchantId);
+        merchant.setKycStatus(KycStatus.VERIFIED);
 
         storeId = UUID.randomUUID();
         store = new Store(
@@ -147,6 +153,38 @@ class StoreServiceTest {
         assertThatThrownBy(() -> storeService.createMerchantStore(request, ownerId))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("City is not active");
+    }
+
+    @Test
+    @DisplayName("Create merchant store rejects when merchant KYC is not verified")
+    void createMerchantStore_unverifiedKyc_throwsValidationException() {
+        merchant.setKycStatus(KycStatus.PENDING);
+        MerchantCreateStoreRequest request = new MerchantCreateStoreRequest(
+                "ABC Retail", "Desc", "123 Main", null, "PUNE", "MH", "440010",
+                new BigDecimal("21.1458"), new BigDecimal("79.0882"), null
+        );
+
+        when(merchantRepository.findByOwnerUserId(ownerId)).thenReturn(Optional.of(merchant));
+
+        assertThatThrownBy(() -> storeService.createMerchantStore(request, ownerId))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("Merchant KYC must be verified before creating or onboarding branch stores");
+    }
+
+    @Test
+    @DisplayName("Create store rejects when merchant KYC is rejected or not verified")
+    void createStore_unverifiedKyc_throwsValidationException() {
+        merchant.setKycStatus(KycStatus.REJECTED);
+        CreateStoreRequest request = new CreateStoreRequest(
+                merchantId, "Pune Store", "123 FC Road", "PUNE", "Maharashtra", "411004",
+                new BigDecimal("18.5204"), new BigDecimal("73.8567")
+        );
+
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
+
+        assertThatThrownBy(() -> storeService.createStore(request, ownerId, false))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("Merchant KYC must be verified before creating or onboarding branch stores");
     }
 
     @Test
@@ -293,6 +331,7 @@ class StoreServiceTest {
         StoreResponse response = storeService.createStore(request, ownerId, false);
 
         assertThat(response).isNotNull();
+        assertThat(response.status()).isEqualTo("INACTIVE");
         assertThat(response.storeName()).isEqualTo("Pune Store");
         assertThat(response.merchantId()).isEqualTo(merchantId.toString());
     }
@@ -324,5 +363,130 @@ class StoreServiceTest {
         assertThat(page.getTotalElements()).isEqualTo(1);
         assertThat(page.getContent().get(0).distanceMeters()).isNotNull();
         assertThat(page.getContent().get(0).distanceMeters()).isLessThan(5000.0);
+    }
+
+    @Test
+    @DisplayName("Create store with managerEmail provisions StaffMember and sends store welcome email")
+    void createStore_withManagerEmail_provisionsStaffAndSendsWelcome() {
+        String mgrEmail = "manager.pune@abcbrands.com";
+        String mgrName = "Rajesh Sharma";
+        CreateStoreRequest request = new CreateStoreRequest(
+                merchantId, "Pune FC Road Branch", "123 FC Road", "PUNE", "Maharashtra", "411004",
+                new BigDecimal("18.5204"), new BigDecimal("73.8567"), "+919876543210", null,
+                null, null, null, null, null, null, true, true, true, BigDecimal.ZERO,
+                mgrName, mgrEmail, "+919876543210"
+        );
+
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
+        when(storeRepository.save(any(Store.class))).thenAnswer(inv -> {
+            Store s = inv.getArgument(0);
+            s.setId(storeId);
+            return s;
+        });
+        when(userRepository.findByEmail(mgrEmail.toLowerCase())).thenReturn(Optional.empty());
+        when(userRepository.save(any(com.superapp.user.entity.User.class))).thenAnswer(inv -> {
+            com.superapp.user.entity.User u = inv.getArgument(0);
+            u.setId(UUID.randomUUID());
+            return u;
+        });
+        when(staffMemberRepository.findByStoreId(storeId)).thenReturn(List.of());
+
+        StoreResponse response = storeService.createStore(request, ownerId, false);
+
+        assertThat(response).isNotNull();
+        assertThat(response.status()).isEqualTo("INACTIVE");
+        verify(emailService).sendStoreWelcomeEmail(
+                eq(mgrEmail),
+                eq(mgrName),
+                eq("Pune FC Road Branch"),
+                eq(merchant.getBusinessName()),
+                contains("/accept-invite?token=")
+        );
+        verify(staffMemberRepository).save(argThat(staff ->
+                "STORE_MANAGER".equals(staff.getRoleId()) &&
+                "STORE".equals(staff.getScope()) &&
+                "INVITED".equals(staff.getStatus()) &&
+                storeId.equals(staff.getStoreId()) &&
+                merchantId.equals(staff.getMerchantId())
+        ));
+    }
+
+    @Test
+    @DisplayName("Resend store invite regenerates token and dispatches store welcome email")
+    void resendStoreInvite_dispatchesWelcomeEmail() {
+        UUID mgrUserId = UUID.randomUUID();
+        com.superapp.user.entity.User mgrUser = new com.superapp.user.entity.User(
+                "manager.pune@abcbrands.com", "Rajesh Sharma", "Rajesh", "Sharma", "hash", com.superapp.user.entity.Role.MERCHANT
+        );
+        mgrUser.setId(mgrUserId);
+
+        com.superapp.user.entity.StaffMember staff = new com.superapp.user.entity.StaffMember(
+                mgrUserId, "STORE_MANAGER", "STORE", merchantId, storeId, null, "INVITED", "{}", ownerId
+        );
+
+        when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
+        when(staffMemberRepository.findByStoreId(storeId)).thenReturn(List.of(staff));
+        when(userRepository.findById(ownerId)).thenReturn(Optional.of(new com.superapp.user.entity.User("owner@abcbrands.com", "Owner", "Owner", "", "hash", com.superapp.user.entity.Role.MERCHANT)));
+        when(userRepository.findById(mgrUserId)).thenReturn(Optional.of(mgrUser));
+
+        storeService.resendStoreInvite(storeId, ownerId);
+
+        verify(staffMemberRepository).save(argThat(s ->
+                "INVITED".equals(s.getStatus()) &&
+                s.getCustomPermissions().contains("inviteToken")
+        ));
+        verify(emailService).sendStoreWelcomeEmail(
+                eq("manager.pune@abcbrands.com"),
+                eq("Rajesh Sharma"),
+                eq(store.getStoreName()),
+                eq(merchant.getBusinessName()),
+                contains("/accept-invite?token=")
+        );
+    }
+
+    @Test
+    @DisplayName("Create store with merchant owner email throws AppException and NEVER saves store")
+    void createStore_withMerchantOwnerEmail_throwsAppExceptionAndNeverSavesStore() {
+        String ownerEmail = "owner@abcbrands.com";
+        merchant.setEmail(ownerEmail);
+        CreateStoreRequest request = new CreateStoreRequest(
+                merchantId, "Pune FC Road Branch", "123 FC Road", "PUNE", "Maharashtra", "411004",
+                new BigDecimal("18.5204"), new BigDecimal("73.8567"), "+919876543210", null,
+                null, null, null, null, null, null, true, true, true, BigDecimal.ZERO,
+                "Rajesh", ownerEmail, "+919876543210"
+        );
+
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
+
+        assertThatThrownBy(() -> storeService.createStore(request, ownerId, false))
+                .isInstanceOf(com.superapp.common.exception.AppException.class)
+                .hasMessageContaining("Merchant Owner");
+
+        verify(storeRepository, never()).save(any(Store.class));
+    }
+
+    @Test
+    @DisplayName("Create store with existing Role.MERCHANT user email throws AppException and NEVER saves store")
+    void createStore_withRoleMerchantUserEmail_throwsAppExceptionAndNeverSavesStore() {
+        String mgrEmail = "rohanitu@gmail.com";
+        CreateStoreRequest request = new CreateStoreRequest(
+                merchantId, "Pune FC Road Branch", "123 FC Road", "PUNE", "Maharashtra", "411004",
+                new BigDecimal("18.5204"), new BigDecimal("73.8567"), "+919876543210", null,
+                null, null, null, null, null, null, true, true, true, BigDecimal.ZERO,
+                "Rohan", mgrEmail, "+919876543210"
+        );
+
+        when(merchantRepository.findById(merchantId)).thenReturn(Optional.of(merchant));
+        com.superapp.user.entity.User merchantUser = new com.superapp.user.entity.User(
+                mgrEmail, "Rohan Merchant", "Rohan", "", "hash", com.superapp.user.entity.Role.MERCHANT
+        );
+        when(userRepository.findByEmail(mgrEmail.toLowerCase())).thenReturn(Optional.of(merchantUser));
+
+        assertThatThrownBy(() -> storeService.createStore(request, ownerId, false))
+                .isInstanceOf(com.superapp.common.exception.AppException.class)
+                .hasMessageContaining("Merchant Owner account");
+
+        verify(storeRepository, never()).save(any(Store.class));
     }
 }

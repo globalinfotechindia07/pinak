@@ -27,8 +27,10 @@ public class DiscoveryController {
     @Operation(summary = "Find nearby stores by PostGIS spherical distance",
             description = "Returns nearby approved active stores ordered by distance or name within the specified radius")
     public ResponseEntity<ApiResponse<List<NearbyStoreResponse>>> getNearbyStores(
-            @RequestParam Double lat,
-            @RequestParam Double lng,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double longitude,
             @RequestParam(required = false, defaultValue = "5000") Double radius,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false, defaultValue = "false") Boolean hasOffer,
@@ -38,7 +40,10 @@ public class DiscoveryController {
             @RequestParam(required = false, defaultValue = "distance") String sort,
             HttpServletRequest request) {
 
-        NearbySearchQuery query = new NearbySearchQuery(lat, lng, radius, categoryId, hasOffer, isOpen, page, size, sort);
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
+        NearbySearchQuery query = new NearbySearchQuery(effectiveLat, effectiveLng, radius, categoryId, hasOffer, isOpen, page, size, sort);
         PagedResult<NearbyStoreResponse> result = discoveryService.getNearbyStores(query, getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.success("Nearby stores fetched successfully", result.content(), result.meta()));
@@ -51,13 +56,18 @@ public class DiscoveryController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double longitude,
             @RequestParam(required = false) Double radius,
             @RequestParam(required = false, defaultValue = "0") Integer page,
             @RequestParam(required = false, defaultValue = "20") Integer size,
             HttpServletRequest request) {
 
-        StoreSearchQuery query = new StoreSearchQuery(q, categoryId, lat, lng, radius, page, size);
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
+        StoreSearchQuery query = new StoreSearchQuery(q, categoryId, effectiveLat, effectiveLng, radius, page, size);
         PagedResult<StoreSearchResponse> result = discoveryService.searchStores(query, getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.success("Stores found successfully", result.content(), result.meta()));
@@ -70,14 +80,19 @@ public class DiscoveryController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID cityId,
             @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double latitude,
             @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double longitude,
             @RequestParam(required = false) Double radius,
             @RequestParam(required = false, defaultValue = "ALL") String type,
             @RequestParam(required = false, defaultValue = "0") Integer page,
             @RequestParam(required = false, defaultValue = "10") Integer size,
             HttpServletRequest request) {
 
-        GlobalSearchQuery query = new GlobalSearchQuery(q, cityId, lat, lng, radius, type, page, size);
+        Double effectiveLat = lat != null ? lat : latitude;
+        Double effectiveLng = lng != null ? lng : longitude;
+
+        GlobalSearchQuery query = new GlobalSearchQuery(q, cityId, effectiveLat, effectiveLng, radius, type, page, size);
         GlobalSearchResponse response = discoveryService.globalSearch(query, getClientIp(request));
 
         return ResponseEntity.ok(ApiResponse.success("Global search results fetched successfully", response));
