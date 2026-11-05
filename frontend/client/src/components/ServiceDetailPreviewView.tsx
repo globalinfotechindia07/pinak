@@ -407,7 +407,16 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
 
   // Sync active offer segment automatically to match available store offers (Restaurant vs Kirana vs Hybrid)
   useEffect(() => {
-    if (data?.offersSection) {
+    if (initialOffer?.redemptionType) {
+      const rt = String(initialOffer.redemptionType).toUpperCase();
+      if (rt === "WALK_IN") {
+        setOfferSegment("WALK_IN");
+      } else if (rt === "PRE_BOOK") {
+        setOfferSegment("PRE_BOOK");
+      } else if (rt === "PRODUCT") {
+        setOfferSegment("PRODUCT");
+      }
+    } else if (data?.offersSection) {
       const hasPre = (data.offersSection.preBookingOffers?.length || 0) > 0;
       const hasWalk = (data.offersSection.walkInOffers?.length || 0) > 0;
       const hasProd = (data.offersSection.productOffers?.length || 0) > 0;
@@ -420,7 +429,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
         setOfferSegment("WALK_IN");
       }
     }
-  }, [data]);
+  }, [data, initialOffer]);
 
   const handleShare = () => {
     if (!data) return;
@@ -615,6 +624,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   }
 
   if (currentView === "pay_bill") {
+    const selectedOffer = currentHeroOffer || initialOffer || primaryOffer;
     return (
       <PayBillView
         storeId={effectiveStoreId}
@@ -622,6 +632,8 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
         storeAddress={data.address}
         coverImageUrl={heroImage}
         distanceKm={data.distanceMeters ? Number((data.distanceMeters / 1000).toFixed(1)) : 88.1}
+        offerTitle={selectedOffer?.title}
+        offerDiscountPct={selectedOffer?.discountValue ? Number(selectedOffer.discountValue) : undefined}
         onBack={() => {
           setCurrentView("detail");
           window.scrollTo({ top: 0, behavior: "smooth" });
@@ -882,7 +894,25 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
         {/* Main Offer Card Container: Compact & Uniform Dimensions */}
         <div
           onClick={() => {
-            if (offerSegment === "PRE_BOOK" || currentHeroOffer?.redemptionType === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
+            if (offerSegment === "WALK_IN" || currentHeroOffer?.redemptionType === "WALK_IN") {
+              setCurrentView("pay_bill");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            } else if (offerSegment === "PRODUCT" || currentHeroOffer?.redemptionType === "PRODUCT") {
+              setSelectedProductForDeal({
+                id: currentHeroOffer?.id || "prod_deal",
+                name: currentHeroOffer?.title || "In-Store Item",
+                brand: data.storeName,
+                unit: currentHeroOffer?.unit || "1 Unit",
+                sellingPrice: currentHeroOffer?.dealPrice || currentHeroOffer?.discountValue || 0,
+                mrp: currentHeroOffer?.originalPrice || currentHeroOffer?.mrp || 0,
+                discountBadge: currentHeroOffer?.discountValue ? `${currentHeroOffer.discountValue}% OFF IN-STORE` : "SPECIAL DEAL",
+                imageUrl: currentHeroOffer?.imageUrl || heroImage,
+                description: currentHeroOffer?.description || currentHeroOffer?.termsAndConditions || ""
+              });
+              setProductOrderQuantity(1);
+              setCurrentView("product_order");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            } else if (offerSegment === "PRE_BOOK" || currentHeroOffer?.redemptionType === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
               setCurrentView("booking");
               window.scrollTo({ top: 0, behavior: "smooth" });
             } else {
@@ -978,7 +1008,10 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                 <h3
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (offerSegment === "PRE_BOOK" || currentHeroOffer?.redemptionType === "PRE_BOOK" || (data.bottomBar?.isTableBookingEnabled && offerSegment !== "PRODUCT")) {
+                    if (offerSegment === "WALK_IN" || currentHeroOffer?.redemptionType === "WALK_IN") {
+                      setCurrentView("pay_bill");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    } else if (offerSegment === "PRE_BOOK" || currentHeroOffer?.redemptionType === "PRE_BOOK" || (data.bottomBar?.isTableBookingEnabled && offerSegment !== "PRODUCT")) {
                       setCurrentView("booking");
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     } else if (offerSegment === "PRODUCT" || currentHeroOffer?.redemptionType === "PRODUCT") {
@@ -1146,11 +1179,15 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                       setProductOrderQuantity(1);
                       setCurrentView("product_order");
                       window.scrollTo({ top: 0, behavior: "smooth" });
-                    } else if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || (data.bottomBar?.isTableBookingEnabled && offerSegment !== "WALK_IN")) {
+                    } else if (off.redemptionType === "WALK_IN" || offerSegment === "WALK_IN") {
+                      setCurrentView("pay_bill");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    } else if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
                       setCurrentView("booking");
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     } else {
-                      toast.info(`Switched to "${off.title}"`);
+                      setCurrentView("pay_bill");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }
                   }}
                   className={`bg-white dark:bg-slate-900 rounded-2xl border px-3.5 py-2.5 shadow-xs flex items-center justify-between gap-3 cursor-pointer transition h-[74px] ${
@@ -1204,7 +1241,10 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                         setProductOrderQuantity(1);
                         setCurrentView("product_order");
                         window.scrollTo({ top: 0, behavior: "smooth" });
-                      } else if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || (data.bottomBar?.isTableBookingEnabled && offerSegment !== "WALK_IN")) {
+                      } else if (off.redemptionType === "WALK_IN" || offerSegment === "WALK_IN") {
+                        setCurrentView("pay_bill");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      } else if (off.redemptionType === "PRE_BOOK" || offerSegment === "PRE_BOOK" || data.bottomBar?.isTableBookingEnabled) {
                         setCurrentView("booking");
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       } else {
@@ -1220,7 +1260,7 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
                   >
                     {isSelected
                       ? off.ctaText || (off.redemptionType === "PRE_BOOK" ? "Book & Pay" : "Pay Now")
-                      : "Select"}
+                      : (off.redemptionType === "PRE_BOOK" ? "Book Table" : "Pay Bill")}
                   </button>
                 </div>
               );

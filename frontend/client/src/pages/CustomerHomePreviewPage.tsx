@@ -338,7 +338,8 @@ export default function CustomerHomePreviewPage() {
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const initialStoreId = searchParams?.get("storeId");
   const [activeScreen, setActiveScreen] = useState<"home" | "detail" | "orders" | "booking_pass">(initialStoreId ? "detail" : "home");
-  const [initialDetailView, setInitialDetailView] = useState<"detail" | "booking">("detail");
+  const [initialDetailView, setInitialDetailView] = useState<"detail" | "booking" | "pay_bill">("detail");
+  const [selectedOfferForDetail, setSelectedOfferForDetail] = useState<any>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "");
   const [isPayingBill, setIsPayingBill] = useState<boolean>(false);
   const [activeBooking, setActiveBooking] = useState<TableBookingDetails | null>(null);
@@ -1081,8 +1082,10 @@ export default function CustomerHomePreviewPage() {
               userLat={userLocation.latitude}
               userLng={userLocation.longitude}
               initialView={initialDetailView}
+              initialOffer={selectedOfferForDetail}
               onBack={() => {
                 setInitialDetailView("detail");
+                setSelectedOfferForDetail(null);
                 setActiveScreen("home");
               }}
             />
@@ -1525,7 +1528,12 @@ export default function CustomerHomePreviewPage() {
                   <article
                     key={offerKey}
                     onClick={() => {
-                      setInitialDetailView("detail");
+                      if (isWalkInOnly) {
+                        setInitialDetailView("pay_bill");
+                      } else {
+                        setInitialDetailView("detail");
+                      }
+                      setSelectedOfferForDetail(o);
                       handleOpenStoreDetail(targetStoreId);
                     }}
                     className="w-72 shrink-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col justify-between cursor-pointer group h-[335px]"
@@ -1693,8 +1701,9 @@ export default function CustomerHomePreviewPage() {
                           if (isPreBookingOnly || isBoth) {
                             setInitialDetailView("booking");
                           } else {
-                            setInitialDetailView("detail");
+                            setInitialDetailView("pay_bill");
                           }
+                          setSelectedOfferForDetail(o);
                           handleOpenStoreDetail(targetStoreId);
                         }}
                         className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] px-3.5 py-1.5 rounded-lg shadow-xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"

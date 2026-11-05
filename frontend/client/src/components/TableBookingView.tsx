@@ -1222,7 +1222,7 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                         <span>Dining Bill Paid &amp; Settled</span>
                       </div>
                     </div>
-                  ) : bookingDetails?.billAmount && Number(bookingDetails.billAmount) > 0 ? (
+                  ) : (
                     <>
                       <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-1" />
                       <button
@@ -1237,24 +1237,22 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
                         }}
                         className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black active:scale-98 transition text-sm shadow-md shadow-purple-600/25 flex items-center justify-center gap-2 cursor-pointer animate-in fade-in"
                       >
-                        <span>Pay bill now • ₹{Number(bookingDetails.billAmount).toLocaleString("en-IN")}</span>
+                        {bookingDetails?.billAmount && Number(bookingDetails.billAmount) > 0 ? (
+                          <span>Pay bill now • ₹{Number(bookingDetails.billAmount).toLocaleString("en-IN")}</span>
+                        ) : (
+                          <span>Pay bill now</span>
+                        )}
                         <ArrowRight size={16} />
                       </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-1" />
-                      <button
-                        type="button"
-                        disabled
-                        className="w-full py-3.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold text-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 cursor-not-allowed select-none shadow-none"
-                      >
-                        <Clock size={16} className="text-slate-400 dark:text-slate-500" />
-                        <span>Pay bill now</span>
-                      </button>
-                      <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 font-semibold pt-1">
-                        Waiting for restaurant to add dining bill amount
-                      </p>
+                      {bookingDetails?.billAmount && Number(bookingDetails.billAmount) > 0 ? (
+                        <p className="text-[11px] text-center text-emerald-600 dark:text-emerald-400 font-bold pt-1">
+                          ✓ Bill added by restaurant
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-center text-slate-500 dark:text-slate-400 font-medium pt-1">
+                          Enter bill amount directly or wait for restaurant to add
+                        </p>
+                      )}
                     </>
                   )
                 )}

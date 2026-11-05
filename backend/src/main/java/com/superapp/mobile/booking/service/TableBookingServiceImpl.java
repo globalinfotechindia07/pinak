@@ -1038,6 +1038,10 @@ public class TableBookingServiceImpl implements TableBookingService {
             bookingOpt.ifPresent(booking -> {
                 booking.setStatus("COMPLETED");
                 booking.setPaymentStatus("PAID");
+                if (booking.getBillAmount() == null || booking.getBillAmount().compareTo(BigDecimal.ZERO) == 0) {
+                    booking.setBillAmount(billAmount);
+                    booking.setBillAddedAt(Instant.now());
+                }
                 tableBookingRepository.save(booking);
                 log.info("Marked reservation {} as COMPLETED following bill payment of ₹{}", booking.getBookingRef(), finalTotalPaid);
             });

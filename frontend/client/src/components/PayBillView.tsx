@@ -89,7 +89,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
   // Bill Amount resolved from prop or booking details
   const [resolvedBillAmount, setResolvedBillAmount] = useState<number | undefined>(initialBillAmount);
   const [billAmountInput, setBillAmountInput] = useState<string>(
-    initialBillAmount && initialBillAmount > 0 ? String(initialBillAmount) : "1000"
+    initialBillAmount && initialBillAmount > 0 ? String(initialBillAmount) : ""
   );
 
   React.useEffect(() => {
@@ -121,6 +121,26 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
       }).catch(() => {});
     }
   }, [bookingRef, initialBillAmount, offerTitle, offerDiscountPct, coverChargeAmount]);
+
+  // Live polling: if waiter adds the bill in the background while this screen is open
+  React.useEffect(() => {
+    if (!bookingRef || (resolvedBillAmount && resolvedBillAmount > 0)) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const details = await tableBookingApi.getBookingDetails(bookingRef);
+        if (details?.billAmount && Number(details.billAmount) > 0) {
+          setResolvedBillAmount(Number(details.billAmount));
+          setBillAmountInput(String(details.billAmount));
+          toast.info(`Restaurant added your dining bill: ₹${Number(details.billAmount).toLocaleString("en-IN")}`);
+        }
+      } catch (e) {
+        // Ignore background polling failure
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [bookingRef, resolvedBillAmount]);
 
   const isBillPreSetByStore = Boolean(resolvedBillAmount && resolvedBillAmount > 0);
 
@@ -1329,18 +1349,29 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                   const cleaned = e.target.value.replace(/[^0-9]/g, "");
                   setBillAmountInput(cleaned);
                 }}
-                placeholder="1000"
+                placeholder="0"
                 className={cn(
                   "w-44 text-4xl sm:text-5xl font-black text-slate-900 dark:text-white bg-transparent border-b-2 tracking-tight text-left outline-hidden transition",
                   isBillPreSetByStore
                     ? "cursor-default select-none border-slate-300 dark:border-slate-700 opacity-90"
-                    : "border-slate-300 dark:border-slate-700 focus:border-purple-600"
+                    : "border-purple-600 focus:border-purple-700"
                 )}
               />
             </div>
-            <p className="text-xs text-slate-500 font-semibold">
-              Enter total amount as shown on the bill
-            </p>
+            {isBillPreSetByStore ? (
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center gap-1">
+                <span>✓ Bill amount added by restaurant</span>
+              </p>
+            ) : (
+              <div className="space-y-0.5">
+                <p className="text-xs text-slate-500 font-semibold">
+                  Enter total amount as shown on your paper bill
+                </p>
+                <p className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
+                  Tip: You can also ask your waiter to add the bill
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Locked Table Offer Card on Screen 1 */}
@@ -1364,7 +1395,9 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                       {resolvedOfferTitle || `${resolvedOfferDiscountPct}% OFF on Dining Bill`}
                     </p>
                     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                      ✓ ₹{tableOfferDiscount > 0 ? tableOfferDiscount.toLocaleString("en-IN") : `${resolvedOfferDiscountPct}%`} instant discount applied in Bill Details
+                      {tableOfferDiscount > 0
+                        ? `✓ ₹${tableOfferDiscount.toLocaleString("en-IN")} instant discount applied in Bill Details`
+                        : `✓ Flat ${resolvedOfferDiscountPct}% OFF will apply automatically on your bill`}
                     </p>
                   </div>
                 </div>
@@ -1438,7 +1471,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
               : "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800"
           )}
         >
-          Apply offers & pay
+          {numericBill > 0 ? "Apply offers & pay" : "Enter bill amount to pay"}
         </button>
       </footer>
     </div>
