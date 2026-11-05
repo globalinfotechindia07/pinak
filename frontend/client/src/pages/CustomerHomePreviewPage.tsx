@@ -43,6 +43,8 @@ import { ServiceDetailPreviewView } from "@/components/ServiceDetailPreviewView"
 import { CustomerOrdersView } from "@/components/CustomerOrdersView";
 import { TableBookingView } from "@/components/TableBookingView";
 import tableBookingApi, { TableBookingDetails } from "@/api/tableBookingApi";
+import { useAppStore } from "@/hooks/useAppStore";
+import { authApi } from "@/api/authApi";
 
 interface NearbyOffer {
   id?: string;
@@ -335,6 +337,24 @@ function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
 }
 
 export default function CustomerHomePreviewPage() {
+  const appStore = useAppStore();
+
+  useEffect(() => {
+    if (!appStore.isAuthenticated || !appStore.currentUser) {
+      authApi.bootstrapSession().then((user) => {
+        if (user) {
+          appStore.login((user.role?.toLowerCase() as any) || "customer", user.email, user.storeId, {
+            id: user.id,
+            name: user.name,
+            phone: user.phone || (user as any).mobile,
+            roleName: (user as any).staffRoleName || (user as any).roleName,
+            status: user.status
+          });
+        }
+      }).catch(() => {});
+    }
+  }, []);
+
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const initialStoreId = searchParams?.get("storeId");
   const [activeScreen, setActiveScreen] = useState<"home" | "detail" | "orders" | "booking_pass">(initialStoreId ? "detail" : "home");
@@ -1081,6 +1101,8 @@ export default function CustomerHomePreviewPage() {
               storeId={selectedStoreId}
               userLat={userLocation.latitude}
               userLng={userLocation.longitude}
+              customerName={appStore.currentUser?.name}
+              customerPhone={appStore.currentUser?.phone}
               initialView={initialDetailView}
               initialOffer={selectedOfferForDetail}
               onBack={() => {
@@ -1103,8 +1125,8 @@ export default function CustomerHomePreviewPage() {
               initialOfferTitle={effectivePassBooking.offerTitle}
               initialOfferDiscount={effectivePassBooking.discountPct ? Number(effectivePassBooking.discountPct) : undefined}
               initialCoverCharge={effectivePassBooking.totalCoverCharge ? Number(effectivePassBooking.totalCoverCharge) : 0}
-              initialCustomerName={effectivePassBooking.customerName}
-              initialCustomerPhone={effectivePassBooking.customerPhone}
+              initialCustomerName={effectivePassBooking.customerName || appStore.currentUser?.name}
+              initialCustomerPhone={effectivePassBooking.customerPhone || appStore.currentUser?.phone}
               userLat={userLocation.latitude}
               userLng={userLocation.longitude}
               onBack={() => {

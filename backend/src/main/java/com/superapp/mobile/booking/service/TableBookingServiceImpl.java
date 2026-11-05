@@ -328,12 +328,28 @@ public class TableBookingServiceImpl implements TableBookingService {
                 .divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP)
                 .intValue() + 50;
 
+        User bookingUser = userId != null ? userRepository.findById(userId).orElse(null) : null;
+        String bCustomerName = (request.customerName() != null && !request.customerName().isBlank()
+                && !"Customer".equalsIgnoreCase(request.customerName().trim())
+                && !"Guest Diner".equalsIgnoreCase(request.customerName().trim()))
+                ? request.customerName().trim()
+                : (bookingUser != null && bookingUser.getName() != null && !bookingUser.getName().isBlank()
+                        ? bookingUser.getName().trim()
+                        : (request.customerName() != null && !request.customerName().isBlank() ? request.customerName().trim() : "Guest Diner"));
+
+        String bCustomerPhone = (request.customerPhone() != null && !request.customerPhone().isBlank()
+                && !"In-Store Diner".equalsIgnoreCase(request.customerPhone().trim()))
+                ? request.customerPhone().trim()
+                : (bookingUser != null && bookingUser.getPhone() != null && !bookingUser.getPhone().isBlank()
+                        ? bookingUser.getPhone().trim()
+                        : (request.customerPhone() != null && !request.customerPhone().isBlank() ? request.customerPhone().trim() : ""));
+
         TableBooking booking = new TableBooking();
         booking.setBookingRef(bookingRef);
         booking.setStoreId(store.getId());
         booking.setUserId(userId);
-        booking.setCustomerName(request.customerName());
-        booking.setCustomerPhone(request.customerPhone());
+        booking.setCustomerName(bCustomerName);
+        booking.setCustomerPhone(bCustomerPhone);
         booking.setCustomerEmail(request.customerEmail());
         booking.setGuests(guests);
         booking.setBookingDate(bDate);
@@ -889,6 +905,33 @@ public class TableBookingServiceImpl implements TableBookingService {
                         + booking.getTotalCoverCharge() + " cover charge and unlock locked offer discount."
         );
 
+        // Fallback to registered user account name/phone if booking customerName is empty or generic placeholder
+        String resolvedCustName = booking.getCustomerName();
+        String resolvedCustPhone = booking.getCustomerPhone();
+        if ((resolvedCustName == null || resolvedCustName.isBlank()
+                || "Customer".equalsIgnoreCase(resolvedCustName.trim())
+                || "Guest Diner".equalsIgnoreCase(resolvedCustName.trim())
+                || "Walk-in Guest".equalsIgnoreCase(resolvedCustName.trim()))
+                && booking.getUserId() != null) {
+            Optional<User> uOpt = userRepository.findById(booking.getUserId());
+            if (uOpt.isPresent()) {
+                User u = uOpt.get();
+                if (u.getName() != null && !u.getName().isBlank()) {
+                    resolvedCustName = u.getName().trim();
+                }
+                if ((resolvedCustPhone == null || resolvedCustPhone.isBlank() || "In-Store Diner".equalsIgnoreCase(resolvedCustPhone.trim()))
+                        && u.getPhone() != null && !u.getPhone().isBlank()) {
+                    resolvedCustPhone = u.getPhone().trim();
+                }
+            }
+        }
+        if (resolvedCustName == null || resolvedCustName.isBlank()) {
+            resolvedCustName = "Guest Diner";
+        }
+        if (resolvedCustPhone == null || resolvedCustPhone.isBlank()) {
+            resolvedCustPhone = "In-Store Diner";
+        }
+
         return new TableBookingResponseDto(
                 booking.getId(),
                 booking.getBookingRef(),
@@ -897,8 +940,8 @@ public class TableBookingServiceImpl implements TableBookingService {
                 store.getAddress(),
                 coverImage,
                 contactPhone,
-                booking.getCustomerName(),
-                booking.getCustomerPhone(),
+                resolvedCustName,
+                resolvedCustPhone,
                 booking.getCustomerEmail(),
                 booking.getGuests(),
                 booking.getBookingDate() != null ? booking.getBookingDate().format(DATE_KEY_FORMATTER) : null,
@@ -990,6 +1033,34 @@ public class TableBookingServiceImpl implements TableBookingService {
                     });
         }
 
+        // Fetch authenticated customer profile details to ensure the authentic logged-in user name is attached
+        User customerUser = customerId != null ? userRepository.findById(customerId).orElse(null) : null;
+        String effectiveCustomerName;
+        if (request.customerName() != null && !request.customerName().isBlank()
+                && !"Customer".equalsIgnoreCase(request.customerName().trim())
+                && !"Guest Diner".equalsIgnoreCase(request.customerName().trim())
+                && !"Walk-in Guest".equalsIgnoreCase(request.customerName().trim())) {
+            effectiveCustomerName = request.customerName().trim();
+        } else if (customerUser != null && customerUser.getName() != null && !customerUser.getName().isBlank()) {
+            effectiveCustomerName = customerUser.getName().trim();
+        } else if (request.customerName() != null && !request.customerName().isBlank()) {
+            effectiveCustomerName = request.customerName().trim();
+        } else {
+            effectiveCustomerName = "Guest Diner";
+        }
+
+        String effectiveCustomerPhone;
+        if (request.customerPhone() != null && !request.customerPhone().isBlank()
+                && !"In-Store Diner".equalsIgnoreCase(request.customerPhone().trim())) {
+            effectiveCustomerPhone = request.customerPhone().trim();
+        } else if (customerUser != null && customerUser.getPhone() != null && !customerUser.getPhone().isBlank()) {
+            effectiveCustomerPhone = customerUser.getPhone().trim();
+        } else if (request.customerPhone() != null && !request.customerPhone().isBlank()) {
+            effectiveCustomerPhone = request.customerPhone().trim();
+        } else {
+            effectiveCustomerPhone = "In-Store Diner";
+        }
+
         // 4. Calculate Financials
         BigDecimal billAmount = request.billAmount() != null && request.billAmount().compareTo(BigDecimal.ZERO) > 0
                 ? request.billAmount()
@@ -1070,6 +1141,18 @@ public class TableBookingServiceImpl implements TableBookingService {
                     booking.setBillAmount(billAmount);
                     booking.setBillAddedAt(Instant.now());
                 }
+                if ((booking.getCustomerName() == null || booking.getCustomerName().isBlank()
+                        || "Customer".equalsIgnoreCase(booking.getCustomerName().trim())
+                        || "Guest Diner".equalsIgnoreCase(booking.getCustomerName().trim())
+                        || "Walk-in Guest".equalsIgnoreCase(booking.getCustomerName().trim()))
+                        && effectiveCustomerName != null) {
+                    booking.setCustomerName(effectiveCustomerName);
+                }
+                if ((booking.getCustomerPhone() == null || booking.getCustomerPhone().isBlank()
+                        || "In-Store Diner".equalsIgnoreCase(booking.getCustomerPhone().trim()))
+                        && effectiveCustomerPhone != null) {
+                    booking.setCustomerPhone(effectiveCustomerPhone);
+                }
                 tableBookingRepository.save(booking);
                 log.info("Marked reservation {} as COMPLETED following bill payment of ₹{}", booking.getBookingRef(), finalTotalPaid);
             });
@@ -1080,8 +1163,8 @@ public class TableBookingServiceImpl implements TableBookingService {
             walkInBooking.setBookingRef("PNK-WI-" + String.format("%08d", 10000000 + random.nextInt(90000000)));
             walkInBooking.setStoreId(store.getId());
             walkInBooking.setUserId(customerId);
-            walkInBooking.setCustomerName((request.customerName() != null && !request.customerName().isBlank()) ? request.customerName() : "Walk-in Guest");
-            walkInBooking.setCustomerPhone((request.customerPhone() != null && !request.customerPhone().isBlank()) ? request.customerPhone() : "In-Store Diner");
+            walkInBooking.setCustomerName(effectiveCustomerName);
+            walkInBooking.setCustomerPhone(effectiveCustomerPhone);
             walkInBooking.setGuests(2);
             walkInBooking.setBookingDate(LocalDate.now());
             walkInBooking.setMealType(LocalTime.now().getHour() < 16 ? "LUNCH" : "DINNER");

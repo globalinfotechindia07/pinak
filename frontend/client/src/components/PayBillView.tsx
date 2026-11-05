@@ -742,6 +742,28 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
           </header>
 
           <div className="p-3.5 space-y-3.5">
+            {/* Paying Guest Identity Pill */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl px-3.5 py-2 flex items-center justify-between text-xs shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold shrink-0">
+                  <ShieldCheck size={14} />
+                </div>
+                <div>
+                  <span className="text-[9px] uppercase font-extrabold text-slate-400 dark:text-slate-500 block leading-tight">
+                    Authenticated Diner
+                  </span>
+                  <span className="font-extrabold text-slate-900 dark:text-white leading-tight">
+                    {effectiveCustomerName}
+                  </span>
+                </div>
+              </div>
+              {effectiveCustomerPhone && (
+                <span className="text-[11px] font-mono text-purple-700 dark:text-purple-300 font-bold bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg">
+                  {effectiveCustomerPhone}
+                </span>
+              )}
+            </div>
+
             {/* Dark Bill Hero Container with Strikethrough & Savings Pill */}
             <div className="bg-gradient-to-b from-[#241a24] to-[#171217] text-white rounded-3xl p-5 text-center relative overflow-hidden shadow-md">
               <p className="text-xs font-semibold text-slate-300">Your bill</p>

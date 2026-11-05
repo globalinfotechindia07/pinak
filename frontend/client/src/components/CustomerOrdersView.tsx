@@ -23,6 +23,7 @@ import tableBookingApi, { TableBookingDetails } from "@/api/tableBookingApi";
 import PayBillView from "./PayBillView";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/hooks/useAppStore";
 
 export interface CustomerOrdersViewProps {
   onBackToDiscover: () => void;
@@ -37,6 +38,7 @@ export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
   onPayBillForBooking,
   onPayingBillChange
 }) => {
+  const appStore = useAppStore();
   const [activeTab, setActiveTab] = useState<"bookings" | "deals">("bookings");
   const [bookings, setBookings] = useState<TableBookingDetails[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -104,8 +106,8 @@ export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
         offerTitle={payingBooking.offerTitle}
         offerDiscountPct={payingBooking.discountPct != null ? Number(payingBooking.discountPct) : undefined}
         coverChargeAmount={payingBooking.totalCoverCharge != null ? Number(payingBooking.totalCoverCharge) : undefined}
-        customerPhone={payingBooking.customerPhone}
-        customerName={payingBooking.customerName}
+        customerPhone={payingBooking.customerPhone || appStore.currentUser?.phone}
+        customerName={payingBooking.customerName || appStore.currentUser?.name}
         onBack={() => setPayingBooking(null)}
         onPaymentSuccess={(details) => {
           loadBookings();

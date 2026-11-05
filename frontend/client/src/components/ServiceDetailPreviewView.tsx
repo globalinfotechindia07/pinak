@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import apiClient from "@/api/client";
+import { useAppStore } from "@/hooks/useAppStore";
 
 interface ServiceDetailData {
   id: string;
@@ -180,6 +181,8 @@ export interface ServiceDetailPreviewViewProps {
   storeId?: string;
   userLat?: number;
   userLng?: number;
+  customerName?: string;
+  customerPhone?: string;
   onBack: () => void;
   initialView?: "detail" | "booking" | "pay_bill" | "product_order";
   initialOffer?: any;
@@ -284,10 +287,13 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   storeId,
   userLat,
   userLng,
+  customerName,
+  customerPhone,
   onBack,
   initialView = "detail",
   initialOffer
 }) => {
+  const appStore = useAppStore();
   const [data, setData] = useState<ServiceDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -634,6 +640,8 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
         distanceKm={data.distanceMeters ? Number((data.distanceMeters / 1000).toFixed(1)) : 88.1}
         offerTitle={selectedOffer?.title}
         offerDiscountPct={selectedOffer?.discountValue ? Number(selectedOffer.discountValue) : undefined}
+        customerName={customerName || appStore.currentUser?.name}
+        customerPhone={customerPhone || appStore.currentUser?.phone}
         onBack={() => {
           setCurrentView("detail");
           window.scrollTo({ top: 0, behavior: "smooth" });

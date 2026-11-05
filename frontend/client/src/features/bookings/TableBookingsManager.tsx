@@ -32,7 +32,11 @@ import {
   ShieldCheck,
   AlertTriangle,
   MoreVertical,
-  Copy
+  Copy,
+  List,
+  LayoutGrid,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { TableBookingDetails } from "@/api/tableBookingApi";
 import tableBookingApi from "@/api/tableBookingApi";
@@ -85,6 +89,30 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
   const [cancelReason, setCancelReason] = useState<string>("Guest Request / Change of Plans");
   const [cancelComments, setCancelComments] = useState<string>("");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
+
+  // View Mode: Table or Cards (persisted in localStorage)
+  const [viewMode, setViewMode] = useState<"table" | "cards">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("pinak_bookings_view_mode");
+      if (saved === "table" || saved === "cards") return saved;
+    }
+    return "table";
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pinak_bookings_view_mode", viewMode);
+    }
+  }, [viewMode]);
+
+  // Card view search and pagination
+  const [cardSearch, setCardSearch] = useState<string>("");
+  const [cardPage, setCardPage] = useState<number>(1);
+  const cardPageSize = 9;
+
+  useEffect(() => {
+    setCardPage(1);
+  }, [cardSearch, statusFilter, dateFilter, selectedStoreFilter]);
 
   // Available Stores list
   const availableStores = useMemo(() => {
@@ -219,6 +247,32 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
       return true;
     });
   }, [bookings, statusFilter, dateFilter, selectedStoreFilter]);
+
+// Card search matching helper
+  const matchBookingSearch = (b: TableBookingDetails, query: string) => {
+    if (!query || !query.trim()) return true;
+    const q = query.toLowerCase().trim();
+    return Boolean(
+      b.bookingRef?.toLowerCase().includes(q) ||
+      b.customerName?.toLowerCase().includes(q) ||
+      b.customerPhone?.includes(q) ||
+      b.storeName?.toLowerCase().includes(q) ||
+      b.slotTime?.toLowerCase().includes(q) ||
+      b.offerTitle?.toLowerCase().includes(q) ||
+      b.bookingDate?.includes(q) ||
+      b.mealType?.toLowerCase().includes(q)
+    );
+  };
+
+  const filteredCardBookings = useMemo(() => {
+    return filteredBookings.filter((b) => matchBookingSearch(b, cardSearch));
+  }, [filteredBookings, cardSearch]);
+
+  const totalCardPages = Math.ceil(filteredCardBookings.length / cardPageSize) || 1;
+  const paginatedCardBookings = useMemo(() => {
+    const start = (cardPage - 1) * cardPageSize;
+    return filteredCardBookings.slice(start, start + cardPageSize);
+  }, [filteredCardBookings, cardPage, cardPageSize]);
 
   // Aggregate Metrics
   const totalBookings = bookings.length;
@@ -745,6 +799,34 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
             </button>
           </div>
 
+          {/* View Mode Switcher in Hero */}
+          <div className="flex items-center p-1 bg-white/10 backdrop-blur-md rounded-xl border border-white/15 text-xs">
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-xs",
+                viewMode === "table" ? "bg-white text-purple-900 shadow-2xs" : "text-white/80 hover:text-white"
+              )}
+              title="Table View"
+            >
+              <List size={13} />
+              <span>Table</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-xs",
+                viewMode === "cards" ? "bg-white text-purple-900 shadow-2xs" : "text-white/80 hover:text-white"
+              )}
+              title="Cards Grid View"
+            >
+              <LayoutGrid size={13} />
+              <span>Cards</span>
+            </button>
+          </div>
+
           {/* Refresh Button */}
           <button
             type="button"
@@ -824,66 +906,567 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
         </div>
       </div>
 
-      {/* 3. Status Tabs Navigation */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {[
-          { id: "ALL", label: "All Reservations", count: bookings.length },
-          { id: "CONFIRMED", label: "Confirmed", count: confirmedCount },
-          { id: "SEATED", label: "Seated", count: seatedCount },
-          { id: "COMPLETED", label: "Completed", count: completedCount },
-          { id: "CANCELLED", label: "Cancelled", count: cancelledCount }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setStatusFilter(tab.id)}
-            className={cn(
-              "px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-2 border",
-              statusFilter === tab.id
-                ? "bg-purple-600 text-white border-purple-600 shadow-xs"
-                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850"
-            )}
-          >
-            <span>{tab.label}</span>
-            <span
+      {/* 3. Status Tabs Navigation & View Mode Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { id: "ALL", label: "All Reservations", count: bookings.length },
+            { id: "CONFIRMED", label: "Confirmed", count: confirmedCount },
+            { id: "SEATED", label: "Seated", count: seatedCount },
+            { id: "COMPLETED", label: "Completed", count: completedCount },
+            { id: "CANCELLED", label: "Cancelled", count: cancelledCount }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusFilter(tab.id)}
               className={cn(
-                "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                "px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-2 border",
                 statusFilter === tab.id
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                  ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850"
               )}
             >
-              {tab.count}
-            </span>
+              <span>{tab.label}</span>
+              <span
+                className={cn(
+                  "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                  statusFilter === tab.id
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                )}
+              >
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* View Mode Toggle: Table or Cards */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shrink-0 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode("table")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+              viewMode === "table"
+                ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs font-bold"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            )}
+            title="Table View"
+          >
+            <List size={14} />
+            <span>Table</span>
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={() => setViewMode("cards")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+              viewMode === "cards"
+                ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs font-bold"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            )}
+            title="Card Grid View"
+          >
+            <LayoutGrid size={14} />
+            <span>Cards</span>
+          </button>
+        </div>
       </div>
 
-      {/* 4. Production Ready AdvancedTable with Pagination & Export */}
-      <AdvancedTable<TableBookingDetails>
-        columns={columns}
-        data={filteredBookings}
-        keyExtractor={(b) => b.bookingRef || b.bookingId}
-        searchPlaceholder="Filter reservations by guest name, phone, ref, slot, or restaurant..."
-        searchFilter={(b, query) => {
-          const q = query.toLowerCase();
-          return Boolean(
-            b.bookingRef?.toLowerCase().includes(q) ||
-            b.customerName?.toLowerCase().includes(q) ||
-            b.customerPhone?.includes(q) ||
-            b.storeName?.toLowerCase().includes(q) ||
-            b.slotTime?.toLowerCase().includes(q) ||
-            b.offerTitle?.toLowerCase().includes(q)
-          );
-        }}
-        title="Dine-In Reservations"
-        subtitle={`Showing ${filteredBookings.length} matching reservations with live table billing integration.`}
-        tableClassName="min-w-[960px]"
-        defaultPageSize={10}
-        emptyState={tableEmptyState}
-        emptyMessage="No table reservations found matching your criteria. When customers pre-book a table, their reservation will show here."
-        onRowClick={(b) => setSelectedBooking(b)}
-      />
+      {/* 4. Main Content: Table View OR Cards View */}
+      {viewMode === "table" ? (
+        <AdvancedTable<TableBookingDetails>
+          columns={columns}
+          data={filteredBookings}
+          keyExtractor={(b) => b.bookingRef || b.bookingId}
+          searchPlaceholder="Filter reservations by guest name, phone, ref, slot, or restaurant..."
+          searchFilter={(b, query) => {
+            const q = query.toLowerCase();
+            return Boolean(
+              b.bookingRef?.toLowerCase().includes(q) ||
+              b.customerName?.toLowerCase().includes(q) ||
+              b.customerPhone?.includes(q) ||
+              b.storeName?.toLowerCase().includes(q) ||
+              b.slotTime?.toLowerCase().includes(q) ||
+              b.offerTitle?.toLowerCase().includes(q)
+            );
+          }}
+          title="Dine-In Reservations"
+          subtitle={`Showing ${filteredBookings.length} matching reservations with live table billing integration.`}
+          tableClassName="min-w-[960px]"
+          defaultPageSize={10}
+          emptyState={tableEmptyState}
+          emptyMessage="No table reservations found matching your criteria. When customers pre-book a table, their reservation will show here."
+          onRowClick={(b) => setSelectedBooking(b)}
+        />
+      ) : (
+        /* Cards View */
+        <div className="space-y-4">
+          {/* Card Search & Summary Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="relative flex-1 max-w-md">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={cardSearch}
+                onChange={(e) => setCardSearch(e.target.value)}
+                placeholder="Search reservations by guest, phone, ref, slot, or restaurant..."
+                className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-900 dark:text-white placeholder:text-slate-400"
+              />
+              {cardSearch && (
+                <button
+                  type="button"
+                  onClick={() => setCardSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            <div className="text-xs text-slate-500 flex items-center justify-between sm:justify-end gap-2">
+              <span>
+                Showing <strong>{filteredCardBookings.length}</strong> of <strong>{filteredBookings.length}</strong> reservations
+              </span>
+              {(cardSearch || statusFilter !== "ALL" || dateFilter !== "ALL" || selectedStoreFilter !== "ALL") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCardSearch("");
+                    setStatusFilter("ALL");
+                    setDateFilter("ALL");
+                    setSelectedStoreFilter("ALL");
+                  }}
+                  className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer ml-1"
+                >
+                  Reset filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          {filteredCardBookings.length === 0 ? (
+            tableEmptyState
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                {paginatedCardBookings.map((b) => {
+                  const status = b.status?.toUpperCase() || "CONFIRMED";
+                  const isCancelled = status === "CANCELLED" || Boolean(b.isCancelled);
+                  const isCompleted = status === "COMPLETED";
+                  const isSeated = status === "SEATED";
+                  const isConfirmed = status === "CONFIRMED";
+
+                  return (
+                    <div
+                      key={b.bookingRef || b.bookingId}
+                      onClick={() => setSelectedBooking(b)}
+                      className={cn(
+                        "p-5 rounded-3xl bg-white dark:bg-[#121626] border transition-all cursor-pointer group flex flex-col justify-between space-y-4 hover:shadow-xl relative",
+                        isConfirmed && "border-slate-200/90 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600",
+                        isSeated && "border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600",
+                        isCompleted && "border-slate-200/90 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-600",
+                        isCancelled && "border-rose-200/70 dark:border-rose-950/60 hover:border-rose-300 opacity-80"
+                      )}
+                    >
+                      {/* Card Header: Reference, Status Badge & Dropdown */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-extrabold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-1">
+                            <Hash size={12} className="text-purple-600 dark:text-purple-400" />
+                            <span>{b.bookingRef}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(b.bookingRef);
+                              toast.success(`Copied Booking Ref #${b.bookingRef}`);
+                            }}
+                            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                            title="Copy Booking Ref"
+                          >
+                            <Copy size={12} />
+                          </button>
+                        </div>
+
+                        {/* Status Badge & Dropdown */}
+                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <Badge
+                            variant={
+                              status === "CONFIRMED"
+                                ? "success"
+                                : status === "SEATED"
+                                ? "secondary"
+                                : status === "COMPLETED"
+                                ? "default"
+                                : "destructive"
+                            }
+                            className={cn(
+                              "font-extrabold uppercase tracking-wider text-[10px] px-2.5 py-0.5 inline-flex items-center gap-1",
+                              status === "CONFIRMED" && "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+                              status === "SEATED" && "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+                              status === "COMPLETED" && "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800",
+                              status === "CANCELLED" && "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                            )}
+                          >
+                            {status === "CONFIRMED" && <CheckCircle2 size={10} />}
+                            {status === "SEATED" && <Users size={10} />}
+                            {status === "COMPLETED" && <ShieldCheck size={10} />}
+                            {status === "CANCELLED" && <XCircle size={10} />}
+                            <span>{status === "COMPLETED" ? "PAID" : status}</span>
+                          </Badge>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition cursor-pointer"
+                              >
+                                <MoreVertical size={14} />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#121626]">
+                              <DropdownMenuLabel className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-2 py-1">
+                                Booking #{b.bookingRef}
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => setSelectedBooking(b)}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300"
+                              >
+                                <Eye size={14} className="text-purple-600 dark:text-purple-400" />
+                                <span>View Details</span>
+                              </DropdownMenuItem>
+                              {!isCancelled && !isCompleted && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setBillModalBooking(b);
+                                    setBillAmountToSet(b.billAmount ? String(b.billAmount) : "");
+                                  }}
+                                  className="flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Receipt size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                    <span>{b.billAmount ? "Update Food Bill" : "Attach Food Bill"}</span>
+                                  </div>
+                                  {b.billAmount && (
+                                    <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded font-black text-emerald-800 dark:text-emerald-300">
+                                      ₹{Number(b.billAmount).toLocaleString("en-IN")}
+                                    </span>
+                                  )}
+                                </DropdownMenuItem>
+                              )}
+                              {!isCancelled && !isCompleted && isConfirmed && (
+                                <DropdownMenuItem
+                                  disabled={statusUpdatingId === b.bookingRef}
+                                  onClick={() => handleUpdateStatus(b, "SEATED")}
+                                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                                >
+                                  <Users size={14} className="text-blue-600 dark:text-blue-400" />
+                                  <span>Seat Guests</span>
+                                </DropdownMenuItem>
+                              )}
+                              {!isCancelled && !isCompleted && isSeated && (
+                                <DropdownMenuItem
+                                  disabled={statusUpdatingId === b.bookingRef}
+                                  onClick={() => handleUpdateStatus(b, "COMPLETED")}
+                                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+                                >
+                                  <CheckCircle2 size={14} className="text-purple-600 dark:text-purple-400" />
+                                  <span>Mark Completed</span>
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  navigator.clipboard.writeText(b.bookingRef);
+                                  toast.success(`Copied Booking Ref #${b.bookingRef}`);
+                                }}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                <Copy size={14} className="text-slate-500" />
+                                <span>Copy Booking Ref</span>
+                              </DropdownMenuItem>
+                              {b.customerPhone && (
+                                <DropdownMenuItem
+                                  onClick={() => window.open(`tel:${b.customerPhone}`)}
+                                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                  <Phone size={14} className="text-slate-500" />
+                                  <span>Call Diner ({b.customerPhone})</span>
+                                </DropdownMenuItem>
+                              )}
+                              {!isCancelled && !isCompleted && (
+                                <>
+                                  <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+                                  <DropdownMenuItem
+                                    onClick={() => setCancellingBooking(b)}
+                                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                  >
+                                    <XCircle size={14} className="text-rose-600 dark:text-rose-400" />
+                                    <span>Cancel Reservation</span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+
+                      {/* Diner Identity & Party Size */}
+                      <div className="flex items-start justify-between gap-3 pt-1">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-2xl bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 flex items-center justify-center font-black text-xs shrink-0">
+                            {(b.customerName || "G").slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white leading-tight group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors truncate">
+                              {b.customerName || "Guest Diner"}
+                            </h4>
+                            {b.customerPhone && (
+                              <a
+                                href={`tel:${b.customerPhone}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[11px] font-mono text-slate-500 hover:text-purple-600 dark:text-slate-400 flex items-center gap-1 mt-0.5"
+                              >
+                                <Phone size={10} />
+                                <span>{b.customerPhone}</span>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right space-y-1 shrink-0">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-extrabold text-xs border border-purple-200/60 dark:border-purple-800/60">
+                            <Users size={12} />
+                            <span>{b.guests || 2} Guests</span>
+                          </span>
+                          {b.verificationCode && (
+                            <div className="text-[10px] font-mono text-slate-400 font-bold">
+                              PIN: <span className="text-slate-800 dark:text-slate-200 font-black">{b.verificationCode}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Slot Timing & Store Info Box */}
+                      <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/60 text-xs">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                            <Calendar size={11} className="text-purple-600 dark:text-purple-400" />
+                            <span>Date &amp; Slot</span>
+                          </span>
+                          <p className="font-extrabold text-slate-800 dark:text-slate-200 text-xs truncate">
+                            {b.formattedDate || b.bookingDate}
+                          </p>
+                          <p className="text-[11px] font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                            <Clock size={11} />
+                            <span>{b.slotTime} ({b.mealType || "DINE-IN"})</span>
+                          </p>
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                            <StoreIcon size={11} className="text-indigo-600 dark:text-indigo-400" />
+                            <span>Restaurant</span>
+                          </span>
+                          <p className="font-extrabold text-slate-800 dark:text-slate-200 text-xs truncate" title={b.storeName}>
+                            {b.storeName || "Partner Restaurant"}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1" title={b.offerTitle || "Standard Reservation"}>
+                            <Sparkles size={10} className="text-amber-500 shrink-0" />
+                            <span className="truncate">{b.offerTitle || "Standard Reservation"}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Cover Charge & Dining Food Bill Status */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-slate-400 uppercase font-bold">Cover Charge</span>
+                          <div className="font-extrabold text-xs text-slate-700 dark:text-slate-300">
+                            {Number(b.totalCoverCharge || 0) > 0 ? (
+                              <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                                ₹{b.totalCoverCharge} Paid
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">FREE</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right space-y-0.5">
+                          <span className="text-[10px] text-slate-400 uppercase font-bold">Dining Food Bill</span>
+                          <div>
+                            {status === "COMPLETED" ? (
+                              <div className="flex items-center gap-1 justify-end font-black text-sm text-emerald-700 dark:text-emerald-400">
+                                <CheckCircle2 size={13} className="text-emerald-600" />
+                                <span>₹{Number(b.billAmount || 0).toLocaleString("en-IN")}</span>
+                              </div>
+                            ) : b.billAmount ? (
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <span className="font-black text-sm text-emerald-700 dark:text-emerald-400">
+                                  ₹{Number(b.billAmount).toLocaleString("en-IN")}
+                                </span>
+                                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.2 rounded">Ready</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                Pending Waiter
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Footer Quick Action Buttons */}
+                      <div className="pt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        {isConfirmed && !isCancelled && !isCompleted && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={statusUpdatingId === b.bookingRef}
+                              onClick={() => handleUpdateStatus(b, "SEATED")}
+                              className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
+                            >
+                              <Users size={13} />
+                              <span>Seat Guests</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBooking(b)}
+                              className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer"
+                            >
+                              Details
+                            </button>
+                          </>
+                        )}
+
+                        {isSeated && !isCancelled && !isCompleted && (
+                          <>
+                            {!b.billAmount ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBillModalBooking(b);
+                                  setBillAmountToSet("");
+                                }}
+                                className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
+                              >
+                                <Receipt size={13} />
+                                <span>Attach Bill</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={statusUpdatingId === b.bookingRef}
+                                onClick={() => handleUpdateStatus(b, "COMPLETED")}
+                                className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
+                              >
+                                <CheckCircle2 size={13} />
+                                <span>Complete</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBooking(b)}
+                              className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer"
+                            >
+                              Details
+                            </button>
+                          </>
+                        )}
+
+                        {isCompleted && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBooking(b)}
+                            className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                          >
+                            <Eye size={13} className="text-purple-600" />
+                            <span>View Settled Receipt</span>
+                          </button>
+                        )}
+
+                        {isCancelled && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBooking(b)}
+                            className="w-full py-2 px-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                          >
+                            <XCircle size={13} />
+                            <span>Cancellation Info</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Card Pagination Bar */}
+              {totalCardPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                  <div className="text-xs text-slate-500 font-medium">
+                    Showing <strong className="text-slate-800 dark:text-white">{(cardPage - 1) * cardPageSize + 1}</strong> to <strong className="text-slate-800 dark:text-white">{Math.min(cardPage * cardPageSize, filteredCardBookings.length)}</strong> of <strong className="text-slate-800 dark:text-white">{filteredCardBookings.length}</strong> reservations
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCardPage((p) => Math.max(1, p - 1))}
+                      disabled={cardPage === 1}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <ChevronLeft size={13} />
+                      <span>Prev</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalCardPages }, (_, idx) => idx + 1)
+                        .filter((p) => p === 1 || p === totalCardPages || Math.abs(p - cardPage) <= 1)
+                        .map((p, index, array) => {
+                          const prev = array[index - 1];
+                          const hasGap = prev && p - prev > 1;
+
+                          return (
+                            <React.Fragment key={p}>
+                              {hasGap && <span className="px-1 text-slate-400 text-xs">...</span>}
+                              <button
+                                type="button"
+                                onClick={() => setCardPage(p)}
+                                className={cn(
+                                  "w-8 h-8 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center",
+                                  cardPage === p
+                                    ? "bg-purple-600 text-white shadow-xs"
+                                    : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                )}
+                              >
+                                {p}
+                              </button>
+                            </React.Fragment>
+                          );
+                        })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCardPage((p) => Math.min(totalCardPages, p + 1))}
+                      disabled={cardPage === totalCardPages}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* 5. Attach / Update Food Bill Right-Side Drawer */}
       {billModalBooking && (
