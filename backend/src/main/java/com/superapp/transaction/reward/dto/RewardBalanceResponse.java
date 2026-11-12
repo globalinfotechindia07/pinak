@@ -11,6 +11,9 @@ public record RewardBalanceResponse(
         @Schema(description = "Available spendable balance in rupees", example = "48.00")
         BigDecimal availableBalance,
 
+        @Schema(description = "Points balance alias for mobile clients", example = "48.00")
+        BigDecimal pointsBalance,
+
         @Schema(description = "Pending balance awaiting settlement in rupees", example = "4.80")
         BigDecimal pendingBalance,
 
@@ -33,22 +36,26 @@ public record RewardBalanceResponse(
         String displayValue,
 
         @Schema(description = "Rupee equivalent display value", example = "₹48")
-        String rupeeValue
+        String rupeeValue,
+
+        @Schema(description = "Customer loyalty tier", example = "SILVER")
+        String tier
 ) {
     public RewardBalanceResponse(BigDecimal availableBalance, BigDecimal pendingBalance,
                                  BigDecimal lifetimeEarned, BigDecimal lifetimeRedeemed,
                                  String currency) {
         this(
                 availableBalance != null ? availableBalance : BigDecimal.ZERO,
+                availableBalance != null ? availableBalance : BigDecimal.ZERO,
                 pendingBalance != null ? pendingBalance : BigDecimal.ZERO,
                 lifetimeEarned != null ? lifetimeEarned : BigDecimal.ZERO,
                 lifetimeRedeemed != null ? lifetimeRedeemed : BigDecimal.ZERO,
                 currency != null ? currency : "PINAK_COIN",
-                availableBalance != null ? availableBalance.multiply(BigDecimal.valueOf(10)).longValue() : 0L,
-                pendingBalance != null ? pendingBalance.multiply(BigDecimal.valueOf(10)).longValue() : 0L,
-                (availableBalance != null ? availableBalance.multiply(BigDecimal.valueOf(10)).longValue() : 0L) + " Coins",
-                "₹" + (availableBalance != null ? availableBalance.setScale(0, RoundingMode.DOWN).toPlainString() : "0")
+                availableBalance != null ? availableBalance.longValue() : 0L,
+                pendingBalance != null ? pendingBalance.longValue() : 0L,
+                (availableBalance != null ? availableBalance.setScale(0, RoundingMode.HALF_UP).toPlainString() : "0") + " Coins",
+                "₹" + (availableBalance != null ? availableBalance.setScale(0, RoundingMode.DOWN).toPlainString() : "0"),
+                "SILVER"
         );
     }
 }
-

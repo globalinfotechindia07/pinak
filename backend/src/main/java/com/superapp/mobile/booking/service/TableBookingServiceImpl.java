@@ -17,6 +17,8 @@ import com.superapp.transaction.transaction.entity.Transaction;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.enums.TransactionType;
 import com.superapp.transaction.transaction.repository.TransactionRepository;
+import com.superapp.transaction.reward.dto.AdminRewardAdjustmentRequest;
+import com.superapp.transaction.reward.enums.RewardLedgerType;
 import com.superapp.transaction.reward.service.RewardService;
 import com.superapp.user.entity.Role;
 import com.superapp.user.entity.User;
@@ -1016,7 +1018,12 @@ public class TableBookingServiceImpl implements TableBookingService {
         }
 
         // 3. Resolve Customer User
-        UUID customerId = extractUserIdFromHeader(authHeader);
+        UUID customerId = null;
+        if (request.customerId() != null && !request.customerId().isBlank()) {
+            try {
+                customerId = UUID.fromString(request.customerId().trim());
+            } catch (Exception ignored) {}
+        }
         if (customerId == null && request.customerPhone() != null && !request.customerPhone().isBlank()) {
             String p = request.customerPhone().trim();
             String digitsOnly = p.replaceAll("[^0-9]", "");
@@ -1025,6 +1032,15 @@ public class TableBookingServiceImpl implements TableBookingService {
                     .or(() -> digitsOnly.length() >= 10 ? userRepository.findByPhone("+91" + digitsOnly.substring(digitsOnly.length() - 10)) : Optional.empty())
                     .map(com.superapp.user.entity.User::getId)
                     .orElse(null);
+        }
+        if (customerId == null) {
+            customerId = extractUserIdFromHeader(authHeader);
+            if (customerId != null) {
+                User u = userRepository.findById(customerId).orElse(null);
+                if (u != null && u.getRole() != Role.CUSTOMER) {
+                    customerId = null;
+                }
+            }
         }
         if (customerId == null) {
             // Default to first existing valid customer from the database or create guest user
@@ -1140,6 +1156,26 @@ public class TableBookingServiceImpl implements TableBookingService {
         tx.setPointsAwarded(coinsEarned);
         tx.setDescription("Dining bill payment at " + storeDisplayName + " [Ref: " + txnRef + "]");
         tx = transactionRepository.save(tx);
+
+        // Debit redeemed PINAK Coins if customer used wallet coins for bill discount
+        if (request.coinsRedeemed() != null && request.coinsRedeemed() > 0 && rewardService != null) {
+            try {
+                rewardService.adjustReward(
+                        new AdminRewardAdjustmentRequest(
+                                customerId,
+                                BigDecimal.valueOf(request.coinsRedeemed()),
+                                RewardLedgerType.DEBIT,
+                                "PINAK Coins (" + request.coinsRedeemed() + " coins) redeemed for bill discount at " + storeDisplayName
+                        ),
+                        "rdm_" + tx.getId(),
+                        "REQ-" + tx.getTransactionReference(),
+                        customerId
+                );
+                log.info("Debited {} redeemed PINAK Coins from customerId={} wallet", request.coinsRedeemed(), customerId);
+            } catch (Exception ex) {
+                log.warn("Failed to debit redeemed customer reward account: {}", ex.getMessage());
+            }
+        }
 
         // Credit Customer Reward Account Wallet (PINAK Coins) & Record in Ledger
         if (coinsEarned > 0 && rewardService != null) {

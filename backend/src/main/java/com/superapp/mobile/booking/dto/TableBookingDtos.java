@@ -296,6 +296,7 @@ public final class TableBookingDtos {
 
     @Schema(description = "Dining bill payment request payload from customer PayBillView")
     public record PayDiningBillRequest(
+            String customerId,
             String storeId,
             String storeName,
             String bookingRef,

@@ -417,6 +417,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
     setIsProcessingPayment(true);
     try {
       const payload = {
+        customerId,
         storeId,
         storeName,
         bookingRef,
@@ -436,6 +437,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
       const result = await tableBookingApi.payDiningBill(payload);
 
       const details = {
+        customerId,
         txnId: result.txnId,
         receiptNumber: result.receiptNumber,
         bookingRef: result.bookingRef,
@@ -446,6 +448,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
         tip: result.tip != null ? result.tip : selectedTip,
         totalPaid: result.totalPaid != null ? result.totalPaid : totalPayable,
         coinsEarned: result.coinsEarned != null ? result.coinsEarned : coinsEarned,
+        coinsRedeemed: useCoins ? coinSavings : 0,
         paymentMethod: result.paymentMethod || selectedPaymentMethod,
         timestamp: result.timestamp || new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
         status: result.status || "SUCCESS"
@@ -494,6 +497,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
       // Fallback for resilient preview experience if offline
       const fallbackTxnId = `PNK-TXN-${Math.floor(10000000 + Math.random() * 90000000)}`;
       const details = {
+        customerId,
         txnId: fallbackTxnId,
         receiptNumber: `REC-${fallbackTxnId.replace("PNK-TXN-", "")}`,
         bookingRef,
@@ -504,6 +508,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
         tip: selectedTip,
         totalPaid: totalPayable,
         coinsEarned,
+        coinsRedeemed: useCoins ? coinSavings : 0,
         paymentMethod: selectedPaymentMethod,
         timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
         status: "SUCCESS"

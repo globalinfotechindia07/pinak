@@ -2,11 +2,17 @@ import apiClient from "./client";
 import { ApiResponse, PaginatedResponse } from "../types/api/common";
 
 export interface RewardBalanceDTO {
-  customerId: string;
-  pointsBalance: number;
-  lifetimeEarned: number;
-  lifetimeRedeemed: number;
-  tier: string;
+  customerId?: string;
+  pointsBalance?: number;
+  availableBalance?: number;
+  availableCoins?: number;
+  pendingBalance?: number;
+  lifetimeEarned?: number;
+  lifetimeRedeemed?: number;
+  tier?: string;
+  currency?: string;
+  displayValue?: string;
+  rupeeValue?: string;
 }
 
 export interface CustomerRewardAccountDTO {

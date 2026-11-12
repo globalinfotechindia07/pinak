@@ -101,6 +101,7 @@ export interface CreateTableBookingPayload {
 }
 
 export interface PayDiningBillPayload {
+  customerId?: string;
   storeId?: string;
   storeName?: string;
   bookingRef?: string;

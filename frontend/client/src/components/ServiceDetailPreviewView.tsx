@@ -188,6 +188,7 @@ export interface ServiceDetailPreviewViewProps {
   onBack: () => void;
   initialView?: "detail" | "booking" | "pay_bill" | "product_order";
   initialOffer?: any;
+  onPaymentSuccess?: (details: any) => void;
 }
 
 interface StoreLocationMapProps {
@@ -295,7 +296,8 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
   customerCoins,
   onBack,
   initialView = "detail",
-  initialOffer
+  initialOffer,
+  onPaymentSuccess
 }) => {
   const appStore = useAppStore();
   const [data, setData] = useState<ServiceDetailData | null>(null);
@@ -728,6 +730,9 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
           toast.success(`Payment of ₹${details.totalPaid} Successful!`, {
             description: `Paid to ${data.storeName}. Transaction #${details.txnId}`
           });
+          if (onPaymentSuccess) {
+            onPaymentSuccess(details);
+          }
         }}
       />
     );
@@ -752,6 +757,9 @@ export const ServiceDetailPreviewView: React.FC<ServiceDetailPreviewViewProps> =
           toast.success(`Payment of ₹${orderDetails.totalPaid} Successful!`, {
             description: `Paid to ${data.storeName}. Saved ₹${orderDetails.totalSavings || 0} with offer applied.`
           });
+          if (onPaymentSuccess) {
+            onPaymentSuccess(orderDetails);
+          }
         }}
       />
     );
