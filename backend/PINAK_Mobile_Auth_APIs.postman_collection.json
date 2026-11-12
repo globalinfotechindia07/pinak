@@ -1,587 +1,306 @@
 {
   "info": {
-    "_postman_id": "b8a9c0d1-e2f3-4a5b-6c7d-8e9f0a1b2c3d",
-    "name": "PINAK Mobile App — Auth & OTP Collection",
-    "description": "# PINAK Mobile App — Authentication & OTP Collection\n\nProduction-grade Postman collection for the **PINAK Mobile Super-App Authentication Subsystem** (Screens 05–08).\n\n### 🔐 Database OTP Architecture\n- **Table**: PostgreSQL `mobile_otps` (Flyway Migration `V8__add_pinak_mobile_onboarding_fields.sql`).\n- **No Mock OTPs**: Codes are generated randomly and securely, recorded in the database, delivered via SMS/WhatsApp, and verified using constant-time `MessageDigest.isEqual`.\n- **Cooldown & Brute-Force**: 60-second cooldown rate limit per phone; maximum 5 failed attempts before challenge lockout.\n\n### 🗄️ Querying Active OTP from PostgreSQL:\n```sql\nSELECT phone, otp_code, session_id, expires_at, attempts, is_consumed \nFROM mobile_otps \nWHERE phone = '+919876543210' \nORDER BY created_at DESC \nLIMIT 1;\n```",
+    "_postman_id": "b1000000-0000-0000-0000-000000000001",
+    "name": "PINAK Mobile App - Complete API Suite",
+    "description": "Comprehensive, production-ready Postman collection for the PINAK Consumer Mobile App covering Screens 05–15: Authentication, Location, Discover Feed, Store & Service Details, Table Bookings, In-Store Pay Bill, Payments, Rewards Coins, Ledger, and Notifications.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8080",
-      "type": "string",
-      "description": "Base URL of PINAK Backend API server"
-    },
-    {
-      "key": "testPhone",
-      "value": "+919876543210",
-      "type": "string",
-      "description": "Customer mobile phone number in E.164 format"
-    },
-    {
-      "key": "sessionId",
-      "value": "",
-      "type": "string",
-      "description": "Auto-captured OTP challenge session ID"
-    },
-    {
-      "key": "otpCode",
-      "value": "",
-      "type": "string",
-      "description": "6-digit OTP code retrieved from PostgreSQL mobile_otps table"
-    },
-    {
-      "key": "onboardingToken",
-      "value": "",
-      "type": "string",
-      "description": "Auto-captured scoped onboarding JWT for first-time signups"
-    },
-    {
-      "key": "accessToken",
-      "value": "",
-      "type": "string",
-      "description": "Auto-captured permanent customer Bearer JWT access token"
-    },
-    {
-      "key": "refreshToken",
-      "value": "",
-      "type": "string",
-      "description": "Auto-captured refresh token"
-    },
-    {
-      "key": "smokehouseStoreId",
-      "value": "e1000000-0000-0000-0000-000000000001",
-      "type": "string",
-      "description": "The Smokehouse Grill Mock Store UUID for Screen 11 Service Detail"
-    },
-    {
-      "key": "productId",
-      "value": "f1000000-0000-0000-0000-000000000001",
-      "type": "string",
-      "description": "Canonical Mock Product UUID for Wood-Fired Truffle Pizza"
-    }
-  ],
   "item": [
     {
-      "name": "1. Send Mobile OTP (Screen 05)",
-      "event": [
+      "name": "01. Mobile Authentication & Onboarding (Screens 05–08)",
+      "description": "PINAK Consumer OTP login, auto-verification, profile completion, and token lifecycle",
+      "item": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status code is 200 OK', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "var jsonData = pm.response.json();",
-              "if (jsonData && jsonData.data) {",
-              "    if (jsonData.data.sessionId) {",
-              "        pm.collectionVariables.set('sessionId', jsonData.data.sessionId);",
-              "        console.log('✅ Auto-saved sessionId: ' + jsonData.data.sessionId);",
-              "    }",
-              "    if (jsonData.data.phone) {",
-              "        pm.collectionVariables.set('testPhone', jsonData.data.phone);",
-              "    }",
-              "    console.log('ℹ️ Check PostgreSQL table mobile_otps for the 6-digit OTP code.');",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"channel\": \"SMS\",\n  \"whatsappAlertsEnabled\": true,\n  \"soundboxStaySignedIn\": false,\n  \"referralCode\": \"FRIEND100\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/mobile/auth/send-otp",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "mobile",
-            "auth",
-            "send-otp"
-          ]
-        },
-        "description": "Triggers 6-digit OTP delivery to the customer's phone and records the challenge in PostgreSQL `mobile_otps` table."
-      },
-      "response": [
-        {
-          "name": "200 OK — OTP Generated & Stored in DB",
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": true,\n  \"message\": \"OTP sent successfully\",\n  \"data\": {\n    \"sessionId\": \"otp_sess_a81d4e2b09c1\",\n    \"phone\": \"+919876543210\",\n    \"channel\": \"SMS\",\n    \"resendAvailableInSeconds\": 60,\n    \"simBindingVerified\": true\n  }\n}"
-        },
-        {
-          "name": "429 Too Many Requests — Cooldown Active",
-          "status": "Too Many Requests",
-          "code": 429,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": false,\n  \"message\": \"Please wait 60 seconds before requesting another OTP.\",\n  \"errorCode\": \"RATE_LIMIT_EXCEEDED\"\n}"
-        }
-      ]
-    },
-    {
-      "name": "2. Resend Mobile OTP (Screen 07)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status code is 200 OK', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "var jsonData = pm.response.json();",
-              "if (jsonData && jsonData.data && jsonData.data.sessionId) {",
-              "    pm.collectionVariables.set('sessionId', jsonData.data.sessionId);",
-              "    console.log('✅ Refreshed sessionId: ' + jsonData.data.sessionId);",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"channel\": \"SMS\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/mobile/auth/resend-otp",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "mobile",
-            "auth",
-            "resend-otp"
-          ]
-        },
-        "description": "Resends a new 6-digit OTP code once the 60-second cooldown expires."
-      },
-      "response": [
-        {
-          "name": "200 OK — Fresh OTP Sent",
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": true,\n  \"message\": \"OTP sent successfully\",\n  \"data\": {\n    \"sessionId\": \"otp_sess_c92e1f4a56b7\",\n    \"phone\": \"+919876543210\",\n    \"channel\": \"SMS\",\n    \"resendAvailableInSeconds\": 60,\n    \"simBindingVerified\": true\n  }\n}"
-        }
-      ]
-    },
-    {
-      "name": "3. Verify OTP & Smart Gateway (Screen 07)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status code is 200 OK', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "var jsonData = pm.response.json();",
-              "if (jsonData && jsonData.data) {",
-              "    if (jsonData.data.onboardingToken) {",
-              "        pm.collectionVariables.set('onboardingToken', jsonData.data.onboardingToken);",
-              "        console.log('✅ Captured onboardingToken: ' + jsonData.data.onboardingToken);",
-              "    }",
-              "    if (jsonData.data.token || jsonData.data.accessToken) {",
-              "        var tok = jsonData.data.token || jsonData.data.accessToken;",
-              "        pm.collectionVariables.set('accessToken', tok);",
-              "        console.log('✅ Captured accessToken: ' + tok);",
-              "    }",
-              "    if (jsonData.data.refreshToken) {",
-              "        pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
-              "        console.log('✅ Captured refreshToken: ' + jsonData.data.refreshToken);",
-              "    }",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"otp\": \"{{otpCode}}\",\n  \"sessionId\": \"{{sessionId}}\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/mobile/auth/verify-otp",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "mobile",
-            "auth",
-            "verify-otp"
-          ]
-        },
-        "description": "Validates the 6-digit OTP code directly from PostgreSQL `mobile_otps` table and routes returning members to Home Dashboard or new signups to Screen 08 Profile Setup."
-      },
-      "response": [
-        {
-          "name": "200 OK — First-Time Signup (Routes to Setup)",
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": true,\n  \"message\": \"OTP verified successfully\",\n  \"data\": {\n    \"isNewUser\": true,\n    \"referralEligible\": true,\n    \"token\": null,\n    \"refreshToken\": null,\n    \"onboardingToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Member 3210\",\n      \"mobile\": \"+919876543210\",\n      \"role\": \"CUSTOMER\"\n    },\n    \"welcomeBonus\": {\n      \"claimed\": true,\n      \"amount\": 100.0,\n      \"unlockedCouponCode\": \"WELCOME100\",\n      \"description\": \"Flat ₹100 discount coupon unlocks on profile completion\"\n    },\n    \"nextScreen\": \"PROFILE_SETUP_SCREEN_08\"\n  }\n}"
-        },
-        {
-          "name": "200 OK — Returning Member (Routes to Home)",
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": true,\n  \"message\": \"OTP verified successfully\",\n  \"data\": {\n    \"isNewUser\": false,\n    \"referralEligible\": false,\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"onboardingToken\": null,\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Rahul Sharma\",\n      \"mobile\": \"+919876543210\",\n      \"role\": \"CUSTOMER\"\n    },\n    \"welcomeBonus\": null,\n    \"nextScreen\": \"HOME_DASHBOARD\"\n  }\n}"
-        },
-        {
-          "name": "401 Unauthorized — Invalid OTP Code",
-          "status": "Unauthorized",
-          "code": 401,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": false,\n  \"message\": \"Invalid OTP code.\",\n  \"errorCode\": \"INVALID_CREDENTIALS\"\n}"
-        }
-      ]
-    },
-    {
-      "name": "4. Verify OTP (Invalid Code Test)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status code is 401 Unauthorized', function () {",
-              "    pm.response.to.have.status(401);",
-              "});"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"otp\": \"000000\",\n  \"sessionId\": \"{{sessionId}}\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/mobile/auth/verify-otp",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "mobile",
-            "auth",
-            "verify-otp"
-          ]
-        },
-        "description": "Tests rejection of wrong OTP code (returns 401 Unauthorized)."
-      },
-      "response": [
-        {
-          "name": "401 Unauthorized — Wrong Code",
-          "status": "Unauthorized",
-          "code": 401,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": false,\n  \"message\": \"Invalid OTP code.\",\n  \"errorCode\": \"INVALID_CREDENTIALS\"\n}"
-        }
-      ]
-    },
-    {
-      "name": "5. Discovery — Get States & Cities Dropdown",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status code is 200 OK', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "var jsonData = pm.response.json();",
-              "pm.expect(jsonData.success).to.eql(true);"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/discovery/states",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "discovery",
-            "states"
-          ]
-        },
-        "description": "Returns distinct list of states for profile setup dropdown. Cities can be fetched via `GET /api/v1/discovery/cities?state=Gujarat`."
-      }
-    },
-    {
-      "name": "6. Discovery — Get Categories (Admin / Merchant Backed)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status code is 200 OK', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "var jsonData = pm.response.json();",
-              "pm.expect(jsonData.success).to.eql(true);"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/discovery/categories",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "discovery",
-            "categories"
-          ]
-        },
-        "description": "Returns active categories configured by Admin/Merchant to allow users to select category preferences."
-      }
-    },
-    {
-      "name": "7. Complete Profile Setup (Screen 08)",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status code is 200 OK', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "var jsonData = pm.response.json();",
-              "if (jsonData && jsonData.data) {",
-              "    if (jsonData.data.token) {",
-              "        pm.collectionVariables.set('accessToken', jsonData.data.token);",
-              "        console.log('✅ Captured permanent customer accessToken: ' + jsonData.data.token);",
-              "    }",
-              "    if (jsonData.data.refreshToken) {",
-              "        pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
-              "    }",
-              "    pm.expect(jsonData.data.welcomeBonusUnlocked).to.eql(true);",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Accept",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{onboardingToken}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"fullName\": \"Rahul Sharma\",\n  \"email\": \"rahul.sharma@example.com\",\n  \"city\": \"Ahmedabad\",\n  \"state\": \"Gujarat\",\n  \"district\": \"Ahmedabad\",\n  \"pincode\": \"380015\",\n  \"gender\": \"MALE\",\n  \"address\": \"101, Galaxy Heights, S.G. Highway\",\n  \"birthday\": \"1998-05-15\",\n  \"referralCode\": \"FRIEND100\",\n  \"categoryPreferences\": [\n    \"11111111-1111-1111-1111-111111111101\",\n    \"11111111-1111-1111-1111-111111111104\"\n  ]\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/mobile/auth/complete-setup",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "mobile",
-            "auth",
-            "complete-setup"
-          ]
-        },
-        "description": "Finalizes customer profile using scoped onboarding token. Enriches name, email, city, state, district, pincode, gender, address, birthday, referralCode, and categoryPreferences. Unlocks ₹100 welcome coupon and returns permanent tokens."
-      },
-      "response": [
-        {
-          "name": "200 OK — Profile Completed",
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": true,\n  \"message\": \"Profile setup completed successfully\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": \"7f09c621-0a2b-4cd3-89ef-56789abcdef0\",\n      \"name\": \"Rahul Sharma\",\n      \"email\": \"rahul.sharma@example.com\",\n      \"mobile\": \"+919876543210\",\n      \"city\": \"Ahmedabad\",\n      \"state\": \"Gujarat\",\n      \"district\": \"Ahmedabad\",\n      \"pincode\": \"380015\",\n      \"address\": \"101, Galaxy Heights, S.G. Highway\",\n      \"gender\": \"MALE\",\n      \"birthday\": \"1998-05-15\",\n      \"referralCode\": \"PINAK8899\",\n      \"role\": \"CUSTOMER\",\n      \"profileCompleted\": true\n    },\n    \"welcomeBonusUnlocked\": true,\n    \"rewardCoupon\": {\n      \"code\": \"WELCOME100\",\n      \"title\": \"Flat ₹100 Off First Order\",\n      \"discountAmount\": 100.0,\n      \"description\": \"Welcome to PINAK! ₹100 discount applied to your rewards wallet\"\n    },\n    \"nextScreen\": \"PERMISSIONS_CONSENT_SCREEN_09\"\n  }\n}"
-        }
-      ]
-    },
-    {
-      "name": "8. Refresh Access Token (Instant Token Renewal)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/mobile/auth/refresh",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "mobile",
-            "auth",
-            "refresh"
-          ]
-        },
-        "description": "### 🔄 Instant Token Renewal (Refresh Access Token)\n\n#### 📋 Overview\nExchanges an active **Refresh Token** for a fresh **Access Token** (valid for 15 minutes) and a newly rotated **Refresh Token** (valid for 7 days). This endpoint eliminates the need to repeatedly request and verify 6-digit SMS OTPs whenever customer sessions expire during Postman testing or in the mobile application.\n\n---\n\n#### 🌐 Endpoint Details\n- **HTTP Method**: `POST` *(also supports `GET` with query parameter)*\n- **Primary URL**: `{{baseUrl}}/api/v1/mobile/auth/refresh`\n- **Resilient Aliases**:\n  - `{{baseUrl}}/api/v1/auth/refresh`\n  - `{{baseUrl}}/api/v1/mobile/refresh`\n  - `{{baseUrl}}/api/v1/mobile/auth/token/refresh`\n  - `{{baseUrl}}/api/v1/mobile/auth/refersh` *(automatic typo fallback)*\n- **Authentication**: None *(Public endpoint – no Bearer token required)*\n\n---\n\n#### 📥 Request Headers\n| Header | Value | Required | Description |\n|---|---|---|---|\n| `Content-Type` | `application/json` | Yes | Request payload format |\n| `Accept` | `application/json` | Yes | Expected response format |\n\n---\n\n#### 📦 Request Body Schema (`application/json`)\n| Field | Type | Required | Description | Example |\n|---|---|---|---|---|\n| `refreshToken` | `string` | Yes | The rotating JWT refresh token issued by OTP Verify or previous Refresh call | `{{refreshToken}}` |\n\n**Alternative passing methods**:\n1. Query parameter: `?refreshToken={{refreshToken}}`\n2. Custom header: `X-Refresh-Token: {{refreshToken}}`\n3. Authorization header: `Bearer {{refreshToken}}`\n\n---\n\n#### 📤 Success Response (200 OK)\n```json\n{\n  \"success\": true,\n  \"message\": \"Token refreshed successfully\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzM4NCJ9...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 900,\n    \"refreshToken\": \"eyJhbGciOiJIUzM4NCJ9...\",\n    \"user\": {\n      \"id\": \"147ff421-7f6c-4995-98c2-b6de2a9f8eab\",\n      \"name\": \"Test Customer\",\n      \"email\": \"testcustomer@pinak.app\",\n      \"phone\": \"+919876543210\",\n      \"role\": \"CUSTOMER\",\n      \"status\": \"ACTIVE\",\n      \"emailVerified\": false,\n      \"phoneVerified\": true\n    }\n  },\n  \"requestId\": \"0708aef0-597b-4874-8c4a-e8896bebaf75\"\n}\n```\n\n---\n\n#### ⚡ Automated Postman Best Practices Implemented:\n1. **Pre-request Script**:\n   - Inspects `{{refreshToken}}` in Postman collection/environment variables.\n   - If missing, prints clear instructions to the Postman Console on which request to run first.\n2. **Test Script Automation**:\n   - Asserts HTTP `200 OK` status.\n   - Asserts response time < `1500ms`.\n   - Validates JSON response structure according to enterprise schema contract.\n   - Automatically stores the fresh `accessToken` into `pm.collectionVariables`.\n   - Automatically stores the new rotated `refreshToken` into `pm.collectionVariables`.\n   - Downstream authenticated requests (Screen 10 Home, Screen 11 Service Detail) immediately use the renewed token without manual copy-pasting.\n\n---\n\n#### ⚠️ Error Responses\n| Status Code | Error Code | Cause | Solution |\n|---|---|---|---|\n| `401 Unauthorized` | `REFRESH_TOKEN_INVALID` | Token expired, revoked, or manipulated | Run `3. Verify OTP` or `7. Complete Setup` to generate a fresh pair |\n| `400 Bad Request` | `VALIDATION_FAILED` | `refreshToken` missing or empty | Provide a valid refresh token string in body |\n| `429 Too Many Requests` | `RATE_LIMIT_EXCEEDED` | Rapid brute-force refresh attempts | Wait 60 seconds before retrying |\n"
-      },
-      "response": [
-        {
-          "name": "200 OK - Token Refreshed Successfully",
-          "originalRequest": {
+          "name": "1. Send Mobile OTP (Screen 05)",
+          "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/auth/send-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Triggers a 6-digit OTP code to the customer phone number via SMS or WhatsApp gateway.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxNDdmZjQyMS03ZjZjLTQ5OTUtOThjMi1iNmRlMmE5ZjhlYWIiLCJ0eXBlIjoicmVmcmVzaCJ9...\"\n}"
+              "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"channel\": \"SMS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data) {",
+                  "    if (jsonData.data.sessionId) {",
+                  "        pm.collectionVariables.set(\"sessionId\", jsonData.data.sessionId);",
+                  "        console.log(\"✔ Auto-saved sessionId: \" + jsonData.data.sessionId);",
+                  "    }",
+                  "    if (jsonData.data.phone) {",
+                  "        pm.collectionVariables.set(\"testPhone\", jsonData.data.phone);",
+                  "    }",
+                  "    if (jsonData.data.otp) {",
+                  "        pm.collectionVariables.set(\"otpCode\", jsonData.data.otp);",
+                  "        console.log(\"✔ Auto-saved otpCode: \" + jsonData.data.otp);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Resend Mobile OTP (Screen 07)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/auth/resend-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "auth",
+                "resend-otp"
+              ]
             },
+            "description": "Resends a fresh 6-digit OTP code to the customer phone number after cooldown.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"channel\": \"SMS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.otp) {",
+                  "    pm.collectionVariables.set(\"otpCode\", jsonData.data.otp);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Verify OTP & Smart Gateway (Screen 07)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/auth/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "Verifies the 6-digit OTP. Returns onboardingToken for new members, or full accessToken for existing consumers.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{testPhone}}\",\n  \"otp\": \"{{otpCode}}\",\n  \"sessionId\": \"{{sessionId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data) {",
+                  "    if (jsonData.data.onboardingToken) {",
+                  "        pm.collectionVariables.set(\"onboardingToken\", jsonData.data.onboardingToken);",
+                  "        console.log(\"✔ Captured onboardingToken: \" + jsonData.data.onboardingToken);",
+                  "    }",
+                  "    var tok = jsonData.data.token || jsonData.data.accessToken;",
+                  "    if (tok) {",
+                  "        pm.collectionVariables.set(\"accessToken\", tok);",
+                  "        console.log(\"✔ Captured accessToken: \" + tok);",
+                  "    }",
+                  "    if (jsonData.data.refreshToken) {",
+                  "        pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);",
+                  "        console.log(\"✔ Captured refreshToken: \" + jsonData.data.refreshToken);",
+                  "    }",
+                  "    if (jsonData.data.user && jsonData.data.user.id) {",
+                  "        pm.collectionVariables.set(\"customerId\", jsonData.data.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Complete Profile Setup (Screen 08)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/auth/complete-setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "auth",
+                "complete-setup"
+              ]
+            },
+            "description": "Completes first-time consumer registration with name, birthdate, location, and category interests.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Priya Sharma\",\n  \"email\": \"priya.sharma@example.com\",\n  \"birthday\": \"1998-05-15\",\n  \"gender\": \"FEMALE\",\n  \"primaryCity\": \"Nagpur\",\n  \"state\": \"Maharashtra\",\n  \"district\": \"Nagpur\",\n  \"pincode\": \"440010\",\n  \"address\": \"Flat 302, Green Valley Apartments, Dharampeth\",\n  \"preferredCategoryIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data) {",
+                  "    var tok = jsonData.data.token || jsonData.data.accessToken;",
+                  "    if (tok) {",
+                  "        pm.collectionVariables.set(\"accessToken\", tok);",
+                  "    }",
+                  "    if (jsonData.data.refreshToken) {",
+                  "        pm.collectionVariables.set(\"refreshToken\", jsonData.data.refreshToken);",
+                  "    }",
+                  "    if (jsonData.data.user && jsonData.data.user.id) {",
+                  "        pm.collectionVariables.set(\"customerId\", jsonData.data.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Refresh Access Token (Token Renewal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/mobile/auth/refresh",
               "host": [
@@ -594,366 +313,1473 @@
                 "auth",
                 "refresh"
               ]
-            }
-          },
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
-            {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": true,\n  \"message\": \"Token refreshed successfully\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxNDdmZjQyMS03ZjZjLTQ5OTUtOThjMi1iNmRlMmE5ZjhlYWIiLCJyb2xlIjoiQ1VTVE9NRVIiLCJpc3MiOiJzdXBlcmFwcCIsImlhdCI6MTc2MTYzNDY1MSwiZXhwIjoxNzYxNjM1NTUxfQ.EXAMPLE_ACCESS_TOKEN\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 900,\n    \"refreshToken\": \"eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxNDdmZjQyMS03ZjZjLTQ5OTUtOThjMi1iNmRlMmE5ZjhlYWIiLCJ0eXBlIjoicmVmcmVzaCIsInNpZCI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImlzcyI6InN1cGVyYXBwIiwiaWF0IjoxNzYxNjM0NjUxLCJleHAiOjE3NjIyMzk0NTF9.EXAMPLE_REFRESH_TOKEN\",\n    \"user\": {\n      \"id\": \"147ff421-7f6c-4995-98c2-b6de2a9f8eab\",\n      \"name\": \"Test Customer\",\n      \"email\": \"testcustomer@pinak.app\",\n      \"phone\": \"+919876543210\",\n      \"role\": \"CUSTOMER\",\n      \"status\": \"ACTIVE\",\n      \"emailVerified\": false,\n      \"phoneVerified\": true\n    }\n  },\n  \"requestId\": \"0708aef0-597b-4874-8c4a-e8896bebaf75\"\n}"
-        },
-        {
-          "name": "401 Unauthorized - Invalid or Expired Refresh Token",
-          "originalRequest": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            },
+            "description": "Renews expired JWT access tokens using the consumer refresh token.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"invalid_or_expired_token\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/mobile/auth/refresh",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "mobile",
-                "auth",
-                "refresh"
-              ]
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "status": "Unauthorized",
-          "code": 401,
-          "_postman_previewlanguage": "json",
-          "header": [
+          "response": [],
+          "event": [
             {
-              "key": "Content-Type",
-              "value": "application/json"
-            }
-          ],
-          "body": "{\n  \"success\": false,\n  \"message\": \"Refresh token is invalid or expired\",\n  \"errorCode\": \"REFRESH_TOKEN_INVALID\",\n  \"error\": {\n    \"code\": \"REFRESH_TOKEN_INVALID\",\n    \"details\": null\n  },\n  \"requestId\": \"22c76497-be6c-4b8c-b314-389f9af89b6f\"\n}"
-        }
-      ],
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "// ==================================================================",
-              "// Test Script: Comprehensive Enterprise Assertions & Dynamic Sync",
-              "// ==================================================================",
-              "",
-              "pm.test('[Status] HTTP Status code is 200 OK', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "",
-              "pm.test('[Performance] Response time is under 1500ms', function () {",
-              "    pm.expect(pm.response.responseTime).to.be.below(1500);",
-              "});",
-              "",
-              "pm.test('[Header] Response is application/json', function () {",
-              "    pm.response.to.have.header('content-type');",
-              "    pm.expect(pm.response.headers.get('content-type')).to.include('application/json');",
-              "});",
-              "",
-              "var jsonData = pm.response.json();",
-              "",
-              "pm.test('[Contract] Response envelope matches standard ApiResponse schema', function () {",
-              "    pm.expect(jsonData).to.be.an('object');",
-              "    pm.expect(jsonData.success).to.eql(true);",
-              "    pm.expect(jsonData.message).to.be.a('string');",
-              "    pm.expect(jsonData.data).to.be.an('object');",
-              "    pm.expect(jsonData.requestId).to.be.a('string');",
-              "});",
-              "",
-              "pm.test('[Tokens] Both accessToken and rotated refreshToken are present and valid JWTs', function () {",
-              "    var data = jsonData.data;",
-              "    var accToken = data.accessToken || data.token;",
-              "    var refToken = data.refreshToken;",
-              "    ",
-              "    pm.expect(accToken, 'accessToken should be a valid string').to.be.a('string').and.to.have.lengthOf.at.least(20);",
-              "    pm.expect(refToken, 'refreshToken should be a valid string').to.be.a('string').and.to.have.lengthOf.at.least(20);",
-              "    pm.expect(data.tokenType).to.eql('Bearer');",
-              "    pm.expect(data.expiresIn).to.be.a('number');",
-              "});",
-              "",
-              "pm.test('[User] Enriched user summary is attached', function () {",
-              "    var user = jsonData.data.user;",
-              "    pm.expect(user).to.be.an('object');",
-              "    pm.expect(user.id).to.be.a('string');",
-              "    pm.expect(user.phone).to.be.a('string');",
-              "    pm.expect(user.role).to.be.a('string');",
-              "});",
-              "",
-              "// ---- Dynamic Collection Variables Auto-Sync ----",
-              "if (jsonData && jsonData.data) {",
-              "    var freshAccessToken = jsonData.data.accessToken || jsonData.data.token;",
-              "    var freshRefreshToken = jsonData.data.refreshToken;",
-              "    ",
-              "    if (freshAccessToken) {",
-              "        pm.collectionVariables.set('accessToken', freshAccessToken);",
-              "        console.log('✅ [Postman Auto-Sync] Updated accessToken: ' + freshAccessToken.substring(0, 20) + '...');",
-              "    }",
-              "    if (freshRefreshToken) {",
-              "        pm.collectionVariables.set('refreshToken', freshRefreshToken);",
-              "        console.log('✅ [Postman Auto-Sync] Updated refreshToken: ' + freshRefreshToken.substring(0, 20) + '...');",
-              "    }",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        },
-        {
-          "listen": "prerequest",
-          "script": {
-            "exec": [
-              "// ==================================================================",
-              "// Pre-request Script: Defensive Variable Validation & Auto-Diagnostic",
-              "// ==================================================================",
-              "var refreshToken = pm.variables.get('refreshToken');",
-              "var baseUrl = pm.variables.get('baseUrl');",
-              "",
-              "if (!baseUrl) {",
-              "    pm.collectionVariables.set('baseUrl', 'http://localhost:8080');",
-              "    console.log('ℹ️ baseUrl was undefined, auto-defaulted to http://localhost:8080');",
-              "}",
-              "",
-              "if (!refreshToken || refreshToken.trim() === '') {",
-              "    console.warn('⚠️ [PINAK Auth Alert] Prerequisite \"refreshToken\" is currently empty!');",
-              "    console.warn('👉 Please run \"3. Verify OTP & Smart Gateway\" or \"7. Complete Profile Setup\" first to obtain a valid session token.');",
-              "} else {",
-              "    console.log('🔄 Preparing token refresh request using existing refreshToken: ' + refreshToken.substring(0, 15) + '...');",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ]
-    },
-    {
-      "name": "9. Fetch Service / Store Detail (Screen 11 - The Smokehouse Grill)",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{accessToken}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/mobile/stores/{{smokehouseStoreId}}/detail?lat=12.9716&lng=77.6412",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "mobile",
-            "stores",
-            "{{smokehouseStoreId}}",
-            "detail"
-          ],
-          "query": [
-            {
-              "key": "lat",
-              "value": "12.9716",
-              "description": "User current latitude for dynamic distance calculation"
-            },
-            {
-              "key": "lng",
-              "value": "77.6412",
-              "description": "User current longitude for dynamic distance calculation"
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
             }
           ]
         },
-        "description": "### 🍽️ Screen 11: Store & Service Detail View (The Smokehouse Grill)\n\n#### 📋 Overview\nReturns the comprehensive, rich payload for **Screen 11 (Store / Service Detail View)** matching the design specification in `code.html`.\nWhen a customer clicks on any merchant card or service offer in the PINAK mobile discovery rail, this endpoint powers the full screen experience.\n\n---\n\n#### 🌐 Endpoint Details\n- **HTTP Method**: `GET`\n- **Primary URL**: `{{baseUrl}}/api/v1/mobile/stores/{{smokehouseStoreId}}/detail?lat=12.9716&lng=77.6412`\n- **Fallback URL**: `{{baseUrl}}/api/v1/mobile/stores/detail?lat=12.9716&lng=77.6412` *(auto-defaults to The Smokehouse Grill even if storeId is missing!)*\n- **Authentication**: `Bearer Token` (`{{accessToken}}`) *(Optional/Permitted: also renders public preview)*\n\n---\n\n#### 🔍 Query & Path Parameters\n| Parameter | Type | Required | Default | Description |\n|---|---|---|---|---|\n| `storeId` | `UUID` (Path) | Optional | `e1000000-0000-0000-0000-000000000001` | Outlet UUID (The Smokehouse Grill Mock) |\n| `lat` | `Double` (Query) | Optional | `12.9716` | User GPS Latitude for precise distance calculation |\n| `lng` | `Double` (Query) | Optional | `77.6412` | User GPS Longitude for precise distance calculation |\n\n---\n\n#### 🎨 Screen 11 UI Components Powered by this Payload:\n1. **Hero Media Gallery**: 19 curated photos with real-time `photoCounterText` (\"1/19\").\n2. **Metadata & Status**: `isOpenNow: true`, `openStatusText: \"Open till 00:30\"`, rating 4.8 (1.2K ratings), `₹1700 for two • Moderate`.\n3. **2X Boost Cashback Banner**: `coinsPerkBanner` featuring `badgeText: \"2X BOOST\"` (\"Earn 5.00% PINAK Cashback Coins\").\n4. **Sticky Sub-Header Navigation Tabs**: `[\"Offers\", \"Menu\", \"Photos\", \"Amenities\", \"Location\"]`\n5. **Active Offers Section**:\n   - Primary Hero Deal: Flat 50% Off Pre-Booking & Dining (`PINAK EXCLUSIVE`, `Instant Confirm`, `Special Deal`).\n   - Secondary Walk-in Deal: Flat 20% Off Walk-In Dine-in (`WALK_IN_PAY`).\n6. **Menu Highlights & Scans**: 4 signature dishes (Truffle Mushroom Risotto, Smoked BBQ Pork Ribs, etc.) + 7 high-res menu scan image URLs.\n7. **Photo Mosaic Grid**: 3-photo mosaic with `+16 Photos` modal trigger.\n8. **Verified Amenities Rail**: Full Bar, Valet Parking, Table Reservation, PINAK UPI Instant Pay, AC, Free Wi-Fi.\n9. **Location & GPS Section**: Complete address, distance (`4.6 km • Indiranagar`), and Google Maps deep-link.\n10. **Concierge Desk**: 1-tap call reservation assistance.\n11. **Similar Places Rail**: Tipsy Turk Rooftop & Bellavista Skybar.\n12. **Sticky Bottom Action Bar**: \"Pay Bill Now\" (with `50% OFF` badge) and \"Book a Table\".\n",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        }
-      },
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "// ==================================================================",
-              "// Test Script: Comprehensive Enterprise Assertions for Screen 11",
-              "// ==================================================================",
-              "",
-              "pm.test('[Status] HTTP Status code is 200 OK', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "",
-              "pm.test('[Performance] Response time is under 1500ms', function () {",
-              "    pm.expect(pm.response.responseTime).to.be.below(1500);",
-              "});",
-              "",
-              "var jsonData = pm.response.json();",
-              "",
-              "pm.test('[Contract] Response success is true and contains store data', function () {",
-              "    pm.expect(jsonData.success).to.eql(true);",
-              "    pm.expect(jsonData.data).to.be.an('object');",
-              "    pm.expect(jsonData.data.storeName).to.eql('The Smokehouse Grill');",
-              "});",
-              "",
-              "pm.test('[Hero & Media] 19 curated photos with proper counter text', function () {",
-              "    var d = jsonData.data;",
-              "    pm.expect(d.totalPhotosCount).to.eql(19);",
-              "    pm.expect(d.photoCounterText).to.eql('1/19');",
-              "    pm.expect(d.heroPhotos).to.be.an('array').with.lengthOf(19);",
-              "});",
-              "",
-              "pm.test('[Perk Banner] 2X Boost Coins Perk Banner is configured', function () {",
-              "    var banner = jsonData.data.coinsPerkBanner || jsonData.data.coinPerkBanner;",
-              "    pm.expect(banner).to.be.an('object');",
-              "    pm.expect(banner.multiplier).to.eql('2X');",
-              "    pm.expect(banner.badgeText).to.eql('2X BOOST');",
-              "});",
-              "",
-              "pm.test('[Navigation Tabs] 5 sticky tabs present: Offers, Menu, Photos, Amenities, Location', function () {",
-              "    var tabs = jsonData.data.availableTabs;",
-              "    pm.expect(tabs).to.include.members(['Offers', 'Menu', 'Photos', 'Amenities', 'Location']);",
-              "});",
-              "",
-              "pm.test('[Offers Section] Primary pre-booking offer has badges and terms', function () {",
-              "    var offers = jsonData.data.offersSection;",
-              "    pm.expect(offers).to.be.an('object');",
-              "    pm.expect(offers.primaryOffer).to.be.an('object');",
-              "    pm.expect(offers.primaryOffer.badges).to.include('PINAK EXCLUSIVE');",
-              "    pm.expect(offers.primaryOffer.discountValue).to.eql(50.0);",
-              "});",
-              "",
-              "pm.test('[Bottom Action Bar] Sticky Pay Bill & Book Table CTAs configured', function () {",
-              "    var bar = jsonData.data.bottomBar;",
-              "    pm.expect(bar).to.be.an('object');",
-              "    pm.expect(bar.isTableBookingEnabled).to.eql(true);",
-              "    pm.expect(bar.primaryAction.type).to.eql('PAY_BILL');",
-              "    pm.expect(bar.primaryAction.discountBadge).to.eql('50% OFF');",
-              "});"
-            ],
-            "type": "text/javascript"
-          }
-        },
-        {
-          "listen": "prerequest",
-          "script": {
-            "exec": [
-              "// ==================================================================",
-              "// Pre-request Script: Defensive Variable Validation & Auto-Setup",
-              "// ==================================================================",
-              "var defaultStoreId = 'e1000000-0000-0000-0000-000000000001';",
-              "var storeId = pm.variables.get('smokehouseStoreId');",
-              "",
-              "if (!storeId || storeId.trim() === '') {",
-              "    pm.collectionVariables.set('smokehouseStoreId', defaultStoreId);",
-              "    console.log('ℹ️ smokehouseStoreId was empty; auto-defaulted to ' + defaultStoreId);",
-              "}",
-              "",
-              "var token = pm.variables.get('accessToken');",
-              "if (!token || token.trim() === '') {",
-              "    console.warn('⚠️ No accessToken found in collection variables. Request will proceed with public mock access.');",
-              "} else {",
-              "    console.log('🔑 Authenticating Screen 11 detail request with Bearer token: ' + token.substring(0, 15) + '...');",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ]
-    },
-    {
-      "name": "10. Fetch Product Detail View (Wood-Fired Truffle Pizza)",
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "GET",
-        "header": [
-          {
-            "key": "Accept",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{accessToken}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "mobile",
-            "products",
-            "{{productId}}",
-            "detail"
-          ],
-          "query": [
-            {
-              "key": "lat",
-              "value": "12.9716",
-              "description": "Customer device latitude"
-            },
-            {
-              "key": "lng",
-              "value": "77.6412",
-              "description": "Customer device longitude"
-            }
-          ]
-        },
-        "description": "### 🍕 Screen 11/12: Product & Food Dish Detail View (Wood-Fired Truffle Pizza)\n\n#### 📋 Overview\nReturns the comprehensive, rich payload for the **Mobile Product Detail View** when a customer clicks on any product deal, retail item, or restaurant dish card from the discovery rails (e.g. *Top Product Deals Near You*, *Curated Collections*, or Store Menus).\n\n---\n\n#### 🌐 Endpoint Details\n- **HTTP Method**: `GET`\n- **Primary URL**: `{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412`\n- **Resilient Fallback URLs**:\n  - `{{baseUrl}}/api/v1/mobile/products/detail?lat=12.9716&lng=77.6412` *(auto-defaults to Wood-Fired Truffle Pizza if productId is omitted!)*\n  - `{{baseUrl}}/api/v1/products/{{productId}}/detail`\n  - `{{baseUrl}}/api/v1/discovery/products/{{productId}}/detail`\n- **Authentication**: `Bearer Token` (`{{accessToken}}`) *(Optional/Permitted: allows public browsing & guest previews!)*\n\n---\n\n#### 🔍 Query & Path Parameters\n| Parameter | Type | Required | Default | Description |\n|---|---|---|---|---|\n| `productId` | `UUID` (Path) | Optional | `f1000000-0000-0000-0000-000000000001` | Unique item identifier (Canonical Mock: Wood-Fired Truffle Pizza) |\n| `lat` | `Double` (Query) | Optional | `12.9716` | User GPS Latitude for precise store distance calculation |\n| `lng` | `Double` (Query) | Optional | `77.6412` | User GPS Longitude for precise store distance calculation |\n\n---\n\n#### 🎨 Screen UI Components Powered by this Payload:\n1. **Interactive Image Gallery**: 5 high-res photos showcasing product preparation, packaging, and presentation.\n2. **Dynamic Pricing & Savings**: MRP (`₹699.00`), Selling Price (`₹489.00`), Discount (`30% OFF`), Savings (`Save ₹210`).\n3. **Inventory & Urgency**: `inStock: true`, `stockQuantity: 25`, `stockStatusText: \"In Stock • Delivered in 25-35 mins\"`.\n4. **Dietary & Badges**: `isVeg: true`, `dietaryType: \"VEG\"`, Badges: `[\"PINAK EXCLUSIVE\", \"BESTSELLER\", \"WOOD-FIRED\"]`.\n5. **2X Boost Cashback Banner**: `coinsPerkBanner` featuring `badgeText: \"2X BOOST\"` (\"Earn 24 PINAK Gold Coins on this purchase\").\n6. **Store Origin & Delivery**: Integrated outlet card for *The Smokehouse Grill* (4.8 rating, 1.2 km distance, phone, address).\n7. **Culinary Specifications & Nutrition**: 4 key preparation highlights + full nutritional facts (Calories, Protein, Carbs, Fat).\n8. **Delivery & Takeaway Options**: Instant delivery (25-35 mins), Free delivery threshold, and Express Takeaway (15 mins).\n9. **Verified Customer Reviews**: Average rating `4.8`, star rating breakdown distribution, and verified buyer reviews with avatars.\n10. **Cross-Sell & Upsell Rails**:\n    - *Frequently Bought Together*: Rosemary & Garlic Herb Focaccia + Nitro Cold Brew.\n    - *Similar Products*: Quattro Formaggi Pizza + Classic Margherita.\n11. **Sticky Bottom Action Bar**: \"Add to Cart • ₹489.00\" and \"Buy Now\" with quantity stepper.\n"
-      },
-      "response": [
-        {
-          "name": "200 OK - Full Product Detail View (Wood-Fired Truffle Pizza)",
-          "originalRequest": {
+          "name": "6. Current Authenticated Profile (/auth/me)",
+          "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Accept",
-                "value": "application/json"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412",
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Validates mobile access token and retrieves active customer profile details."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set(\"customerId\", jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Logout Mobile Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Logs out consumer and invalidates the session and refresh tokens."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. India Master Locations & Geo-Radar (Screens 08 & 09)",
+      "description": "State/District/City master datasets, postal PIN code auto-fill, and Screen 09 Radar consent",
+      "item": [
+        {
+          "name": "1. Get All 35 Indian States",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/locations/states",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "locations",
+                "states"
+              ]
+            },
+            "description": "Returns master dataset of all 35 Indian States and Union Territories for location dropdowns."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get Districts for State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/locations/districts?state=Maharashtra",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "locations",
+                "districts"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "Maharashtra",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns verified districts for the selected Indian state."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Get Cities for District & State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/locations/cities/names?state=Maharashtra&district=Nagpur",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "locations",
+                "cities",
+                "names"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "Maharashtra",
+                  "description": ""
+                },
+                {
+                  "key": "district",
+                  "value": "Nagpur",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns postal city/town names under a given state and district."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Lookup Location by 6-digit Pincode (Smart Auto-Fill)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/locations/pincode/440010",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "locations",
+                "pincode",
+                "440010"
+              ]
+            },
+            "description": "Auto-resolves district, state, and city from 19,097 Indian postal PIN codes."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Get Geo-Radar Preview (Screen 09)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/location/radar-preview?lat={{userLat}}&lng={{userLng}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "location",
+                "radar-preview"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "lng",
+                  "value": "{{userLng}}",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Displays nearby merchant count, teaser deals, and privacy shield before OS location prompt."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Update Location & Permissions Consent (Screen 09)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/location/update-permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "location",
+                "update-permissions"
+              ]
+            },
+            "description": "Saves user GPS coordinates and permission preferences, completing onboarding.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationPermissionGranted\": true,\n  \"locationAccuracy\": \"PRECISE\",\n  \"notificationPermissionGranted\": true,\n  \"backgroundRadarEnabled\": true,\n  \"latitude\": 21.1458,\n  \"longitude\": 79.0882,\n  \"city\": \"Nagpur\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03. Discover & Home Feed Rails (Screen 10)",
+      "description": "Header metrics, promotional carousels, category rail, nearby offers, and trending collections",
+      "item": [
+        {
+          "name": "1. Header - User Profile & Delivery Coordinates (/users/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "Fetches consumer profile, avatar, primary city, and default delivery coordinates."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Header - PINAK Coins & Wallet Balance (/rewards/balance)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rewards/balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rewards",
+                "balance"
+              ]
+            },
+            "description": "Fetches live spendable PINAK Coins balance, rupee value, and loyalty tier."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Header - Unread Notification Bell Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "unread-count"
+              ]
+            },
+            "description": "Returns number of unread alerts for the notification bell badge."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Promotional Hero Carousel Banners",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/banners?placement=DISCOVER",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "banners"
+              ],
+              "query": [
+                {
+                  "key": "placement",
+                  "value": "DISCOVER",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Retrieves high-resolution carousel promotional banners for the home feed."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Categories Rail with Emojis & Outlets Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories"
+              ]
+            },
+            "description": "Returns 9 verified top-level categories (Dining, Cafes, Supermarket, Kirana, Fashion, etc.)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Top Service Offers Near You",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/offers/nearby?type=SERVICE&latitude={{userLat}}&longitude={{userLng}}&radiusKm=10.0&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers",
+                "nearby"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "SERVICE",
+                  "description": ""
+                },
+                {
+                  "key": "latitude",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "longitude",
+                  "value": "{{userLng}}",
+                  "description": ""
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "10.0",
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns nearby dine-in, salon, and hospitality service offers with calculated distances."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Top Product Deals Near You",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/deals/nearby?latitude={{userLat}}&longitude={{userLng}}&radiusKm=10.0&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "deals",
+                "nearby"
+              ],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "longitude",
+                  "value": "{{userLng}}",
+                  "description": ""
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "10.0",
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns nearby retail product deals, grocery discounts, and store merchandise."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Featured Partner Stores Rail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/merchants/featured?latitude={{userLat}}&longitude={{userLng}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "merchants",
+                "featured"
+              ],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "longitude",
+                  "value": "{{userLng}}",
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns curated partner outlets with ratings, cashback percentages, and hero images."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.length > 0 && jsonData.data[0].id) {",
+                  "    pm.collectionVariables.set(\"storeId\", jsonData.data[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Popular Handpicked Collections Rail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/collections/popular?limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "collections",
+                "popular"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns theme collections (e.g. Weekend Hangouts, Rooftop Cafes, Organic Groceries)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Recently Viewed Outlets History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/recently-viewed?limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "recently-viewed"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Fetches recent stores or deals clicked by the authenticated consumer."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Record Recently Viewed Item Interaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/recently-viewed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "recently-viewed"
+              ]
+            },
+            "description": "Tracks user engagement when opening a store or deal card.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemType\": \"STORE\",\n  \"itemId\": \"{{storeId}}\",\n  \"title\": \"The Bombay Canteen – Nagpur Flagship\",\n  \"imageUrl\": \"https://images.unsplash.com/photo-1517248135467-4c7edcad34c4\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Personalized Recommendations Rail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/recommendations?latitude={{userLat}}&longitude={{userLng}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recommendations"
+              ],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "longitude",
+                  "value": "{{userLng}}",
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns machine-ranked recommendation cards tailored to consumer category preferences."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. Flash Deals Ending Soon",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/offers/flash?limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers",
+                "flash"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "High-urgency limited-time promotional deals expiring within hours."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Why Shop on PINAK Benefits Grid",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/discover/benefits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "discover",
+                "benefits"
+              ]
+            },
+            "description": "Returns platform value propositions: instant cash discounts, 2X coin rewards, zero markups."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Customer Active Table Bookings & Passes (/mobile/my-bookings)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/my-bookings?phone={{testPhone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "my-bookings"
+              ],
+              "query": [
+                {
+                  "key": "phone",
+                  "value": "{{testPhone}}",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns active dining reservations and booking passes directly onto the Home Feed card."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Search & Discovery Engine",
+      "description": "Auto-complete query suggestions and full-text multi-entity search",
+      "item": [
+        {
+          "name": "1. Search Auto-complete Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/search/suggestions?q=canteen&latitude={{userLat}}&longitude={{userLng}}&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "search",
+                "suggestions"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "canteen",
+                  "description": ""
+                },
+                {
+                  "key": "latitude",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "longitude",
+                  "value": "{{userLng}}",
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Fast auto-complete suggestions across stores, cuisines, and product tags."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Full-Text Search Across Stores & Deals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/search?query=dining&latitude={{userLat}}&longitude={{userLng}}&radiusKm=15.0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "dining",
+                  "description": ""
+                },
+                {
+                  "key": "latitude",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "longitude",
+                  "value": "{{userLng}}",
+                  "description": ""
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "15.0",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns matched stores, active discount coupons, and products filtered by GPS radius."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05. Store & Service Details (Screen 11)",
+      "description": "Hero gallery, walk-in & pre-booking offers, menu mosaic, amenities, and concierge support",
+      "item": [
+        {
+          "name": "1. Fetch Store / Service Detail by Path Variable",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/stores/{{storeId}}/detail?lat={{userLat}}&lng={{userLng}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "stores",
+                "{{storeId}}",
+                "detail"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "lng",
+                  "value": "{{userLng}}",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Loads complete store view with hero photos, 2X coin perk, pre-booking slots, and walk-in deals."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Fetch Store / Service Detail by Query Param",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/services/detail?storeId={{storeId}}&lat={{userLat}}&lng={{userLng}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "services",
+                "detail"
+              ],
+              "query": [
+                {
+                  "key": "storeId",
+                  "value": "{{storeId}}",
+                  "description": ""
+                },
+                {
+                  "key": "lat",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "lng",
+                  "value": "{{userLng}}",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Alternative query parameter format used across web preview and mobile views."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06. Retail & In-Store Product Deals (Screen 11B)",
+      "description": "Product item details, discount pricing, stock urgency, and product checkout",
+      "item": [
+        {
+          "name": "1. Fetch Product Detail View by Path Variable",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat={{userLat}}&lng={{userLng}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -968,119 +1794,1763 @@
               "query": [
                 {
                   "key": "lat",
-                  "value": "12.9716"
+                  "value": "{{userLat}}",
+                  "description": ""
                 },
                 {
                   "key": "lng",
-                  "value": "77.6412"
+                  "value": "{{userLng}}",
+                  "description": ""
                 }
               ]
-            }
+            },
+            "description": "Fetches rich item specs, 2X reward coins incentive, store origin, and reviews."
           },
-          "status": "OK",
-          "code": 200,
-          "_postman_previewlanguage": "json",
-          "header": [
+          "response": [],
+          "event": [
             {
-              "key": "Content-Type",
-              "value": "application/json"
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
             }
-          ],
-          "body": "{\n  \"success\": true,\n  \"message\": \"Product detail fetched successfully\",\n  \"data\": {\n    \"id\": \"f1000000-0000-0000-0000-000000000001\",\n    \"name\": \"Wood-Fired Truffle & Wild Mushroom Pizza\",\n    \"brand\": \"The Smokehouse Kitchen\",\n    \"unit\": \"12-inch Hand-Stretched Crust • Serves 2-3\",\n    \"shortDescription\": \"Hand-stretched Neapolitan sourdough crust with San Marzano tomatoes, fresh buffalo mozzarella, sautéed forest porcini mushrooms, and drizzled with black truffle oil.\",\n    \"longDescription\": \"Crafted using 48-hour fermented Italian 00 flour dough, baked at 450°C in our traditional oak wood-fired oven. Topped with imported Italian fior di latte, aged Parmigiano Reggiano, hand-picked wild porcini and shiitake mushrooms, finished with aromatic Umbrian black summer truffle oil and fresh basil.\",\n    \"imageUrl\": \"https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80\",\n    \"galleryImages\": [\n      \"https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80\"\n    ],\n    \"totalPhotosCount\": 5,\n    \"mrp\": 699,\n    \"sellingPrice\": 489,\n    \"discountPercent\": 30,\n    \"savingsAmount\": 210,\n    \"discountText\": \"Flat 30% OFF • Save ₹210\",\n    \"currency\": \"INR\",\n    \"currencySymbol\": \"₹\",\n    \"inStock\": true,\n    \"stockQuantity\": 25,\n    \"stockStatusText\": \"In Stock • Delivered in 25-35 mins\",\n    \"isVeg\": true,\n    \"dietaryType\": \"VEG\",\n    \"category\": {\n      \"id\": \"c1000000-0000-0000-0000-000000000001\",\n      \"name\": \"Gourmet Wood-Fired Pizzas\",\n      \"slug\": \"gourmet-wood-fired-pizzas\"\n    },\n    \"tags\": [\n      \"PINAK EXCLUSIVE\",\n      \"BESTSELLER\",\n      \"WOOD-FIRED\",\n      \"ORGANIC INGREDIENTS\"\n    ],\n    \"rating\": 4.8,\n    \"ratingCountText\": \"856+ reviews\",\n    \"coinsPerkBanner\": {\n      \"multiplier\": \"2X\",\n      \"title\": \"Earn 5.00% PINAK Cashback Coins\",\n      \"badgeText\": \"2X BOOST\",\n      \"earnedCoinsText\": \"Earn 24 PINAK Gold Coins on this purchase\"\n    },\n    \"storeInfo\": {\n      \"id\": \"e1000000-0000-0000-0000-000000000001\",\n      \"name\": \"The Smokehouse Grill\",\n      \"isVerified\": true,\n      \"rating\": 4.8,\n      \"distanceText\": \"1.2 km away • Indiranagar\",\n      \"address\": \"123, 100 Feet Road, Indiranagar, Bengaluru, Karnataka 560038\",\n      \"phone\": \"+919880011234\",\n      \"isOpenNow\": true\n    },\n    \"deliveryOptions\": {\n      \"instantDeliveryAvailable\": true,\n      \"deliveryTimeText\": \"Delivered in 25-35 mins\",\n      \"freeDeliveryThresholdText\": \"Free delivery on orders above ₹499\",\n      \"storePickupAvailable\": true,\n      \"storePickupText\": \"Ready for takeaway in 15 mins\"\n    },\n    \"bottomBar\": {\n      \"sellingPrice\": 489,\n      \"mrp\": 699,\n      \"savingsText\": \"Save ₹210\",\n      \"minQuantity\": 1,\n      \"maxQuantity\": 10,\n      \"isCustomizable\": true,\n      \"customizationText\": \"Customizable options available\",\n      \"primaryAction\": {\n        \"type\": \"ADD_TO_CART\",\n        \"label\": \"Add to Cart • ₹489.00\",\n        \"enabled\": true\n      },\n      \"secondaryAction\": {\n        \"type\": \"BUY_NOW\",\n        \"label\": \"Buy Now\",\n        \"enabled\": true\n      }\n    }\n  },\n  \"requestId\": \"4a71b290-7612-4210-90bc-940176b91c10\"\n}"
-        }
-      ],
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "exec": [
-              "// ==================================================================",
-              "// Pre-request Script: Defensive Setup & Auto-Diagnostic",
-              "// ==================================================================",
-              "var defaultProdId = 'f1000000-0000-0000-0000-000000000001';",
-              "var prodId = pm.variables.get('productId');",
-              "",
-              "if (!prodId || prodId.trim() === '') {",
-              "    pm.collectionVariables.set('productId', defaultProdId);",
-              "    console.log('ℹ️ productId was empty; auto-defaulted to ' + defaultProdId);",
-              "}",
-              "",
-              "var token = pm.variables.get('accessToken');",
-              "if (!token || token.trim() === '') {",
-              "    console.warn('⚠️ No accessToken found. Request will proceed with public preview access.');",
-              "} else {",
-              "    console.log('🔑 Authenticating Product Detail request with Bearer token: ' + token.substring(0, 15) + '...');",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
+          ]
         },
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "// ==================================================================",
-              "// Test Script: Comprehensive Enterprise Assertions for Product Detail",
-              "// ==================================================================",
-              "",
-              "pm.test('[Status] HTTP Status code is 200 OK', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "",
-              "pm.test('[Performance] Response time is under 1500ms', function () {",
-              "    pm.expect(pm.response.responseTime).to.be.below(1500);",
-              "});",
-              "",
-              "var jsonData = pm.response.json();",
-              "",
-              "pm.test('[Contract] Response envelope is successful with product payload', function () {",
-              "    pm.expect(jsonData.success).to.eql(true);",
-              "    pm.expect(jsonData.data).to.be.an('object');",
-              "    pm.expect(jsonData.data.name).to.include('Pizza');",
-              "});",
-              "",
-              "pm.test('[Pricing] Valid pricing and savings calculation', function () {",
-              "    var d = jsonData.data;",
-              "    pm.expect(d.sellingPrice).to.be.below(d.mrp);",
-              "    pm.expect(d.discountPercent).to.be.above(0);",
-              "    pm.expect(d.currency).to.eql('INR');",
-              "});",
-              "",
-              "pm.test('[Gallery] Image gallery populated with multiple high-res photos', function () {",
-              "    var d = jsonData.data;",
-              "    pm.expect(d.galleryImages).to.be.an('array').with.lengthOf.at.least(3);",
-              "    pm.expect(d.imageUrl).to.be.a('string');",
-              "});",
-              "",
-              "pm.test('[Incentives] 2X Boost Coins Perk Banner is active', function () {",
-              "    var banner = jsonData.data.coinsPerkBanner || jsonData.data.coinPerkBanner;",
-              "    pm.expect(banner).to.be.an('object');",
-              "    pm.expect(banner.multiplier).to.eql('2X');",
-              "    pm.expect(banner.badgeText).to.eql('2X BOOST');",
-              "});",
-              "",
-              "pm.test('[Merchant & Delivery] Store origin and delivery options present', function () {",
-              "    var store = jsonData.data.storeInfo;",
-              "    pm.expect(store).to.be.an('object');",
-              "    pm.expect(store.name).to.eql('The Smokehouse Grill');",
-              "    pm.expect(jsonData.data.deliveryOptions.instantDeliveryAvailable).to.eql(true);",
-              "});",
-              "",
-              "pm.test('[Carousels] Frequently bought together and similar products available', function () {",
-              "    pm.expect(jsonData.data.frequentlyBoughtTogether).to.be.an('array').with.lengthOf.at.least(1);",
-              "    pm.expect(jsonData.data.similarProducts).to.be.an('array').with.lengthOf.at.least(1);",
-              "});",
-              "",
-              "pm.test('[Sticky CTA] Bottom bar has Add to Cart and Buy Now actions', function () {",
-              "    var bar = jsonData.data.bottomBar;",
-              "    pm.expect(bar.primaryAction.type).to.eql('ADD_TO_CART');",
-              "    pm.expect(bar.secondaryAction.type).to.eql('BUY_NOW');",
-              "});"
+          "name": "2. Fetch Product Detail View by Query Param",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
-            "type": "text/javascript"
-          }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/products/detail?productId={{productId}}&lat={{userLat}}&lng={{userLng}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "products",
+                "detail"
+              ],
+              "query": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "description": ""
+                },
+                {
+                  "key": "lat",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "lng",
+                  "value": "{{userLng}}",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Alternate endpoint format for product detail view."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Process In-Store Product Bill Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/pay-bill",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "table-bookings",
+                "pay-bill"
+              ]
+            },
+            "description": "Instantly settles in-store retail product bills, credits PINAK cashback coins, and generates transaction receipt.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"storeId\": \"{{storeId}}\",\n  \"storeName\": \"Fabindia Flagship Outlet\",\n  \"billAmount\": 1500,\n  \"discountAmount\": 150,\n  \"couponCode\": \"RETAIL10\",\n  \"coinsRedeemed\": 0,\n  \"coinsEarned\": 67,\n  \"totalPaid\": 1350,\n  \"paymentMethod\": \"Google Pay\",\n  \"customerName\": \"Priya Sharma\",\n  \"customerPhone\": \"{{testPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.txnId) {",
+                  "    pm.collectionVariables.set(\"txnId\", jsonData.data.txnId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
+    },
+    {
+      "name": "07. Table Booking & Reservations (Screens 11 ➔ 12)",
+      "description": "Slot availability, pre-booking creation, pass retrieval, cancellation, and host desk check-in",
+      "item": [
+        {
+          "name": "1. Check Table Booking Slot & Offer Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/availability?storeId={{storeId}}&lat={{userLat}}&lng={{userLng}}&date=2026-11-12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "table-bookings",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "storeId",
+                  "value": "{{storeId}}",
+                  "description": ""
+                },
+                {
+                  "key": "lat",
+                  "value": "{{userLat}}",
+                  "description": ""
+                },
+                {
+                  "key": "lng",
+                  "value": "{{userLng}}",
+                  "description": ""
+                },
+                {
+                  "key": "date",
+                  "value": "2026-11-12",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Retrieves live dining time slots (Lunch/Dinner), capacity status, and available table offers."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Create Table Reservation / Pre-Book Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/table-bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "table-bookings"
+              ]
+            },
+            "description": "Reserves a dining table at the store outlet. Generates digital booking reference and QR code ticket.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"bookingDate\": \"2026-11-12\",\n  \"mealType\": \"DINNER\",\n  \"slotTime\": \"08:00 PM\",\n  \"guests\": 2,\n  \"offerId\": \"opt_regular\",\n  \"offerTitle\": \"15% Off Total Food Bill\",\n  \"discountPct\": 15,\n  \"coverChargePerGuest\": 0,\n  \"includeVipPlan\": false,\n  \"vipPlanFee\": 0,\n  \"customerName\": \"Priya Sharma\",\n  \"customerPhone\": \"{{testPhone}}\",\n  \"specialRequests\": \"Corner table with quiet ambiance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.bookingRef) {",
+                  "    pm.collectionVariables.set(\"tableBookingRef\", jsonData.data.bookingRef);",
+                  "    console.log(\"✔ Auto-saved tableBookingRef: \" + jsonData.data.bookingRef);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Fetch Table Booking Details by ID or Ref",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/{{tableBookingRef}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "table-bookings",
+                "{{tableBookingRef}}"
+              ]
+            },
+            "description": "Fetches reservation pass, restaurant address, contact number, and booking status."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. List Customer Table Reservations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/my-bookings?phone={{testPhone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "my-bookings"
+              ],
+              "query": [
+                {
+                  "key": "phone",
+                  "value": "{{testPhone}}",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns history of upcoming, seated, and completed table reservations for the customer."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Cancel Table Booking & Process Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/{{tableBookingRef}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "table-bookings",
+                "{{tableBookingRef}}",
+                "cancel"
+              ]
+            },
+            "description": "Cancels reservation and issues 100% cover charge refund if cancelled before cutoff.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cancellationReason\": \"Change of travel plans\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Host Desk - Mark Guest as Seated",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/{{tableBookingRef}}/status?status=SEATED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "table-bookings",
+                "{{tableBookingRef}}",
+                "status"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "SEATED",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Used by restaurant host/concierge to mark arriving guests as seated."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Host Desk - Attach Final Bill Amount to Table",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/{{tableBookingRef}}/bill-amount",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "table-bookings",
+                "{{tableBookingRef}}",
+                "bill-amount"
+              ]
+            },
+            "description": "Attaches final food and beverage bill from POS to the active table reservation.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"billAmount\": 2200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08. In-Store Dining & Bill Payment (Screens 12 & 13)",
+      "description": "Dining bill checkout with instant offer discount, waiter tip, coin redemption, and coin earning",
+      "item": [
+        {
+          "name": "1. Settle In-Store Dining Bill (Screen 12/13)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/pay-bill",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "table-bookings",
+                "pay-bill"
+              ]
+            },
+            "description": "Settles dining bill, records merchant revenue, updates table reservation to COMPLETED, debits redeemed coins, and credits cashback coins to consumer wallet.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"storeId\": \"{{storeId}}\",\n  \"storeName\": \"The Bombay Canteen – Nagpur Flagship\",\n  \"bookingRef\": \"{{tableBookingRef}}\",\n  \"billAmount\": 2200,\n  \"discountAmount\": 330,\n  \"couponCode\": \"PINAK15\",\n  \"tipAmount\": 50,\n  \"coinsRedeemed\": 20,\n  \"coinsEarned\": 95,\n  \"totalPaid\": 1900,\n  \"paymentMethod\": \"Google Pay\",\n  \"customerName\": \"Priya Sharma\",\n  \"customerPhone\": \"{{testPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.txnId) {",
+                  "    pm.collectionVariables.set(\"txnId\", jsonData.data.txnId);",
+                  "    console.log(\"✔ Auto-saved txnId: \" + jsonData.data.txnId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Settle Dining Bill via Alternate Endpoint (/mobile/dining/pay-bill)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mobile/dining/pay-bill",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mobile",
+                "dining",
+                "pay-bill"
+              ]
+            },
+            "description": "Direct walk-in dining settlement without prior reservation.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"storeId\": \"{{storeId}}\",\n  \"storeName\": \"The Bombay Canteen – Nagpur Flagship\",\n  \"billAmount\": 1200,\n  \"discountAmount\": 180,\n  \"coinsEarned\": 51,\n  \"totalPaid\": 1020,\n  \"paymentMethod\": \"PhonePe UPI\",\n  \"customerName\": \"Priya Sharma\",\n  \"customerPhone\": \"{{testPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09. Core Payments & UPI Subsystem",
+      "description": "Payment intent creation, status polling, cancellation, and payment gateway webhooks",
+      "item": [
+        {
+          "name": "1. Initiate Payment Intent with Idempotency Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            },
+            "description": "Creates transactional payment intent before routing to native UPI app or gateway.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"ORD-202611-1001\",\n  \"amount\": 1080,\n  \"grossAmount\": 1200,\n  \"discountAmount\": 120,\n  \"currency\": \"INR\",\n  \"gateway\": \"UPI\",\n  \"provider\": \"MOCK_UPI\",\n  \"customerId\": \"{{customerId}}\",\n  \"storeId\": \"{{storeId}}\",\n  \"idempotencyKey\": \"pmt_intent_1794486129254\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set(\"paymentId\", jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Fetch Payment Intent Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "{{paymentId}}"
+              ]
+            },
+            "description": "Polls payment status (PENDING, SUCCESS, FAILED) following gateway redirect."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Ingest Payment Provider Webhook Callback (MOCK_UPI)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/webhooks/MOCK_UPI",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "webhooks",
+                "MOCK_UPI"
+              ]
+            },
+            "description": "Asynchronous webhook callback endpoint for UPI gateways (Razorpay, Cashfree, Mock).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"evt_1794486129254\",\n  \"eventType\": \"PAYMENT_SUCCESS\",\n  \"paymentId\": \"{{paymentId}}\",\n  \"providerPaymentId\": \"pay_mock_1794486129254\",\n  \"amount\": 1080,\n  \"currency\": \"INR\",\n  \"status\": \"SUCCESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Cancel In-Flight Payment Intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "{{paymentId}}",
+                "cancel"
+              ]
+            },
+            "description": "Aborts an in-flight payment intent if the consumer dismisses the UPI modal."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Rewards Vault, Coins & Ledger (Screen 15)",
+      "description": "Spendable coins balance, transaction ledger, and receipt lookup",
+      "item": [
+        {
+          "name": "1. Get Customer Reward Balance & Coins",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rewards/balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rewards",
+                "balance"
+              ]
+            },
+            "description": "Returns available spendable coins, lifetime earned, lifetime redeemed, rupee parity, and tier."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Customer Reward Coin Ledger Statement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rewards/ledger?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rewards",
+                "ledger"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": ""
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Full itemized ledger of coin earnings, redemptions, and adjustments with timestamps."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.length > 0 && jsonData.data[0].id) {",
+                  "    pm.collectionVariables.set(\"ledgerEntryId\", jsonData.data[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Single Reward Ledger Entry by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rewards/ledger/{{ledgerEntryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rewards",
+                "ledger",
+                "{{ledgerEntryId}}"
+              ]
+            },
+            "description": "Detailed audit receipt for an individual coin earning or redemption transaction."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11. Customer Financial Transactions",
+      "description": "Settled bill payments, invoice records, and financial transaction history",
+      "item": [
+        {
+          "name": "1. Customer Financial Transactions Ledger",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": ""
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Itemized list of settled in-store dining bills, retail payments, and UTR numbers."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.length > 0 && jsonData.data[0].id) {",
+                  "    pm.collectionVariables.set(\"transactionId\", jsonData.data[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Customer Transaction Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Detailed invoice receipt with payment breakdown, discounts, coins earned, and settlement status."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12. Notifications & Alert Preferences",
+      "description": "Order updates, cashback alerts, booking notifications, and channel consents",
+      "item": [
+        {
+          "name": "1. List Customer Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": ""
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns alert feed (cashback credited, table booking confirmed, flash deals)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.length > 0 && jsonData.data[0].id) {",
+                  "    pm.collectionVariables.set(\"notificationId\", jsonData.data[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Get Unread Notification Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "unread-count"
+              ]
+            },
+            "description": "Badge counter for top navigation bar."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Mark Single Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            },
+            "description": "Clears the unread indicator for a specific alert item."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Mark All Notifications as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "read-all"
+              ]
+            },
+            "description": "Bulk-marks all alerts as read."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Get Notification Channel Preferences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "preferences"
+              ]
+            },
+            "description": "Fetches consumer consent for SMS, WhatsApp, and push channels."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Update Notification Channel Preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "preferences"
+              ]
+            },
+            "description": "Saves consumer channel opt-in/opt-out preferences.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"marketingSms\": true,\n  \"transactionalSms\": true,\n  \"whatsappAlerts\": true,\n  \"pushNotifications\": true,\n  \"emailDigest\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "13. Customer Profile & Active Sessions",
+      "description": "Profile editing, delivery address updates, and multi-device session management",
+      "item": [
+        {
+          "name": "1. Fetch Current Customer Profile (/users/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "Returns profile information, phone, email, and address fields."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Update Customer Profile Information",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "Updates personal details and primary city.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Priya Sharma\",\n  \"email\": \"priya.sharma@example.com\",\n  \"birthday\": \"1998-05-15\",\n  \"gender\": \"FEMALE\",\n  \"primaryCity\": \"Nagpur\",\n  \"state\": \"Maharashtra\",\n  \"district\": \"Nagpur\",\n  \"pincode\": \"440010\",\n  \"address\": \"Flat 302, Green Valley Apartments, Dharampeth\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Fetch Active Device Login Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "sessions"
+              ]
+            },
+            "description": "Lists active mobile devices and browser login sessions."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Revoke Specific Device Session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/sessions/{{sessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "sessions",
+                "{{sessionId}}"
+              ]
+            },
+            "description": "Terminates a remote device login session."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "testPhone",
+      "value": "+919876543210",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otpCode",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "onboardingToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "storeId",
+      "value": "bae1aee5-742a-4439-b3ce-a501b90288b1",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "f1000000-0000-0000-0000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "tableBookingRef",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "txnId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ledgerEntryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userLat",
+      "value": "21.1458",
+      "type": "string"
+    },
+    {
+      "key": "userLng",
+      "value": "79.0882",
+      "type": "string"
     }
   ]
 }
