@@ -180,6 +180,53 @@ export const authApi = {
     const res = await apiClient.get<ApiResponse<UserDTO>>("/auth/me");
     return res.data?.data || (res.data as unknown as UserDTO);
   },
+  /**
+   * Mobile OTP Endpoints for Real Production Mobile User Authentication
+   */
+  sendMobileOtp: async (phone: string, channel: string = "SMS"): Promise<{
+    sessionId: string;
+    cooldownSeconds: number;
+    expiresAt: string;
+    otp?: string;
+    channel: string;
+  }> => {
+    const res = await apiClient.post<ApiResponse<any>>("/mobile/auth/send-otp", { phone, channel });
+    return res.data?.data;
+  },
+
+  verifyMobileOtp: async (payload: { phone: string; otp: string; sessionId?: string }): Promise<{
+    isNewUser: boolean;
+    referralEligible?: boolean;
+    token?: string;
+    refreshToken?: string;
+    onboardingToken?: string;
+    user?: UserDTO;
+  }> => {
+    const res = await apiClient.post<ApiResponse<any>>("/mobile/auth/verify-otp", payload);
+    const data = res.data?.data;
+    if (data?.token) {
+      tokenManager.setAccessToken(data.token, () => {
+        authApi.refresh().catch(() => {});
+      });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pinak_mobile_token", data.token);
+      }
+      if (data.user) {
+        authChannel.broadcast({ type: "AUTH_LOGIN", email: data.user.email, role: data.user.role });
+      }
+    }
+    return data;
+  },
+
+  validateMobileToken: async (token: string): Promise<UserDTO> => {
+    tokenManager.setAccessToken(token);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pinak_mobile_token", token);
+    }
+    const res = await apiClient.get<ApiResponse<UserDTO>>("/auth/me");
+    return res.data?.data || (res.data as unknown as UserDTO);
+  },
+
 
   /**
    * Revoke session on backend, clear HttpOnly cookie, and wipe in-memory token.

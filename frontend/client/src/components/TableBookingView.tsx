@@ -187,10 +187,10 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
 }) => {
   const appStore = useAppStore();
   const [guestName, setGuestName] = useState<string>(() => {
-    return initialCustomerName || appStore.currentUser?.name || "Rohan Itankar";
+    return initialCustomerName || appStore.currentUser?.name || "";
   });
   const [guestPhone, setGuestPhone] = useState<string>(() => {
-    return initialCustomerPhone || appStore.currentUser?.phone || "9145776682";
+    return initialCustomerPhone || appStore.currentUser?.phone || "";
   });
 
   useEffect(() => {
@@ -832,8 +832,12 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
   };
 
   const handleConfirmPaymentAndBooking = async () => {
-    const finalGuestName = guestName.trim() || appStore.currentUser?.name || "Rohan Itankar";
-    const finalGuestPhone = guestPhone.trim() || appStore.currentUser?.phone || "9145776682";
+    const finalGuestName = guestName.trim() || appStore.currentUser?.name || "Guest";
+    const finalGuestPhone = guestPhone.trim() || appStore.currentUser?.phone || "";
+    if (!finalGuestPhone) {
+      toast.error("Please enter your mobile phone number for table reservation.");
+      return;
+    }
 
     setIsSubmitting(true);
     const dateKey = selectedDate.key;

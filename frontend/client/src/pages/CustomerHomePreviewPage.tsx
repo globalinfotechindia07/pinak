@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   RotateCw,
   ExternalLink,
   MapPin,
@@ -37,7 +38,12 @@ import {
   Percent,
   Wallet,
   Coins,
-  Award
+  Award,
+  LogIn,
+  LogOut,
+  Key,
+  Smartphone,
+  Check
 } from "lucide-react";
 import { Link } from "wouter";
 import apiClient from "@/api/client";
@@ -341,25 +347,8 @@ function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
   });
 }
 
-const DEFAULT_CUSTOMER_ACCOUNT: CustomerRewardAccountDTO = {
-  id: "e2000000-0000-0000-0000-000000000001",
-  customerId: "c2000000-0000-0000-0000-000000000001",
-  customerName: "Rahul Verma",
-  customerPhone: "+919876543210",
-  customerEmail: "rahul.mobile@pinak.app",
-  availableBalance: 500.0,
-  pendingBalance: 0.0,
-  lifetimeEarned: 750.0,
-  lifetimeRedeemed: 250.0,
-  currency: "INR",
-  tier: "GOLD",
-  status: "ACTIVE",
-  createdAt: "2026-11-12T13:51:32Z",
-  updatedAt: "2026-11-12T13:51:32Z"
-};
-
 function getCustomerInitials(name?: string): string {
-  if (!name) return "RV";
+  if (!name) return "GU";
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -370,45 +359,265 @@ function getCustomerInitials(name?: string): string {
 export default function CustomerHomePreviewPage() {
   const appStore = useAppStore();
 
-  // Real Customer Account & Wallet Balance from PostgreSQL Database
-  const [activeCustomer, setActiveCustomer] = useState<CustomerRewardAccountDTO>(DEFAULT_CUSTOMER_ACCOUNT);
-  const [rewardAccounts, setRewardAccounts] = useState<CustomerRewardAccountDTO[]>([DEFAULT_CUSTOMER_ACCOUNT]);
+  // Real Customer Account & Wallet Balance from PostgreSQL Database (Zero Dummy Data)
+  const [activeCustomer, setActiveCustomer] = useState<CustomerRewardAccountDTO | null>(null);
+  const [rewardAccounts, setRewardAccounts] = useState<CustomerRewardAccountDTO[]>([]);
   const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
+  const [authModalTab, setAuthModalTab] = useState<"wallet" | "otp" | "token" | "accounts">("wallet");
 
-  // Load real customer reward accounts from backend
-  useEffect(() => {
-    rewardApi.getAllAccounts().then((accounts) => {
+  // Mobile OTP Login state
+  const [loginPhone, setLoginPhone] = useState<string>("");
+  const [loginOtp, setLoginOtp] = useState<string>("");
+  const [otpSessionId, setOtpSessionId] = useState<string>("");
+  const [otpSent, setOtpSent] = useState<boolean>(false);
+  const [otpTestCode, setOtpTestCode] = useState<string>("");
+  const [isSendingOtp, setIsSendingOtp] = useState<boolean>(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
+
+  // Postman Token Login state
+  const [postmanToken, setPostmanToken] = useState<string>("");
+  const [isValidatingToken, setIsValidatingToken] = useState<boolean>(false);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState<boolean>(false);
+  const [accountSearchFilter, setAccountSearchFilter] = useState<string>("");
+
+  const loadDatabaseAccounts = async () => {
+    setIsLoadingAccounts(true);
+    try {
+      const accounts = await rewardApi.getAllAccounts();
       if (accounts && accounts.length > 0) {
         setRewardAccounts(accounts);
-        // Find Rahul Verma if present, otherwise default to first account
-        const rahul = accounts.find((a) => a.customerPhone === "+919876543210" || a.customerId === "c2000000-0000-0000-0000-000000000001");
-        if (rahul) {
-          setActiveCustomer(rahul);
-        } else {
-          setActiveCustomer(accounts[0]);
+        return accounts;
+      }
+      setRewardAccounts([]);
+      return [];
+    } catch (err) {
+      console.warn("Could not load real customer reward accounts from backend:", err);
+      setRewardAccounts([]);
+      return [];
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  };
+
+  // Load real customer session & database accounts on mount
+  useEffect(() => {
+    const savedToken = typeof window !== "undefined" ? localStorage.getItem("pinak_mobile_token") : null;
+    const savedCustomerId = typeof window !== "undefined" ? localStorage.getItem("pinak_active_customer_id") : null;
+
+    loadDatabaseAccounts().then((accounts) => {
+      // 1. Try to restore saved customer by ID if exists in database
+      if (savedCustomerId && accounts && accounts.length > 0) {
+        const found = accounts.find((a) => a.customerId === savedCustomerId || a.id === savedCustomerId);
+        if (found) {
+          setActiveCustomer(found);
+          return;
         }
       }
-    }).catch((err) => {
-      console.warn("Could not load real customer reward accounts:", err);
+
+      // 2. Or if a saved mobile token exists, validate via /auth/me
+      if (savedToken) {
+        authApi.validateMobileToken(savedToken).then(async (user) => {
+          if (user) {
+            let balance: any = null;
+            try {
+              balance = await rewardApi.getRewardBalance();
+            } catch {}
+            const matchedAccount = accounts.find((a) => a.customerId === user.id || a.customerPhone === user.phone);
+            if (matchedAccount) {
+              setActiveCustomer(matchedAccount);
+            } else {
+              setActiveCustomer({
+                id: user.id,
+                customerId: user.id,
+                customerName: user.name || "Mobile User",
+                customerPhone: user.phone || user.mobile || "",
+                customerEmail: user.email || "",
+                availableBalance: balance?.availableBalance ?? balance?.pointsBalance ?? 0,
+                pendingBalance: balance?.pendingBalance ?? 0,
+                lifetimeEarned: balance?.lifetimeEarned ?? 0,
+                lifetimeRedeemed: balance?.lifetimeRedeemed ?? 0,
+                currency: "INR",
+                tier: balance?.tier || "SILVER",
+                status: user.status || "ACTIVE",
+                createdAt: user.createdAt || new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              });
+            }
+          }
+        }).catch(() => {
+          localStorage.removeItem("pinak_mobile_token");
+        });
+      }
     });
   }, []);
 
   const refreshActiveCustomerBalance = async (customerId?: string) => {
-    const idToFetch = customerId || activeCustomer.customerId;
+    const idToFetch = customerId || activeCustomer?.customerId;
+    if (!idToFetch) return;
     try {
       const fresh = await rewardApi.getCustomerRewardAccount(idToFetch);
       if (fresh) {
-        setActiveCustomer((prev) => ({
+        setActiveCustomer((prev) => prev ? ({
           ...prev,
           availableBalance: fresh.pointsBalance,
           lifetimeEarned: fresh.lifetimeEarned,
           lifetimeRedeemed: fresh.lifetimeRedeemed,
           tier: fresh.tier
-        }));
+        }) : null);
         toast.success(`Wallet Balance Refreshed: ${fresh.pointsBalance} PINAK Coins (₹${fresh.pointsBalance})`);
       }
     } catch {
       toast.error("Failed to refresh balance from backend");
+    }
+  };
+
+  const handleSelectCustomer = (acc: CustomerRewardAccountDTO) => {
+    setActiveCustomer(acc);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pinak_active_customer_id", acc.customerId);
+    }
+    setAuthModalTab("wallet");
+    toast.success(`Active Customer: ${acc.customerName}`, {
+      description: `Live Balance: ${acc.availableBalance} PINAK Coins (₹${acc.availableBalance})`
+    });
+  };
+
+  const handleLogoutCustomer = () => {
+    setActiveCustomer(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("pinak_mobile_token");
+      localStorage.removeItem("pinak_active_customer_id");
+    }
+    setAuthModalTab("otp");
+    toast.info("Logged out from customer profile. Switched to Guest Mode.");
+  };
+
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanPhone = loginPhone.trim();
+    if (!cleanPhone || cleanPhone.length < 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    const formattedPhone = cleanPhone.startsWith("+") ? cleanPhone : (cleanPhone.length === 10 ? `+91${cleanPhone}` : `+${cleanPhone}`);
+    setIsSendingOtp(true);
+    try {
+      const resp = await authApi.sendMobileOtp(formattedPhone, "SMS");
+      setOtpSent(true);
+      setOtpSessionId(resp.sessionId || "");
+      if (resp.otp) {
+        setOtpTestCode(resp.otp);
+        setLoginOtp(resp.otp);
+      }
+      toast.success(`OTP sent to ${formattedPhone}`, {
+        description: resp.otp ? `Dev Test OTP: ${resp.otp}` : "Check your SMS / WhatsApp"
+      });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to send OTP");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!loginOtp || loginOtp.trim().length !== 6) {
+      toast.error("Please enter the 6-digit OTP code");
+      return;
+    }
+    const cleanPhone = loginPhone.trim();
+    const formattedPhone = cleanPhone.startsWith("+") ? cleanPhone : (cleanPhone.length === 10 ? `+91${cleanPhone}` : `+${cleanPhone}`);
+    setIsVerifyingOtp(true);
+    try {
+      const resp = await authApi.verifyMobileOtp({
+        phone: formattedPhone,
+        otp: loginOtp.trim(),
+        sessionId: otpSessionId || undefined
+      });
+      if (resp.token) {
+        localStorage.setItem("pinak_mobile_token", resp.token);
+      }
+      const freshAccounts = await loadDatabaseAccounts();
+      const user = resp.user;
+      const found = freshAccounts.find((a) => a.customerPhone === formattedPhone || (user && a.customerId === user.id));
+      if (found) {
+        setActiveCustomer(found);
+        localStorage.setItem("pinak_active_customer_id", found.customerId);
+      } else if (user) {
+        const newAcc: CustomerRewardAccountDTO = {
+          id: user.id,
+          customerId: user.id,
+          customerName: user.name || "Mobile User",
+          customerPhone: user.phone || formattedPhone,
+          customerEmail: user.email || "",
+          availableBalance: 100,
+          pendingBalance: 0,
+          lifetimeEarned: 100,
+          lifetimeRedeemed: 0,
+          currency: "INR",
+          tier: "SILVER",
+          status: user.status || "ACTIVE",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setActiveCustomer(newAcc);
+        localStorage.setItem("pinak_active_customer_id", user.id);
+      }
+      setAuthModalTab("wallet");
+      toast.success(`Signed in successfully as ${resp.user?.name || formattedPhone}!`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Invalid OTP code");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const handleValidatePostmanToken = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const rawToken = postmanToken.trim().replace(/^Bearer\s+/i, "");
+    if (!rawToken || rawToken.length < 20) {
+      toast.error("Please paste a valid JWT token from Postman");
+      return;
+    }
+    setIsValidatingToken(true);
+    try {
+      const user = await authApi.validateMobileToken(rawToken);
+      localStorage.setItem("pinak_mobile_token", rawToken);
+      localStorage.setItem("pinak_active_customer_id", user.id);
+      const freshAccounts = await loadDatabaseAccounts();
+      let balance: any = null;
+      try {
+        balance = await rewardApi.getRewardBalance();
+      } catch {}
+      const found = freshAccounts.find((a) => a.customerId === user.id || a.customerPhone === user.phone);
+      if (found) {
+        setActiveCustomer(found);
+      } else {
+        setActiveCustomer({
+          id: user.id,
+          customerId: user.id,
+          customerName: user.name || "Mobile User",
+          customerPhone: user.phone || user.mobile || "",
+          customerEmail: user.email || "",
+          availableBalance: balance?.availableBalance ?? balance?.pointsBalance ?? 0,
+          pendingBalance: balance?.pendingBalance ?? 0,
+          lifetimeEarned: balance?.lifetimeEarned ?? 0,
+          lifetimeRedeemed: balance?.lifetimeRedeemed ?? 0,
+          currency: "INR",
+          tier: balance?.tier || "SILVER",
+          status: user.status || "ACTIVE",
+          createdAt: user.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      }
+      setAuthModalTab("wallet");
+      toast.success(`Authenticated from Postman Token!`, {
+        description: `Welcome, ${user.name || user.email} (${user.role})`
+      });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Token validation failed. Ensure backend is running and token is valid.");
+    } finally {
+      setIsValidatingToken(false);
     }
   };
 
@@ -1078,16 +1287,34 @@ export default function CustomerHomePreviewPage() {
           {/* Right Actions: Coins, Share & Simulator Switch */}
           <div className="flex items-center gap-2">
             {/* Real Coins & Customer Wallet Button in Public Header */}
-            <button
-              type="button"
-              onClick={() => setShowWalletModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-300 font-bold text-xs transition-colors border border-amber-200/80 dark:border-amber-800 shadow-2xs cursor-pointer"
-              title="View Customer Reward Wallet & Coins"
-            >
-              <Coins size={14} className="text-amber-600" />
-              <span>{Math.round(activeCustomer.availableBalance)}</span>
-              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold">({getCustomerInitials(activeCustomer.customerName)})</span>
-            </button>
+            {activeCustomer ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthModalTab("wallet");
+                  setShowWalletModal(true);
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-300 font-bold text-xs transition-colors border border-amber-200/80 dark:border-amber-800 shadow-2xs cursor-pointer"
+                title="View Customer Reward Wallet & Coins"
+              >
+                <Coins size={14} className="text-amber-600" />
+                <span>{Math.round(activeCustomer.availableBalance)}</span>
+                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold">({getCustomerInitials(activeCustomer.customerName)})</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthModalTab("otp");
+                  setShowWalletModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-sm cursor-pointer"
+                title="Log In / Sign In with Mobile"
+              >
+                <LogIn size={13} />
+                <span>Sign In</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -1324,10 +1551,10 @@ export default function CustomerHomePreviewPage() {
               storeId={selectedStoreId}
               userLat={userLocation.latitude}
               userLng={userLocation.longitude}
-              customerName={activeCustomer.customerName || appStore.currentUser?.name}
-              customerPhone={activeCustomer.customerPhone || appStore.currentUser?.phone}
-              customerId={activeCustomer.customerId}
-              customerCoins={activeCustomer.availableBalance}
+              customerName={activeCustomer?.customerName || appStore.currentUser?.name}
+              customerPhone={activeCustomer?.customerPhone || appStore.currentUser?.phone}
+              customerId={activeCustomer?.customerId}
+              customerCoins={activeCustomer?.availableBalance}
               initialView={initialDetailView}
               initialOffer={selectedOfferForDetail}
               onBack={() => {
@@ -1350,10 +1577,10 @@ export default function CustomerHomePreviewPage() {
               initialOfferTitle={effectivePassBooking.offerTitle}
               initialOfferDiscount={effectivePassBooking.discountPct ? Number(effectivePassBooking.discountPct) : undefined}
               initialCoverCharge={effectivePassBooking.totalCoverCharge ? Number(effectivePassBooking.totalCoverCharge) : 0}
-              initialCustomerName={effectivePassBooking.customerName || activeCustomer.customerName || appStore.currentUser?.name}
-              initialCustomerPhone={effectivePassBooking.customerPhone || activeCustomer.customerPhone || appStore.currentUser?.phone}
-              customerId={activeCustomer.customerId}
-              customerCoins={activeCustomer.availableBalance}
+              initialCustomerName={effectivePassBooking.customerName || activeCustomer?.customerName || appStore.currentUser?.name}
+              initialCustomerPhone={effectivePassBooking.customerPhone || activeCustomer?.customerPhone || appStore.currentUser?.phone}
+              customerId={activeCustomer?.customerId}
+              customerCoins={activeCustomer?.availableBalance}
               userLat={userLocation.latitude}
               userLng={userLocation.longitude}
               onBack={() => {
@@ -1369,8 +1596,8 @@ export default function CustomerHomePreviewPage() {
             />
           ) : activeScreen === "orders" ? (
             <CustomerOrdersView
-              customerId={activeCustomer.customerId}
-              customerCoins={activeCustomer.availableBalance}
+              customerId={activeCustomer?.customerId}
+              customerCoins={activeCustomer?.availableBalance}
               onBackToDiscover={() => {
                 setActiveScreen("home");
                 window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1543,30 +1770,52 @@ export default function CustomerHomePreviewPage() {
                     <span>{Object.values(cart).reduce((a, b) => a + b, 0)} Cart</span>
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setShowWalletModal(true)}
-                  className="flex items-center bg-amber-50 hover:bg-amber-100/90 transition-colors border border-amber-200/80 px-2 py-0.5 space-x-1 shadow-2xs rounded-md cursor-pointer"
-                  title="Click to view Customer Wallet & Coins"
-                >
-                  <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-[9px] font-black text-amber-900">
-                    🪙
-                  </div>
-                  <div className="text-[10px] font-bold text-amber-900 leading-tight text-left">
-                    {Math.round(activeCustomer.availableBalance)}
-                    <span className="block text-[8px] text-amber-700 font-medium leading-none">
-                      ₹{Math.round(activeCustomer.availableBalance)} val
-                    </span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowWalletModal(true)}
-                  className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center shadow-xs cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
-                  title={`${activeCustomer.customerName} (${activeCustomer.customerPhone || "Mobile User"})`}
-                >
-                  {getCustomerInitials(activeCustomer.customerName)}
-                </button>
+                {activeCustomer ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthModalTab("wallet");
+                        setShowWalletModal(true);
+                      }}
+                      className="flex items-center bg-amber-50 hover:bg-amber-100/90 transition-colors border border-amber-200/80 px-2 py-0.5 space-x-1 shadow-2xs rounded-md cursor-pointer"
+                      title="Click to view Customer Wallet & Coins"
+                    >
+                      <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-[9px] font-black text-amber-900">
+                        🪙
+                      </div>
+                      <div className="text-[10px] font-bold text-amber-900 leading-tight text-left">
+                        {Math.round(activeCustomer.availableBalance)}
+                        <span className="block text-[8px] text-amber-700 font-medium leading-none">
+                          ₹{Math.round(activeCustomer.availableBalance)} val
+                        </span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthModalTab("wallet");
+                        setShowWalletModal(true);
+                      }}
+                      className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center shadow-xs cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
+                      title={`${activeCustomer.customerName} (${activeCustomer.customerPhone || "Mobile User"})`}
+                    >
+                      {getCustomerInitials(activeCustomer.customerName)}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthModalTab("otp");
+                      setShowWalletModal(true);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold cursor-pointer transition-all shadow-xs"
+                  >
+                    <LogIn size={11} />
+                    <span>Log In</span>
+                  </button>
+                )}
               </div>
             </div>
           </header>
@@ -2819,184 +3068,506 @@ export default function CustomerHomePreviewPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setShowWalletModal(true)}
+                onClick={() => {
+                  setAuthModalTab(activeCustomer ? "wallet" : "otp");
+                  setShowWalletModal(true);
+                }}
                 className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px] cursor-pointer transition-colors"
               >
                 <div className="relative">
                   <User size={20} />
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500"></span>
+                  {activeCustomer && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500"></span>
+                  )}
                 </div>
-                <span className="text-[9px] font-medium">Pocket</span>
+                <span className="text-[9px] font-medium">{activeCustomer ? "Pocket" : "Sign In"}</span>
               </button>
             </nav>
           )}
 
           {/* ========================================================================= */}
-          {/* REAL CUSTOMER WALLET & REWARDS MODAL / DRAWER */}
+          {/* REAL PRODUCTION CUSTOMER AUTHENTICATION & WALLET MODAL */}
           {/* ========================================================================= */}
           {showWalletModal && (
             <div
-              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-200"
               onClick={() => setShowWalletModal(false)}
             >
               <div
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Modal Header */}
-                <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-pink-600 p-5 text-white relative">
+                <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-pink-600 p-4 sm:p-5 text-white relative">
                   <button
                     onClick={() => setShowWalletModal(false)}
                     className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors cursor-pointer"
                   >
                     <X size={18} />
                   </button>
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-13 h-13 rounded-2xl bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center text-xl font-black shadow-inner">
-                      {getCustomerInitials(activeCustomer.customerName)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-base font-black tracking-tight">{activeCustomer.customerName}</h3>
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-400 text-amber-950 uppercase tracking-wider">
-                          {activeCustomer.tier || "GOLD"}
-                        </span>
+
+                  {activeCustomer ? (
+                    <div className="flex items-center gap-3.5 pr-8">
+                      <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center text-lg font-black shadow-inner shrink-0">
+                        {getCustomerInitials(activeCustomer.customerName)}
                       </div>
-                      <p className="text-xs text-white/90 font-semibold">{activeCustomer.customerPhone || "No phone linked"}</p>
-                      <p className="text-[11px] text-white/70">{activeCustomer.customerEmail}</p>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-black tracking-tight truncate">{activeCustomer.customerName}</h3>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-400 text-amber-950 uppercase tracking-wider shrink-0">
+                            {activeCustomer.tier || "GOLD"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-white/90 font-semibold truncate">{activeCustomer.customerPhone || "Verified Mobile Customer"}</p>
+                        <p className="text-[11px] text-white/70 truncate">{activeCustomer.customerEmail}</p>
+                      </div>
                     </div>
+                  ) : (
+                    <div className="flex items-center gap-3 pr-8">
+                      <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0">
+                        <Smartphone size={22} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black tracking-tight">PINAK Customer Gateway</h3>
+                        <p className="text-xs text-white/80">Production mobile authentication & database wallet testing</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Navigation Tab Bar */}
+                  <div className="flex items-center gap-1 mt-4 pt-3 border-t border-white/20 overflow-x-auto text-[11px] font-bold">
+                    {activeCustomer && (
+                      <button
+                        type="button"
+                        onClick={() => setAuthModalTab("wallet")}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0",
+                          authModalTab === "wallet"
+                            ? "bg-white text-purple-900 shadow-xs"
+                            : "bg-white/10 hover:bg-white/20 text-white"
+                        )}
+                      >
+                        <Coins size={13} />
+                        <span>My Wallet</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setAuthModalTab("otp")}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0",
+                        authModalTab === "otp"
+                          ? "bg-white text-purple-900 shadow-xs"
+                          : "bg-white/10 hover:bg-white/20 text-white"
+                      )}
+                    >
+                      <Smartphone size={13} />
+                      <span>Mobile OTP</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthModalTab("token")}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0",
+                        authModalTab === "token"
+                          ? "bg-white text-purple-900 shadow-xs"
+                          : "bg-white/10 hover:bg-white/20 text-white"
+                      )}
+                    >
+                      <Key size={13} />
+                      <span>Postman Token</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthModalTab("accounts");
+                        loadDatabaseAccounts();
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0",
+                        authModalTab === "accounts"
+                          ? "bg-white text-purple-900 shadow-xs"
+                          : "bg-white/10 hover:bg-white/20 text-white"
+                      )}
+                    >
+                      <Users size={13} />
+                      <span>Database Users ({rewardAccounts.length})</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Body */}
-                <div className="p-4 space-y-3.5 overflow-y-auto max-h-[calc(90vh-170px)]">
-                  {/* Real Coins Balance Card */}
-                  <div className="rounded-2xl p-4 bg-gradient-to-br from-amber-500/15 via-amber-400/5 to-transparent border border-amber-300 dark:border-amber-700/50 relative overflow-hidden">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                        <Coins size={16} className="text-amber-500" />
-                        PINAK Reward Wallet
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                        Live Database Sync
-                      </span>
-                    </div>
+                {/* Body Content */}
+                <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(92vh-200px)]">
+                  {/* TAB 1: WALLET & COINS (When logged in) */}
+                  {authModalTab === "wallet" && activeCustomer && (
+                    <div className="space-y-4">
+                      {/* Coins Card */}
+                      <div className="rounded-2xl p-4 bg-gradient-to-br from-amber-500/15 via-amber-400/5 to-transparent border border-amber-300 dark:border-amber-700/50 relative overflow-hidden">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                            <Coins size={16} className="text-amber-500" />
+                            PINAK Reward Wallet
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Live PostgreSQL Sync
+                          </span>
+                        </div>
 
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-black text-slate-900 dark:text-white">
-                        {Math.round(activeCustomer.availableBalance).toLocaleString("en-IN")}
-                      </span>
-                      <span className="text-sm font-bold text-amber-600">🪙 PINAK Coins</span>
-                    </div>
-                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1">
-                      Instant cash value: <span className="font-black text-emerald-600">₹{activeCustomer.availableBalance.toFixed(2)}</span>
-                    </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      Redeemable for instant discounts on dining bills, table reservations, and in-store purchases (1 Coin = ₹1).
-                    </p>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-black text-slate-900 dark:text-white">
+                            {Math.round(activeCustomer.availableBalance).toLocaleString("en-IN")}
+                          </span>
+                          <span className="text-sm font-bold text-amber-600">🪙 PINAK Coins</span>
+                        </div>
+                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1">
+                          Instant cash value: <span className="font-black text-emerald-600">₹{activeCustomer.availableBalance.toFixed(2)}</span>
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Redeemable for instant bill discounts, counter payments, and pre-book table deposits (1 Coin = ₹1).
+                        </p>
 
-                    {/* Lifetime Earned & Redeemed stats */}
-                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-amber-200/60 dark:border-amber-800/40 text-center">
-                      <div className="bg-white/70 dark:bg-slate-800/70 rounded-xl p-2 border border-slate-100 dark:border-slate-700">
-                        <span className="text-[10px] text-slate-400 font-medium block">Lifetime Earned</span>
-                        <span className="text-xs font-black text-emerald-600">+{activeCustomer.lifetimeEarned || 0} 🪙</span>
+                        {/* Lifetime Stats */}
+                        <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-amber-200/60 dark:border-amber-800/40 text-center">
+                          <div className="bg-white/70 dark:bg-slate-800/70 rounded-xl p-2 border border-slate-100 dark:border-slate-700">
+                            <span className="text-[10px] text-slate-400 font-medium block">Lifetime Earned</span>
+                            <span className="text-xs font-black text-emerald-600">+{activeCustomer.lifetimeEarned || 0} 🪙</span>
+                          </div>
+                          <div className="bg-white/70 dark:bg-slate-800/70 rounded-xl p-2 border border-slate-100 dark:border-slate-700">
+                            <span className="text-[10px] text-slate-400 font-medium block">Lifetime Redeemed</span>
+                            <span className="text-xs font-black text-rose-500">-{activeCustomer.lifetimeRedeemed || 0} 🪙</span>
+                          </div>
+                        </div>
+
+                        {/* Refresh Button */}
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => refreshActiveCustomerBalance(activeCustomer.customerId)}
+                            className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          >
+                            <RefreshCw size={13} />
+                            Refresh Coins from Database
+                          </button>
+                        </div>
                       </div>
-                      <div className="bg-white/70 dark:bg-slate-800/70 rounded-xl p-2 border border-slate-100 dark:border-slate-700">
-                        <span className="text-[10px] text-slate-400 font-medium block">Lifetime Redeemed</span>
-                        <span className="text-xs font-black text-rose-500">-{activeCustomer.lifetimeRedeemed || 0} 🪙</span>
+
+                      {/* Log Out Button */}
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={handleLogoutCustomer}
+                          className="w-full py-2.5 px-3 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors cursor-pointer"
+                        >
+                          <LogOut size={13} />
+                          Sign Out (Switch to Guest Mode)
+                        </button>
                       </div>
                     </div>
+                  )}
 
-                    {/* Refresh Button */}
-                    <div className="mt-3">
-                      <button
-                        type="button"
-                        onClick={() => refreshActiveCustomerBalance(activeCustomer.customerId)}
-                        className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                      >
-                        <RefreshCw size={13} />
-                        Refresh Coins from Database
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Account Switcher Section */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                          Switch Customer Account
-                        </h4>
-                        <p className="text-[10px] text-slate-400">
-                          Select any real database user to test their actual coin balance
+                  {/* TAB 2: MOBILE OTP LOGIN */}
+                  {authModalTab === "otp" && (
+                    <div className="space-y-3.5">
+                      <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-2xl p-3 text-xs text-purple-900 dark:text-purple-200">
+                        <p className="font-bold flex items-center gap-1.5">
+                          <Smartphone size={14} className="text-purple-600" />
+                          Native Mobile Phone Authentication
+                        </p>
+                        <p className="text-[11px] text-purple-700 dark:text-purple-300 mt-0.5">
+                          Authenticates against real backend endpoints (<code className="bg-purple-100 dark:bg-purple-900 px-1 py-0.2 rounded font-mono">/mobile/auth/send-otp</code> & <code className="bg-purple-100 dark:bg-purple-900 px-1 py-0.2 rounded font-mono">/verify-otp</code>).
                         </p>
                       </div>
-                      <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full">
-                        {rewardAccounts.length} Customers
-                      </span>
-                    </div>
 
-                    <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                      {rewardAccounts.map((account) => {
-                        const isSelected = account.customerId === activeCustomer.customerId;
-                        return (
-                          <div
-                            key={account.id || account.customerId}
-                            onClick={() => {
-                              setActiveCustomer(account);
-                              toast.success(`Active Customer switched to ${account.customerName}`, {
-                                description: `Live Balance: ${account.availableBalance} PINAK Coins (₹${account.availableBalance})`
-                              });
-                            }}
-                            className={cn(
-                              "flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer text-left",
-                              isSelected
-                                ? "bg-purple-50/80 dark:bg-purple-950/40 border-purple-500 ring-1 ring-purple-500"
-                                : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-3">
+                        <div>
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                            Mobile Phone Number
+                          </label>
+                          <div className="flex gap-2">
+                            <div className="flex items-center px-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 select-none">
+                              🇮🇳 +91
+                            </div>
+                            <input
+                              type="tel"
+                              value={loginPhone}
+                              onChange={(e) => setLoginPhone(e.target.value)}
+                              placeholder="98755 54321"
+                              disabled={otpSent}
+                              className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            {!otpSent && (
+                              <button
+                                type="button"
+                                onClick={handleSendOtp}
+                                disabled={isSendingOtp || !loginPhone}
+                                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                              >
+                                {isSendingOtp ? (
+                                  <>
+                                    <RotateCw size={13} className="animate-spin" />
+                                    <span>Sending...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>Send OTP</span>
+                                    <ArrowRight size={13} />
+                                  </>
+                                )}
+                              </button>
                             )}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black",
-                                isSelected ? "bg-purple-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                              )}>
-                                {getCustomerInitials(account.customerName)}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs font-bold text-slate-900 dark:text-white">
-                                    {account.customerName}
+                          </div>
+                        </div>
+
+                        {otpSent && (
+                          <div className="space-y-3 animate-in fade-in duration-200">
+                            {otpTestCode && (
+                              <div className="rounded-xl p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex items-center justify-between text-xs">
+                                <div>
+                                  <span className="text-[10px] uppercase font-black text-amber-800 dark:text-amber-400 block">
+                                    Backend Testing OTP
                                   </span>
-                                  {account.customerId === "c2000000-0000-0000-0000-000000000001" && (
-                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">
-                                      Primary Mobile
-                                    </span>
-                                  )}
+                                  <span className="font-mono font-black text-amber-950 dark:text-amber-200 tracking-wider text-sm">
+                                    {otpTestCode}
+                                  </span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 block">{account.customerPhone}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setLoginOtp(otpTestCode)}
+                                  className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold shadow-2xs cursor-pointer"
+                                >
+                                  Autofill Code
+                                </button>
                               </div>
+                            )}
+
+                            <div>
+                              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                                6-Digit OTP Code
+                              </label>
+                              <input
+                                type="text"
+                                maxLength={6}
+                                value={loginOtp}
+                                onChange={(e) => setLoginOtp(e.target.value.replace(/D/g, ""))}
+                                placeholder="481920"
+                                className="w-full text-center tracking-[0.5em] font-mono text-lg font-black px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              />
                             </div>
 
-                            <div className="text-right">
-                              <div className="flex items-center gap-1 justify-end font-black text-xs text-amber-700 dark:text-amber-400">
-                                <span>🪙</span>
-                                <span>{Math.round(account.availableBalance)}</span>
-                              </div>
-                              <span className="text-[9px] font-bold text-slate-400 uppercase">
-                                {account.tier || "GOLD"}
-                              </span>
+                            <button
+                              type="button"
+                              onClick={handleVerifyOtp}
+                              disabled={isVerifyingOtp || loginOtp.length !== 6}
+                              className="w-full py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                            >
+                              {isVerifyingOtp ? (
+                                <>
+                                  <RotateCw size={13} className="animate-spin" />
+                                  <span>Verifying OTP & Logging In...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Check size={14} />
+                                  <span>Verify OTP & Sign In</span>
+                                </>
+                              )}
+                            </button>
+
+                            <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOtpSent(false);
+                                  setLoginOtp("");
+                                }}
+                                className="text-purple-600 hover:underline font-semibold cursor-pointer"
+                              >
+                                Change Mobile Number
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSendOtp}
+                                disabled={isSendingOtp}
+                                className="text-purple-600 hover:underline font-semibold cursor-pointer"
+                              >
+                                Resend OTP
+                              </button>
                             </div>
                           </div>
-                        );
-                      })}
+                        )}
+                      </form>
                     </div>
-                  </div>
+                  )}
+
+                  {/* TAB 3: POSTMAN JWT TOKEN LOGIN */}
+                  {authModalTab === "token" && (
+                    <div className="space-y-3.5">
+                      <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-3 text-xs text-indigo-900 dark:text-indigo-200">
+                        <p className="font-bold flex items-center gap-1.5">
+                          <Key size={14} className="text-indigo-600" />
+                          Direct Postman Bearer Token Sign-In
+                        </p>
+                        <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1 leading-relaxed">
+                          When you create a mobile customer in Postman (<code className="bg-indigo-100 dark:bg-indigo-900 px-1 py-0.2 rounded font-mono">/complete-setup</code> or <code className="bg-indigo-100 dark:bg-indigo-900 px-1 py-0.2 rounded font-mono">/verify-otp</code>), Postman stores <code className="bg-indigo-100 dark:bg-indigo-900 px-1 py-0.2 rounded font-mono">{"{{mobileToken}}"}</code>. Paste it below to immediately authenticate without SMS verification.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                          Paste JWT Bearer Token from Postman
+                        </label>
+                        <textarea
+                          rows={4}
+                          value={postmanToken}
+                          onChange={(e) => setPostmanToken(e.target.value)}
+                          placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                          className="w-full p-3 font-mono text-[11px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-tight"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleValidatePostmanToken}
+                          disabled={isValidatingToken || !postmanToken.trim()}
+                          className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        >
+                          {isValidatingToken ? (
+                            <>
+                              <RotateCw size={13} className="animate-spin" />
+                              <span>Validating Token with Backend...</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck size={14} />
+                              <span>Authenticate Postman Token & Log In</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 4: DATABASE CUSTOMERS LIST */}
+                  {authModalTab === "accounts" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                            Real PostgreSQL Customer Accounts
+                          </h4>
+                          <p className="text-[10px] text-slate-400">
+                            Created via Postman mobile onboarding or database registration
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={loadDatabaseAccounts}
+                          disabled={isLoadingAccounts}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-200 dark:border-purple-800 cursor-pointer"
+                        >
+                          <RefreshCw size={11} className={isLoadingAccounts ? "animate-spin" : ""} />
+                          <span>Refresh DB</span>
+                        </button>
+                      </div>
+
+                      {/* Filter Search */}
+                      {rewardAccounts.length > 3 && (
+                        <input
+                          type="text"
+                          value={accountSearchFilter}
+                          onChange={(e) => setAccountSearchFilter(e.target.value)}
+                          placeholder="Search customer by name or phone..."
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      )}
+
+                      <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                        {rewardAccounts.length === 0 ? (
+                          <div className="text-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500">
+                            <p className="text-xs font-bold">No customers found in database</p>
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Run your Postman collection to create a customer, then click Refresh above!
+                            </p>
+                          </div>
+                        ) : (
+                          rewardAccounts
+                            .filter((a) => {
+                              if (!accountSearchFilter.trim()) return true;
+                              const q = accountSearchFilter.toLowerCase();
+                              return (
+                                (a.customerName || "").toLowerCase().includes(q) ||
+                                (a.customerPhone || "").includes(q) ||
+                                (a.customerEmail || "").toLowerCase().includes(q)
+                              );
+                            })
+                            .map((account) => {
+                              const isSelected = activeCustomer?.customerId === account.customerId;
+                              return (
+                                <div
+                                  key={account.id || account.customerId}
+                                  onClick={() => handleSelectCustomer(account)}
+                                  className={cn(
+                                    "flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer text-left",
+                                    isSelected
+                                      ? "bg-purple-50/80 dark:bg-purple-950/40 border-purple-500 ring-1 ring-purple-500 shadow-xs"
+                                      : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <div
+                                      className={cn(
+                                        "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0",
+                                        isSelected
+                                          ? "bg-purple-600 text-white"
+                                          : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                                      )}
+                                    >
+                                      {getCustomerInitials(account.customerName)}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                          {account.customerName}
+                                        </span>
+                                        {isSelected && (
+                                          <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                                            Active
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-[10px] text-slate-400 block truncate">
+                                        {account.customerPhone || "No phone"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-right shrink-0">
+                                    <div className="flex items-center gap-1 justify-end font-black text-xs text-amber-700 dark:text-amber-400">
+                                      <span>🪙</span>
+                                      <span>{Math.round(account.availableBalance)}</span>
+                                    </div>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase">
+                                      {account.tier || "GOLD"}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Modal Footer */}
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400">
-                    ID: <code className="text-purple-600 font-mono text-[10px]">{activeCustomer.customerId.slice(0, 16)}...</code>
+                  <span className="text-[11px] text-slate-400 truncate max-w-[240px]">
+                    {activeCustomer ? (
+                      <>
+                        Active: <strong className="text-slate-700 dark:text-slate-200">{activeCustomer.customerName}</strong>
+                      </>
+                    ) : (
+                      "Guest Customer (Not Logged In)"
+                    )}
                   </span>
                   <button
                     type="button"

@@ -106,11 +106,11 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
   const billTitle = isRetail ? "store bill" : "dining bill";
   const storeLabel = isRetail ? "store" : "restaurant";
   const appStore = useAppStore();
-  const effectiveCustomerName = customerName || appStore.currentUser?.name || "Rahul Verma";
-  const effectiveCustomerPhone = customerPhone || appStore.currentUser?.phone || "+919876543210";
+  const effectiveCustomerName = customerName || appStore.currentUser?.name || "";
+  const effectiveCustomerPhone = customerPhone || appStore.currentUser?.phone || "";
 
   // User real coin balance from database
-  const [userCoinBalance, setUserCoinBalance] = useState<number>(customerCoins != null ? customerCoins : 500);
+  const [userCoinBalance, setUserCoinBalance] = useState<number>(customerCoins != null ? customerCoins : 0);
 
   useEffect(() => {
     if (customerCoins != null) {
