@@ -17,7 +17,11 @@ import {
   Percent,
   Loader2,
   Lock,
-  ShieldCheck
+  ShieldCheck,
+  Store,
+  MapPin,
+  Tag,
+  Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -365,6 +369,29 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
     return Math.max(0, Math.round(withFeesAndTip));
   }, [numericBill, totalDiscount, coverChargeCredit, totalFees, selectedTip, coinSavings]);
 
+  // Quick bill presets & live initial calculations
+  const handleQuickAdd = (amount: number) => {
+    if (isBillPreSetByStore) return;
+    const current = parseFloat(billAmountInput.replace(/[^0-9.]/g, "")) || 0;
+    const next = current + amount;
+    setBillAmountInput(String(next));
+  };
+
+  const handleClearBill = () => {
+    if (isBillPreSetByStore) return;
+    setBillAmountInput("");
+  };
+
+  const estimatedInitialSavings = useMemo(() => {
+    if (numericBill <= 0) return 0;
+    if (resolvedOfferDiscountPct > 0) {
+      return Math.round((numericBill * resolvedOfferDiscountPct) / 100);
+    }
+    return Math.round(numericBill * 0.10); // 10% welcome coupon fallback
+  }, [numericBill, resolvedOfferDiscountPct]);
+
+  const estimatedInitialPayable = Math.max(0, numericBill - estimatedInitialSavings);
+
   // Handle Apply Coupon
   const handleApplyCoupon = (coupon: CouponItem) => {
     if (coupon.minBill && numericBill < coupon.minBill) {
@@ -529,14 +556,14 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
   // =========================================================================
   if (payStep === "success" && confirmedPaymentDetails) {
     return (
-      <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-['Manrope'] pb-28 animate-in fade-in duration-200">
+      <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between font-sans pb-28 animate-in fade-in duration-200">
         <div>
           {/* Header */}
           <header className="sticky top-0 z-30 bg-[#fbfbff]/95 dark:bg-slate-950/95 backdrop-blur-md px-4 py-3 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
             <button
               type="button"
               onClick={onBack}
-              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer"
+              className="w-9 h-9 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 flex items-center justify-center transition shadow-xs border border-slate-200/90 dark:border-slate-800 cursor-pointer active:scale-95"
             >
               <ArrowLeft size={18} />
             </button>
@@ -546,7 +573,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
               onClick={() => {
                 toast.info("PINAK 24/7 Helpline: +91 800-PINAK-HELP");
               }}
-              className="h-8 px-3 rounded-full border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5"
+              className="h-8 px-3 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 shadow-xs"
             >
               <HelpCircle size={13} />
               <span>Help</span>
@@ -657,14 +684,14 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
   // =========================================================================
   if (payStep === "apply_coupon") {
     return (
-      <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between font-['Manrope'] pb-12 animate-in fade-in duration-200">
+      <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between font-sans pb-12 animate-in fade-in duration-200">
         <div>
           {/* Header */}
           <header className="sticky top-0 z-30 bg-[#fbfbff]/95 dark:bg-slate-950/95 backdrop-blur-md px-4 py-3 border-b border-slate-200/80 dark:border-slate-800 flex items-center gap-3">
             <button
               type="button"
               onClick={() => setPayStep("bill_checkout")}
-              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer shrink-0"
+              className="w-9 h-9 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 flex items-center justify-center transition shadow-xs border border-slate-200/90 dark:border-slate-800 cursor-pointer shrink-0 active:scale-95"
             >
               <ArrowLeft size={18} />
             </button>
@@ -803,7 +830,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
   // =========================================================================
   if (payStep === "bill_checkout") {
     return (
-      <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between font-['Manrope'] pb-32 animate-in fade-in duration-200">
+      <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between font-sans pb-36 animate-in fade-in duration-200">
         <div>
           {/* Header */}
           <header className="sticky top-0 z-30 bg-[#fbfbff]/95 dark:bg-slate-950/95 backdrop-blur-md px-4 py-3 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
@@ -811,7 +838,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
               <button
                 type="button"
                 onClick={() => setPayStep("enter_amount")}
-                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer shrink-0"
+                className="w-9 h-9 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 flex items-center justify-center transition shadow-xs border border-slate-200/90 dark:border-slate-800 cursor-pointer shrink-0 active:scale-95"
               >
                 <ArrowLeft size={18} />
               </button>
@@ -819,7 +846,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                 <h1 className="text-sm font-black text-slate-900 dark:text-white truncate">
                   Paying: {storeName}
                 </h1>
-                <p className="text-[11px] text-slate-500 truncate">{storeAddress}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{storeAddress}</p>
               </div>
             </div>
             <button
@@ -829,7 +856,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                   description: `Need help paying your ${isRetail ? "store bill" : "dining bill"}? Call +91 800-PINAK-HELP`
                 });
               }}
-              className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-100 cursor-pointer"
+              className="w-9 h-9 rounded-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0 shadow-xs hover:bg-slate-50 cursor-pointer"
             >
               <HelpCircle size={15} />
             </button>
@@ -844,7 +871,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                 </div>
                 <div>
                   <span className="text-[9px] uppercase font-extrabold text-slate-400 dark:text-slate-500 block leading-tight">
-                    Authenticated Diner
+                    Authenticated Customer
                   </span>
                   <span className="font-extrabold text-slate-900 dark:text-white leading-tight">
                     {effectiveCustomerName}
@@ -852,47 +879,50 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                 </div>
               </div>
               {effectiveCustomerPhone && (
-                <span className="text-[11px] font-mono text-purple-700 dark:text-purple-300 font-bold bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg">
+                <span className="text-[11px] font-mono text-purple-700 dark:text-purple-300 font-bold bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-200/60 dark:border-purple-800/40">
                   {effectiveCustomerPhone}
                 </span>
               )}
             </div>
 
-            {/* Dark Bill Hero Container with Strikethrough & Savings Pill */}
-            <div className="bg-gradient-to-b from-[#241a24] to-[#171217] text-white rounded-3xl p-5 text-center relative overflow-hidden shadow-md">
-              <p className="text-xs font-semibold text-slate-300">Your bill</p>
+            {/* Signature Royal Hero Container with Strikethrough & Savings Pill */}
+            <div className="bg-gradient-to-br from-purple-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-5 text-center relative overflow-hidden shadow-xl border border-purple-700/50">
+              <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-purple-500/20 blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-12 -left-12 w-32 h-32 rounded-full bg-indigo-500/20 blur-2xl pointer-events-none" />
+
+              <p className="text-xs font-bold text-purple-200 uppercase tracking-wider">Your Net Payable Bill</p>
               {totalDiscount > 0 ? (
                 <div className="mt-1">
-                  <p className="text-base text-slate-400 line-through font-bold">
+                  <p className="text-base text-purple-300 line-through font-bold">
                     ₹{numericBill.toLocaleString("en-IN")}
                   </p>
-                  <p className="text-4xl font-black text-[#5be3a3] tracking-tight">
+                  <p className="text-4xl font-black text-white tracking-tight">
                     ₹{Math.max(0, numericBill - totalDiscount - coverChargeCredit).toLocaleString("en-IN")}
                   </p>
                 </div>
               ) : (
-                <p className="text-4xl font-black text-[#5be3a3] mt-1 tracking-tight">
+                <p className="text-4xl font-black text-white mt-1 tracking-tight">
                   ₹{numericBill.toLocaleString("en-IN")}
                 </p>
               )}
 
               {/* Savings speech-bubble callout if offer or coupon applied */}
               {(totalDiscount > 0 || coverChargeCredit > 0) && (
-                <div className="mt-3 inline-flex items-center gap-1.5 bg-[#0e5c3e] border border-[#1cb379]/40 text-emerald-200 text-xs font-black px-3.5 py-1.5 rounded-full shadow-inner animate-in zoom-in-95 duration-150">
+                <div className="mt-3 inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-black px-3.5 py-1.5 rounded-full shadow-inner animate-in zoom-in-95 duration-150">
                   <Percent size={12} className="stroke-[3]" />
                   <span>
                     Woah! you're saving ₹{(totalDiscount + coverChargeCredit).toLocaleString("en-IN")}
-                    {resolvedOfferDiscountPct > 0 ? ` (${resolvedOfferDiscountPct}% Table Offer)` : ""}
+                    {resolvedOfferDiscountPct > 0 ? ` (${resolvedOfferDiscountPct}% Off)` : ""}
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Locked Table Reservation Offer Card */}
+            {/* Locked Table Reservation / In-Store Deal Offer Card */}
             {resolvedOfferDiscountPct > 0 && (
               <div className="space-y-1.5">
                 <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider px-1">
-                  Locked Table Offer
+                  Active Instant Offer
                 </h3>
                 <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300/80 dark:border-emerald-800/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
@@ -902,7 +932,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] font-black uppercase text-emerald-800 dark:text-emerald-300 tracking-wider">
-                          ADVANCE RESERVATION PERK
+                          EXCLUSIVE OFFER APPLIED
                         </span>
                         <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-200/70 text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-200 uppercase">
                           LOCKED
@@ -923,8 +953,8 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
               </div>
             )}
 
-            {/* 2X PINAK Coins Benefits Card */}
-            <div className="bg-[#fbf7f0] dark:bg-slate-900 rounded-3xl border border-amber-200/70 dark:border-slate-800 p-4 shadow-xs space-y-3">
+            {/* PINAK Coins Benefits Card */}
+            <div className="bg-gradient-to-r from-amber-50/80 via-purple-50/50 to-amber-50/80 dark:bg-slate-900 rounded-3xl border border-amber-200/80 dark:border-slate-800 p-4 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-lg bg-amber-400 text-slate-950 font-black text-[11px] flex items-center justify-center shadow-xs">
@@ -935,7 +965,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                       PINAK REWARD COINS & CASHBACK
                     </span>
                     <h3 className="text-xs font-extrabold text-slate-900 dark:text-white leading-tight">
-                      Real Wallet Balance & Bill Cashbacks
+                      Real Wallet Balance & Cashbacks
                     </h3>
                   </div>
                 </div>
@@ -1186,11 +1216,11 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
             onClick={() => setShowCelebrationModal(false)}
           >
             <div
-              className="bg-[#fffdfa] dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-amber-200/80 dark:border-slate-800 shadow-2xl text-center relative pt-8 animate-in zoom-in-95 duration-200"
+              className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-200/90 dark:border-slate-800 shadow-2xl text-center relative pt-8 animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Floating Top Badge with % Icon */}
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-600 text-white flex items-center justify-center shadow-lg shadow-purple-600/30 border-2 border-white dark:border-slate-900">
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-700 via-indigo-600 to-purple-800 text-white flex items-center justify-center shadow-lg shadow-purple-600/30 border-2 border-white dark:border-slate-900">
                 <Sparkles size={26} />
               </div>
 
@@ -1198,13 +1228,13 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowCelebrationModal(false)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 flex items-center justify-center cursor-pointer transition"
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer transition"
               >
                 <X size={16} />
               </button>
 
               <div className="mt-4 space-y-2">
-                <span className="text-xs font-mono font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest bg-purple-50 dark:bg-purple-950/60 px-3 py-1 rounded-full">
+                <span className="text-xs font-mono font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest bg-purple-50 dark:bg-purple-950/60 px-3 py-1 rounded-full border border-purple-200/60 dark:border-purple-800/40">
                   {celebrationDetails.code}
                 </span>
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-3">
@@ -1236,7 +1266,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
               onClick={() => setShowPaymentMethodSheet(false)}
             />
             <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-              <aside className="w-screen max-w-sm bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 p-6 font-['Manrope']">
+              <aside className="w-screen max-w-sm bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 p-6 font-sans">
                 {/* Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
@@ -1305,7 +1335,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowPaymentMethodSheet(false)}
-                    className="w-full py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs hover:opacity-90 transition cursor-pointer"
+                    className="w-full py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-black text-xs transition cursor-pointer"
                   >
                     Done
                   </button>
@@ -1323,7 +1353,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
               onClick={() => setShowCustomTipPrompt(false)}
             />
             <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-              <aside className="w-screen max-w-sm bg-white dark:bg-[#121626] shadow-2xl flex flex-col justify-between border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 p-6 font-['Manrope']">
+              <aside className="w-screen max-w-sm bg-white dark:bg-slate-900 shadow-2xl flex flex-col justify-between border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 p-6 font-sans">
                 {/* Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
@@ -1441,58 +1471,147 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
   }
 
   // =========================================================================
-  // VIEW 1: BILL AMOUNT ENTRY SCREEN (Image 1)
+  // VIEW 1: BILL AMOUNT ENTRY SCREEN (Matching ServiceDetailPreviewView palette)
   // =========================================================================
   return (
-    <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between font-['Manrope'] pb-32 animate-in fade-in duration-200 relative">
+    <div className="min-h-full bg-[#fbfbff] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between font-sans pb-36 animate-in fade-in duration-200 relative">
       <div>
-        {/* Blurred Restaurant Cover Header */}
-        <div className="relative w-full pt-4 pb-4 px-4 border-b border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md">
-          {coverImageUrl && (
-            <div
-              className="absolute inset-0 opacity-15 bg-cover bg-center pointer-events-none blur-xs"
-              style={{ backgroundImage: `url(${coverImageUrl})` }}
-            />
+        {/* 1. Header Navigation */}
+        <header className="sticky top-0 z-30 bg-[#fbfbff]/95 dark:bg-slate-950/95 backdrop-blur-md px-4 py-3 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-9 h-9 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 flex items-center justify-center transition shadow-xs border border-slate-200/90 dark:border-slate-800 cursor-pointer active:scale-95"
+            aria-label="Back"
+          >
+            <ArrowLeft size={18} />
+          </button>
+
+          <div className="text-center flex-1 px-2">
+            <div className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-0.5 rounded-full border border-purple-200/60 dark:border-purple-800/40 tracking-wider">
+              <span>{isRetail ? "STORE COUNTER BILL PASS" : "DINE-IN BILL PASS"}</span>
+            </div>
+            <h1 className="text-sm font-black text-slate-900 dark:text-white truncate mt-0.5">
+              {isRetail ? "Pay Bill at Counter & Save" : "Pay Dining Bill & Save"}
+            </h1>
+          </div>
+
+          <div className="w-9 h-9 rounded-full bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-slate-200/90 dark:border-slate-800 flex items-center justify-center shadow-xs">
+            <ShieldCheck size={17} />
+          </div>
+        </header>
+
+        <div className="p-4 space-y-4">
+          {/* 2. Store Identity Mini-Hero Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs flex items-center gap-3.5">
+            <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 relative">
+              {coverImageUrl ? (
+                <img src={coverImageUrl} alt={storeName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-purple-600">
+                  <Store size={24} />
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-extrabold text-slate-900 dark:text-white truncate">
+                  {storeName}
+                </h2>
+                <CheckCircle2 size={16} className="text-purple-600 fill-purple-600 text-white shrink-0" />
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5 flex items-center gap-1">
+                <MapPin size={12} className="shrink-0 text-slate-400" />
+                <span>{storeAddress || "Nagpur"}</span>
+              </p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  📍 {distanceKm} km away
+                </span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                  {category || (isRetail ? "Retail & Shopping" : "Dining & Food")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Distance Warning Notice (Only if user is > 5km away, in refined PINAK Amber style) */}
+          {distanceKm > 5 && (
+            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl p-3 flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200 shadow-2xs">
+              <AlertTriangle size={15} className="shrink-0 text-amber-600" />
+              <span className="font-semibold leading-snug">
+                Outlet check: You appear to be <strong>{distanceKm} km away</strong>. Please verify you are paying at <strong>{storeName}</strong>.
+              </span>
+            </div>
           )}
 
-          <div className="relative z-10 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={onBack}
-              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center transition cursor-pointer"
-              aria-label="Back"
-            >
-              <ArrowLeft size={18} />
-            </button>
-
-            <div className="text-center flex-1 px-2">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">
-                — PAYING BILL TO —
+          {/* 4. Active Deal / Offer Banner */}
+          {resolvedOfferDiscountPct > 0 ? (
+            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/50 dark:via-indigo-950/40 dark:to-purple-950/50 border border-purple-200/80 dark:border-purple-800/60 rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Percent size={16} className="stroke-[3]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 tracking-wider">
+                      EXCLUSIVE INSTANT DEAL
+                    </span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-purple-200/70 text-purple-900 dark:bg-purple-900/60 dark:text-purple-200 uppercase">
+                      AUTO-APPLIES
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white truncate mt-0.5">
+                    {resolvedOfferTitle || `Flat ${resolvedOfferDiscountPct}% off on total bill`}
+                  </h4>
+                  <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    ✓ Save {resolvedOfferDiscountPct}% automatically when you pay through PINAK
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-purple-700 text-white shadow-xs shrink-0">
+                {resolvedOfferDiscountPct}% OFF
               </span>
-              <h1 className="text-base font-black text-slate-900 dark:text-white truncate">
-                {storeName}
-              </h1>
-              <p className="text-xs text-slate-500 font-medium truncate flex items-center justify-center gap-1">
-                <span>{storeAddress || "Bajaj Nagar, Nagpur"}</span>
-                <ChevronDown size={12} />
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-3 flex items-center justify-between shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-emerald-600 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                  ⚡
+                </span>
+                <div>
+                  <p className="text-xs font-black text-slate-900 dark:text-white">
+                    Instant Bill Discount & Coin Cashback
+                  </p>
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                    Save extra up to ₹250 with coupons & earn {storeCashbackConfig.percentage}% PINAK Coins
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 uppercase tracking-wider">
+                ACTIVE
+              </span>
+            </div>
+          )}
+
+          {/* 5. Premium Bill Amount Input Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-sm text-center space-y-4">
+            <div>
+              <span className="text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 tracking-wider block">
+                STEP 1: ENTER AMOUNT
+              </span>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">
+                Enter Total Bill Amount
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Enter the final amount as printed on your {isRetail ? "counter paper receipt" : "food & beverage bill"}
               </p>
             </div>
 
-            <div className="w-9" />
-          </div>
-        </div>
-
-        <div className="p-4 space-y-5">
-          {/* Outlet Distance Warning Pill */}
-          <div className="bg-[#f08c35] text-white rounded-2xl p-3 flex items-center justify-center gap-2 text-xs font-bold shadow-xs">
-            <AlertTriangle size={15} className="shrink-0" />
-            <span>You are {distanceKm}km away. Is this correct outlet?</span>
-          </div>
-
-          {/* Huge Currency Input */}
-          <div className="text-center py-6 space-y-2">
-            <div className="inline-flex items-center justify-center gap-1">
-              <span className="text-4xl sm:text-5xl font-black text-slate-400">
+            {/* High Contrast Currency Input */}
+            <div className="inline-flex items-center justify-center gap-1.5 py-3 px-6 rounded-2xl bg-slate-50 dark:bg-slate-950 border-2 border-purple-500/40 focus-within:border-purple-600 focus-within:ring-4 focus-within:ring-purple-500/10 shadow-inner transition-all w-full max-w-[280px] mx-auto">
+              <span className="text-3xl sm:text-4xl font-black text-purple-600 select-none">
                 ₹
               </span>
               <input
@@ -1508,55 +1627,117 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                 }}
                 placeholder="0"
                 className={cn(
-                  "w-44 text-4xl sm:text-5xl font-black text-slate-900 dark:text-white bg-transparent border-b-2 tracking-tight text-left outline-hidden transition",
-                  isBillPreSetByStore
-                    ? "cursor-default select-none border-slate-300 dark:border-slate-700 opacity-90"
-                    : "border-purple-600 focus:border-purple-700"
+                  "w-40 text-3xl sm:text-4xl font-black text-slate-900 dark:text-white bg-transparent outline-none tracking-tight text-left",
+                  isBillPreSetByStore && "cursor-default select-none opacity-90"
                 )}
               />
             </div>
-            {isBillPreSetByStore ? (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center gap-1">
-                <span>✓ Bill amount added by {isRetail ? "store" : "restaurant"}</span>
-              </p>
-            ) : (
-              <div className="space-y-0.5">
-                <p className="text-xs text-slate-500 font-semibold">
-                  Enter total amount as shown on your paper bill
-                </p>
-                <p className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
-                  Tip: You can also ask your {isRetail ? "cashier to add the bill" : "waiter to add the bill"}
-                </p>
+
+            {/* Preset Quick Chips */}
+            {!isBillPreSetByStore && (
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                {[100, 500, 1000, 2000].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => handleQuickAdd(val)}
+                    className="px-3 py-1.5 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-300 active:scale-95 transition cursor-pointer"
+                  >
+                    +₹{val}
+                  </button>
+                ))}
+                {numericBill > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearBill}
+                    className="px-3 py-1.5 rounded-full text-xs font-bold border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 active:scale-95 transition cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
+            )}
+
+            {/* Real-Time Live Calculation Pill if bill entered */}
+            {numericBill > 0 ? (
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 rounded-2xl p-3 text-left space-y-1.5 animate-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-emerald-800 dark:text-emerald-200 flex items-center gap-1">
+                    <Percent size={13} className="stroke-[3]" />
+                    <span>Estimated Instant Savings</span>
+                  </span>
+                  <span className="text-emerald-700 dark:text-emerald-300 font-extrabold">
+                    -₹{estimatedInitialSavings.toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="border-t border-dashed border-emerald-200 dark:border-emerald-800/60 pt-1 flex items-center justify-between text-xs">
+                  <span className="text-slate-600 dark:text-slate-300 font-medium">Estimated Payable Amount:</span>
+                  <span className="text-sm font-black text-slate-900 dark:text-white">
+                    ₹{estimatedInitialPayable.toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="text-[11px] text-purple-700 dark:text-purple-300 font-bold flex items-center gap-1">
+                  <span>🪙 +{Math.round((estimatedInitialPayable * storeCashbackConfig.percentage) / 100)} Coins earned on payment</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Tip: You can also ask your {staffShortTitle} to generate and push the bill to your PINAK app.
+              </p>
             )}
           </div>
 
-          {/* Coupons Preview Card */}
+          {/* 6. Signature PINAK Coupons & Offers Preview */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs space-y-3">
-            <span className="text-xs font-bold text-slate-400 block text-center">
-              Coupons
-            </span>
-
-            <div className="flex items-center justify-center gap-2.5">
-              <span className="w-6 h-6 rounded-lg bg-orange-500 text-white font-black text-xs flex items-center justify-center">
-                🏷️
-              </span>
-              <span className="text-xs font-black text-slate-900 dark:text-white">
-                Flat 10% off* use WELCOME
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold">
+                  <Sparkles size={14} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white leading-tight">
+                    Coupons & Payment Offers
+                  </h4>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Auto-eligible on your checkout
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-800/40">
+                3 OFFERS READY
               </span>
             </div>
 
-            {/* Dots indicator */}
-            <div className="flex justify-center items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-              <div className="w-1 h-1 rounded-full bg-slate-300" />
-              <div className="w-1 h-1 rounded-full bg-slate-300" />
+            {/* WELCOME coupon card */}
+            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/30 dark:via-indigo-950/20 dark:to-purple-950/30 border border-purple-200/70 dark:border-purple-800/50 rounded-2xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-700 to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                  🏷️
+                </span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-black text-xs text-purple-950 dark:text-purple-100">
+                      WELCOME
+                    </span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 uppercase">
+                      10% OFF
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium mt-0.5">
+                    Save up to ₹250 on this transaction
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-extrabold text-purple-700 dark:text-purple-300">
+                Extra 10%
+              </span>
             </div>
 
-            <div className="border-t border-slate-100 dark:border-slate-800 pt-2 text-center">
-              <p className="text-[11px] font-bold text-slate-500">
-                + Up to extra 10% off with payment partner offers
-              </p>
+            <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+              <span>Partner Banks: HDFC • Paytm • Google Pay</span>
+              <span className="font-bold text-purple-600 dark:text-purple-400">
+                Auto-applies at checkout →
+              </span>
             </div>
           </div>
         </div>
@@ -1565,16 +1746,18 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
       {/* Sticky Bottom Bar on Amount Entry Screen */}
       <footer className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[70] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 p-3 shadow-2xl">
         {/* Top Incentive Pill */}
-        <div className="mb-2.5 bg-gradient-to-r from-purple-50 via-emerald-50 to-purple-50 dark:from-purple-950/40 dark:to-indigo-950/30 border border-purple-200/80 dark:border-purple-800/60 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs shadow-2xs">
+        <div className="mb-2.5 bg-gradient-to-r from-amber-50 via-purple-50 to-amber-50 dark:from-amber-950/30 dark:via-purple-950/30 dark:to-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs shadow-2xs">
           <div className="flex items-center gap-1.5">
-            <span className="w-5 h-5 rounded-md bg-emerald-600 text-white font-black text-[10px] flex items-center justify-center shadow-xs">
-              ₹
+            <span className="w-5 h-5 rounded-md bg-amber-400 text-slate-950 font-black text-[10px] flex items-center justify-center shadow-xs">
+              🪙
             </span>
-            <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
-              Earn 10% PINAK Coins on bill payment
+            <span className="text-xs font-bold text-amber-950 dark:text-amber-200">
+              Earn {storeCashbackConfig.percentage}% PINAK Coins back on payment
             </span>
           </div>
-          <Info size={14} className="text-emerald-600 cursor-pointer" />
+          <span className="text-[10px] font-mono font-bold text-purple-700 dark:text-purple-300">
+            Wallet: {userCoinBalance}
+          </span>
         </div>
 
         {/* Action Button */}
@@ -1591,10 +1774,10 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
             "w-full py-3.5 rounded-2xl font-black text-sm transition cursor-pointer text-center shadow-md",
             numericBill > 0
               ? "bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white shadow-purple-600/30 active:scale-98"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800"
+              : "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600"
           )}
         >
-          {numericBill > 0 ? "Apply offers & pay" : "Enter bill amount to pay"}
+          {numericBill > 0 ? `Apply Offers & Pay ₹${numericBill.toLocaleString("en-IN")}` : "Enter Bill Amount to Pay"}
         </button>
       </footer>
     </div>
