@@ -167,7 +167,7 @@ function getStoreBadgeTextAndBg(offerLabel?: string) {
   if (!offerLabel) return { text: "Featured Partner", bg: "bg-purple-700" };
   const lower = offerLabel.toLowerCase();
   if (lower.includes("10%")) return { text: "10% OFF", bg: "bg-emerald-700" };
-  if (lower.includes("flat") || lower.includes("100")) return { text: "Flat â‚¹100 Off", bg: "bg-rose-600" };
+  if (lower.includes("flat") || lower.includes("100")) return { text: "Flat ₹100 Off", bg: "bg-rose-600" };
   if (lower.includes("free")) return { text: "Free Delivery", bg: "bg-emerald-600" };
   if (lower.includes("20%")) return { text: "Up to 20% OFF", bg: "bg-purple-700" };
   if (lower.includes("30%")) return { text: "30% OFF", bg: "bg-amber-600" };
@@ -512,7 +512,7 @@ export default function CustomerHomePreviewPage() {
     }
     setAuthModalTab("wallet");
     toast.success(`Active Customer: ${acc.customerName}`, {
-      description: `Live Balance: ${acc.availableBalance} PINAK Coins (â‚¹${acc.availableBalance})`
+      description: `Live Balance: ${acc.availableBalance} PINAK Coins (₹${acc.availableBalance})`
     });
   };
 
@@ -687,7 +687,7 @@ export default function CustomerHomePreviewPage() {
   });
 
   useEffect(() => {
-    document.title = "PINAK â€” Deals that Reward you | Local Offers & Dining";
+    document.title = "PINAK — Deals that Reward you | Local Offers & Dining";
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
       const v = p.get("view");
@@ -1671,7 +1671,7 @@ export default function CustomerHomePreviewPage() {
                   <div className="overflow-hidden">
                     <p className="text-[11px] font-bold text-slate-800 leading-tight truncate">{userLocation.name}</p>
                     <p className="text-[9px] text-slate-500 truncate leading-none">
-                      {userLocation.city} â€¢ {userLocation.radiusKm}km
+                      {userLocation.city} • {userLocation.radiusKm}km
                     </p>
                   </div>
                 </button>
@@ -1817,7 +1817,7 @@ export default function CustomerHomePreviewPage() {
                       title="Click to view Customer Wallet & Coins"
                     >
                       <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-[9px] font-black text-amber-900">
-                        ðŸª™
+                        🪙
                       </div>
                       <div className="text-[10px] font-bold text-amber-900 leading-tight text-left">
                         {Math.round(activeCustomer.availableBalance ?? 0)}
@@ -1906,7 +1906,7 @@ export default function CustomerHomePreviewPage() {
             <div className="flex justify-between items-center px-4 mb-2.5">
               <div className="flex items-center space-x-1.5">
                 <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs">
-                  âš¡
+                  ⚡
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900 leading-none">Explore Categories</h2>
@@ -1920,14 +1920,14 @@ export default function CustomerHomePreviewPage() {
 
             <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
               {[
-                { name: "All", icon: "ðŸ”¥", bg: "bg-purple-700 text-white" },
-                { name: "Dining", icon: "ðŸ”", bg: "bg-orange-100 text-orange-600" },
-                { name: "Cafes", icon: "â˜•", bg: "bg-amber-100 text-amber-700" },
-                { name: "Supermarket", icon: "ðŸ›’", bg: "bg-emerald-100 text-emerald-700" },
-                { name: "Kirana", icon: "ðŸª", bg: "bg-rose-100 text-rose-600" },
-                { name: "Fashion", icon: "ðŸ‘•", bg: "bg-indigo-100 text-indigo-600" },
-                { name: "Electronics", icon: "ðŸ’»", bg: "bg-sky-100 text-sky-600" },
-                { name: "Salons", icon: "âœ‚ï¸", bg: "bg-pink-100 text-pink-600" },
+                { name: "All", icon: "🔥", bg: "bg-purple-700 text-white" },
+                { name: "Dining", icon: "🍔", bg: "bg-orange-100 text-orange-600" },
+                { name: "Cafes", icon: "☕", bg: "bg-amber-100 text-amber-700" },
+                { name: "Supermarket", icon: "🛒", bg: "bg-emerald-100 text-emerald-700" },
+                { name: "Kirana", icon: "🏪", bg: "bg-rose-100 text-rose-600" },
+                { name: "Fashion", icon: "👕", bg: "bg-indigo-100 text-indigo-600" },
+                { name: "Electronics", icon: "💻", bg: "bg-sky-100 text-sky-600" },
+                { name: "Salons", icon: "✂️", bg: "bg-pink-100 text-pink-600" },
               ].map((cat, idx) => (
                 <button
                   key={idx}
@@ -2035,9 +2035,9 @@ export default function CustomerHomePreviewPage() {
                 } else if (rawType.includes("BOGO") || rawType.includes("BUY_X_GET_Y")) {
                   discountBadge = (o.buyQuantity && o.getQuantity) ? `BUY ${o.buyQuantity} GET ${o.getQuantity}` : "BUY 1 GET 1";
                 } else if (rawType.includes("CASHBACK")) {
-                  discountBadge = discountVal > 0 ? `â‚¹${discountVal} CASHBACK` : "CASHBACK";
+                  discountBadge = discountVal > 0 ? `₹${discountVal} CASHBACK` : "CASHBACK";
                 } else {
-                  discountBadge = discountVal > 0 ? `â‚¹${discountVal} OFF` : "SPECIAL";
+                  discountBadge = discountVal > 0 ? `₹${discountVal} OFF` : "SPECIAL";
                 }
 
                 const cap = Number(o.maxDiscountAmount ?? 0);
@@ -2049,11 +2049,11 @@ export default function CustomerHomePreviewPage() {
 
                 let conditionText = "";
                 if (cap > 0 && minBill > 0) {
-                  conditionText = `Up to â‚¹${cap.toLocaleString("en-IN")} â€¢ On bills above â‚¹${minBill.toLocaleString("en-IN")}`;
+                  conditionText = `Up to ₹${cap.toLocaleString("en-IN")} • On bills above ₹${minBill.toLocaleString("en-IN")}`;
                 } else if (cap > 0) {
-                  conditionText = `Up to â‚¹${cap.toLocaleString("en-IN")} â€¢ No min spend`;
+                  conditionText = `Up to ₹${cap.toLocaleString("en-IN")} • No min spend`;
                 } else if (minBill > 0) {
-                  conditionText = `On bills above â‚¹${minBill.toLocaleString("en-IN")}`;
+                  conditionText = `On bills above ₹${minBill.toLocaleString("en-IN")}`;
                 } else if (o.subtitle) {
                   conditionText = o.subtitle;
                 } else {
@@ -2174,7 +2174,7 @@ export default function CustomerHomePreviewPage() {
                           <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
                             <MapPin size={10} className="shrink-0 text-slate-400" />
                             <span>{distanceText}</span>
-                            <span className="text-slate-300 dark:text-slate-600">â€¢</span>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
                             <span className="text-slate-600 dark:text-slate-300 font-semibold">{isOfferRetail ? "Retail Outlet" : "Dine-in Outlet"}</span>
                           </p>
                         </div>
@@ -2247,7 +2247,7 @@ export default function CustomerHomePreviewPage() {
                     <div className="px-3 pb-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 h-12">
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-0.5">
-                          ðŸª™ +{rewardCoins} Coins
+                          🪙 +{rewardCoins} Coins
                         </span>
                         <span className="text-[8.5px] text-slate-400">on PINAK Bill Pay</span>
                       </div>
@@ -2362,11 +2362,11 @@ export default function CustomerHomePreviewPage() {
                       </p>
                       <div className="flex items-baseline space-x-1 mb-2">
                         <span className="text-xs font-black text-slate-900 font-mono">
-                          â‚¹{p.dealPrice}
+                          ₹{p.dealPrice}
                         </span>
                         {p.originalPrice && (
                           <span className="text-[9px] text-slate-400 line-through font-mono">
-                            â‚¹{p.originalPrice}
+                            ₹{p.originalPrice}
                           </span>
                         )}
                       </div>
@@ -2376,7 +2376,7 @@ export default function CustomerHomePreviewPage() {
                           setCart((prev) => {
                             const next = (prev[prodKey] || 0) + 1;
                             toast.success(`Added "${p.title}" to cart! (${next} in cart)`, {
-                              description: `Store deal: â‚¹${p.dealPrice} ${p.originalPrice ? `(MRP â‚¹${p.originalPrice})` : ""}`
+                              description: `Store deal: ₹${p.dealPrice} ${p.originalPrice ? `(MRP ₹${p.originalPrice})` : ""}`
                             });
                             return { ...prev, [prodKey]: next };
                           });
@@ -2406,7 +2406,7 @@ export default function CustomerHomePreviewPage() {
             <div className="flex justify-between items-center px-4 mb-2.5">
               <div className="flex items-center space-x-1.5">
                 <div className="w-6 h-6 rounded-md bg-orange-100 text-orange-700 flex items-center justify-center text-xs">
-                  ðŸ¬
+                  🏬
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900 leading-none">Featured Stores for All Your Needs</h2>
@@ -2494,13 +2494,13 @@ export default function CustomerHomePreviewPage() {
                       </div>
 
                       <div className="flex items-center space-x-1 text-[9px] text-slate-500 mb-1.5">
-                        <span className="flex items-center text-amber-600 font-bold">â˜… {store.rating?.average ? store.rating.average.toFixed(1) : "4.5"}</span>
-                        <span>â€¢ {distanceText}</span>
+                        <span className="flex items-center text-amber-600 font-bold">★ {store.rating?.average ? store.rating.average.toFixed(1) : "4.5"}</span>
+                        <span>• {distanceText}</span>
                       </div>
                     </div>
 
                     <div className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 rounded-md px-1.5 py-0.5 flex items-center truncate mt-1">
-                      ðŸ·ï¸ {store.bestOffer?.label || "Special offers available"}
+                      🏷️ {store.bestOffer?.label || "Special offers available"}
                     </div>
                   </article>
                 );
@@ -2516,7 +2516,7 @@ export default function CustomerHomePreviewPage() {
             <div className="flex justify-between items-center px-4 mb-2.5">
               <div className="flex items-center space-x-1.5">
                 <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center text-xs">
-                  âœ¨
+                  ✨
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900 leading-none">Popular Collections</h2>
@@ -2592,7 +2592,7 @@ export default function CustomerHomePreviewPage() {
               <div className="flex justify-between items-center px-4 mb-2.5">
                 <div className="flex items-center space-x-1.5">
                   <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
-                    ðŸ•’
+                    🕒
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 leading-none">Recently Viewed</h2>
@@ -2614,7 +2614,7 @@ export default function CustomerHomePreviewPage() {
                 {recentlyViewed.map((item) => (
                   <div
                     key={item.id}
-                    onClick={() => toast.info(`Selected "${item.title}"`, { description: `Store price: â‚¹${item.dealPrice}` })}
+                    onClick={() => toast.info(`Selected "${item.title}"`, { description: `Store price: ₹${item.dealPrice}` })}
                     className="w-32 shrink-0 bg-white rounded-xl border border-slate-100 p-2 shadow-2xs relative hover:shadow-sm transition-shadow group cursor-pointer"
                   >
                     <button
@@ -2642,8 +2642,8 @@ export default function CustomerHomePreviewPage() {
                     <h5 className="text-[10px] font-bold text-slate-800 truncate">{item.title}</h5>
                     <p className="text-[8px] text-slate-400 truncate">{item.unit}</p>
                     <div className="flex items-baseline space-x-1 mt-0.5">
-                      <span className="text-[11px] font-bold text-slate-900 font-mono">â‚¹{item.dealPrice}</span>
-                      <span className="text-[8px] text-slate-400 line-through font-mono">â‚¹{item.originalPrice}</span>
+                      <span className="text-[11px] font-bold text-slate-900 font-mono">₹{item.dealPrice}</span>
+                      <span className="text-[8px] text-slate-400 line-through font-mono">₹{item.originalPrice}</span>
                     </div>
                   </div>
                 ))}
@@ -2659,7 +2659,7 @@ export default function CustomerHomePreviewPage() {
               <div className="flex justify-between items-center px-4 mb-2.5">
                 <div className="flex items-center space-x-1.5">
                   <div className="w-6 h-6 rounded-md bg-pink-100 text-pink-600 flex items-center justify-center text-xs">
-                    â¤ï¸
+                    ❤️
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 leading-none">Recommended for You</h2>
@@ -2714,7 +2714,7 @@ export default function CustomerHomePreviewPage() {
                       <p className="text-[9px] text-slate-500 mb-2 truncate">{rec.distanceCategory}</p>
                       <div className="flex items-center justify-between">
                         <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center">
-                          ðŸ·ï¸ {rec.discountBadge}
+                          🏷️ {rec.discountBadge}
                         </span>
                         <button className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 text-xs shrink-0 cursor-pointer">
                           <ChevronRight size={12} />
@@ -2732,7 +2732,7 @@ export default function CustomerHomePreviewPage() {
             <section className="px-4 mb-5">
               <div className="bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-700 p-4 text-white shadow-md relative overflow-hidden rounded-xl">
                 <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-amber-300 text-lg">âš¡</span>
+                  <span className="text-amber-300 text-lg">⚡</span>
                   <h3 className="text-sm font-extrabold tracking-tight">Flash Deals Ending Soon!</h3>
                 </div>
                 <p className="text-[10px] text-purple-200 mb-3">Grab these offers before they're gone</p>
@@ -2802,11 +2802,11 @@ export default function CustomerHomePreviewPage() {
                         </h4>
                         <div className="flex items-baseline space-x-1.5">
                           <span className="text-xs font-black text-amber-300">
-                            â‚¹{deal.price?.sellingPrice ?? 0}
+                            ₹{deal.price?.sellingPrice ?? 0}
                           </span>
                           {deal.price?.mrp && (
                             <span className="text-[9px] text-purple-200/80 line-through">
-                              â‚¹{deal.price.mrp}
+                              ₹{deal.price.mrp}
                             </span>
                           )}
                         </div>
@@ -2823,7 +2823,7 @@ export default function CustomerHomePreviewPage() {
             <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-xs">
               <div className="flex items-center space-x-2 pb-2.5 border-b border-slate-100">
                 <div className="w-6 h-6 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
-                  ðŸ›¡ï¸
+                  🛡️
                 </div>
                 <div>
                   <h4 className="text-xs font-extrabold text-slate-900 leading-none">Why Shop on PINAK?</h4>
@@ -2832,14 +2832,14 @@ export default function CustomerHomePreviewPage() {
               </div>
               <div className="grid grid-cols-2 gap-2 pt-2.5">
                 <div className="flex items-center space-x-2">
-                  <span className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">âœ“</span>
+                  <span className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">✓</span>
                   <div>
                     <p className="text-[10px] font-bold text-slate-800 leading-none">Verified Stores</p>
                     <p className="text-[8px] text-slate-400">Only trusted partners</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">ðŸª™</span>
+                  <span className="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">🪙</span>
                   <div>
                     <p className="text-[10px] font-bold text-slate-800 leading-none">Earn Coins</p>
                     <p className="text-[8px] text-slate-400">On every purchase</p>
@@ -2901,7 +2901,7 @@ export default function CustomerHomePreviewPage() {
                         <div className="flex items-center gap-1.5 shrink-0">
                           {visibleBookings.length > 1 && (
                             <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-600/15 text-emerald-900 dark:text-emerald-200 tracking-tight">
-                              Swipe â€¢ {idx + 1}/{visibleBookings.length}
+                              Swipe • {idx + 1}/{visibleBookings.length}
                             </span>
                           )}
 
@@ -2947,7 +2947,7 @@ export default function CustomerHomePreviewPage() {
                             <p className="text-[12px] font-black text-slate-900 dark:text-white truncate leading-snug mt-0.5">
                               Booked for {displayDate}
                               {b.slotTime ? `, ${b.slotTime}` : ""}
-                              {b.guests ? ` â€¢ ${b.guests} Guests` : ""}
+                              {b.guests ? ` • ${b.guests} Guests` : ""}
                             </p>
                           </div>
                         </div>
@@ -3254,11 +3254,11 @@ export default function CustomerHomePreviewPage() {
                         <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-amber-200/60 dark:border-amber-800/40 text-center">
                           <div className="bg-white/70 dark:bg-slate-800/70 rounded-xl p-2 border border-slate-100 dark:border-slate-700">
                             <span className="text-[10px] text-slate-400 font-medium block">Lifetime Earned</span>
-                            <span className="text-xs font-black text-emerald-600">+{activeCustomer.lifetimeEarned || 0} ðŸª™</span>
+                            <span className="text-xs font-black text-emerald-600">+{activeCustomer.lifetimeEarned || 0} 🪙</span>
                           </div>
                           <div className="bg-white/70 dark:bg-slate-800/70 rounded-xl p-2 border border-slate-100 dark:border-slate-700">
                             <span className="text-[10px] text-slate-400 font-medium block">Lifetime Redeemed</span>
-                            <span className="text-xs font-black text-rose-500">-{activeCustomer.lifetimeRedeemed || 0} ðŸª™</span>
+                            <span className="text-xs font-black text-rose-500">-{activeCustomer.lifetimeRedeemed || 0} 🪙</span>
                           </div>
                         </div>
 
@@ -3309,7 +3309,7 @@ export default function CustomerHomePreviewPage() {
                           </label>
                           <div className="flex gap-2">
                             <div className="flex items-center px-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 select-none">
-                              ðŸ‡®ðŸ‡³ +91
+                              🇮🇳 +91
                             </div>
                             <input
                               type="tel"
