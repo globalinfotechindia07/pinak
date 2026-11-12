@@ -102,7 +102,13 @@ public class SecurityConfig {
                         "/api/v1/mobile/my-bookings",
                         "//api/v1/mobile/my-bookings",
                         "/api/v1/locations/**",
-                        "//api/v1/locations/**"
+                        "//api/v1/locations/**",
+                        "/api/v1/admin/settings/cashback/**",
+                        "//api/v1/admin/settings/cashback/**",
+                        "/api/v1/admin/rewards/**",
+                        "//api/v1/admin/rewards/**",
+                        "/api/v1/rewards/**",
+                        "//api/v1/rewards/**"
                 ).permitAll()
 
                 // Private mobile endpoints — strictly requires logged-in JWT authentication
@@ -128,35 +134,36 @@ public class SecurityConfig {
                 // Public payment webhook
                 .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook", "/api/v1/payments/webhooks/**", "/api/v1/webhooks/payouts/**").permitAll()
 
-                // Public customer discovery & preview endpoints (offers, banners, categories for Screen 10 reference)
+                // Public customer discovery & preview endpoints (offers, banners, categories, stores, search, recommendations)
                 .requestMatchers(HttpMethod.GET,
                         "/api/v1/offers/**",
+                        "//api/v1/offers/**",
                         "/api/v1/banners/**",
+                        "//api/v1/banners/**",
                         "/api/v1/categories/**",
+                        "//api/v1/categories/**",
                         "/api/v1/discovery/**",
+                        "//api/v1/discovery/**",
                         "/api/v1/products/**",
+                        "//api/v1/products/**",
                         "/api/v1/products/deals/nearby",
-                        "/api/v1/collections/popular",
+                        "/api/v1/collections/**",
+                        "//api/v1/collections/**",
                         "/api/v1/discover/**",
-                        "/api/v1/merchants/featured",
-                        "/api/v1/merchants/popular",
-                        "/api/v1/merchants/newly-added"
+                        "//api/v1/discover/**",
+                        "/api/v1/merchants/**",
+                        "//api/v1/merchants/**",
+                        "/api/v1/stores/**",
+                        "//api/v1/stores/**",
+                        "/api/v1/search/**",
+                        "//api/v1/search/**",
+                        "/api/v1/recommendations/**",
+                        "//api/v1/recommendations/**"
                 ).permitAll()
 
-                // Discover Screen & catalog endpoints — strictly private and authenticated (JWT Bearer required)
+                // Customer private account endpoints (JWT Bearer required)
                 .requestMatchers(
-                        "/api/v1/banners/**",
-                        "/api/v1/categories/**",
-                        "/api/v1/search/**",
-                        "/api/v1/offers/**",
-                        "/api/v1/products/**",
-                        "/api/v1/stores/**",
-                        "/api/v1/merchants/**",
-                        "/api/v1/collections/**",
-                        "/api/v1/discover/**",
-                        "/api/v1/recommendations/**",
                         "/api/v1/users/me/**",
-                        "/api/v1/rewards/**",
                         "/api/v1/notifications/**"
                 ).authenticated()
 

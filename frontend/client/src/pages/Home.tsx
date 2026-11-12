@@ -54,6 +54,7 @@ import { adminApi, AdminDashboardMetrics } from "../api/adminApi";
 import { notificationApi } from "../api/notificationApi";
 import { cityApi } from "../api/cityApi";
 import { staffApi } from "../api/staffApi";
+import { customerApi } from "../api/customerApi";
 
 export default function Home() {
   const store = useAppStore();
@@ -632,7 +633,15 @@ export default function Home() {
 
       // 6. Fetch live registered platform customers (admin)
       if (store.role === "admin") {
-        const users = await adminApi.getUsers({ role: "CUSTOMER" }).catch(() => []);
+        let users: any[] = [];
+        try {
+          const res = await customerApi.getCustomers({ size: 100 });
+          if (Array.isArray(res?.customers)) {
+            users = res.customers;
+          }
+        } catch {
+          users = await adminApi.getUsers({ role: "CUSTOMER" }).catch(() => []);
+        }
         if (Array.isArray(users) && users.length > 0) {
           store.setCustomers(
             users.map((u: any, idx: number) => ({
@@ -640,12 +649,12 @@ export default function Home() {
               name: u.name || `${u.firstName || "Customer"} ${u.lastName || ""}`.trim() || `User #${u.id.substring(0, 6)}`,
               phone: u.phone || u.mobile || "+91 98220 00000",
               email: u.email || `customer-${idx + 1}@pinak.app`,
-              city: "Nagpur",
-              visits: 4,
-              rewardsBalance: 120,
-              segment: "Regular",
-              initials: (u.firstName ? u.firstName.substring(0, 2) : (u.name ? u.name.substring(0, 2) : "CU")).toUpperCase(),
-              lastActive: u.createdAt || new Date().toISOString(),
+              city: u.city || "Nagpur",
+              visits: u.visits ?? 0,
+              rewardsBalance: u.rewardsBalance ?? 0,
+              segment: u.segment || "Regular",
+              initials: u.initials || (u.firstName ? u.firstName.substring(0, 2) : (u.name ? u.name.substring(0, 2) : "CU")).toUpperCase(),
+              lastActive: u.lastActive || u.createdAt || new Date().toISOString(),
             }))
           );
         }

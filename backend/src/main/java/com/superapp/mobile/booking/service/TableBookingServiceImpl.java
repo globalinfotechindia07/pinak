@@ -17,6 +17,7 @@ import com.superapp.transaction.transaction.entity.Transaction;
 import com.superapp.transaction.transaction.enums.TransactionStatus;
 import com.superapp.transaction.transaction.enums.TransactionType;
 import com.superapp.transaction.transaction.repository.TransactionRepository;
+import com.superapp.transaction.reward.service.RewardService;
 import com.superapp.user.entity.Role;
 import com.superapp.user.entity.User;
 import com.superapp.user.entity.UserStatus;
@@ -51,6 +52,7 @@ public class TableBookingServiceImpl implements TableBookingService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final TransactionRepository transactionRepository;
+    private final RewardService rewardService;
     private final SecureRandom random = new SecureRandom();
 
     public TableBookingServiceImpl(
@@ -59,7 +61,8 @@ public class TableBookingServiceImpl implements TableBookingService {
             OfferRepository offerRepository,
             UserRepository userRepository,
             JwtService jwtService,
-            TransactionRepository transactionRepository
+            TransactionRepository transactionRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) RewardService rewardService
     ) {
         this.tableBookingRepository = tableBookingRepository;
         this.storeRepository = storeRepository;
@@ -67,6 +70,7 @@ public class TableBookingServiceImpl implements TableBookingService {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.transactionRepository = transactionRepository;
+        this.rewardService = rewardService;
     }
 
     @Override
@@ -85,6 +89,11 @@ public class TableBookingServiceImpl implements TableBookingService {
                 ? store.getCuisineOrCategory()
                 : "North Indian, Sweets & Snacks";
 
+        BigDecimal cashbackPct = store.getCashbackPercentage() != null ? store.getCashbackPercentage() : new BigDecimal("5.00");
+        BigDecimal maxCashback = store.getMaxCashbackAmount() != null ? store.getMaxCashbackAmount() : new BigDecimal("150.00");
+        BigDecimal minSpend = store.getMinTransactionForCashback() != null ? store.getMinTransactionForCashback() : new BigDecimal("100.00");
+        boolean isCashbackActive = store.getIsCashbackEnabled() == null || Boolean.TRUE.equals(store.getIsCashbackEnabled());
+
         BookingStoreHeaderDto storeHeader = new BookingStoreHeaderDto(
                 store.getId(),
                 store.getStoreName(),
@@ -95,7 +104,12 @@ public class TableBookingServiceImpl implements TableBookingService {
                 store.getLatitude() != null ? store.getLatitude().doubleValue() : 21.1458,
                 store.getLongitude() != null ? store.getLongitude().doubleValue() : 79.0882,
                 "Free cancellation before dining start time. 100% cover charge refund.",
-                store.getIsTableBookingEnabled() == null || Boolean.TRUE.equals(store.getIsTableBookingEnabled())
+                store.getIsTableBookingEnabled() == null || Boolean.TRUE.equals(store.getIsTableBookingEnabled()),
+                cashbackPct,
+                maxCashback,
+                minSpend,
+                isCashbackActive,
+                "PINAK Instant Transaction Cashback"
         );
 
         // 2. Query Store Active Offers FIRST to drive party size, discount badges, and slots
@@ -1074,9 +1088,30 @@ public class TableBookingServiceImpl implements TableBookingService {
             totalPaid = BigDecimal.ZERO;
         }
 
-        int coinsEarned = request.coinsEarned() != null && request.coinsEarned() > 0
-                ? request.coinsEarned()
-                : totalPaid.multiply(BigDecimal.valueOf(5)).divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP).intValue() + 50;
+        // Determine cashback percentage and max cap from store configuration (managed by Super Admin)
+        BigDecimal cashbackPct = (store.getCashbackPercentage() != null && store.getCashbackPercentage().compareTo(BigDecimal.ZERO) > 0)
+                ? store.getCashbackPercentage()
+                : new BigDecimal("5.00");
+        BigDecimal maxCashback = (store.getMaxCashbackAmount() != null && store.getMaxCashbackAmount().compareTo(BigDecimal.ZERO) > 0)
+                ? store.getMaxCashbackAmount()
+                : new BigDecimal("150.00");
+        BigDecimal minSpend = (store.getMinTransactionForCashback() != null)
+                ? store.getMinTransactionForCashback()
+                : new BigDecimal("100.00");
+        boolean isCashbackActive = store.getIsCashbackEnabled() == null || Boolean.TRUE.equals(store.getIsCashbackEnabled());
+
+        int coinsEarned = 0;
+        if (isCashbackActive && totalPaid.compareTo(minSpend) >= 0) {
+            BigDecimal rawCoins = totalPaid.multiply(cashbackPct).divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
+            if (maxCashback != null && maxCashback.compareTo(BigDecimal.ZERO) > 0 && rawCoins.compareTo(maxCashback) > 0) {
+                rawCoins = maxCashback;
+            }
+            coinsEarned = rawCoins.intValue();
+        }
+        if (coinsEarned == 0 && request.coinsEarned() != null && request.coinsEarned() > 0) {
+            coinsEarned = request.coinsEarned();
+        }
+        final int finalCoinsEarned = coinsEarned;
 
         // 5. Generate Human-Readable Transaction Reference & Receipt
         String txnRef = "PNK-TXN-" + String.format("%08d", 10000000 + random.nextInt(90000000));
@@ -1105,6 +1140,21 @@ public class TableBookingServiceImpl implements TableBookingService {
         tx.setPointsAwarded(coinsEarned);
         tx.setDescription("Dining bill payment at " + storeDisplayName + " [Ref: " + txnRef + "]");
         tx = transactionRepository.save(tx);
+
+        // Credit Customer Reward Account Wallet (PINAK Coins) & Record in Ledger
+        if (coinsEarned > 0 && rewardService != null) {
+            try {
+                rewardService.creditCashbackReward(
+                        customerId,
+                        tx.getId(),
+                        BigDecimal.valueOf(coinsEarned),
+                        "PINAK Coins (" + coinsEarned + " coins) cashback for dining bill at " + storeDisplayName
+                );
+                log.info("Credited {} PINAK Coins to customerId={} wallet", coinsEarned, customerId);
+            } catch (Exception ex) {
+                log.warn("Failed to credit customer reward account for tx {}: {}", tx.getTransactionReference(), ex.getMessage());
+            }
+        }
 
         final BigDecimal finalTotalPaid = totalPaid;
 
@@ -1137,6 +1187,7 @@ public class TableBookingServiceImpl implements TableBookingService {
             bookingOpt.ifPresent(booking -> {
                 booking.setStatus("COMPLETED");
                 booking.setPaymentStatus("PAID");
+                booking.setCoinsEarned(booking.getCoinsEarned() != null ? booking.getCoinsEarned() + finalCoinsEarned : finalCoinsEarned);
                 if (booking.getBillAmount() == null || booking.getBillAmount().compareTo(BigDecimal.ZERO) == 0) {
                     booking.setBillAmount(billAmount);
                     booking.setBillAddedAt(Instant.now());
@@ -1184,6 +1235,7 @@ public class TableBookingServiceImpl implements TableBookingService {
             walkInBooking.setPaymentMethod(request.paymentMethod() != null ? request.paymentMethod() : "Google Pay");
             walkInBooking.setPaymentStatus("PAID");
             walkInBooking.setStatus("COMPLETED");
+            walkInBooking.setCoinsEarned(coinsEarned);
             walkInBooking.setSpecialRequests("Direct Walk-in Settlement [Txn: " + txnRef + "]");
             walkInBooking = tableBookingRepository.save(walkInBooking);
             matchedBookingRef = walkInBooking.getBookingRef();

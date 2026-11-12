@@ -30,8 +30,30 @@ public final class TableBookingDtos {
             Double latitude,
             Double longitude,
             String cancellationPolicyText,
-            boolean isTableBookingEnabled
-    ) {}
+            boolean isTableBookingEnabled,
+            BigDecimal cashbackPercentage,
+            BigDecimal maxCashbackAmount,
+            BigDecimal minTransactionForCashback,
+            Boolean isCashbackEnabled,
+            String cashbackName
+    ) {
+        public BookingStoreHeaderDto(
+                UUID storeId,
+                String storeName,
+                String storeAddress,
+                String cuisines,
+                String coverImageUrl,
+                String contactPhone,
+                Double latitude,
+                Double longitude,
+                String cancellationPolicyText,
+                boolean isTableBookingEnabled
+        ) {
+            this(storeId, storeName, storeAddress, cuisines, coverImageUrl, contactPhone, latitude, longitude,
+                    cancellationPolicyText, isTableBookingEnabled, new BigDecimal("5.00"), new BigDecimal("150.00"),
+                    new BigDecimal("100.00"), true, "PINAK Instant Transaction Cashback");
+        }
+    }
 
     @Schema(description = "Guest party size limits and presets")
     public record GuestConfigDto(

@@ -107,9 +107,27 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
         // 3. Verification & Identity directly from database
         boolean isVerified = merchant != null && (merchant.getKycStatus() == KycStatus.VERIFIED || Boolean.TRUE.equals(merchant.getIsFeatured()));
         String merchantName = merchant != null ? merchant.getBusinessName() : store.getStoreName();
+        boolean isRetail = (store.getCuisineOrCategory() != null && (
+                store.getCuisineOrCategory().toLowerCase().contains("retail") ||
+                store.getCuisineOrCategory().toLowerCase().contains("cloth") ||
+                store.getCuisineOrCategory().toLowerCase().contains("living") ||
+                store.getCuisineOrCategory().toLowerCase().contains("grocery") ||
+                store.getCuisineOrCategory().toLowerCase().contains("fashion") ||
+                store.getCuisineOrCategory().toLowerCase().contains("apparel") ||
+                store.getCuisineOrCategory().toLowerCase().contains("mart")
+        )) || (merchantName != null && (
+                merchantName.toLowerCase().contains("fab") ||
+                merchantName.toLowerCase().contains("retail") ||
+                merchantName.toLowerCase().contains("cloth") ||
+                merchantName.toLowerCase().contains("fashion") ||
+                merchantName.toLowerCase().contains("apparel") ||
+                merchantName.toLowerCase().contains("zara") ||
+                merchantName.toLowerCase().contains("h&m")
+        )) || Boolean.FALSE.equals(store.getIsTableBookingEnabled());
+
         String cuisines = store.getCuisineOrCategory() != null && !store.getCuisineOrCategory().isBlank()
                 ? store.getCuisineOrCategory()
-                : "Dining & Treats";
+                : (isRetail ? "Retail & Lifestyle" : "Dining & Treats");
         String rawPriceRange = store.getPriceRange() != null ? store.getPriceRange().trim() : "";
         String priceForTwoText;
         if ("\u20B9".equals(rawPriceRange)) {
@@ -204,25 +222,14 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
 
         // 12. Help & Support
         ConciergeSupportDto concierge = new ConciergeSupportDto(
-                "Have queries or need help booking?",
+                isRetail ? "Have queries or need in-store assistance?" : "Have queries or need help booking?",
                 store.getStoreName() + " Support",
                 phone,
                 "CALL"
         );
 
         // 13. Bottom Action Bar
-        boolean isRetail = (store.getCuisineOrCategory() != null && (
-                store.getCuisineOrCategory().toLowerCase().contains("retail") ||
-                store.getCuisineOrCategory().toLowerCase().contains("cloth") ||
-                store.getCuisineOrCategory().toLowerCase().contains("living") ||
-                store.getCuisineOrCategory().toLowerCase().contains("grocery")
-        )) || (merchantName != null && (
-                merchantName.toLowerCase().contains("fab") ||
-                merchantName.toLowerCase().contains("retail") ||
-                merchantName.toLowerCase().contains("cloth")
-        ));
-
-        boolean hasBooking = !isRetail && offersSection.preBookingOffers() != null && !offersSection.preBookingOffers().isEmpty();
+        boolean hasBooking = !isRetail && Boolean.TRUE.equals(store.getIsTableBookingEnabled()) && offersSection.preBookingOffers() != null && !offersSection.preBookingOffers().isEmpty();
         String primaryBadge = (offersSection.primaryOffer() != null && offersSection.primaryOffer().discountValue() != null)
                 ? offersSection.primaryOffer().discountValue().intValue() + "% OFF"
                 : null;
@@ -357,10 +364,11 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
                 productOffers.add(card);
             } else {
                 // Dining / Service offers go into preBooking or walkIn
-                if ("PRE_BOOK".equalsIgnoreCase(redemptionType) || "BOTH".equalsIgnoreCase(redemptionType)) {
+                boolean tableBookingAvailable = Boolean.TRUE.equals(store.getIsTableBookingEnabled()) && Boolean.TRUE.equals(card.isTableBookingEnabled());
+                if (tableBookingAvailable && ("PRE_BOOK".equalsIgnoreCase(redemptionType) || "BOTH".equalsIgnoreCase(redemptionType))) {
                     preBookingOffers.add(card);
                 }
-                if ("WALK_IN".equalsIgnoreCase(redemptionType) || "BOTH".equalsIgnoreCase(redemptionType)) {
+                if ("WALK_IN".equalsIgnoreCase(redemptionType) || "BOTH".equalsIgnoreCase(redemptionType) || !tableBookingAvailable) {
                     walkInOffers.add(card);
                 }
             }
@@ -387,7 +395,17 @@ public class MobileServiceDetailServiceImpl implements MobileServiceDetailServic
         }
         partnerChips.add(new PartnerChipDto("chip-2", "Instant UPI Pay", "Zero convenience fees", "UPI", "CARD"));
 
-        String greenPerkHighlight = "Earn Coins on all table bookings & instant UPI pay";
+        boolean isStoreRetail = (store.getCuisineOrCategory() != null && (
+                store.getCuisineOrCategory().toLowerCase().contains("retail") ||
+                store.getCuisineOrCategory().toLowerCase().contains("cloth") ||
+                store.getCuisineOrCategory().toLowerCase().contains("living") ||
+                store.getCuisineOrCategory().toLowerCase().contains("grocery") ||
+                store.getCuisineOrCategory().toLowerCase().contains("fashion") ||
+                store.getCuisineOrCategory().toLowerCase().contains("apparel")
+        )) || Boolean.FALSE.equals(store.getIsTableBookingEnabled());
+        String greenPerkHighlight = isStoreRetail
+                ? "Earn Coins on instant UPI counter payment & shopping deals"
+                : "Earn Coins on all table bookings & instant UPI pay";
 
         return new OffersSectionDto(
                 activeOffersCountText,

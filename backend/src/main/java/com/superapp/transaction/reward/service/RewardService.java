@@ -2,6 +2,7 @@ package com.superapp.transaction.reward.service;
 
 import com.superapp.transaction.reward.dto.AdminRewardAdjustmentRequest;
 import com.superapp.transaction.reward.dto.AdminRewardAdjustmentResponse;
+import com.superapp.transaction.reward.dto.CustomerRewardAccountResponse;
 import com.superapp.transaction.reward.dto.RewardBalanceResponse;
 import com.superapp.transaction.reward.dto.RewardLedgerItemResponse;
 import com.superapp.transaction.reward.entity.RewardAccount;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public interface RewardService {
@@ -24,6 +26,9 @@ public interface RewardService {
     RewardLedgerItemResponse creditRedemptionReward(
             UUID customerId, UUID redemptionId, UUID transactionId, BigDecimal amount, String description);
 
+    RewardLedgerItemResponse creditCashbackReward(
+            UUID customerId, UUID transactionId, BigDecimal amount, String description);
+
     RewardLedgerItemResponse reverseReward(
             UUID ledgerEntryId, String reason, String requestId, UUID adminUserId);
 
@@ -32,6 +37,8 @@ public interface RewardService {
 
     Page<RewardLedgerItemResponse> getAdminLedger(
             UUID customerId, String type, String status, Instant fromDate, Instant toDate, Pageable pageable);
+
+    List<CustomerRewardAccountResponse> getAllCustomerRewardAccounts();
 
     RewardAccount getOrCreateAccount(UUID customerId);
 }

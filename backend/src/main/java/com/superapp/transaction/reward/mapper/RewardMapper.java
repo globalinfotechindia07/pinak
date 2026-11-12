@@ -32,9 +32,19 @@ public class RewardMapper {
     }
 
     public RewardLedgerItemResponse toLedgerItemResponse(RewardLedgerEntry entry) {
+        return toLedgerItemResponse(entry, null);
+    }
+
+    public RewardLedgerItemResponse toLedgerItemResponse(RewardLedgerEntry entry, String customerName) {
         if (entry == null) return null;
+        String resolvedName = customerName;
+        if (resolvedName == null && entry.getCustomerId() != null) {
+            resolvedName = "Member " + entry.getCustomerId().toString().substring(0, 8);
+        }
         return new RewardLedgerItemResponse(
                 entry.getId(),
+                entry.getCustomerId(),
+                resolvedName,
                 entry.getType(),
                 entry.getAmount(),
                 entry.getStatus(),

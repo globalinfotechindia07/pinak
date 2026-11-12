@@ -93,6 +93,36 @@ export const WorkspaceSettings: React.FC = () => {
         </button>
       </div>
 
+      {/* Quick Access Banner: Loyalty & PINAK Coins Cashback */}
+      <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-pink-500/10 border border-amber-200 dark:border-amber-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-xl shadow-xs shrink-0">
+            🪙
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                Transaction Cashback & PINAK Coins Policy
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[9px] bg-amber-400/20 text-amber-600 dark:text-amber-300 font-extrabold uppercase">
+                Super Admin
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Configure global cashback % rates, maximum caps, min spend rules, and store-by-store loyalty coin multipliers.
+            </p>
+          </div>
+        </div>
+
+        <a
+          href="/admin/Rewards"
+          className="btn-gradient px-4 py-2 rounded-xl text-white font-extrabold text-xs shadow-md shrink-0 flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+        >
+          <span>Open Cashback Settings</span>
+          <span>→</span>
+        </a>
+      </div>
+
       {/* Grid: General Workspace & Webhook Gateway */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* General Workspace Card */}

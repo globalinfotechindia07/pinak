@@ -6,6 +6,8 @@ import com.superapp.common.exception.AppException;
 import com.superapp.common.response.ApiError;
 import com.superapp.transaction.reward.dto.AdminRewardAdjustmentRequest;
 import com.superapp.transaction.reward.dto.AdminRewardAdjustmentResponse;
+import com.superapp.transaction.reward.dto.CustomerRewardAccountResponse;
+import com.superapp.transaction.reward.dto.CustomerRewardAccountResponse;
 import com.superapp.transaction.reward.dto.RewardBalanceResponse;
 import com.superapp.transaction.reward.dto.RewardLedgerItemResponse;
 import com.superapp.transaction.reward.entity.RewardAccount;
@@ -130,7 +132,63 @@ public class RewardServiceImpl implements RewardService {
         }
 
         return rewardLedgerRepository.findAll(spec, pageable)
-                .map(rewardMapper::toLedgerItemResponse);
+                .map(entry -> {
+                    String customerName = null;
+                    if (entry.getCustomerId() != null) {
+                        customerName = userRepository.findById(entry.getCustomerId())
+                                .map(u -> (u.getName() != null && !u.getName().isBlank()) ? u.getName() : (u.getPhone() != null && !u.getPhone().isBlank() ? u.getPhone() : u.getEmail()))
+                                .orElse(null);
+                    }
+                    return rewardMapper.toLedgerItemResponse(entry, customerName);
+                });
+    }
+
+    @Override
+    @Transactional
+    public List<CustomerRewardAccountResponse> getAllCustomerRewardAccounts() {
+        List<com.superapp.user.entity.User> customerUsers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() != null && (u.getRole().name().equals("CUSTOMER") || u.getRole().name().equals("USER")))
+                .toList();
+        for (com.superapp.user.entity.User u : customerUsers) {
+            getOrCreateAccount(u.getId());
+        }
+
+        List<RewardAccount> accounts = rewardAccountRepository.findAll();
+        Map<UUID, com.superapp.user.entity.User> userMap = new HashMap<>();
+        for (com.superapp.user.entity.User u : userRepository.findAll()) {
+            userMap.put(u.getId(), u);
+        }
+
+        return accounts.stream().map(acc -> {
+            com.superapp.user.entity.User user = userMap.get(acc.getCustomerId());
+            String name = (user != null && user.getName() != null && !user.getName().isBlank())
+                    ? user.getName()
+                    : (user != null && user.getPhone() != null ? user.getPhone() : (user != null ? user.getEmail() : "PINAK Member"));
+            String phone = user != null ? user.getPhone() : null;
+            String email = user != null ? user.getEmail() : null;
+
+            BigDecimal earned = acc.getLifetimeEarned() != null ? acc.getLifetimeEarned() : BigDecimal.ZERO;
+            String tier = earned.compareTo(new BigDecimal("1000")) >= 0 ? "PLATINUM" :
+                          earned.compareTo(new BigDecimal("500")) >= 0 ? "GOLD" :
+                          earned.compareTo(new BigDecimal("100")) >= 0 ? "SILVER" : "BRONZE";
+
+            return new CustomerRewardAccountResponse(
+                    acc.getId(),
+                    acc.getCustomerId(),
+                    name,
+                    phone,
+                    email,
+                    acc.getAvailableBalance(),
+                    acc.getPendingBalance(),
+                    acc.getLifetimeEarned(),
+                    acc.getLifetimeRedeemed(),
+                    acc.getCurrency(),
+                    tier,
+                    acc.getStatus() != null ? acc.getStatus().name() : "ACTIVE",
+                    acc.getCreatedAt(),
+                    acc.getUpdatedAt()
+            );
+        }).toList();
     }
 
     @Override
@@ -225,6 +283,71 @@ public class RewardServiceImpl implements RewardService {
         audit.put("customerId", customerId.toString());
         audit.put("amount", creditAmount.toString());
         audit.put("redemptionId", redemptionId != null ? redemptionId.toString() : null);
+        audit.put("ledgerEntryId", savedEntry.getId().toString());
+        auditService.record(AuditEventType.REWARD_CREDITED, customerId, null, null, null, audit.toString());
+
+        return rewardMapper.toLedgerItemResponse(savedEntry);
+    }
+
+    @Override
+    @Transactional
+    public RewardLedgerItemResponse creditCashbackReward(
+            UUID customerId, UUID transactionId, BigDecimal amount, String description) {
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
+        String referenceId = "PNK-CB-" + (transactionId != null ? transactionId.toString() : UUID.randomUUID().toString());
+        Optional<RewardLedgerEntry> existingByRef = rewardLedgerRepository.findByReferenceIdAndType(
+                referenceId, RewardLedgerType.CREDIT);
+        if (existingByRef.isPresent()) {
+            return rewardMapper.toLedgerItemResponse(existingByRef.get());
+        }
+
+        RewardAccount account = rewardAccountRepository.findByCustomerIdForUpdate(customerId)
+                .orElseGet(() -> getOrCreateAccount(customerId));
+
+        BigDecimal creditAmount = amount.setScale(2, RoundingMode.HALF_UP);
+
+        RewardLedgerEntry entry = new RewardLedgerEntry();
+        entry.setCustomerId(customerId);
+        entry.setRewardAccountId(account.getId());
+        entry.setTransactionId(transactionId);
+        entry.setType(RewardLedgerType.CREDIT);
+        entry.setAmount(creditAmount);
+        entry.setStatus(RewardLedgerStatus.POSTED);
+        entry.setReferenceId(referenceId);
+        entry.setDescription(description != null ? description : "PINAK Coins cashback for transaction");
+        entry.setCreatedAt(Instant.now());
+
+        RewardLedgerEntry savedEntry;
+        try {
+            savedEntry = rewardLedgerRepository.save(entry);
+            account.setAvailableBalance(account.getAvailableBalance().add(creditAmount));
+            account.setLifetimeEarned(account.getLifetimeEarned().add(creditAmount));
+            rewardAccountRepository.save(account);
+        } catch (DataIntegrityViolationException ex) {
+            log.warn("Duplicate reward credit race condition caught for referenceId={}", referenceId);
+            return rewardLedgerRepository.findByReferenceIdAndType(referenceId, RewardLedgerType.CREDIT)
+                    .map(rewardMapper::toLedgerItemResponse)
+                    .orElse(null);
+        }
+
+        rewardCacheService.evictAccount(customerId);
+
+        if (notificationService != null) {
+            try {
+                notificationService.createRewardNotification(savedEntry);
+            } catch (Exception ex) {
+                log.warn("Failed to dispatch reward notification: {}", ex.getMessage());
+            }
+        }
+
+        Map<String, Object> audit = new HashMap<>();
+        audit.put("customerId", customerId.toString());
+        audit.put("amount", creditAmount.toString());
+        audit.put("transactionId", transactionId != null ? transactionId.toString() : null);
         audit.put("ledgerEntryId", savedEntry.getId().toString());
         auditService.record(AuditEventType.REWARD_CREDITED, customerId, null, null, null, audit.toString());
 
@@ -410,6 +533,14 @@ public class RewardServiceImpl implements RewardService {
         }
 
         return rewardLedgerRepository.findAll(spec, pageable)
-                .map(rewardMapper::toLedgerItemResponse);
+                .map(entry -> {
+                    String customerName = null;
+                    if (entry.getCustomerId() != null) {
+                        customerName = userRepository.findById(entry.getCustomerId())
+                                .map(u -> (u.getName() != null && !u.getName().isBlank()) ? u.getName() : (u.getPhone() != null && !u.getPhone().isBlank() ? u.getPhone() : u.getEmail()))
+                                .orElse(null);
+                    }
+                    return rewardMapper.toLedgerItemResponse(entry, customerName);
+                });
     }
 }

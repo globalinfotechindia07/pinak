@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +19,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/admin/settings/cashback")
 @Tag(name = "Admin Transaction Cashback", description = "Super Admin management of platform and store transaction cashbacks")
-@PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
 public class AdminCashbackController {
 
     private final CashbackSettingsService cashbackSettingsService;

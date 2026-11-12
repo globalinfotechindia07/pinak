@@ -12,6 +12,12 @@ public record RewardLedgerItemResponse(
         @Schema(description = "Ledger entry ID")
         UUID id,
 
+        @Schema(description = "Associated customer ID")
+        UUID customerId,
+
+        @Schema(description = "Customer display name or identifier")
+        String customerName,
+
         @Schema(description = "Ledger transaction type")
         RewardLedgerType type,
 
@@ -35,4 +41,9 @@ public record RewardLedgerItemResponse(
 
         @Schema(description = "Timestamp when entry was created")
         Instant createdAt
-) {}
+) {
+    public RewardLedgerItemResponse(UUID id, RewardLedgerType type, BigDecimal amount, RewardLedgerStatus status,
+                                    UUID transactionId, UUID redemptionId, String referenceId, String description, Instant createdAt) {
+        this(id, null, null, type, amount, status, transactionId, redemptionId, referenceId, description, createdAt);
+    }
+}

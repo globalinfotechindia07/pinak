@@ -86,6 +86,8 @@ export interface TableBookingViewProps {
   initialOfferTerms?: string | string[];
   initialCustomerName?: string;
   initialCustomerPhone?: string;
+  customerId?: string;
+  customerCoins?: number;
   contactPhone?: string;
   storeData?: any;
   onBack: () => void;
@@ -175,6 +177,8 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
   initialOfferTerms,
   initialCustomerName,
   initialCustomerPhone,
+  customerId,
+  customerCoins,
   storeData,
   onBack,
   onPayBill,
@@ -941,6 +945,13 @@ export const TableBookingView: React.FC<TableBookingViewProps> = ({
         coverChargeAmount={bookingDetails?.totalCoverCharge != null ? Number(bookingDetails.totalCoverCharge) : totalCoverCharge}
         customerPhone={bookingDetails?.customerPhone || guestPhone || appStore.currentUser?.phone || ""}
         customerName={bookingDetails?.customerName || guestName || appStore.currentUser?.name || "Guest Customer"}
+        customerId={customerId}
+        customerCoins={customerCoins}
+        cashbackPercentage={fetchedData?.store?.cashbackPercentage != null ? Number(fetchedData.store.cashbackPercentage) : (storeData?.cashbackPercentage != null ? Number(storeData.cashbackPercentage) : undefined)}
+        maxCashbackAmount={fetchedData?.store?.maxCashbackAmount != null ? Number(fetchedData.store.maxCashbackAmount) : (storeData?.maxCashbackAmount != null ? Number(storeData.maxCashbackAmount) : undefined)}
+        minTransactionForCashback={fetchedData?.store?.minTransactionForCashback != null ? Number(fetchedData.store.minTransactionForCashback) : (storeData?.minTransactionForCashback != null ? Number(storeData.minTransactionForCashback) : undefined)}
+        isCashbackEnabled={fetchedData?.store?.isCashbackEnabled ?? storeData?.isCashbackEnabled}
+        cashbackName={fetchedData?.store?.cashbackName}
         onBack={() => {
           setShowPayBillView(false);
           window.scrollTo({ top: 0, behavior: "smooth" });

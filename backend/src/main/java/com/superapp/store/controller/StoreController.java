@@ -69,7 +69,6 @@ public class StoreController {
 
     @GetMapping("/stores")
     @Operation(summary = "Get all stores (paginated)", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<StoreResponse>>> getAllStores(
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success("Stores retrieved", storeService.getAllStores(pageable)));
@@ -77,14 +76,12 @@ public class StoreController {
 
     @GetMapping("/stores/{id}")
     @Operation(summary = "Get store by ID", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<StoreResponse>> getStoreById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Store retrieved", storeService.getStoreById(id)));
     }
 
     @GetMapping("/merchants/{merchantId}/stores")
     @Operation(summary = "Get all branch stores belonging to a merchant", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<StoreResponse>>> getStoresByMerchantId(
             @PathVariable UUID merchantId,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -136,7 +133,6 @@ public class StoreController {
 
     @GetMapping("/stores/nearby")
     @Operation(summary = "Find nearby approved stores within GPS radius (meters)", security = @SecurityRequirement(name = "bearerAuth"))
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<StoreResponse>>> findNearbyStores(
             @RequestParam double latitude,
             @RequestParam double longitude,

@@ -62,6 +62,7 @@ export interface ProductOrderViewProps {
   distanceKm?: number;
   product?: ProductItemData;
   initialQuantity?: number;
+  customerCoins?: number;
   onBack: () => void;
   onOrderConfirmed?: (orderDetails: any) => void;
 }
@@ -84,6 +85,7 @@ export const ProductOrderView: React.FC<ProductOrderViewProps> = ({
     description: "Available in-store with exclusive discount offer."
   },
   initialQuantity = 1,
+  customerCoins,
   onBack,
   onOrderConfirmed
 }) => {
@@ -191,7 +193,9 @@ export const ProductOrderView: React.FC<ProductOrderViewProps> = ({
 
   const discountedItems = Math.max(0, itemTotal - couponDiscount);
   const coinsEarned = Math.round(discountedItems * 0.2); // 20% PINAK Coins
-  const coinSavings = useCoins ? Math.min(40, Math.round(discountedItems * 0.05)) : 0;
+  const userCoinBalance = customerCoins != null ? customerCoins : 500;
+  const maxProductCoinsAllowed = Math.min(userCoinBalance, Math.max(0, Math.round(discountedItems * 0.10)));
+  const coinSavings = useCoins ? (maxProductCoinsAllowed > 0 ? maxProductCoinsAllowed : Math.min(userCoinBalance, 40)) : 0;
 
   // In-Store purchase: ZERO packaging fee (Customer picked items directly from shelf)
   const totalPayable = useMemo(() => {
@@ -1126,12 +1130,20 @@ export const ProductOrderView: React.FC<ProductOrderViewProps> = ({
                   <span className="font-bold text-slate-700 dark:text-slate-300">
                     Use PINAK Coins
                   </span>
-                  <Info size={13} className="text-slate-400" />
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    (Balance: {userCoinBalance} 🪙)
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setUseCoins(!useCoins)}
+                    onClick={() => {
+                      if (userCoinBalance <= 0) {
+                        toast.error("Your coin balance is 0. Shop in-store to earn coins!");
+                        return;
+                      }
+                      setUseCoins(!useCoins);
+                    }}
                     className={cn(
                       "w-11 h-6 rounded-full transition-colors relative cursor-pointer p-0.5",
                       useCoins ? "bg-purple-600" : "bg-slate-200 dark:bg-slate-700"
@@ -1144,8 +1156,8 @@ export const ProductOrderView: React.FC<ProductOrderViewProps> = ({
                       )}
                     />
                   </button>
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400 min-w-[32px] text-right">
-                    {useCoins ? `↑ ₹${coinSavings}` : "↑ ₹0"}
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400 min-w-[36px] text-right font-mono">
+                    {useCoins && coinSavings > 0 ? `-₹${coinSavings}` : "₹0"}
                   </span>
                 </div>
               </div>

@@ -30,13 +30,17 @@ export interface CustomerOrdersViewProps {
   onSelectStore?: (storeId: string) => void;
   onPayBillForBooking?: (booking: TableBookingDetails) => void;
   onPayingBillChange?: (isPaying: boolean) => void;
+  customerId?: string;
+  customerCoins?: number;
 }
 
 export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
   onBackToDiscover,
   onSelectStore,
   onPayBillForBooking,
-  onPayingBillChange
+  onPayingBillChange,
+  customerId,
+  customerCoins
 }) => {
   const appStore = useAppStore();
   const [activeTab, setActiveTab] = useState<"bookings" | "deals">("bookings");
@@ -47,6 +51,11 @@ export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
   const [cancellationReason, setCancellationReason] = useState<string>("Change of plans");
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
   const [payingBooking, setPayingBooking] = useState<TableBookingDetails | null>(null);
+
+  const isBookingRetail = (b: TableBookingDetails) => {
+    const text = ((b.storeName || "") + " " + (b.offerTitle || "") + " " + (b.mealType || "")).toLowerCase();
+    return /fab|retail|fashion|cloth|apparel|living|decor|grocery|mart|zara|h&m|supermarket/i.test(text) || b.mealType === "RETAIL" || b.mealType === "WALK-IN";
+  };
 
   useEffect(() => {
     onPayingBillChange?.(Boolean(payingBooking));
@@ -108,6 +117,10 @@ export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
         coverChargeAmount={payingBooking.totalCoverCharge != null ? Number(payingBooking.totalCoverCharge) : undefined}
         customerPhone={payingBooking.customerPhone || appStore.currentUser?.phone}
         customerName={payingBooking.customerName || appStore.currentUser?.name}
+        storeType={isBookingRetail(payingBooking) ? "RETAIL" : "DINING"}
+        isTableBookingEnabled={!isBookingRetail(payingBooking)}
+        customerId={customerId}
+        customerCoins={customerCoins}
         onBack={() => setPayingBooking(null)}
         onPaymentSuccess={(details) => {
           loadBookings();
@@ -138,7 +151,7 @@ export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
               My Bookings &amp; Orders
             </h1>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-              Live reservations and dining passes
+              Live reservations & in-store checkout passes
             </p>
           </div>
         </div>
@@ -213,7 +226,7 @@ export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
                   No Table Reservations Yet
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
-                  Book a table at top restaurants and get up to 50% discount on your dining bill.
+                  Claim store discount passes or reserve a table to get up to 50% discount on your bill.
                 </p>
               </div>
               <button
@@ -334,7 +347,7 @@ export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
                         )}>
                           <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-200">
                             {isCompleted ? <CheckCircle2 size={14} className="text-emerald-600 shrink-0" /> : <Receipt size={14} className="text-emerald-600 shrink-0" />}
-                            <span>{isCompleted ? "Dining Bill Paid & Settled:" : "Dining Food Bill Added by Restaurant:"}</span>
+                            <span>{isCompleted ? (isBookingRetail(booking) ? "Store Bill Paid & Settled:" : "Dining Bill Paid & Settled:") : (isBookingRetail(booking) ? "Store Purchase Bill Added by Store:" : "Dining Food Bill Added by Restaurant:")}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm font-black text-emerald-700 dark:text-emerald-300">
@@ -351,9 +364,9 @@ export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
                         <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
                           <span className="flex items-center gap-1">
                             <Clock size={12} className="text-amber-500 shrink-0" />
-                            <span>Food bill not added yet by store</span>
+                            <span>{isBookingRetail(booking) ? "Store bill not added yet by counter" : "Food bill not added yet by store"}</span>
                           </span>
-                          <span className="text-[10px] font-bold text-slate-400">Ask waiter to add bill</span>
+                          <span className="text-[10px] font-bold text-slate-400">{isBookingRetail(booking) ? "Ask cashier to add bill" : "Ask waiter to add bill"}</span>
                         </div>
                       )}
                     </div>
@@ -535,13 +548,13 @@ export const CustomerOrdersView: React.FC<CustomerOrdersViewProps> = ({
                 <div className="p-3.5 bg-purple-50/70 dark:bg-purple-950/40 rounded-2xl border border-purple-200/80 dark:border-purple-800 text-[11px] text-purple-900 dark:text-purple-200 space-y-1.5">
                   <p className="font-bold flex items-center gap-1.5">
                     <Sparkles size={13} className="text-amber-500" />
-                    <span>How to redeem on table:</span>
+                    <span>{isBookingRetail(selectedPassBooking) ? "How to redeem in-store:" : "How to redeem on table:"}</span>
                   </p>
                   <p className="leading-relaxed">
-                    1. Arrive on time at {selectedPassBooking.storeName}. Show this pass to your host.
+                    1. Arrive at {selectedPassBooking.storeName}. Show this pass to the store cashier / host.
                   </p>
                   <p className="leading-relaxed">
-                    2. Settle your final dining bill through PINAK to auto-redeem cover charges &amp; unlock offer discount.
+                    2. Settle your final {isBookingRetail(selectedPassBooking) ? "store bill at the counter" : "dining bill"} through PINAK to unlock offer discount.
                   </p>
                 </div>
               </div>

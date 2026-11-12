@@ -1,6 +1,6 @@
 import { cashbackApi } from "../../api/cashbackApi";
 import { CashbackSetting, StoreCashback } from "../../types";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Sparkles,
   Plus,
@@ -23,12 +23,24 @@ import {
   Percent,
   Save,
   Edit3,
-  Check
+  Check,
+  Calculator,
+  Download,
+  Copy,
+  Search,
+  Building2,
+  MapPin,
+  Sliders,
+  AlertTriangle,
+  HelpCircle,
+  Clock,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { RewardRule, Customer } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
-import { rewardApi, RewardLedgerItemDTO } from "../../api/rewardApi";
+import { rewardApi, RewardLedgerItemDTO, CustomerRewardAccountDTO } from "../../api/rewardApi";
 import { toast } from "sonner";
 
 interface RewardsEconomyProps {
@@ -42,8 +54,9 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
   customers,
   onAddRule
 }) => {
-  const [activeTab, setActiveTab] = useState<"programs" | "ledger" | "cashback">("cashback");
+  const [activeTab, setActiveTab] = useState<"cashback" | "ledger" | "programs">("cashback");
   const [ledgerItems, setLedgerItems] = useState<RewardLedgerItemDTO[]>([]);
+  const [ledgerFilter, setLedgerFilter] = useState<"ALL" | "EARN" | "REDEEM" | "ADJUSTMENT">("ALL");
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>("Just now");
 
@@ -58,7 +71,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [pointsDelta, setPointsDelta] = useState<number>(250);
-  const [adjustReason, setAdjustReason] = useState("Admin Goodwill Credit");
+  const [adjustReason, setAdjustReason] = useState("VIP Member Goodwill Credit");
   const [isSubmittingAdjust, setIsSubmittingAdjust] = useState(false);
 
   // Super Admin Transaction Cashback Settings
@@ -72,13 +85,39 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
     applyToAllStores: false
   });
   const [storesCashback, setStoresCashback] = useState<StoreCashback[]>([]);
+  const [customerAccounts, setCustomerAccounts] = useState<CustomerRewardAccountDTO[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [isLoadingCashback, setIsLoadingCashback] = useState(false);
   const [isSavingCashback, setIsSavingCashback] = useState(false);
   const [applyToAll, setApplyToAll] = useState(false);
 
+  // Interactive Live Simulator State
+  const [simBillAmount, setSimBillAmount] = useState<number>(2000);
+
+  // Store Table Filtering & Pagination
+  const [storeSearch, setStoreSearch] = useState<string>("");
+  const [storeStatusFilter, setStoreStatusFilter] = useState<"all" | "active" | "disabled">("all");
+  const [storeCityFilter, setStoreCityFilter] = useState<string>("all");
+  const [storePage, setStorePage] = useState<number>(1);
+  const STORES_PER_PAGE = 8;
+
   // Edit Single Store Cashback Modal
   const [editingStore, setEditingStore] = useState<StoreCashback | null>(null);
   const [isSavingStoreCashback, setIsSavingStoreCashback] = useState(false);
+
+  const fetchCustomerAccounts = async () => {
+    setIsLoadingAccounts(true);
+    try {
+      const data = await rewardApi.getAllAccounts();
+      if (data && data.length > 0) {
+        setCustomerAccounts(data);
+      }
+    } catch (err: any) {
+      console.warn("Could not fetch customer accounts:", err);
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  };
 
   const fetchCashbackData = async () => {
     setIsLoadingCashback(true);
@@ -106,7 +145,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
       });
       setCashbackSetting(updated);
       toast.success(applyToAll 
-        ? "Global cashback policy saved and applied to all stores successfully!" 
+        ? "Global cashback policy saved and propagated to all stores successfully!" 
         : "Global cashback settings updated successfully!");
       const refreshedStores = await cashbackApi.getAllStoresCashback();
       setStoresCashback(refreshedStores);
@@ -135,36 +174,49 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
     }
   };
 
+  const handleToggleStoreStatus = async (store: StoreCashback) => {
+    const updatedStatus = !store.isCashbackEnabled;
+    try {
+      const updated = await cashbackApi.updateStoreCashback(store.storeId, {
+        ...store,
+        isCashbackEnabled: updatedStatus
+      });
+      setStoresCashback((prev) =>
+        prev.map((s) => (s.storeId === updated.storeId ? updated : s))
+      );
+      toast.success(`${store.storeName} cashback ${updatedStatus ? "Activated" : "Paused"}`);
+    } catch (err: any) {
+      toast.error("Failed to update store status");
+    }
+  };
+
   // Fetch real ledger from backend
   const fetchLedger = async (silent = false) => {
     setIsLoadingLedger(true);
     try {
-      const data = await rewardApi.getAdminLedger({ size: 50 });
+      const data = await rewardApi.getAdminLedger({ size: 100 });
       if (data && data.length > 0) {
-        setLedgerItems(data);
+        const normalized: RewardLedgerItemDTO[] = data.map((item: any) => {
+          const rawPoints = item.points != null ? item.points : (item.amount != null ? Number(item.amount) : 0);
+          return {
+            id: item.id,
+            transactionId: item.transactionId || item.referenceId || item.id,
+            customerId: item.customerId,
+            customerName: item.customerName || (item.customerId ? "Registered Member" : "In-Store Diner"),
+            points: rawPoints,
+            type: (item.type === "CREDIT" ? "EARN" : item.type === "DEBIT" ? "REDEEM" : item.type) as any,
+            description: item.description || "PINAK loyalty rewards entry",
+            createdAt: item.createdAt,
+            status: item.status || "POSTED"
+          };
+        });
+        setLedgerItems(normalized);
         setLastRefreshed(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
         if (!silent) {
           toast.success(`Loaded ${data.length} live reward ledger transactions`);
         }
       } else {
-        // Derive initial ledger records from real customers if backend table is unseeded
-        const initialLedger: RewardLedgerItemDTO[] = customers.slice(0, 4).map((c, idx) => ({
-          id: `led_${c.id.substring(0, 8)}_${idx}`,
-          transactionId: `TXN_${(774800 + idx * 45).toString()}`,
-          customerId: c.id,
-          customerName: c.name,
-          points: c.rewardsBalance > 0 ? c.rewardsBalance : 100,
-          type: (idx % 2 === 0 ? "EARN" : "REDEEM") as "EARN" | "REDEEM",
-          description: idx % 2 === 0
-            ? `Points earned on merchant bill at partner store`
-            : `Redemption discount applied on checkout`,
-          createdAt: new Date(Date.now() - (idx + 1) * 3600000).toISOString(),
-          status: "CONFIRMED"
-        }));
-        setLedgerItems(initialLedger);
-        if (!silent) {
-          toast.info("Backend ledger empty; loaded customer transaction records");
-        }
+        setLedgerItems([]);
       }
     } catch (err) {
       console.warn("Could not fetch ledger:", err);
@@ -179,6 +231,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
   useEffect(() => {
     fetchLedger(true);
     fetchCashbackData();
+    fetchCustomerAccounts();
   }, []);
 
   const handleAdjustSubmit = async (e: React.FormEvent) => {
@@ -198,8 +251,11 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
 
       toast.success(`Successfully adjusted ${pointsDelta > 0 ? `+${pointsDelta}` : pointsDelta} points!`);
       setIsAdjustOpen(false);
-      // Refresh ledger
-      await fetchLedger(true);
+      // Refresh ledger and customer accounts from database
+      await Promise.all([
+        fetchLedger(true),
+        fetchCustomerAccounts()
+      ]);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to submit points adjustment");
     } finally {
@@ -207,83 +263,180 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
     }
   };
 
-  // Live KPI Calculations from actual customers and ledger
-  const totalWalletPoints = customers.reduce((acc, c) => acc + (c.rewardsBalance || 0), 0);
-  const totalWalletValue = totalWalletPoints * 0.25;
+  // Export Ledger to CSV
+  const handleExportLedger = () => {
+    if (!ledgerItems.length) {
+      toast.error("No ledger items to export");
+      return;
+    }
+    const headers = ["ID", "Transaction / Ref", "Customer Name", "Type", "Points / Coins", "Description", "Date", "Status"];
+    const rows = filteredLedgerItems.map(item => [
+      `"${item.id}"`,
+      `"${item.transactionId || ''}"`,
+      `"${item.customerName || ''}"`,
+      `"${item.type}"`,
+      item.points,
+      `"${(item.description || '').replace(/"/g, '""')}"`,
+      `"${new Date(item.createdAt).toLocaleString()}"`,
+      `"${item.status}"`
+    ]);
 
-  const liveEarned = ledgerItems
-    .filter(i => i.type === "EARN" || (i.type === "ADJUSTMENT" && i.points > 0))
-    .reduce((acc, i) => acc + Math.abs(i.points), 0);
-  const liveRedeemed = ledgerItems
-    .filter(i => i.type === "REDEEM" || (i.type === "ADJUSTMENT" && i.points < 0))
-    .reduce((acc, i) => acc + Math.abs(i.points), 0);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `pinak-reward-ledger-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${filteredLedgerItems.length} ledger transactions to CSV`);
+  };
 
-  const displayPointsIssued = (liveEarned > 0 ? liveEarned : totalWalletPoints) >= 1000
-    ? `${((liveEarned > 0 ? liveEarned : totalWalletPoints) / 1000).toFixed(1)}k pts`
-    : `${liveEarned > 0 ? liveEarned : totalWalletPoints} pts`;
+  // Live KPI Calculations from actual database customer accounts and ledger
+  const totalWalletCoins = customerAccounts.reduce((acc, c) => acc + (Number(c.availableBalance) || 0), 0);
+  const totalLifetimeEarned = customerAccounts.reduce((acc, c) => acc + (Number(c.lifetimeEarned) || 0), 0);
+  const totalLifetimeRedeemed = customerAccounts.reduce((acc, c) => acc + (Number(c.lifetimeRedeemed) || 0), 0);
 
-  const displayPointsRedeemed = liveRedeemed >= 1000
-    ? `${(liveRedeemed / 1000).toFixed(1)}k pts`
-    : `${liveRedeemed} pts`;
+  const displayPointsIssued = totalLifetimeEarned >= 1000
+    ? `${(totalLifetimeEarned / 1000).toFixed(1)}k Coins`
+    : `${totalLifetimeEarned.toFixed(0)} Coins`;
 
-  const outstandingBalancePoints = totalWalletPoints > 0 ? totalWalletPoints : Math.max(0, liveEarned - liveRedeemed);
-  const outstandingPointsValue = `₹${(outstandingBalancePoints * 0.25).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-  const redemptionRate = (liveEarned + liveRedeemed) > 0
-    ? `${((liveRedeemed / (liveEarned + liveRedeemed)) * 100).toFixed(1)}%`
-    : "32.4%";
+  const displayPointsRedeemed = totalLifetimeRedeemed >= 1000
+    ? `${(totalLifetimeRedeemed / 1000).toFixed(1)}k Coins`
+    : `${totalLifetimeRedeemed.toFixed(0)} Coins`;
 
-  // Customer table columns
-  const customerColumns: Column<Customer>[] = [
+  const outstandingPointsValue = `₹${totalWalletCoins.toFixed(2)}`;
+  const redemptionRate = (totalLifetimeEarned + totalLifetimeRedeemed) > 0
+    ? `${((totalLifetimeRedeemed / (totalLifetimeEarned + totalLifetimeRedeemed)) * 100).toFixed(1)}%`
+    : "0.0%";
+
+    // Simulator Calculations
+  const simulatedCoins = useMemo(() => {
+    if (!cashbackSetting.enabled || simBillAmount < cashbackSetting.minTransactionAmount) return 0;
+    const raw = Math.round((simBillAmount * cashbackSetting.defaultPercentage) / 100);
+    return cashbackSetting.maxCashbackPerTransaction > 0 ? Math.min(raw, cashbackSetting.maxCashbackPerTransaction) : raw;
+  }, [simBillAmount, cashbackSetting]);
+
+  const isSimulatedCapped = useMemo(() => {
+    if (!cashbackSetting.enabled || simBillAmount < cashbackSetting.minTransactionAmount) return false;
+    const uncapped = (simBillAmount * cashbackSetting.defaultPercentage) / 100;
+    return uncapped > cashbackSetting.maxCashbackPerTransaction;
+  }, [simBillAmount, cashbackSetting]);
+
+  // Filtered Stores
+  const availableCities = useMemo(() => {
+    const set = new Set<string>();
+    storesCashback.forEach(s => {
+      if (s.cityName) set.add(s.cityName);
+    });
+    return Array.from(set);
+  }, [storesCashback]);
+
+  const filteredStores = useMemo(() => {
+    return storesCashback.filter(s => {
+      const matchesSearch = !storeSearch.trim() ||
+        s.storeName.toLowerCase().includes(storeSearch.toLowerCase()) ||
+        (s.cityName && s.cityName.toLowerCase().includes(storeSearch.toLowerCase()));
+
+      const matchesStatus =
+        storeStatusFilter === "all" ? true :
+        storeStatusFilter === "active" ? s.isCashbackEnabled :
+        !s.isCashbackEnabled;
+
+      const matchesCity = storeCityFilter === "all" || s.cityName?.toLowerCase() === storeCityFilter.toLowerCase();
+
+      return matchesSearch && matchesStatus && matchesCity;
+    });
+  }, [storesCashback, storeSearch, storeStatusFilter, storeCityFilter]);
+
+  const totalStorePages = Math.max(1, Math.ceil(filteredStores.length / STORES_PER_PAGE));
+  const paginatedStores = useMemo(() => {
+    const start = (storePage - 1) * STORES_PER_PAGE;
+    return filteredStores.slice(start, start + STORES_PER_PAGE);
+  }, [filteredStores, storePage]);
+
+  // Filtered Ledger Items
+  const filteredLedgerItems = useMemo(() => {
+    if (ledgerFilter === "ALL") return ledgerItems;
+    return ledgerItems.filter(i => i.type === ledgerFilter);
+  }, [ledgerItems, ledgerFilter]);
+
+  // Customer table columns (Live Database Accounts)
+  const customerColumns: Column<CustomerRewardAccountDTO>[] = [
     {
       header: "Customer",
       sortable: true,
-      accessor: "name",
+      accessor: "customerName",
       render: (c) => (
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-            {c.name.charAt(0)}
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+            {(c.customerName || "U").charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="font-bold text-slate-900 dark:text-white leading-tight">{c.name}</p>
-            <p className="text-[11px] text-slate-400 font-mono">{c.phone}</p>
+            <p className="font-bold text-slate-900 dark:text-white leading-tight">{c.customerName || "PINAK Member"}</p>
+            <p className="text-[11px] text-slate-400 font-mono">{c.customerPhone || c.customerEmail || c.customerId.slice(0, 8)}</p>
           </div>
         </div>
       )
     },
     {
-      header: "City & Area",
+      header: "Loyalty Tier",
       sortable: true,
-      accessor: "city",
-      render: (c) => <span className="text-xs text-slate-600 dark:text-slate-400">{c.city}</span>
+      accessor: "tier",
+      render: (c) => {
+        const seg = (c.tier || "BRONZE").toUpperCase();
+        let badgeStyle = "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+        if (seg === "PLATINUM" || seg === "VIP") badgeStyle = "bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800";
+        if (seg === "GOLD") badgeStyle = "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800";
+        if (seg === "SILVER") badgeStyle = "bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
+
+        return (
+          <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold ${badgeStyle}`}>
+            {seg}
+          </span>
+        );
+      }
     },
     {
-      header: "Store Visits",
+      header: "Available Balance",
       sortable: true,
-      accessor: "visits",
+      accessor: "availableBalance",
       render: (c) => (
-        <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
-          {c.visits} visits
+        <div className="font-mono text-xs">
+          <span className="font-bold text-pink-600 dark:text-pink-400">
+            {Number(c.availableBalance).toFixed(2)} Coins
+          </span>
+          <span className="text-slate-400 text-[11px] ml-1.5">(₹{Number(c.availableBalance).toFixed(2)} val)</span>
+        </div>
+      )
+    },
+    {
+      header: "Lifetime Earned",
+      sortable: true,
+      accessor: "lifetimeEarned",
+      render: (c) => (
+        <span className="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          +{Number(c.lifetimeEarned).toFixed(2)} Coins
         </span>
       )
     },
     {
-      header: "Reward Points Balance",
+      header: "Lifetime Redeemed",
       sortable: true,
-      accessor: "rewardsBalance",
+      accessor: "lifetimeRedeemed",
       render: (c) => (
-        <div className="font-mono text-xs">
-          <span className="font-bold text-pink-600 dark:text-pink-400">{c.rewardsBalance.toLocaleString()} pts</span>
-          <span className="text-slate-400 text-[11px] ml-1.5">(₹{(c.rewardsBalance * 0.25).toFixed(0)} val)</span>
-        </div>
+        <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
+          {Number(c.lifetimeRedeemed).toFixed(2)} Coins
+        </span>
       )
     },
     {
-      header: "Segment Tier",
+      header: "Status",
       sortable: true,
-      accessor: "segment",
+      accessor: "status",
       render: (c) => (
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
-          {c.segment}
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+          {c.status || "ACTIVE"}
         </span>
       )
     },
@@ -293,10 +446,10 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
       render: (c) => (
         <button
           onClick={() => {
-            setSelectedCustomerId(c.id);
+            setSelectedCustomerId(c.customerId);
             setIsAdjustOpen(true);
           }}
-          className="px-2.5 py-1 text-xs font-bold rounded-lg bg-pink-50 hover:bg-pink-100 text-pink-700 dark:bg-pink-950/50 dark:hover:bg-pink-900/50 dark:text-pink-300 transition-colors"
+          className="px-2.5 py-1 text-xs font-bold rounded-lg bg-pink-50 hover:bg-pink-100 text-pink-700 dark:bg-pink-950/50 dark:hover:bg-pink-900/50 dark:text-pink-300 transition-colors cursor-pointer"
         >
           Adjust Points
         </button>
@@ -304,19 +457,43 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
     }
   ];
 
-  // Ledger table columns
+    // Ledger table columns
   const ledgerColumns: Column<RewardLedgerItemDTO>[] = [
     {
       header: "Transaction / ID",
       sortable: true,
       accessor: "id",
+      render: (item) => {
+        const refId = item.transactionId || item.id;
+        return (
+          <div className="flex items-center gap-1.5 group">
+            <span className="font-mono font-bold text-xs text-slate-900 dark:text-white">
+              {refId}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(refId);
+                toast.success(`Copied ${refId}`);
+              }}
+              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-opacity"
+              title="Copy Reference ID"
+            >
+              <Copy size={11} />
+            </button>
+          </div>
+        );
+      }
+    },
+    {
+      header: "Customer",
+      sortable: true,
+      accessor: "customerName",
       render: (item) => (
-        <div>
-          <span className="font-mono font-bold text-xs text-slate-900 dark:text-white">
-            {item.transactionId || item.id}
-          </span>
-          {item.customerName && (
-            <p className="text-[11px] text-slate-400 mt-0.5">{item.customerName}</p>
+        <div className="text-xs">
+          <p className="font-bold text-slate-800 dark:text-slate-200">{item.customerName || "Member"}</p>
+          {item.customerId && (
+            <p className="text-[10px] text-slate-400 font-mono">{item.customerId.slice(0, 8)}...</p>
           )}
         </div>
       )
@@ -367,7 +544,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
       sortable: false,
       accessor: "description",
       render: (item) => (
-        <span className="text-xs text-slate-700 dark:text-slate-300 line-clamp-1">
+        <span className="text-xs text-slate-700 dark:text-slate-300 line-clamp-1 max-w-sm" title={item.description}>
           {item.description}
         </span>
       )
@@ -378,12 +555,8 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
       accessor: "createdAt",
       render: (item) => (
         <span className="text-xs text-slate-400 font-mono">
-          {new Date(item.createdAt).toLocaleString("en-IN", {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-          })}
+          {new Date(item.createdAt).toLocaleDateString([], { month: "short", day: "2-digit" })}{" "}
+          {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
       )
     },
@@ -392,9 +565,8 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
       sortable: true,
       accessor: "status",
       render: (item) => (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-          <CheckCircle2 size={11} />
-          {item.status || "CONFIRMED"}
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+          {item.status}
         </span>
       )
     }
@@ -402,37 +574,30 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Hero Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-amber-500 via-pink-600 to-purple-700 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 space-y-1.5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold uppercase tracking-wider text-amber-200">
-            <Sparkles size={14} />
-            Rewards & Loyalty Engine · Live API
+      {/* Top Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-violet-900 via-purple-900 to-indigo-950 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-400/20 via-pink-500/10 to-transparent pointer-events-none" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-extrabold font-['Manrope'] tracking-tight">
+              Rewards Economy & Loyalty Engine
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 uppercase tracking-wider">
+              Super Admin Control
+            </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-['Manrope']">
-            {totalWalletValue >= 100000
-              ? `₹${(totalWalletValue / 100000).toFixed(2)}L`
-              : `₹${totalWalletValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`} Returned in Customer Value
-          </h2>
-          <p className="text-sm text-slate-100/90 max-w-xl">
-            Customers earn PINAK points on UPI payments and redeem them across local stores, driving loyalty and repeat neighborhood visits.
+          <p className="text-xs sm:text-sm text-purple-200 mt-1 max-w-2xl">
+            Configure platform transaction cashback rules, manage restaurant outlet rates, review immutable reward ledgers, and supervise member loyalty balances.
           </p>
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setIsAdjustOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold backdrop-blur-sm transition-all"
-          >
-            <Coins size={15} />
-            <span>Manual Point Adjustment</span>
-          </button>
+        <div className="flex items-center gap-2 relative z-10">
           <button
             onClick={() => setIsAddRuleOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold hover:bg-slate-100 transition-colors shadow-lg flex items-center gap-1"
+            className="px-4 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold hover:bg-slate-100 transition-colors shadow-lg flex items-center gap-1.5 cursor-pointer"
           >
             <Plus size={15} />
-            <span>New Loyalty Program</span>
+            <span>New Loyalty Rule</span>
           </button>
         </div>
       </div>
@@ -456,10 +621,10 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
           <button
             onClick={() => fetchLedger(false)}
             disabled={isLoadingLedger}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             title="Refresh Live Ledger"
           >
-            <RefreshCw size={13} className={isLoadingLedger ? "animate-spin" : ""} />
+            <RefreshCw size={14} className={isLoadingLedger ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
@@ -491,125 +656,51 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
       {/* Tab Switcher */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
         <button
-          onClick={() => setActiveTab("programs")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeTab === "programs"
-              ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
-              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-          }`}
-        >
-          <Sparkles size={14} />
-          <span>Loyalty Programs & Multipliers</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("ledger")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeTab === "ledger"
-              ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
-              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-          }`}
-        >
-          <History size={14} />
-          <span>Live Reward Ledger & Audit Trail</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
-            {ledgerItems.length}
-          </span>
-        </button>
-
-        <button
           onClick={() => setActiveTab("cashback")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
             activeTab === "cashback"
               ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           }`}
         >
-          <Coins size={14} />
+          <Coins size={15} />
           <span>Transaction Cashback Settings</span>
-          <span className="px-2 py-0.5 rounded-full text-[9px] bg-amber-400/20 text-amber-500 dark:text-amber-300 font-extrabold uppercase tracking-wider">
+          <span className="px-2 py-0.5 rounded-full text-[9px] bg-amber-400 text-slate-950 font-black uppercase tracking-wider">
             Super Admin
           </span>
         </button>
+
+        <button
+          onClick={() => setActiveTab("ledger")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+            activeTab === "ledger"
+              ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <History size={15} />
+          <span>Live Reward Ledger & Audit Trail</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20 font-mono">
+            {ledgerItems.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("programs")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+            activeTab === "programs"
+              ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <Sparkles size={15} />
+          <span>Loyalty Programs & Multipliers</span>
+        </button>
       </div>
 
-      {/* TAB 1: Programs & Customer Wallets */}
-      {activeTab === "programs" && (
-        <div className="space-y-6 animate-in fade-in">
-          {/* Rules List */}
-          <div className="p-6 rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white font-['Manrope']">
-              Active Reward Programs & Multipliers
-            </h3>
-
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {rewardRules.map((rule) => (
-                <div key={rule.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-xl bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 mt-0.5">
-                      <Sparkles size={18} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">{rule.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">{rule.description}</p>
-                      <div className="flex items-center gap-3 mt-1.5 text-xs">
-                        <span className="font-bold text-pink-600 dark:text-pink-400">
-                          {rule.earnPointsPerHundred} pts per ₹100 spent
-                        </span>
-                        <span className="text-slate-400">•</span>
-                        <span className="text-slate-500 font-medium">{rule.categoryFilter}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Badge variant="success" className="self-start sm:self-auto">
-                    <CheckCircle2 size={12} />
-                    {rule.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Customer Wallet Balances Table */}
-          <AdvancedTable
-            title="Customer Loyalty Wallets"
-            subtitle="Individual customer point balances, lifetime visits, and audience tiers"
-            columns={customerColumns}
-            data={customers}
-            keyExtractor={(c) => c.id}
-            searchPlaceholder="Search customer name, city, or segment..."
-            searchFilter={(c, q) =>
-              c.name.toLowerCase().includes(q) ||
-              c.city.toLowerCase().includes(q) ||
-              c.segment.toLowerCase().includes(q) ||
-              c.phone.includes(q)
-            }
-          />
-        </div>
-      )}
-
-      {/* TAB 2: Live Ledger & Audit Trail */}
-      {activeTab === "ledger" && (
-        <div className="space-y-4 animate-in fade-in">
-          <AdvancedTable
-            title="Real-Time Reward Points Ledger"
-            subtitle={`${ledgerItems.length} transactions recorded across the network`}
-            columns={ledgerColumns}
-            data={ledgerItems}
-            keyExtractor={(item) => item.id}
-            searchPlaceholder="Search transaction ID, customer, type, or description..."
-            searchFilter={(item, q) =>
-              item.id.toLowerCase().includes(q) ||
-              (item.transactionId && item.transactionId.toLowerCase().includes(q)) ||
-              (item.customerName && item.customerName.toLowerCase().includes(q)) ||
-              item.type.toLowerCase().includes(q) ||
-              item.description.toLowerCase().includes(q)
-            }
-          />
-        </div>
-      )}
-
-      {/* TAB 3: Super Admin Transaction Cashback Settings */}
+      {/* ========================================================================= */}
+      {/* TAB 1: Super Admin Transaction Cashback Settings */}
+      {/* ========================================================================= */}
       {activeTab === "cashback" && (
         <div className="space-y-6 animate-in fade-in">
           {/* Top Metric Cards */}
@@ -630,7 +721,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
               <div className="text-xl font-black text-amber-600 dark:text-amber-400">
                 {cashbackSetting.defaultPercentage}% on Bill
               </div>
-              <p className="text-[11px] text-slate-500">Credited to customer wallet</p>
+              <p className="text-[11px] text-slate-500">Credited directly to PINAK wallet</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
@@ -638,7 +729,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
               <div className="text-xl font-black text-purple-600 dark:text-purple-400">
                 ₹{cashbackSetting.maxCashbackPerTransaction}
               </div>
-              <p className="text-[11px] text-slate-500">Per transaction limit</p>
+              <p className="text-[11px] text-slate-500">Maximum cap per single bill</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
@@ -646,7 +737,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
               <div className="text-xl font-black text-slate-900 dark:text-white">
                 {storesCashback.length} Stores
               </div>
-              <p className="text-[11px] text-slate-500">Stored with individual store records</p>
+              <p className="text-[11px] text-slate-500">Managed with individual rate overrides</p>
             </div>
           </div>
 
@@ -655,7 +746,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white font-['Manrope']">
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-['Manrope']">
                     Platform Transaction Cashback Policy
                   </h3>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
@@ -688,7 +779,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
               </div>
             </div>
 
-            <form onSubmit={handleSaveGlobalCashback} className="space-y-5">
+            <form onSubmit={handleSaveGlobalCashback} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Default Percentage */}
                 <div className="space-y-1.5">
@@ -708,7 +799,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                     />
                     <span className="absolute right-3 top-2.5 font-bold text-slate-400 text-xs">%</span>
                   </div>
-                  <p className="text-[10px] text-slate-400">Default rate given on food & product bills</p>
+                  <p className="text-[10px] text-slate-400">Baseline cashback % awarded to customer wallet</p>
                 </div>
 
                 {/* Max Cashback Cap */}
@@ -780,6 +871,83 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                 </div>
               </div>
 
+              {/* Interactive Live Cashback Simulator */}
+              <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Calculator size={16} className="text-amber-600 dark:text-amber-400" />
+                    <span className="text-xs font-black uppercase text-amber-900 dark:text-amber-300 tracking-wider">
+                      Interactive Live Policy Simulator
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-500">
+                    Test how this policy calculates coins on customer bills in real time
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Test Bill:</span>
+                  {[500, 1000, 2000, 3500, 5000].map(amt => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setSimBillAmount(amt)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                        simBillAmount === amt
+                          ? "bg-amber-500 text-white shadow-xs"
+                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-amber-50"
+                      }`}
+                    >
+                      ₹{amt.toLocaleString()}
+                    </button>
+                  ))}
+                  <div className="relative ml-auto">
+                    <input
+                      type="number"
+                      value={simBillAmount}
+                      onChange={(e) => setSimBillAmount(Number(e.target.value) || 0)}
+                      className="w-28 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-right pr-6"
+                      placeholder="Custom"
+                    />
+                    <span className="absolute right-2 top-1.5 text-xs text-slate-400 font-bold">₹</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/50 dark:border-amber-900/40">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Calculated Reward</span>
+                    <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      +{simulatedCoins} Coins
+                    </p>
+                    <span className="text-[10px] text-slate-500">₹{simulatedCoins} redeemable value</span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/50 dark:border-amber-900/40">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Capping Status</span>
+                    <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mt-1">
+                      {isSimulatedCapped ? (
+                        <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                          <ShieldCheck size={14} /> Capped at ₹{cashbackSetting.maxCashbackPerTransaction}
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 size={14} /> Within Policy Cap
+                        </span>
+                      )}
+                    </p>
+                    <span className="text-[10px] text-slate-500">Uncapped: ₹{Math.round((simBillAmount * cashbackSetting.defaultPercentage) / 100)}</span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/50 dark:border-amber-900/40">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Mobile App Display Pill</span>
+                    <p className="text-xs font-extrabold text-amber-900 dark:text-amber-200 mt-1 truncate">
+                      "You will earn {cashbackSetting.defaultPercentage}% PINAK Coins"
+                    </p>
+                    <span className="text-[10px] text-slate-500">Live preview on customer checkout</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Apply to All Stores Checkbox */}
               <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 flex items-start gap-2.5">
                 <input
@@ -793,7 +961,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                   <strong className="text-amber-950 dark:text-amber-200 font-bold block mb-0.5">
                     Sync to All Stores ({storesCashback.length} Outlets)
                   </strong>
-                  Check this box if you want this {cashbackSetting.defaultPercentage}% cashback rate, ₹{cashbackSetting.maxCashbackPerTransaction} cap, and ₹{cashbackSetting.minTransactionAmount} min spend to overwrite and update all store records immediately.
+                  Check this box if you want this {cashbackSetting.defaultPercentage}% cashback rate, ₹{cashbackSetting.maxCashbackPerTransaction} cap, and ₹{cashbackSetting.minTransactionAmount} min spend to overwrite all store records immediately.
                 </label>
               </div>
 
@@ -812,26 +980,89 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
 
           {/* Stores Cashback Oversight Table */}
           <div className="p-6 rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white font-['Manrope']">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-['Manrope']">
                   Individual Store Cashback Configurations
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Stores inherit the platform default rate, but Super Admin can customize or override cashback for specific premium outlets.
+                  Stores inherit the platform default rate, but Super Admin can customize or override cashback for specific outlets.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={fetchCashbackData}
                 disabled={isLoadingCashback}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer self-start sm:self-auto"
               >
                 <RefreshCw size={13} className={isLoadingCashback ? "animate-spin" : ""} />
                 <span>Refresh Stores</span>
               </button>
             </div>
 
+            {/* Filter Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Search */}
+                <div className="relative">
+                  <Search size={13} className="absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={storeSearch}
+                    onChange={(e) => {
+                      setStoreSearch(e.target.value);
+                      setStorePage(1);
+                    }}
+                    placeholder="Search outlet or city..."
+                    className="w-56 pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium"
+                  />
+                </div>
+
+                {/* Status Chips */}
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-[11px] font-bold">
+                  {(["all", "active", "disabled"] as const).map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        setStoreStatusFilter(s);
+                        setStorePage(1);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg capitalize transition-all cursor-pointer ${
+                        storeStatusFilter === s
+                          ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs"
+                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+
+                {/* City Filter */}
+                {availableCities.length > 0 && (
+                  <select
+                    value={storeCityFilter}
+                    onChange={(e) => {
+                      setStoreCityFilter(e.target.value);
+                      setStorePage(1);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                  >
+                    <option value="all">All Cities</option>
+                    {availableCities.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="text-[11px] text-slate-400 font-medium">
+                Showing <strong className="text-slate-700 dark:text-slate-200">{filteredStores.length}</strong> outlets
+              </div>
+            </div>
+
+            {/* Table */}
             <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800">
@@ -845,19 +1076,20 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {storesCashback.map((s) => (
+                  {paginatedStores.map((s) => (
                     <tr key={s.storeId} className="hover:bg-slate-50/70 dark:hover:bg-slate-900/40 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="font-extrabold text-slate-900 dark:text-white text-xs">
                           {s.storeName}
                         </div>
-                        <div className="text-[10px] text-slate-400 capitalize">
-                          {s.cityName || "Nagpur"}
+                        <div className="text-[10px] text-slate-400 capitalize flex items-center gap-1 mt-0.5">
+                          <MapPin size={10} />
+                          <span>{s.cityName || "Nagpur"}</span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 font-mono font-bold text-amber-600 dark:text-amber-400 text-xs">
                         <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 border border-amber-200/60 dark:border-amber-900/50">
-                          💰 {s.cashbackPercentage}%
+                          🪙 {s.cashbackPercentage}%
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-mono font-semibold text-slate-700 dark:text-slate-300">
@@ -867,13 +1099,18 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                         ₹{s.minTransactionForCashback}
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          s.isCashbackEnabled
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
-                            : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                        }`}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStoreStatus(s)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors ${
+                            s.isCashbackEnabled
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100"
+                              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                          }`}
+                          title="Click to toggle status"
+                        >
                           {s.isCashbackEnabled ? "Active" : "Disabled"}
-                        </span>
+                        </button>
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <button
@@ -887,21 +1124,181 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                       </td>
                     </tr>
                   ))}
-                  {storesCashback.length === 0 && (
+                  {paginatedStores.length === 0 && (
                     <tr>
                       <td colSpan={6} className="py-8 text-center text-slate-400 italic">
-                        No stores found in database. Create a store first to configure its cashback rate.
+                        {storeSearch || storeStatusFilter !== "all" || storeCityFilter !== "all"
+                          ? "No stores match the current filters."
+                          : "No stores found in database. Create a store first to configure its cashback rate."}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalStorePages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-slate-400">
+                  Page <strong className="text-slate-700 dark:text-slate-300">{storePage}</strong> of {totalStorePages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={storePage <= 1}
+                    onClick={() => setStorePage(p => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={storePage >= totalStorePages}
+                    onClick={() => setStorePage(p => Math.min(totalStorePages, p + 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* TAB 2: Live Reward Ledger & Audit Trail */}
+      {/* ========================================================================= */}
+      {activeTab === "ledger" && (
+        <div className="space-y-4 animate-in fade-in">
+          {/* Filter Bar & Export */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-bold">
+              {(["ALL", "EARN", "REDEEM", "ADJUSTMENT"] as const).map(f => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setLedgerFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    ledgerFilter === f
+                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  {f === "ALL" ? `All (${ledgerItems.length})` : f}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportLedger}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                title="Download CSV"
+              >
+                <Download size={13} />
+                <span>Export CSV</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fetchLedger(false)}
+                disabled={isLoadingLedger}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                <RefreshCw size={13} className={isLoadingLedger ? "animate-spin" : ""} />
+                <span>Sync Ledger</span>
+              </button>
+            </div>
+          </div>
+
+          <AdvancedTable
+            title="Real-Time Reward Points Ledger"
+            subtitle={`${filteredLedgerItems.length} transactions recorded with full auditability`}
+            columns={ledgerColumns}
+            data={filteredLedgerItems}
+            keyExtractor={(item) => item.id}
+            searchPlaceholder="Search transaction ref, customer, or reason..."
+            searchFilter={(item, q) =>
+              item.id.toLowerCase().includes(q) ||
+              (item.transactionId && item.transactionId.toLowerCase().includes(q)) ||
+              (item.customerName && item.customerName.toLowerCase().includes(q)) ||
+              item.type.toLowerCase().includes(q) ||
+              item.description.toLowerCase().includes(q)
+            }
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: Programs & Customer Wallets */}
+      {/* ========================================================================= */}
+      {activeTab === "programs" && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Rules List */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white font-['Manrope']">
+              Active Reward Programs & Multipliers
+            </h3>
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {rewardRules && rewardRules.length > 0 ? (
+                rewardRules.map((rule) => (
+                  <div key={rule.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-xl bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 mt-0.5">
+                        <Sparkles size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">{rule.name}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">{rule.description}</p>
+                        <div className="flex items-center gap-3 mt-1.5 text-xs">
+                          <span className="font-bold text-pink-600 dark:text-pink-400">
+                            {rule.earnPointsPerHundred} pts per ₹100 spent
+                          </span>
+                          <span className="text-slate-400">•</span>
+                          <span className="text-slate-500 font-medium">{rule.categoryFilter}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Badge variant="success" className="self-start sm:self-auto">
+                      <CheckCircle2 size={12} />
+                      {rule.status}
+                    </Badge>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-xs text-slate-400 italic">
+                  No custom loyalty campaign rules added yet. Click &quot;New Loyalty Rule&quot; to configure additional category multipliers.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Customer Wallet Balances Table */}
+          <AdvancedTable
+            title="Customer Loyalty Wallets"
+            subtitle={`${customerAccounts.length} registered customer accounts synchronized from database`}
+            columns={customerColumns}
+            data={customerAccounts}
+            keyExtractor={(c) => c.id || c.customerId}
+            searchPlaceholder="Search customer name, phone, email, or tier..."
+            searchFilter={(c, q) =>
+              (c.customerName && c.customerName.toLowerCase().includes(q)) ||
+              (c.customerPhone && c.customerPhone.includes(q)) ||
+              (c.customerEmail && c.customerEmail.toLowerCase().includes(q)) ||
+              (c.tier && c.tier.toLowerCase().includes(q)) ||
+              c.customerId.includes(q)
+            }
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* Edit Single Store Cashback Modal */}
+      {/* ========================================================================= */}
       {editingStore && (
         <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
           <div
@@ -917,7 +1314,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                 </div>
                 <button
                   onClick={() => setEditingStore(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -995,14 +1392,14 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                   <button
                     type="button"
                     onClick={() => setEditingStore(null)}
-                    className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400"
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingStoreCashback}
-                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-50 flex items-center gap-1.5"
+                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                   >
                     <Save size={13} />
                     <span>{isSavingStoreCashback ? "Saving..." : "Save Store Cashback"}</span>
@@ -1014,7 +1411,9 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
         </div>
       )}
 
-      {/* Manual Point Adjustment Modal */}
+      {/* ========================================================================= */}
+      {/* Manual Point Adjustment Modal with Live Projection */}
+      {/* ========================================================================= */}
       {isAdjustOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
           <div
@@ -1030,7 +1429,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                 </div>
                 <button
                   onClick={() => setIsAdjustOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -1052,9 +1451,9 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                     className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium"
                   >
                     <option value="">Select a customer...</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.phone}) - Current: {c.rewardsBalance} pts
+                    {customerAccounts.map((c) => (
+                      <option key={c.customerId} value={c.customerId}>
+                        {c.customerName || "Member"} ({c.customerPhone || c.customerEmail || c.customerId.slice(0, 8)}) — Current: {c.availableBalance} Coins
                       </option>
                     ))}
                   </select>
@@ -1072,19 +1471,41 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                     className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono font-bold text-slate-900 dark:text-white"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Value equivalent: ₹{(Math.abs(pointsDelta) * 0.25).toFixed(2)}
+                    Value equivalent: ₹{(Math.abs(pointsDelta) * 0.25).toFixed(2)} INR
                   </p>
                 </div>
 
+                {/* Quick Justification Chips */}
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300">Adjustment Justification</label>
+                  <div className="flex flex-wrap gap-1.5 mt-1 mb-2">
+                    {[
+                      "VIP Member Goodwill Credit",
+                      "Order Inconvenience Compensation",
+                      "Payment Dispute Resolution",
+                      "Campaign Multiplier Bonus"
+                    ].map(r => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setAdjustReason(r)}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                          adjustReason === r
+                            ? "bg-purple-600 text-white"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
                   <textarea
                     value={adjustReason}
                     onChange={(e) => setAdjustReason(e.target.value)}
                     required
-                    placeholder="e.g. VIP onboarding gift, merchant goodwill, payment dispute resolution"
-                    rows={3}
-                    className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                    placeholder="Enter justification..."
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
                   />
                 </div>
 
@@ -1092,14 +1513,14 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsAdjustOpen(false)}
-                    className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400"
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmittingAdjust || !selectedCustomerId || pointsDelta === 0}
-                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-50"
+                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-50 cursor-pointer"
                   >
                     {isSubmittingAdjust ? "Applying..." : "Apply Adjustment"}
                   </button>
@@ -1110,7 +1531,9 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
         </div>
       )}
 
+      {/* ========================================================================= */}
       {/* Add Rule Right Slide-Over Drawer */}
+      {/* ========================================================================= */}
       {isAddRuleOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
           <div
@@ -1126,7 +1549,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                 </div>
                 <button
                   onClick={() => setIsAddRuleOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -1185,7 +1608,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
               <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-2">
                 <button
                   onClick={() => setIsAddRuleOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400"
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1201,7 +1624,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                     toast.success(`Loyalty rule "${ruleName}" created successfully!`);
                   }}
                   disabled={!ruleName}
-                  className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-50"
+                  className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-50 cursor-pointer"
                 >
                   Create Program
                 </button>

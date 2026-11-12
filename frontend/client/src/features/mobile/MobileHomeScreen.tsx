@@ -24,12 +24,16 @@ import {
 import { HomeBanner, Offer, Store } from "../../types";
 import { bannerApi } from "../../api/bannerApi";
 import { offerApi } from "../../api/offerApi";
+import { rewardApi } from "../../api/rewardApi";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
 
 interface MobileHomeScreenProps {
   onClose?: () => void;
   onOpenQRScanner?: () => void;
+  customerCoins?: number;
+  customerName?: string;
+  customerId?: string;
 }
 
 const CATEGORIES = [
@@ -47,11 +51,31 @@ const CATEGORIES = [
 export const MobileHomeScreen: React.FC<MobileHomeScreenProps> = ({
   onClose,
   onOpenQRScanner,
+  customerCoins: propCoins,
+  customerName: propName,
+  customerId: propCustomerId,
 }) => {
   const [activeTab, setActiveTab] = useState<"home" | "explore" | "scan" | "rewards" | "profile">("home");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+  const [userCoins, setUserCoins] = useState<number>(propCoins ?? 500);
+
+  // Sync / fetch real coins from backend
+  useEffect(() => {
+    if (propCoins !== undefined) {
+      setUserCoins(propCoins);
+      return;
+    }
+    const targetId = propCustomerId || "c2000000-0000-0000-0000-000000000001";
+    rewardApi.getCustomerRewardAccount(targetId).then((acc) => {
+      if (acc && acc.pointsBalance != null) {
+        setUserCoins(Number(acc.pointsBalance));
+      }
+    }).catch((err) => {
+      console.warn("Could not fetch customer coins in MobileHomeScreen:", err);
+    });
+  }, [propCoins, propCustomerId]);
 
   // Countdown State
   const [timeLeft, setTimeLeft] = useState({ hours: 4, minutes: 32, seconds: 8 });
@@ -146,7 +170,9 @@ export const MobileHomeScreen: React.FC<MobileHomeScreenProps> = ({
             {/* Coin Balance Badge */}
             <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
               <span className="text-xs">🪙</span>
-              <span className="text-[11px] font-black text-amber-800 dark:text-amber-300">1,450</span>
+              <span className="text-[11px] font-black text-amber-800 dark:text-amber-300">
+                {userCoins.toLocaleString("en-IN")}
+              </span>
             </div>
 
             {/* Notification Bell */}

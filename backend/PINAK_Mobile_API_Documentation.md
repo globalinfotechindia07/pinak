@@ -2108,3 +2108,870 @@ Returns PDF statement download link and coin ledger summary for user accounting.
 
 
 
+
+
+---
+
+# 📱 Screen 11 — Store & Service Detail View (Customer Preview)
+
+Returns comprehensive store details when a user clicks on any store or service card from the discovery feed. Fully database-driven without dummy or mock fallbacks.
+
+### 30. Fetch Store & Service Detail View
+- **Method**: `GET`
+- **URL**: `/api/v1/mobile/services/detail?storeId={{storeId}}&lat={{userLat}}&lng={{userLng}}`
+- **Alternative Path**: `/api/v1/mobile/stores/{{storeId}}/detail`
+- **Headers**: `Accept: application/json`
+
+#### Query Parameters:
+| Param | Type | Description |
+| :--- | :--- | :--- |
+| `storeId` | UUID | Store Outlet ID (e.g. `8e91aefa-dfb2-4f19-b4f6-907e82baf6a5`) |
+| `lat` / `latitude` | Double | Customer device latitude (e.g. `21.1458`) |
+| `lng` / `longitude` | Double | Customer device longitude (e.g. `79.0882`) |
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Store service detail fetched successfully",
+  "data": {
+    "id": "8e91aefa-dfb2-4f19-b4f6-907e82baf6a5",
+    "storeName": "Fabindia Home & Living – Nagpur Flagship",
+    "merchantName": "Fabindia Home & Living",
+    "isVerified": true,
+    "coverImageUrl": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
+    "heroPhotos": [
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80"
+    ],
+    "totalPhotosCount": 1,
+    "photoCounterText": "1/1",
+    "distanceMeters": 420.0,
+    "distanceText": "0.4 km • Nagpur Central",
+    "cuisines": "Home & Living, Apparel",
+    "priceForTwoText": "₹1,200 for two",
+    "cuisineAndPriceText": "Home & Living, Apparel • ₹1,200 for two",
+    "rating": 4.8,
+    "ratingCountText": "4.8 (1,240 ratings)",
+    "isOpenNow": true,
+    "openStatusText": "Open Now",
+    "openingTime": "10:00 AM",
+    "closingTime": "10:00 PM",
+    "phone": "+91 9145776682",
+    "latitude": 21.1458,
+    "longitude": 79.0882,
+    "address": "West High Court Road, Nagpur Central",
+    "googleMapsUrl": "https://maps.google.com/?q=21.1458,79.0882",
+    "coinPerkBanner": {
+      "multiplier": "2X",
+      "title": "Earn 20% PINAK Coins on your bill",
+      "tag": "AUTO-APPLIED",
+      "badgeText": "2X BOOST"
+    },
+    "availableTabs": ["Offers", "Menu", "Photos", "Amenities", "Location"],
+    "offersSection": {
+      "activeOffersCountText": "1 Available",
+      "primaryOffer": {
+        "id": "c1940bbf-a1ef-43f7-9f5a-a17377085c7b",
+        "title": "Flat 50% OFF on Total Bill",
+        "redemptionType": "WALK_IN",
+        "discountValue": 50.00,
+        "isTableBookingEnabled": false
+      },
+      "preBookingOffers": [],
+      "walkInOffers": []
+    },
+    "productsSection": {
+      "title": "Store Products & Essentials",
+      "subtitle": "Explore store catalog",
+      "totalCount": 0,
+      "items": []
+    },
+    "menuSection": {
+      "categoryTitle": "Store Highlights",
+      "items": [],
+      "menuPagesText": "View full menu",
+      "totalPagesCount": 0,
+      "menuImages": []
+    },
+    "photoMosaic": {
+      "primaryPhoto": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
+      "secondaryPhotos": [],
+      "additionalCountText": "",
+      "totalPhotosCount": 1,
+      "allPhotos": []
+    },
+    "amenities": [
+      { "label": "Air Conditioned", "icon": "snowflake" },
+      { "label": "Free High-Speed Wi-Fi", "icon": "wifi" },
+      { "label": "Cards & UPI Accepted", "icon": "qrcode" }
+    ],
+    "locationSection": {
+      "addressLine1": "West High Court Road",
+      "addressLine2": "Nagpur Central",
+      "fullAddress": "West High Court Road, Nagpur Central",
+      "distanceText": "0.4 km • Nagpur Central",
+      "distanceMeters": 420.0,
+      "latitude": 21.1458,
+      "longitude": 79.0882
+    },
+    "similarPlaces": [],
+    "bottomBar": {
+      "rewardTeaser": {
+        "icon": "coins",
+        "text": "Earn 20% PINAK Coins on bill payment",
+        "badge": "2X BOOST"
+      },
+      "isTableBookingEnabled": false,
+      "primaryAction": {
+        "type": "PAY_BILL",
+        "label": "Pay bill now",
+        "discountBadge": "50% OFF",
+        "enabled": true
+      },
+      "secondaryAction": {
+        "type": "BOOK_TABLE",
+        "label": "Book a table",
+        "enabled": false
+      }
+    }
+  }
+}
+```
+
+---
+
+# 🛍️ Screen 11B — In-Store Retail & Product Deals Purchase
+
+Streamlined in-store retail checkout workflow:
+> *"Humne product liya store se aur payment kiya offer laga ke done as simple as that."*
+> (Pick from shelf ➔ Offer auto-applied ➔ Pay via UPI ➔ Digital payment receipt with coins credited. No passes, no boarding tickets, no cashier claim codes).
+
+### 31. Fetch Product Detail View
+- **Method**: `GET`
+- **URL**: `/api/v1/mobile/products/detail?productId={{productId}}&lat={{userLat}}&lng={{userLng}}`
+- **Headers**: `Accept: application/json`
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Product detail fetched successfully",
+  "data": {
+    "id": "f1000000-0000-0000-0000-000000000001",
+    "name": "Handcrafted Cotton Kurta",
+    "brand": "Fabindia",
+    "unit": "1 Piece",
+    "sellingPrice": 600.00,
+    "mrp": 1200.00,
+    "discountBadge": "50% OFF IN-STORE",
+    "inStock": true,
+    "description": "Premium pure breathable cotton kurta with handcrafted embroidery."
+  }
+}
+```
+
+---
+
+### 32. Process In-Store Product Bill Payment with Offer Applied
+Settles in-store retail product purchase with discount offer applied. Returns instant digital invoice receipt.
+
+- **Method**: `POST`
+- **URL**: `/api/v1/mobile/table-bookings/pay-bill`
+- **Headers**:
+  ```http
+  Content-Type: application/json
+  Accept: application/json
+  ```
+
+#### Request Body:
+```json
+{
+  "storeId": "{{storeId}}",
+  "storeName": "{{currentStoreName}}",
+  "billAmount": 1200.00,
+  "discountAmount": 600.00,
+  "couponCode": "WELCOME",
+  "tipAmount": 0.00,
+  "coinsRedeemed": 0,
+  "coinsEarned": 120,
+  "totalPaid": 600.00,
+  "paymentMethod": "Google Pay UPI",
+  "customerName": "Rohan Sharma",
+  "customerPhone": "{{testPhone}}"
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Dining bill paid successfully",
+  "data": {
+    "txnId": "TXN-ORD-88294102",
+    "bookingRef": null,
+    "storeId": "8e91aefa-dfb2-4f19-b4f6-907e82baf6a5",
+    "storeName": "Fabindia Home & Living – Nagpur Flagship",
+    "storeAddress": "West High Court Road, Nagpur Central",
+    "billAmount": 1200.00,
+    "discount": 600.00,
+    "tip": 0.00,
+    "totalPaid": 600.00,
+    "coinsEarned": 120,
+    "paymentMethod": "Google Pay UPI",
+    "status": "SUCCESS",
+    "timestamp": "10:45 AM",
+    "receiptNumber": "REC-88294102",
+    "message": "Payment of ₹600.00 settled successfully at Fabindia Home & Living – Nagpur Flagship"
+  }
+}
+```
+
+---
+
+# 🍽️ Screens 11 ➔ 12 — Table Booking & Reservations Engine
+
+### 33. Get Table Booking Slot & Offer Availability
+Returns upcoming 7 calendar days, lunch/dinner time slots with discount labels, party size selector limits, active pre-book offers with redeemable cover charges, VIP membership upsell details, and terms & conditions.
+
+- **Method**: `GET`
+- **URL**: `/api/v1/mobile/table-bookings/availability?storeId={{storeId}}&lat={{userLat}}&lng={{userLng}}`
+- **Headers**: `Accept: application/json`
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table booking availability fetched successfully",
+  "data": {
+    "store": {
+      "storeId": "8e91aefa-dfb2-4f19-b4f6-907e82baf6a5",
+      "storeName": "Fabindia Home & Living – Nagpur Flagship",
+      "storeAddress": "West High Court Road, Nagpur Central",
+      "isTableBookingEnabled": true
+    },
+    "guestConfig": {
+      "minGuests": 1,
+      "maxGuests": 8,
+      "defaultGuests": 2,
+      "availableGuestCounts": [1, 2, 3, 4, 5, 6, 7, 8]
+    },
+    "upcomingDates": [
+      {
+        "key": "2026-11-20",
+        "dateFormatted": "20 Nov",
+        "month": "NOV",
+        "dayNum": "20",
+        "dayName": "Fri",
+        "discountBadge": "50% OFF",
+        "isAvailable": true
+      }
+    ],
+    "lunchSlots": [
+      { "time": "12:30 PM", "discountBadge": "50% OFF", "status": "AVAILABLE" },
+      { "time": "01:00 PM", "discountBadge": "50% OFF", "status": "AVAILABLE" }
+    ],
+    "dinnerSlots": [
+      { "time": "08:00 PM", "discountBadge": "50% OFF", "status": "AVAILABLE" },
+      { "time": "08:30 PM", "discountBadge": "50% OFF", "status": "AVAILABLE" }
+    ],
+    "exclusiveOffers": [
+      {
+        "id": "c1940bbf-a1ef-43f7-9f5a-a17377085c7b",
+        "title": "Flat 50% OFF on Total Bill",
+        "discountPct": 50.00,
+        "coverChargePerGuest": 25.00,
+        "isExclusive": true
+      }
+    ],
+    "vipPlan": {
+      "id": "vip_pass_1",
+      "title": "PINAK VIP Membership",
+      "price": 1.00,
+      "originalPrice": 49.00,
+      "subtitle": "Extra 5% Coins + Priority Table Seating"
+    }
+  }
+}
+```
+
+---
+
+### 34. Create Table Booking / Pre-book Reservation (Checkout)
+Confirms table reservation, sets cover charge, creates booking reference (`PNK-TB-XXXXXX`), and generates 4-digit host PIN.
+
+- **Method**: `POST`
+- **URL**: `/api/v1/mobile/table-bookings`
+- **Headers**:
+  ```http
+  Content-Type: application/json
+  Accept: application/json
+  ```
+
+#### Request Body:
+```json
+{
+  "storeId": "{{storeId}}",
+  "bookingDate": "2026-11-20",
+  "mealType": "DINNER",
+  "slotTime": "08:30 PM",
+  "guests": 4,
+  "offerId": "c1940bbf-a1ef-43f7-9f5a-a17377085c7b",
+  "offerTitle": "Flat 50% OFF on Total Bill",
+  "discountPct": 50.00,
+  "coverChargePerGuest": 25.00,
+  "includeVipPlan": true,
+  "vipPlanFee": 1.00,
+  "customerName": "Rohan Sharma",
+  "customerPhone": "{{testPhone}}",
+  "customerEmail": "rohan.sharma@example.com",
+  "paymentMethod": "Google Pay",
+  "specialRequests": "Pre-booked via PINAK Mobile App"
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table reservation confirmed successfully",
+  "data": {
+    "id": "a5e6284a-9b12-4f3b-871c-3081e7d9b231",
+    "bookingRef": "PNK-TB-202611-382910",
+    "storeId": "8e91aefa-dfb2-4f19-b4f6-907e82baf6a5",
+    "storeName": "Fabindia Home & Living – Nagpur Flagship",
+    "storeAddress": "West High Court Road, Nagpur Central",
+    "customerName": "Rohan Sharma",
+    "customerPhone": "+919876543210",
+    "guests": 4,
+    "bookingDate": "2026-11-20",
+    "mealType": "DINNER",
+    "slotTime": "08:30 PM",
+    "offerTitle": "Flat 50% OFF on Total Bill",
+    "discountPct": 50.00,
+    "totalCoverCharge": 100.00,
+    "vipPlanFee": 1.00,
+    "totalPaid": 101.00,
+    "paymentMethod": "Google Pay",
+    "status": "CONFIRMED",
+    "verificationCode": "8492"
+  }
+}
+```
+
+---
+
+### 35. Fetch Table Reservation Details by ID or Ref
+- **Method**: `GET`
+- **URL**: `/api/v1/mobile/table-bookings/{{tableBookingRef}}`
+- **Headers**: `Accept: application/json`
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table booking details fetched successfully",
+  "data": {
+    "bookingRef": "PNK-TB-202611-382910",
+    "status": "CONFIRMED",
+    "verificationCode": "8492",
+    "guests": 4,
+    "slotTime": "08:30 PM",
+    "bookingDate": "2026-11-20"
+  }
+}
+```
+
+---
+
+### 36. Settle In-Store Dining Bill with Offer Applied (Screen 12/13)
+- **Method**: `POST`
+- **URL**: `/api/v1/mobile/table-bookings/pay-bill`
+- **Headers**:
+  ```http
+  Content-Type: application/json
+  Accept: application/json
+  ```
+
+#### Request Body:
+```json
+{
+  "storeId": "{{storeId}}",
+  "storeName": "{{currentStoreName}}",
+  "bookingRef": "{{tableBookingRef}}",
+  "billAmount": 2500.00,
+  "discountAmount": 1250.00,
+  "tipAmount": 50.00,
+  "coinsRedeemed": 0,
+  "coinsEarned": 260,
+  "totalPaid": 1300.00,
+  "paymentMethod": "Google Pay UPI",
+  "customerName": "Rohan Sharma",
+  "customerPhone": "{{testPhone}}"
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Dining bill paid successfully",
+  "data": {
+    "txnId": "TXN-DIN-99182301",
+    "bookingRef": "PNK-TB-202611-382910",
+    "billAmount": 2500.00,
+    "discount": 1250.00,
+    "tip": 50.00,
+    "totalPaid": 1300.00,
+    "coinsEarned": 260,
+    "status": "SUCCESS"
+  }
+}
+```
+
+---
+
+### 37. Cancel Table Booking & Process Automatic Refund
+- **Method**: `POST`
+- **URL**: `/api/v1/mobile/table-bookings/{{tableBookingRef}}/cancel`
+- **Headers**: `Content-Type: application/json`
+
+#### Request Body:
+```json
+{
+  "cancellationReason": "Change of dining plans",
+  "comments": "Need to reschedule to next week"
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table reservation cancelled successfully. Refund initiated.",
+  "data": {
+    "bookingRef": "PNK-TB-202611-382910",
+    "status": "CANCELLED",
+    "refundAmount": 101.00,
+    "refundStatus": "INITIATED"
+  }
+}
+```
+
+---
+
+# 👨‍💼 Merchant & Host Table Roster Management (Host Desk & Verify Check-In)
+
+APIs used by store hosts, cashiers, and merchant managers to manage incoming customer bookings, verify customer check-in PINs upon arrival, attach food bills, and mark tables as seated or completed.
+
+### 38. List Merchant Store Reservations (Host Desk Roster)
+- **Method**: `GET`
+- **URL**: `/api/v1/merchant/table-bookings?storeId={{storeId}}&status=CONFIRMED`
+- **Headers**: `Accept: application/json`
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Table bookings retrieved successfully",
+  "data": [
+    {
+      "id": "a5e6284a-9b12-4f3b-871c-3081e7d9b231",
+      "bookingRef": "PNK-TB-202611-382910",
+      "customerName": "Rohan Sharma",
+      "customerPhone": "+919876543210",
+      "guests": 4,
+      "slotTime": "08:30 PM",
+      "bookingDate": "2026-11-20",
+      "status": "CONFIRMED",
+      "verificationCode": "8492",
+      "offerTitle": "Flat 50% OFF on Total Bill"
+    }
+  ]
+}
+```
+
+---
+
+### 39. Host Check-In & Mark Guest as Seated
+Called when customer arrives at the restaurant and provides their 4-digit verification PIN.
+
+- **Method**: `PATCH`
+- **URL**: `/api/v1/merchant/table-bookings/{{tableBookingRef}}/status?status=SEATED`
+- **Headers**: `Content-Type: application/json`
+
+#### Request Body:
+```json
+{
+  "status": "SEATED",
+  "comments": "Guest verified at host desk with 4-digit PIN and seated at table"
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Booking status updated successfully",
+  "data": {
+    "bookingRef": "PNK-TB-202611-382910",
+    "status": "SEATED"
+  }
+}
+```
+
+---
+
+### 40. Attach Final Food Bill Amount to Reservation
+- **Method**: `PATCH`
+- **URL**: `/api/v1/merchant/table-bookings/{{tableBookingRef}}/bill-amount`
+- **Headers**: `Content-Type: application/json`
+
+#### Request Body:
+```json
+{
+  "billAmount": 2500.00
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Food bill amount attached successfully to reservation",
+  "data": {
+    "bookingRef": "PNK-TB-202611-382910",
+    "billAmount": 2500.00
+  }
+}
+```
+
+---
+
+### 41. Host Mark Reservation as Completed
+- **Method**: `PATCH`
+- **URL**: `/api/v1/merchant/table-bookings/{{tableBookingRef}}/status?status=COMPLETED`
+- **Headers**: `Content-Type: application/json`
+
+#### Request Body:
+```json
+{
+  "status": "COMPLETED",
+  "comments": "Dining completed and bill settled"
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Booking status updated successfully",
+  "data": {
+    "bookingRef": "PNK-TB-202611-382910",
+    "status": "COMPLETED"
+  }
+}
+```
+
+
+---
+
+## 💳 Core Payments & UPI Gateway Subsystem (Transactions & Webhooks)
+
+### 42. Initiate Payment Intent with Idempotency Key
+- **Method**: `POST`
+- **URL**: `/api/v1/payments`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Accept: application/json`
+  - `Authorization: Bearer {{accessToken}}`
+  - `Idempotency-Key: {{$guid}}`
+- **Description**: Initiates a new payment intent with backend-authoritative calculation and mandatory `Idempotency-Key` header to prevent double debits. Generates NPCI-compliant UPI deep-link URI and stores pending ledger transaction.
+
+#### Request Body:
+```json
+{
+  "storeId": "{{storeId}}",
+  "grossAmount": 1500.00,
+  "currency": "INR"
+}
+```
+
+#### Response Body (201 Created):
+```json
+{
+  "success": true,
+  "message": "Payment initiated successfully",
+  "data": {
+    "paymentId": "f350d35a-4e64-4261-a7d4-8c6167cb7f3d",
+    "transactionId": "5d454dc3-5dda-40a4-97ba-8d8362055ec2",
+    "status": "PENDING",
+    "currency": "INR",
+    "grossAmount": 1500.00,
+    "discountAmount": 0.00,
+    "payableAmount": 1500.00,
+    "provider": "MOCK_UPI",
+    "providerOrderId": "ord_9427ff5ae6bb",
+    "paymentIntent": {
+      "type": "UPI",
+      "value": "upi://pay?pa=superapp@icici&pn=MerchantDiscovery&mc=5411&tid=txn_c962561484&tr=f350d35a-4e64-4261-a7d4-8c6167cb7f3d&tn=Payment_For_Order_ord_9427ff5ae6bb&am=1500.00&cu=INR"
+    },
+    "expiresAt": "2026-11-12T08:46:13.190838200Z"
+  },
+  "requestId": "8980a742-90ac-4aa8-8a15-d452af91667d"
+}
+```
+
+---
+
+### 43. Fetch Payment Intent Status
+- **Method**: `GET`
+- **URL**: `/api/v1/payments/{{paymentId}}`
+- **Headers**:
+  - `Accept: application/json`
+  - `Authorization: Bearer {{accessToken}}`
+- **Description**: Retrieves current status, amounts, and expiration time for a specific payment intent.
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Payment fetched successfully",
+  "data": {
+    "paymentId": "f350d35a-4e64-4261-a7d4-8c6167cb7f3d",
+    "transactionId": "5d454dc3-5dda-40a4-97ba-8d8362055ec2",
+    "status": "PENDING",
+    "currency": "INR",
+    "grossAmount": 1500.00,
+    "discountAmount": 0.00,
+    "payableAmount": 1500.00,
+    "provider": "MOCK_UPI",
+    "providerOrderId": "ord_9427ff5ae6bb",
+    "expiresAt": "2026-11-12T08:46:13.190838Z"
+  },
+  "requestId": "54e1f241-14b5-45b0-bcdf-c8dd3bb798ef"
+}
+```
+
+---
+
+### 44. Ingest Payment Provider Webhook Callback
+- **Method**: `POST`
+- **URL**: `/api/v1/payments/webhooks/MOCK_UPI`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Accept: application/json`
+  - `X-Webhook-Signature: valid_test_signature`
+- **Description**: Simulates inbound payment gateway webhook callback (e.g., NPCI UPI, PhonePe, Razorpay). Verifies HMAC-SHA256 signature, enforces idempotency, updates Payment and Transaction ledger states to `SUCCESS`, and triggers customer rewards.
+
+#### Request Body:
+```json
+{
+  "eventId": "evt_test_1001",
+  "eventType": "payment.success",
+  "paymentId": "{{paymentId}}",
+  "providerOrderId": "{{providerOrderId}}",
+  "providerPaymentId": "pay_upi_mock_8812",
+  "amount": 1500.00,
+  "currency": "INR",
+  "status": "SUCCESS"
+}
+```
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Webhook processed successfully",
+  "data": {
+    "eventId": "evt_test_1001",
+    "status": "SUCCESS",
+    "paymentId": "f350d35a-4e64-4261-a7d4-8c6167cb7f3d"
+  },
+  "requestId": "25cb4214-365a-4c4f-9ea4-88d66d06af55"
+}
+```
+
+---
+
+### 45. Verify Settled Payment & PaidAt Timestamp
+- **Method**: `GET`
+- **URL**: `/api/v1/payments/{{paymentId}}`
+- **Headers**:
+  - `Accept: application/json`
+  - `Authorization: Bearer {{accessToken}}`
+- **Description**: Verifies the state machine transition from `PENDING` to `SUCCESS` following webhook ingestion. Confirms settled `paidAt` timestamp is stamped.
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Payment fetched successfully",
+  "data": {
+    "paymentId": "f350d35a-4e64-4261-a7d4-8c6167cb7f3d",
+    "transactionId": "5d454dc3-5dda-40a4-97ba-8d8362055ec2",
+    "status": "SUCCESS",
+    "currency": "INR",
+    "grossAmount": 1500.00,
+    "discountAmount": 0.00,
+    "payableAmount": 1500.00,
+    "provider": "MOCK_UPI",
+    "providerOrderId": "ord_9427ff5ae6bb",
+    "expiresAt": "2026-11-12T08:46:13.190838Z",
+    "paidAt": "2026-11-12T08:31:28.595203Z"
+  },
+  "requestId": "c6b4660a-2b07-481d-9570-5f8b8ecd7d21"
+}
+```
+
+---
+
+### 46. Initiate Cancellable Payment Intent
+- **Method**: `POST`
+- **URL**: `/api/v1/payments`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Accept: application/json`
+  - `Authorization: Bearer {{accessToken}}`
+  - `Idempotency-Key: {{$guid}}`
+- **Description**: Initiates a secondary payment intent specifically for testing lifecycle cancellation by user or timeout.
+
+#### Request Body:
+```json
+{
+  "storeId": "{{storeId}}",
+  "grossAmount": 500.00,
+  "currency": "INR"
+}
+```
+
+#### Response Body (201 Created):
+```json
+{
+  "success": true,
+  "message": "Payment initiated successfully",
+  "data": {
+    "paymentId": "157b2dfa-a2c6-4544-b8df-038e552ec2f5",
+    "transactionId": "c98c617d-f9f4-4a3a-ad7b-961bbcf0fe6c",
+    "status": "PENDING",
+    "payableAmount": 500.00
+  }
+}
+```
+
+---
+
+### 47. Cancel In-Flight Payment Intent
+- **Method**: `POST`
+- **URL**: `/api/v1/payments/{{paymentIdToCancel}}/cancel`
+- **Headers**:
+  - `Accept: application/json`
+  - `Authorization: Bearer {{accessToken}}`
+- **Description**: Cancels an in-flight pending payment intent, aborting gateway processing and marking the ledger transaction cancelled.
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Payment cancelled successfully",
+  "data": {
+    "paymentId": "157b2dfa-a2c6-4544-b8df-038e552ec2f5",
+    "transactionId": "c98c617d-f9f4-4a3a-ad7b-961bbcf0fe6c",
+    "status": "CANCELLED",
+    "cancelledAt": "2026-11-12T08:32:01.699759700Z"
+  },
+  "requestId": "3a8e7708-9e82-4bb9-9fc9-245097a67d57"
+}
+```
+
+---
+
+### 48. Customer Transaction Ledger
+- **Method**: `GET`
+- **URL**: `/api/v1/transactions?page=0&size=20`
+- **Headers**:
+  - `Accept: application/json`
+  - `Authorization: Bearer {{accessToken}}`
+- **Description**: Returns customer historical transaction ledger with pagination, merchant name, store name, breakdown, payment method, and status.
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Transactions fetched successfully",
+  "data": {
+    "content": [
+      {
+        "id": "5d454dc3-5dda-40a4-97ba-8d8362055ec2",
+        "transactionReference": "TXN_3D15E3AF67764C3F",
+        "merchantId": "68eeda1c-be2d-4e32-b860-0f0027700094",
+        "merchantName": "Fabindia Home & Living",
+        "storeId": "8e91aefa-dfb2-4f19-b4f6-907e82baf6a5",
+        "storeName": "Fabindia Home & Living – Nagpur Flagship",
+        "grossAmount": 1500.00,
+        "discountAmount": 0.00,
+        "payableAmount": 1500.00,
+        "currency": "INR",
+        "paymentMethod": "MOCK_UPI",
+        "status": "SUCCESS",
+        "createdAt": "2026-11-12T08:31:13.182344Z"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  },
+  "requestId": "0101981e-55c6-4898-969f-f96a85eb6cc3"
+}
+```
+
+---
+
+### 49. Customer Transaction Details by ID
+- **Method**: `GET`
+- **URL**: `/api/v1/transactions/{{transactionId}}`
+- **Headers**:
+  - `Accept: application/json`
+  - `Authorization: Bearer {{accessToken}}`
+- **Description**: Fetches detailed transaction record including merchant details, store location, gross amount, discount amount, net payable, provider transaction ID, and timestamp.
+
+#### Response Body (200 OK):
+```json
+{
+  "success": true,
+  "message": "Transaction fetched successfully",
+  "data": {
+    "id": "5d454dc3-5dda-40a4-97ba-8d8362055ec2",
+    "transactionReference": "TXN_3D15E3AF67764C3F",
+    "merchant": {
+      "id": "68eeda1c-be2d-4e32-b860-0f0027700094",
+      "name": "Fabindia Home & Living"
+    },
+    "store": {
+      "id": "8e91aefa-dfb2-4f19-b4f6-907e82baf6a5",
+      "name": "Fabindia Home & Living – Nagpur Flagship"
+    },
+    "grossAmount": 1500.00,
+    "discountAmount": 0.00,
+    "payableAmount": 1500.00,
+    "currency": "INR",
+    "paymentMethod": "MOCK_UPI",
+    "status": "SUCCESS",
+    "paymentId": "f350d35a-4e64-4261-a7d4-8c6167cb7f3d",
+    "providerTransactionId": "pay_upi_mock_8812",
+    "createdAt": "2026-11-12T08:31:13.182344Z",
+    "updatedAt": "2026-11-12T08:31:28.600229Z"
+  },
+  "requestId": "4b56d4ae-3016-460a-bb78-07d9775e05de"
+}
+```
+
+---
+
+### 50. Merchant Store Transaction Ledger
+- **Method**: `GET`
+- **URL**: `/api/v1/merchant/transactions?storeId={{storeId}}&page=0&size=20`
+- **Headers**:
+  - `Accept: application/json`
+  - `Authorization: Bearer {{merchantAccessToken}}`
+- **Description**: Returns store-level transaction reconciliation log for the authenticated merchant or store manager.

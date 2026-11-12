@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   ArrowLeft,
   ChevronRight,
@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import tableBookingApi from "@/api/tableBookingApi";
 import { useAppStore } from "@/hooks/useAppStore";
 import { dataStore } from "@/services/dataStore";
+import { rewardApi } from "@/api/rewardApi";
 
 export interface CouponItem {
   id: string;
@@ -52,6 +53,16 @@ export interface PayBillViewProps {
   coverChargeAmount?: number;
   customerPhone?: string;
   customerName?: string;
+  customerId?: string;
+  customerCoins?: number;
+  cashbackPercentage?: number;
+  maxCashbackAmount?: number;
+  minTransactionForCashback?: number;
+  isCashbackEnabled?: boolean;
+  cashbackName?: string;
+  storeType?: "DINING" | "RETAIL" | "SERVICES";
+  category?: string;
+  isTableBookingEnabled?: boolean;
   onBack: () => void;
   onPaymentSuccess?: (paymentDetails: any) => void;
 }
@@ -70,12 +81,80 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
   coverChargeAmount,
   customerPhone,
   customerName,
+  customerId,
+  customerCoins,
+  cashbackPercentage,
+  maxCashbackAmount,
+  minTransactionForCashback,
+  isCashbackEnabled,
+  cashbackName,
+  storeType,
+  category,
+  isTableBookingEnabled,
   onBack,
   onPaymentSuccess
 }) => {
+  // Dynamic Retail vs Dining detection
+  const isRetail =
+    storeType === "RETAIL" ||
+    isTableBookingEnabled === false ||
+    /fab|retail|fashion|cloth|apparel|living|decor|jewel|grocery|mart|store|zara|h&m|supermarket|hyper/i.test(
+      (storeName || "") + " " + (category || "")
+    );
+  const staffTitle = isRetail ? "Cashier / Staff" : "Waiter";
+  const staffShortTitle = isRetail ? "cashier" : "waiter";
+  const billTitle = isRetail ? "store bill" : "dining bill";
+  const storeLabel = isRetail ? "store" : "restaurant";
   const appStore = useAppStore();
-  const effectiveCustomerName = customerName || appStore.currentUser?.name || "Customer";
-  const effectiveCustomerPhone = customerPhone || appStore.currentUser?.phone || "";
+  const effectiveCustomerName = customerName || appStore.currentUser?.name || "Rahul Verma";
+  const effectiveCustomerPhone = customerPhone || appStore.currentUser?.phone || "+919876543210";
+
+  // User real coin balance from database
+  const [userCoinBalance, setUserCoinBalance] = useState<number>(customerCoins != null ? customerCoins : 500);
+
+  useEffect(() => {
+    if (customerCoins != null) {
+      setUserCoinBalance(customerCoins);
+    } else if (customerId) {
+      rewardApi.getCustomerRewardAccount(customerId).then((res: any) => {
+        if (res && (res.pointsBalance != null || res.availableBalance != null)) {
+          setUserCoinBalance(Number(res.pointsBalance ?? res.availableBalance));
+        }
+      }).catch(() => {});
+    }
+  }, [customerId, customerCoins]);
+
+  // Dynamic Cashback Settings from Super Admin / Store Policy
+  const [storeCashbackConfig, setStoreCashbackConfig] = useState<{
+    percentage: number;
+    maxCap: number;
+    minSpend: number;
+    enabled: boolean;
+    name: string;
+  }>({
+    percentage: cashbackPercentage != null ? Number(cashbackPercentage) : 5,
+    maxCap: maxCashbackAmount != null ? Number(maxCashbackAmount) : 150,
+    minSpend: minTransactionForCashback != null ? Number(minTransactionForCashback) : 100,
+    enabled: isCashbackEnabled !== false,
+    name: cashbackName || "PINAK Instant Transaction Cashback"
+  });
+
+  useEffect(() => {
+    if (cashbackPercentage == null && storeId) {
+      tableBookingApi.getAvailability(storeId).then((res: any) => {
+        const h = res?.store;
+        if (h) {
+          setStoreCashbackConfig({
+            percentage: h.cashbackPercentage != null ? Number(h.cashbackPercentage) : 5,
+            maxCap: h.maxCashbackAmount != null ? Number(h.maxCashbackAmount) : 150,
+            minSpend: h.minTransactionForCashback != null ? Number(h.minTransactionForCashback) : 100,
+            enabled: h.isCashbackEnabled !== false,
+            name: h.cashbackName || "PINAK Instant Transaction Cashback"
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [storeId, cashbackPercentage]);
 
   // Navigation Steps: "enter_amount" -> "bill_checkout" -> "apply_coupon" -> "success"
   type PayStep = "enter_amount" | "bill_checkout" | "apply_coupon" | "success";
@@ -133,7 +212,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
         if (details?.billAmount && Number(details.billAmount) > 0) {
           setResolvedBillAmount(Number(details.billAmount));
           setBillAmountInput(String(details.billAmount));
-          toast.info(`Restaurant added your dining bill: ₹${Number(details.billAmount).toLocaleString("en-IN")}`);
+          toast.info(`${isRetail ? "Store added your bill" : "Restaurant added your dining bill"}: ₹${Number(details.billAmount).toLocaleString("en-IN")}`);
         }
       } catch (e) {
         // Ignore background polling failure
@@ -191,7 +270,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
       minBill: 1000,
       terms: [
         "Flat ₹125 Cashback on paying via Paytm UPI",
-        "Valid on dining bill payments over ₹1000",
+        `Valid on ${isRetail ? "store bill" : "dining bill"} payments over ₹1000`,
         "Cashback credited within 24 business hours"
       ]
     }
@@ -263,11 +342,21 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
   const totalFees = convenienceFee + gstOnFee; // ₹20.00
 
   const coinsEarned = useMemo(() => {
+    if (!storeCashbackConfig.enabled) return 0;
     const discounted = Math.max(0, numericBill - totalDiscount - coverChargeCredit);
-    return Math.round(discounted * 0.2); // 20% PINAK Coins
-  }, [numericBill, totalDiscount, coverChargeCredit]);
+    if (discounted < storeCashbackConfig.minSpend) return 0;
+    const rawCoins = Math.round((discounted * storeCashbackConfig.percentage) / 100);
+    return storeCashbackConfig.maxCap > 0 ? Math.min(rawCoins, storeCashbackConfig.maxCap) : rawCoins;
+  }, [numericBill, totalDiscount, coverChargeCredit, storeCashbackConfig]);
 
-  const coinSavings = useCoins ? Math.min(100, Math.round(numericBill * 0.05)) : 0;
+  const maxCoinsUsable = useMemo(() => {
+    if (userCoinBalance <= 0 || numericBill <= 0) return 0;
+    const discounted = Math.max(0, numericBill - totalDiscount - coverChargeCredit);
+    const capByBill = Math.max(0, Math.round(discounted * 0.10));
+    return Math.min(userCoinBalance, capByBill > 0 ? capByBill : Math.min(userCoinBalance, 50));
+  }, [userCoinBalance, numericBill, totalDiscount, coverChargeCredit]);
+
+  const coinSavings = useCoins ? maxCoinsUsable : 0;
 
   const totalPayable = useMemo(() => {
     if (numericBill <= 0) return 0;
@@ -313,7 +402,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
         description: "Special promotion applied to your order",
         discountPct: 10,
         maxDiscount: 200,
-        terms: ["Valid on PINAK dining payments", "Offer terms apply"]
+        terms: [`Valid on PINAK ${isRetail ? "store" : "dining"} payments`, "Offer terms apply"]
       };
       handleApplyCoupon(customCoupon);
     }
@@ -506,12 +595,12 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                       +{confirmedPaymentDetails.coinsEarned} PINAK Coins Credited
                     </p>
                     <p className="text-[10px] text-purple-700 dark:text-purple-300">
-                      Usable on your next dining or shopping bill
+                      New Wallet Balance: <strong className="font-mono text-emerald-600 font-extrabold">{Math.max(0, userCoinBalance - coinSavings) + confirmedPaymentDetails.coinsEarned} Coins</strong> (₹{Math.max(0, userCoinBalance - coinSavings) + confirmedPaymentDetails.coinsEarned} val)
                     </p>
                   </div>
                 </div>
-                <span className="text-xs font-black text-amber-600 bg-amber-100 px-2 py-0.5 rounded-md">
-                  2X Boost
+                <span className="text-xs font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 px-2 py-0.5 rounded-md font-mono">
+                  +₹{confirmedPaymentDetails.coinsEarned}
                 </span>
               </div>
 
@@ -531,7 +620,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                 )}
                 {confirmedPaymentDetails.tip > 0 && (
                   <div className="flex justify-between text-purple-700 dark:text-purple-300">
-                    <span>Waiter Tip</span>
+                    <span>{isRetail ? "Staff Tip" : "Waiter Tip"}</span>
                     <span>+₹{confirmedPaymentDetails.tip}</span>
                   </div>
                 )}
@@ -732,7 +821,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
               type="button"
               onClick={() => {
                 toast.info("PINAK 24/7 Helpline", {
-                  description: "Need help paying your dining bill? Call +91 800-PINAK-HELP"
+                  description: `Need help paying your ${isRetail ? "store bill" : "dining bill"}? Call +91 800-PINAK-HELP`
                 });
               }}
               className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0 hover:bg-slate-100 cursor-pointer"
@@ -818,7 +907,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                         {resolvedOfferTitle || `Flat ${resolvedOfferDiscountPct}% off on total bill`}
                       </h4>
                       <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
-                        ✓ ₹{tableOfferDiscount.toLocaleString("en-IN")} saved automatically on this dining bill
+                        ✓ ₹{tableOfferDiscount.toLocaleString("en-IN")} saved automatically on this {isRetail ? "store bill" : "dining bill"}
                       </p>
                     </div>
                   </div>
@@ -831,28 +920,33 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
 
             {/* 2X PINAK Coins Benefits Card */}
             <div className="bg-[#fbf7f0] dark:bg-slate-900 rounded-3xl border border-amber-200/70 dark:border-slate-800 p-4 shadow-xs space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-amber-400 text-slate-950 font-black text-[11px] flex items-center justify-center shadow-xs">
-                  🪙
-                </span>
-                <div>
-                  <span className="text-[10px] font-black uppercase text-amber-800 dark:text-amber-300 tracking-wider block">
-                    2X PINAK COINS
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-amber-400 text-slate-950 font-black text-[11px] flex items-center justify-center shadow-xs">
+                    🪙
                   </span>
-                  <h3 className="text-xs font-extrabold text-slate-900 dark:text-white leading-tight">
-                    Enjoy 2X PINAK Coins benefits here
-                  </h3>
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-amber-800 dark:text-amber-300 tracking-wider block">
+                      PINAK REWARD COINS & CASHBACK
+                    </span>
+                    <h3 className="text-xs font-extrabold text-slate-900 dark:text-white leading-tight">
+                      Real Wallet Balance & Bill Cashbacks
+                    </h3>
+                  </div>
                 </div>
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300/70 dark:border-amber-800 shadow-2xs font-mono">
+                  🪙 {userCoinBalance} Coins
+                </span>
               </div>
 
               {/* White Nested Subcard */}
               <div className="bg-white dark:bg-slate-950 rounded-2xl border border-amber-200/50 dark:border-slate-800 p-3 space-y-2.5 shadow-2xs">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-800 dark:text-slate-200">
-                    You will earn 20% PINAK Coins
+                    You will earn {storeCashbackConfig.percentage}% PINAK Coins{storeCashbackConfig.maxCap > 0 ? ` (up to ₹${storeCashbackConfig.maxCap})` : ""}
                   </span>
                   <span className="font-black text-emerald-700 dark:text-emerald-400">
-                    ↑ ₹{coinsEarned}
+                    +{coinsEarned} Coins
                   </span>
                 </div>
 
@@ -861,14 +955,22 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5">
                     <span className="font-bold text-slate-700 dark:text-slate-300">
-                      Use 2X PINAK Coins
+                      Redeem PINAK Coins
                     </span>
-                    <Info size={13} className="text-slate-400" />
+                    <span className="text-[10px] text-slate-400">
+                      (Available: ₹{userCoinBalance})
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setUseCoins(!useCoins)}
+                      onClick={() => {
+                        if (userCoinBalance <= 0) {
+                          toast.error("Your coin wallet balance is 0. Pay dining bills to earn instant cashback coins!");
+                          return;
+                        }
+                        setUseCoins(!useCoins);
+                      }}
                       className={cn(
                         "w-11 h-6 rounded-full transition-colors relative cursor-pointer p-0.5",
                         useCoins ? "bg-purple-600" : "bg-slate-200 dark:bg-slate-700"
@@ -881,8 +983,8 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                         )}
                       />
                     </button>
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 min-w-[32px] text-right">
-                      {useCoins ? `↑ ₹${coinSavings}` : "↑ ₹0"}
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 min-w-[36px] text-right font-mono">
+                      {useCoins && coinSavings > 0 ? `-₹${coinSavings}` : "₹0"}
                     </span>
                   </div>
                 </div>
@@ -1004,7 +1106,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                         <span>Add Tip</span>
                       </div>
                       <p className="text-[10px] text-slate-400 font-medium">
-                        100% goes to the Waiters!
+                        {isRetail ? "100% goes to the store counter staff!" : "100% goes to the Waiters!"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1104,7 +1206,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                   Woohoo! ₹{celebrationDetails.saved} Saved
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed max-w-xs mx-auto">
-                  Discount coupon applied successfully to your dining bill. Your new payable amount is updated automatically.
+                  Discount coupon applied successfully to your {isRetail ? "store bill" : "dining bill"}. Your new payable amount is updated automatically.
                 </p>
               </div>
 
@@ -1253,7 +1355,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                     />
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    100% of your tip goes directly to the restaurant service staff.
+                    100% of your tip goes directly to the {isRetail ? "store counter team" : "restaurant service staff"}.
                   </p>
                 </div>
 
@@ -1410,7 +1512,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
             </div>
             {isBillPreSetByStore ? (
               <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center gap-1">
-                <span>✓ Bill amount added by restaurant</span>
+                <span>✓ Bill amount added by {isRetail ? "store" : "restaurant"}</span>
               </p>
             ) : (
               <div className="space-y-0.5">
@@ -1418,7 +1520,7 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                   Enter total amount as shown on your paper bill
                 </p>
                 <p className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
-                  Tip: You can also ask your waiter to add the bill
+                  Tip: You can also ask your {isRetail ? "cashier to add the bill" : "waiter to add the bill"}
                 </p>
               </div>
             )}

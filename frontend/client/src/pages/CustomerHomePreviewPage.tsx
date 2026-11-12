@@ -32,11 +32,16 @@ import {
   Crosshair,
   Sliders,
   Globe,
+  Share2,
   X,
-  Percent
+  Percent,
+  Wallet,
+  Coins,
+  Award
 } from "lucide-react";
 import { Link } from "wouter";
 import apiClient from "@/api/client";
+import { rewardApi, CustomerRewardAccountDTO } from "@/api/rewardApi";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ServiceDetailPreviewView } from "@/components/ServiceDetailPreviewView";
@@ -336,8 +341,76 @@ function deduplicateOffersByStore(rawOffers: NearbyOffer[]): NearbyOffer[] {
   });
 }
 
+const DEFAULT_CUSTOMER_ACCOUNT: CustomerRewardAccountDTO = {
+  id: "e2000000-0000-0000-0000-000000000001",
+  customerId: "c2000000-0000-0000-0000-000000000001",
+  customerName: "Rahul Verma",
+  customerPhone: "+919876543210",
+  customerEmail: "rahul.mobile@pinak.app",
+  availableBalance: 500.0,
+  pendingBalance: 0.0,
+  lifetimeEarned: 750.0,
+  lifetimeRedeemed: 250.0,
+  currency: "INR",
+  tier: "GOLD",
+  status: "ACTIVE",
+  createdAt: "2026-11-12T13:51:32Z",
+  updatedAt: "2026-11-12T13:51:32Z"
+};
+
+function getCustomerInitials(name?: string): string {
+  if (!name) return "RV";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
 export default function CustomerHomePreviewPage() {
   const appStore = useAppStore();
+
+  // Real Customer Account & Wallet Balance from PostgreSQL Database
+  const [activeCustomer, setActiveCustomer] = useState<CustomerRewardAccountDTO>(DEFAULT_CUSTOMER_ACCOUNT);
+  const [rewardAccounts, setRewardAccounts] = useState<CustomerRewardAccountDTO[]>([DEFAULT_CUSTOMER_ACCOUNT]);
+  const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
+
+  // Load real customer reward accounts from backend
+  useEffect(() => {
+    rewardApi.getAllAccounts().then((accounts) => {
+      if (accounts && accounts.length > 0) {
+        setRewardAccounts(accounts);
+        // Find Rahul Verma if present, otherwise default to first account
+        const rahul = accounts.find((a) => a.customerPhone === "+919876543210" || a.customerId === "c2000000-0000-0000-0000-000000000001");
+        if (rahul) {
+          setActiveCustomer(rahul);
+        } else {
+          setActiveCustomer(accounts[0]);
+        }
+      }
+    }).catch((err) => {
+      console.warn("Could not load real customer reward accounts:", err);
+    });
+  }, []);
+
+  const refreshActiveCustomerBalance = async (customerId?: string) => {
+    const idToFetch = customerId || activeCustomer.customerId;
+    try {
+      const fresh = await rewardApi.getCustomerRewardAccount(idToFetch);
+      if (fresh) {
+        setActiveCustomer((prev) => ({
+          ...prev,
+          availableBalance: fresh.pointsBalance,
+          lifetimeEarned: fresh.lifetimeEarned,
+          lifetimeRedeemed: fresh.lifetimeRedeemed,
+          tier: fresh.tier
+        }));
+        toast.success(`Wallet Balance Refreshed: ${fresh.pointsBalance} PINAK Coins (₹${fresh.pointsBalance})`);
+      }
+    } catch {
+      toast.error("Failed to refresh balance from backend");
+    }
+  };
 
   useEffect(() => {
     if (!appStore.isAuthenticated || !appStore.currentUser) {
@@ -357,8 +430,38 @@ export default function CustomerHomePreviewPage() {
 
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const initialStoreId = searchParams?.get("storeId");
+  // Public Customer View Mode vs Admin Simulator Mode
+  const [isPublicMode, setIsPublicMode] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("dev") === "true" || p.get("preview") === "true" || p.get("admin") === "true") {
+        return false;
+      }
+      const saved = localStorage.getItem("pinak_public_mode");
+      if (saved !== null) return saved === "true";
+    }
+    return true; // Default to public customer view!
+  });
+
+  useEffect(() => {
+    document.title = "PINAK — Deals that Reward you | Local Offers & Dining";
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      const v = p.get("view");
+      if (v === "booking") {
+        setInitialDetailView("booking");
+        setActiveScreen("detail");
+      } else if (v === "pay_bill") {
+        setInitialDetailView("pay_bill");
+        setActiveScreen("detail");
+      } else if (v === "orders" || v === "bookings") {
+        setActiveScreen("orders");
+      }
+    }
+  }, []);
+
   const [activeScreen, setActiveScreen] = useState<"home" | "detail" | "orders" | "booking_pass">(initialStoreId ? "detail" : "home");
-  const [initialDetailView, setInitialDetailView] = useState<"detail" | "booking" | "pay_bill">("detail");
+  const [initialDetailView, setInitialDetailView] = useState<"detail" | "booking" | "pay_bill" | "product_order">("detail");
   const [selectedOfferForDetail, setSelectedOfferForDetail] = useState<any>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId || "");
   const [isPayingBill, setIsPayingBill] = useState<boolean>(false);
@@ -603,8 +706,6 @@ export default function CustomerHomePreviewPage() {
       const res = await apiClient.get("/offers/nearby", {
         params: {
           type: "SERVICE",
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
           lat: userLocation.latitude,
           lng: userLocation.longitude,
           radiusKm: userLocation.radiusKm,
@@ -629,8 +730,6 @@ export default function CustomerHomePreviewPage() {
       const pRes = await apiClient.get("/offers/nearby", {
         params: {
           type: "PRODUCT",
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
           lat: userLocation.latitude,
           lng: userLocation.longitude,
           radiusKm: userLocation.radiusKm,
@@ -683,8 +782,6 @@ export default function CustomerHomePreviewPage() {
     try {
       const fRes = await apiClient.get("/merchants/featured", {
         params: {
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
           lat: userLocation.latitude,
           lng: userLocation.longitude,
           limit: 10
@@ -704,8 +801,6 @@ export default function CustomerHomePreviewPage() {
     try {
       const cRes = await apiClient.get("/collections/popular", {
         params: {
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
           lat: userLocation.latitude,
           lng: userLocation.longitude,
           radiusKm: userLocation.radiusKm || 15.0,
@@ -723,8 +818,6 @@ export default function CustomerHomePreviewPage() {
     try {
       const fRes = await apiClient.get("/offers/flash", {
         params: {
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
           lat: userLocation.latitude,
           lng: userLocation.longitude,
           limit: 10,
@@ -750,8 +843,6 @@ export default function CustomerHomePreviewPage() {
     try {
       const recRes = await apiClient.get("/recommendations", {
         params: {
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
           lat: userLocation.latitude,
           lng: userLocation.longitude,
           limit: 10
@@ -769,9 +860,7 @@ export default function CustomerHomePreviewPage() {
       const sRes = await apiClient.get("/discovery/nearby", {
         params: {
           lat: userLocation.latitude,
-          latitude: userLocation.latitude,
           lng: userLocation.longitude,
-          longitude: userLocation.longitude,
           radius: (userLocation.radiusKm || 15.0) * 1000,
           size: 5
         }
@@ -881,228 +970,364 @@ export default function CustomerHomePreviewPage() {
   const displayedCollections = collections;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center">
-      {/* Top Admin Utility Bar */}
-      <header className="w-full bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 sticky top-0 z-50 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/offers"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors font-semibold"
-          >
-            <ArrowLeft size={14} />
-            <span>Back to Admin</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold text-white text-sm font-['Manrope']">
-              PINAK Customer Discovery App
-            </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-              Live Reference Preview
-            </span>
+    <div className={cn(
+      "min-h-screen flex flex-col items-center transition-colors",
+      isPublicMode ? "bg-[#f4f5fa] dark:bg-[#090b14] text-slate-900 dark:text-slate-100" : "bg-slate-900 text-slate-100"
+    )}>
+      {/* ========================================================================= */}
+      {/* 1. PUBLIC CUSTOMER APP HEADER (Default for Public Users) */}
+      {/* ========================================================================= */}
+      {isPublicMode ? (
+        <header className="w-full bg-white/95 dark:bg-[#0f1322]/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 py-3 sticky top-0 z-50 flex items-center justify-between text-xs shadow-xs">
+          <div className="flex items-center gap-3 sm:gap-6">
+            <div
+              onClick={() => {
+                setActiveScreen("home");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="flex items-center gap-2.5 cursor-pointer group select-none"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white font-black text-base shadow-sm group-hover:scale-105 transition-transform">
+                P
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-slate-900 dark:text-white text-base tracking-tight font-['Manrope']">
+                    PINAK
+                  </span>
+                  <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800">
+                    Deals that Reward you
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium hidden sm:block">
+                  Exclusive Dining, Table Bookings &amp; Instant Cashback
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Screen 10 / Screen 11 / Screen 12 View Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveScreen("home");
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className={cn(
-              "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
-              activeScreen === "home"
-                ? "bg-purple-600 text-white shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <Compass size={13} />
-            <span>Screen 10: Discovery Feed</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (!selectedStoreId) {
-                const firstRealStore =
-                  offers.find((o) => o.branch?.branchId || o.branchSummary?.storeId)?.branch?.branchId ||
-                  offers.find((o) => o.branchSummary?.storeId)?.branchSummary?.storeId ||
-                  featuredStores[0]?.merchantId ||
-                  "";
-                setSelectedStoreId(firstRealStore);
-              }
-              setInitialDetailView("detail");
-              setActiveScreen("detail");
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className={cn(
-              "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
-              activeScreen === "detail"
-                ? "bg-purple-600 text-white shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <UtensilsCrossed size={13} />
-            <span>Screen 11: Service Detail</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveScreen("orders");
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className={cn(
-              "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
-              activeScreen === "orders"
-                ? "bg-purple-600 text-white shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <TicketPercent size={13} />
-            <span>Screen 12: Orders &amp; Bookings</span>
-          </button>
-          {activeBooking && (
+          {/* Center: Live Location Selector Pill */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsLocationMenuOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer border border-slate-200/60 dark:border-slate-700 shadow-2xs"
+              title="Change Dining & Discovery Location"
+            >
+              <MapPin size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
+              <span className="truncate max-w-[130px] sm:max-w-[200px]">{userLocation.name}</span>
+            </button>
+
+            {/* Quick Screen Switcher (Explore / Dine / Orders) */}
+            <div className="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveScreen("home");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  activeScreen === "home"
+                    ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-2xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                Explore
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedStoreId) {
+                    const firstStore =
+                      offers.find((o) => o.branchSummary?.storeId || o.branch?.branchId)?.branchSummary?.storeId ||
+                      "a230a164-d4e8-429b-9ca0-2b468946901b";
+                    setSelectedStoreId(firstStore);
+                  }
+                  setInitialDetailView("booking");
+                  setActiveScreen("detail");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  activeScreen === "detail" && initialDetailView === "booking"
+                    ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-2xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                Book Table
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveScreen("orders");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  activeScreen === "orders"
+                    ? "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-2xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                My Activity
+              </button>
+            </div>
+          </div>
+
+          {/* Right Actions: Coins, Share & Simulator Switch */}
+          <div className="flex items-center gap-2">
+            {/* Real Coins & Customer Wallet Button in Public Header */}
+            <button
+              type="button"
+              onClick={() => setShowWalletModal(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-300 font-bold text-xs transition-colors border border-amber-200/80 dark:border-amber-800 shadow-2xs cursor-pointer"
+              title="View Customer Reward Wallet & Coins"
+            >
+              <Coins size={14} className="text-amber-600" />
+              <span>{Math.round(activeCustomer.availableBalance)}</span>
+              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold">({getCustomerInitials(activeCustomer.customerName)})</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {
-                setActiveScreen("booking_pass");
+                const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+                navigator.clipboard.writeText(shareUrl);
+                toast.success("Public link copied! Share with friends or open on your phone.");
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-sm cursor-pointer"
+              title="Copy Public Link to Share"
+            >
+              <Share2 size={13} />
+              <span className="hidden sm:inline">Share</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsPublicMode(false);
+                localStorage.setItem("pinak_public_mode", "false");
+                toast.info("Switched to Developer & Admin Simulator controls");
+              }}
+              className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-semibold transition-colors cursor-pointer border border-slate-200/60 dark:border-slate-700"
+              title="Switch to Developer Simulator Mode"
+            >
+              <Sliders size={14} />
+              <span className="hidden md:inline text-[11px]">Simulator</span>
+            </button>
+          </div>
+        </header>
+      ) : (
+        /* ========================================================================= */
+        /* 2. DEVELOPER / ADMIN SIMULATOR TOOLBAR */
+        /* ========================================================================= */
+        <header className="w-full bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 sticky top-0 z-50 flex flex-wrap items-center justify-between text-xs gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsPublicMode(true);
+                localStorage.setItem("pinak_public_mode", "true");
+                toast.success("Switched to Public Customer View");
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors font-bold cursor-pointer shadow-xs"
+            >
+              <Globe size={13} />
+              <span>Public View</span>
+            </button>
+            <Link
+              href="/admin/offers"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors font-semibold"
+            >
+              <ArrowLeft size={14} />
+              <span>Back to Admin</span>
+            </Link>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-white text-sm font-['Manrope']">
+                PINAK Customer App
+              </span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                Dev Simulator
+              </span>
+            </div>
+          </div>
+
+          {/* Screen 10 / Screen 11 / Screen 12 View Switcher */}
+          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveScreen("home");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               className={cn(
                 "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
-                activeScreen === "booking_pass"
+                activeScreen === "home"
                   ? "bg-purple-600 text-white shadow-xs"
                   : "text-slate-400 hover:text-slate-200"
               )}
             >
-              <CheckCircle2 size={13} />
-              <span>Booking Pass</span>
+              <Compass size={13} />
+              <span>Screen 10: Feed</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!selectedStoreId) {
+                  const firstRealStore =
+                    offers.find((o) => o.branch?.branchId || o.branchSummary?.storeId)?.branch?.branchId ||
+                    offers.find((o) => o.branchSummary?.storeId)?.branchSummary?.storeId ||
+                    featuredStores[0]?.merchantId ||
+                    "";
+                  setSelectedStoreId(firstRealStore);
+                }
+                setInitialDetailView("detail");
+                setActiveScreen("detail");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
+                activeScreen === "detail"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-400 hover:text-slate-200"
+              )}
+            >
+              <UtensilsCrossed size={13} />
+              <span>Screen 11: Detail</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveScreen("orders");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
+                activeScreen === "orders"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-400 hover:text-slate-200"
+              )}
+            >
+              <TicketPercent size={13} />
+              <span>Screen 12: Orders</span>
+            </button>
+            {activeBooking && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveScreen("booking_pass");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer",
+                  activeScreen === "booking_pass"
+                    ? "bg-purple-600 text-white shadow-xs"
+                    : "text-slate-400 hover:text-slate-200"
+                )}
+              >
+                <CheckCircle2 size={13} />
+                <span>Pass</span>
+              </button>
+            )}
+          </div>
+
+          {/* Active GPS Coordinate Simulator Toolbar */}
+          <div className="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 p-1.5 rounded-xl shadow-inner text-xs">
+            <div className="flex items-center gap-1.5 text-slate-300 font-semibold px-1">
+              <Crosshair size={13} className="text-purple-400" />
+              <span className="text-[11px] font-bold text-slate-200">GPS:</span>
+            </div>
+
+            <div className="flex items-center bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1">
+              <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">Lat:</span>
+              <input
+                type="number"
+                step="any"
+                value={customLatInput}
+                onChange={(e) => setCustomLatInput(e.target.value)}
+                placeholder="21.112875"
+                className="w-18 bg-transparent text-white font-mono text-[11px] focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1">
+              <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">Lng:</span>
+              <input
+                type="number"
+                step="any"
+                value={customLngInput}
+                onChange={(e) => setCustomLngInput(e.target.value)}
+                placeholder="79.059910"
+                className="w-18 bg-transparent text-white font-mono text-[11px] focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => applyCustomCoordinates(customLatInput, customLngInput, customRadiusInput)}
+              disabled={isApplyingCoords || loading}
+              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+            >
+              {isApplyingCoords ? <RefreshCw size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+              <span>Apply</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsLocationMenuOpen((v) => !v)}
+              className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <MapPin size={11} />
+              <span>Presets</span>
+            </button>
+          </div>
+        </header>
+      )}
+
+      {/* Main Container */}
+      <main className="w-full flex justify-center py-0 sm:py-6 px-0 sm:px-4">
+        {/* Device Frame / Responsive Container */}
+        <div
+          className={cn(
+            "w-full bg-[#fbfbff] text-slate-800 relative pb-36 transition-all",
+            isPublicMode
+              ? "max-w-full sm:max-w-[440px] min-h-screen sm:min-h-[880px] sm:rounded-[32px] sm:shadow-2xl sm:border border-slate-200/90 overflow-hidden"
+              : "max-w-[430px] min-h-[900px] shadow-2xl rounded-[36px] overflow-hidden border-[6px] border-slate-800 ring-1 ring-slate-700"
           )}
-        </div>
-
-        {/* Active GPS Coordinate Simulator Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 p-1.5 rounded-xl shadow-inner text-xs">
-          <div className="flex items-center gap-1.5 text-slate-300 font-semibold px-1">
-            <Crosshair size={13} className="text-purple-400" />
-            <span className="text-[11px] font-bold text-slate-200">GPS Coords:</span>
-          </div>
-
-          {/* Latitude Input */}
-          <div className="flex items-center bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1">
-            <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">Lat:</span>
-            <input
-              type="number"
-              step="any"
-              value={customLatInput}
-              onChange={(e) => setCustomLatInput(e.target.value)}
-              placeholder="21.112875"
-              className="w-20 bg-transparent text-white font-mono text-[11px] focus:outline-none"
-              title="Latitude (-90 to +90)"
-            />
-          </div>
-
-          {/* Longitude Input */}
-          <div className="flex items-center bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1">
-            <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">Lng:</span>
-            <input
-              type="number"
-              step="any"
-              value={customLngInput}
-              onChange={(e) => setCustomLngInput(e.target.value)}
-              placeholder="79.059910"
-              className="w-20 bg-transparent text-white font-mono text-[11px] focus:outline-none"
-              title="Longitude (-180 to +180)"
-            />
-          </div>
-
-          {/* Radius Input */}
-          <div className="flex items-center bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1">
-            <span className="text-[10px] font-bold text-slate-400 mr-1 select-none">Radius:</span>
-            <input
-              type="number"
-              min="1"
-              max="2000"
-              value={customRadiusInput}
-              onChange={(e) => setCustomRadiusInput(e.target.value)}
-              placeholder="15"
-              className="w-10 bg-transparent text-white font-mono text-[11px] focus:outline-none text-right"
-              title="Radius in kilometers"
-            />
-            <span className="text-[10px] text-slate-400 ml-0.5">km</span>
-          </div>
-
-          {/* Apply Coords Button */}
-          <button
-            type="button"
-            onClick={() => applyCustomCoordinates(customLatInput, customLngInput, customRadiusInput)}
-            disabled={isApplyingCoords || loading}
-            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
-            title="Send these exact coordinates to backend APIs"
-          >
-            {isApplyingCoords ? <RefreshCw size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
-            <span>Apply Coords</span>
-          </button>
-
-          {/* Location Presets Button */}
-          <button
-            type="button"
-            onClick={() => setIsLocationMenuOpen((v) => !v)}
-            className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
-            title="Open Outlets & Cities presets"
-          >
-            <MapPin size={11} />
-            <span>Presets</span>
-          </button>
-
-          {/* Refresh Live Deals */}
-          <button
-            onClick={() => {
-              fetchNearbyOffers();
-              toast.info("Refreshed nearby service offers from database");
-            }}
-            disabled={loading}
-            className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
-            title="Refresh API Data"
-          >
-            <RotateCw size={13} className={loading ? "animate-spin text-purple-400" : ""} />
-          </button>
-        </div>
-      </header>
-
-      {/* Main Preview Container */}
-      <main className="py-6 sm:py-10 px-2 sm:px-4 flex justify-center w-full">
-        {/* iOS Mobile Phone Mockup Frame */}
-        <div className="w-full max-w-[430px] bg-[#fbfbff] min-h-[900px] text-slate-800 relative pb-36 shadow-2xl rounded-[36px] overflow-hidden border-[6px] border-slate-800 ring-1 ring-slate-700">
-          
-          {/* iOS Status Bar */}
-          <header className="sticky top-0 z-40 bg-[#fbfbff]/95 backdrop-blur-md pt-3 px-6 pb-1">
-            <div className="flex justify-between items-center text-[13px] font-semibold tracking-tight text-slate-900">
-              <span>9:41</span>
-              <div className="flex items-center space-x-1.5">
-                <svg className="w-4 h-3.5 fill-current" viewBox="0 0 17 12">
-                  <rect height="4" rx="0.5" width="2.5" x="0" y="8"></rect>
-                  <rect height="6" rx="0.5" width="2.5" x="4" y="6"></rect>
-                  <rect height="8.5" rx="0.5" width="2.5" x="8" y="3.5"></rect>
-                  <rect height="11" rx="0.5" width="2.5" x="12" y="1"></rect>
-                </svg>
-                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 16 16">
-                  <path d="M8 12.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm-4.24-2.83a6 6 0 0 1 8.48 0 .75.75 0 1 1-1.06 1.06 4.5 4.5 0 0 0-6.36 0 .75.75 0 1 1-1.06-1.06zm-2.83-2.83a10 10 0 0 1 14.14 0 .75.75 0 0 1-1.06 1.06 8.5 8.5 0 0 0-12.02 0 .75.75 0 0 1-1.06-1.06z"></path>
-                </svg>
-                <div className="w-5 h-2.5 border border-slate-900 rounded-xs p-0.5 flex items-center">
-                  <div className="h-full bg-slate-900 rounded-2xs w-full"></div>
+        >
+          {/* iOS Status Bar (Only in Dev Simulator Mode) */}
+          {!isPublicMode && (
+            <header className="sticky top-0 z-40 bg-[#fbfbff]/95 backdrop-blur-md pt-3 px-6 pb-1">
+              <div className="flex justify-between items-center text-[13px] font-semibold tracking-tight text-slate-900">
+                <span>9:41</span>
+                <div className="flex items-center space-x-1.5">
+                  <svg className="w-4 h-3.5 fill-current" viewBox="0 0 17 12">
+                    <rect height="4" rx="0.5" width="2.5" x="0" y="8"></rect>
+                    <rect height="6" rx="0.5" width="2.5" x="4" y="6"></rect>
+                    <rect height="8.5" rx="0.5" width="2.5" x="8" y="3.5"></rect>
+                    <rect height="11" rx="0.5" width="2.5" x="12" y="1"></rect>
+                  </svg>
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 16 16">
+                    <path d="M8 12.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm-4.24-2.83a6 6 0 0 1 8.48 0 .75.75 0 1 1-1.06 1.06 4.5 4.5 0 0 0-6.36 0 .75.75 0 1 1-1.06-1.06zm-2.83-2.83a10 10 0 0 1 14.14 0 .75.75 0 0 1-1.06 1.06 8.5 8.5 0 0 0-12.02 0 .75.75 0 0 1-1.06-1.06z"></path>
+                  </svg>
+                  <div className="w-5 h-2.5 border border-slate-900 rounded-xs p-0.5 flex items-center">
+                    <div className="h-full bg-slate-900 rounded-2xs w-full"></div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </header>
+            </header>
+          )}
 
-          {activeScreen === "detail" ? (
+                    {activeScreen === "detail" ? (
             <ServiceDetailPreviewView
               storeId={selectedStoreId}
               userLat={userLocation.latitude}
               userLng={userLocation.longitude}
-              customerName={appStore.currentUser?.name}
-              customerPhone={appStore.currentUser?.phone}
+              customerName={activeCustomer.customerName || appStore.currentUser?.name}
+              customerPhone={activeCustomer.customerPhone || appStore.currentUser?.phone}
+              customerId={activeCustomer.customerId}
+              customerCoins={activeCustomer.availableBalance}
               initialView={initialDetailView}
               initialOffer={selectedOfferForDetail}
               onBack={() => {
@@ -1125,8 +1350,10 @@ export default function CustomerHomePreviewPage() {
               initialOfferTitle={effectivePassBooking.offerTitle}
               initialOfferDiscount={effectivePassBooking.discountPct ? Number(effectivePassBooking.discountPct) : undefined}
               initialCoverCharge={effectivePassBooking.totalCoverCharge ? Number(effectivePassBooking.totalCoverCharge) : 0}
-              initialCustomerName={effectivePassBooking.customerName || appStore.currentUser?.name}
-              initialCustomerPhone={effectivePassBooking.customerPhone || appStore.currentUser?.phone}
+              initialCustomerName={effectivePassBooking.customerName || activeCustomer.customerName || appStore.currentUser?.name}
+              initialCustomerPhone={effectivePassBooking.customerPhone || activeCustomer.customerPhone || appStore.currentUser?.phone}
+              customerId={activeCustomer.customerId}
+              customerCoins={activeCustomer.availableBalance}
               userLat={userLocation.latitude}
               userLng={userLocation.longitude}
               onBack={() => {
@@ -1142,6 +1369,8 @@ export default function CustomerHomePreviewPage() {
             />
           ) : activeScreen === "orders" ? (
             <CustomerOrdersView
+              customerId={activeCustomer.customerId}
+              customerCoins={activeCustomer.availableBalance}
               onBackToDiscover={() => {
                 setActiveScreen("home");
                 window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1314,17 +1543,30 @@ export default function CustomerHomePreviewPage() {
                     <span>{Object.values(cart).reduce((a, b) => a + b, 0)} Cart</span>
                   </div>
                 )}
-                <div className="flex items-center bg-amber-50 border border-amber-200/80 px-2 py-0.5 space-x-1 shadow-2xs rounded-md">
+                <button
+                  type="button"
+                  onClick={() => setShowWalletModal(true)}
+                  className="flex items-center bg-amber-50 hover:bg-amber-100/90 transition-colors border border-amber-200/80 px-2 py-0.5 space-x-1 shadow-2xs rounded-md cursor-pointer"
+                  title="Click to view Customer Wallet & Coins"
+                >
                   <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-[9px] font-black text-amber-900">
-                    ₹
+                    🪙
                   </div>
-                  <div className="text-[10px] font-bold text-amber-900 leading-tight">
-                    480<span className="block text-[8px] text-amber-700 font-medium leading-none">₹48</span>
+                  <div className="text-[10px] font-bold text-amber-900 leading-tight text-left">
+                    {Math.round(activeCustomer.availableBalance)}
+                    <span className="block text-[8px] text-amber-700 font-medium leading-none">
+                      ₹{Math.round(activeCustomer.availableBalance)} val
+                    </span>
                   </div>
-                </div>
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center shadow-xs">
-                  JD
-                </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowWalletModal(true)}
+                  className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center shadow-xs cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
+                  title={`${activeCustomer.customerName} (${activeCustomer.customerPhone || "Mobile User"})`}
+                >
+                  {getCustomerInitials(activeCustomer.customerName)}
+                </button>
               </div>
             </div>
           </header>
@@ -1537,7 +1779,8 @@ export default function CustomerHomePreviewPage() {
                 const rType = (o.redemptionType || "").toUpperCase();
                 const isBoth = rType === "BOTH";
                 const isWalkInOnly = rType === "WALK_IN";
-                const isPreBookingOnly = rType === "PRE_BOOK" || (!isBoth && !isWalkInOnly);
+                const isPreBookingOnly = rType === "PRE_BOOK";
+                const isProductDeal = (o.offerScope || "").toUpperCase() === "PRODUCT" || rType === "PRODUCT";
 
                 const expiry = o.expiresAt || o.validTo;
                 const badge = formatTimeLeftBadge(expiry);
@@ -1545,12 +1788,21 @@ export default function CustomerHomePreviewPage() {
                 const imageSrc = o.imageUrl || o.imgUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80";
 
                 const targetStoreId = o.branch?.branchId || o.branchSummary?.storeId || o.storeId;
+                const targetStore = appStore.stores.find((s) => s.id === targetStoreId);
+                const isOfferRetail =
+                  isProductDeal ||
+                  targetStore?.isTableBookingEnabled === false ||
+                  /fab|retail|fashion|cloth|apparel|living|decor|jewel|grocery|mart|zara|h&m|supermarket/i.test(
+                    (storeDisplayName || "") + " " + (o.title || "") + " " + (targetStore?.category || "")
+                  );
 
                 return (
                   <article
                     key={offerKey}
                     onClick={() => {
-                      if (isWalkInOnly) {
+                      if (isProductDeal) {
+                        setInitialDetailView("product_order");
+                      } else if (isWalkInOnly || isOfferRetail) {
                         setInitialDetailView("pay_bill");
                       } else {
                         setInitialDetailView("detail");
@@ -1617,6 +1869,11 @@ export default function CustomerHomePreviewPage() {
                               <Store size={10} className="shrink-0" />
                               <span className="whitespace-nowrap">Walk-in Offer</span>
                             </span>
+                          ) : isOfferRetail ? (
+                            <span className="bg-emerald-600/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-md flex items-center gap-1 text-[9.5px] font-extrabold shadow-xs whitespace-nowrap shrink-0">
+                              <ShoppingBag size={10} className="shrink-0" />
+                              <span className="whitespace-nowrap">In-Store Deal</span>
+                            </span>
                           ) : (
                             <span className="bg-emerald-600/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-md flex items-center gap-1 text-[9.5px] font-extrabold shadow-xs whitespace-nowrap shrink-0">
                               <UtensilsCrossed size={10} className="shrink-0" />
@@ -1640,7 +1897,7 @@ export default function CustomerHomePreviewPage() {
                             <MapPin size={10} className="shrink-0 text-slate-400" />
                             <span>{distanceText}</span>
                             <span className="text-slate-300 dark:text-slate-600">•</span>
-                            <span className="text-slate-600 dark:text-slate-300 font-semibold">Dine-in Outlet</span>
+                            <span className="text-slate-600 dark:text-slate-300 font-semibold">{isOfferRetail ? "Retail Outlet" : "Dine-in Outlet"}</span>
                           </p>
                         </div>
 
@@ -1720,7 +1977,9 @@ export default function CustomerHomePreviewPage() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (isPreBookingOnly || isBoth) {
+                          if (isProductDeal) {
+                            setInitialDetailView("product_order");
+                          } else if (isPreBookingOnly && !isOfferRetail) {
                             setInitialDetailView("booking");
                           } else {
                             setInitialDetailView("pay_bill");
@@ -1730,7 +1989,7 @@ export default function CustomerHomePreviewPage() {
                         }}
                         className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] px-3.5 py-1.5 rounded-lg shadow-xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
                       >
-                        <span>{o.ctaText || (isWalkInOnly ? "Pay Bill" : isBoth ? "Book & Pay" : "Book Table")}</span>
+                        <span>{o.ctaText || (isProductDeal ? "Claim Deal" : (isPreBookingOnly && !isOfferRetail) ? "Book Table" : "Pay Bill & Save")}</span>
                         <ChevronRight size={12} />
                       </button>
                     </div>
@@ -2560,13 +2819,195 @@ export default function CustomerHomePreviewPage() {
               </button>
               <button
                 type="button"
-                onClick={() => toast.info("Pocket & Saved vouchers")}
+                onClick={() => setShowWalletModal(true)}
                 className="flex flex-col items-center text-slate-500 hover:text-slate-800 space-y-0.5 min-w-[54px] cursor-pointer transition-colors"
               >
-                <User size={20} />
+                <div className="relative">
+                  <User size={20} />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500"></span>
+                </div>
                 <span className="text-[9px] font-medium">Pocket</span>
               </button>
             </nav>
+          )}
+
+          {/* ========================================================================= */}
+          {/* REAL CUSTOMER WALLET & REWARDS MODAL / DRAWER */}
+          {/* ========================================================================= */}
+          {showWalletModal && (
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+              onClick={() => setShowWalletModal(false)}
+            >
+              <div
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-pink-600 p-5 text-white relative">
+                  <button
+                    onClick={() => setShowWalletModal(false)}
+                    className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-13 h-13 rounded-2xl bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center text-xl font-black shadow-inner">
+                      {getCustomerInitials(activeCustomer.customerName)}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-black tracking-tight">{activeCustomer.customerName}</h3>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-400 text-amber-950 uppercase tracking-wider">
+                          {activeCustomer.tier || "GOLD"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/90 font-semibold">{activeCustomer.customerPhone || "No phone linked"}</p>
+                      <p className="text-[11px] text-white/70">{activeCustomer.customerEmail}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-4 space-y-3.5 overflow-y-auto max-h-[calc(90vh-170px)]">
+                  {/* Real Coins Balance Card */}
+                  <div className="rounded-2xl p-4 bg-gradient-to-br from-amber-500/15 via-amber-400/5 to-transparent border border-amber-300 dark:border-amber-700/50 relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                        <Coins size={16} className="text-amber-500" />
+                        PINAK Reward Wallet
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        Live Database Sync
+                      </span>
+                    </div>
+
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-black text-slate-900 dark:text-white">
+                        {Math.round(activeCustomer.availableBalance).toLocaleString("en-IN")}
+                      </span>
+                      <span className="text-sm font-bold text-amber-600">🪙 PINAK Coins</span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1">
+                      Instant cash value: <span className="font-black text-emerald-600">₹{activeCustomer.availableBalance.toFixed(2)}</span>
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Redeemable for instant discounts on dining bills, table reservations, and in-store purchases (1 Coin = ₹1).
+                    </p>
+
+                    {/* Lifetime Earned & Redeemed stats */}
+                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-amber-200/60 dark:border-amber-800/40 text-center">
+                      <div className="bg-white/70 dark:bg-slate-800/70 rounded-xl p-2 border border-slate-100 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-medium block">Lifetime Earned</span>
+                        <span className="text-xs font-black text-emerald-600">+{activeCustomer.lifetimeEarned || 0} 🪙</span>
+                      </div>
+                      <div className="bg-white/70 dark:bg-slate-800/70 rounded-xl p-2 border border-slate-100 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-medium block">Lifetime Redeemed</span>
+                        <span className="text-xs font-black text-rose-500">-{activeCustomer.lifetimeRedeemed || 0} 🪙</span>
+                      </div>
+                    </div>
+
+                    {/* Refresh Button */}
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => refreshActiveCustomerBalance(activeCustomer.customerId)}
+                        className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      >
+                        <RefreshCw size={13} />
+                        Refresh Coins from Database
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Account Switcher Section */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                          Switch Customer Account
+                        </h4>
+                        <p className="text-[10px] text-slate-400">
+                          Select any real database user to test their actual coin balance
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full">
+                        {rewardAccounts.length} Customers
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                      {rewardAccounts.map((account) => {
+                        const isSelected = account.customerId === activeCustomer.customerId;
+                        return (
+                          <div
+                            key={account.id || account.customerId}
+                            onClick={() => {
+                              setActiveCustomer(account);
+                              toast.success(`Active Customer switched to ${account.customerName}`, {
+                                description: `Live Balance: ${account.availableBalance} PINAK Coins (₹${account.availableBalance})`
+                              });
+                            }}
+                            className={cn(
+                              "flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer text-left",
+                              isSelected
+                                ? "bg-purple-50/80 dark:bg-purple-950/40 border-purple-500 ring-1 ring-purple-500"
+                                : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black",
+                                isSelected ? "bg-purple-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                              )}>
+                                {getCustomerInitials(account.customerName)}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                    {account.customerName}
+                                  </span>
+                                  {account.customerId === "c2000000-0000-0000-0000-000000000001" && (
+                                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">
+                                      Primary Mobile
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-400 block">{account.customerPhone}</span>
+                              </div>
+                            </div>
+
+                            <div className="text-right">
+                              <div className="flex items-center gap-1 justify-end font-black text-xs text-amber-700 dark:text-amber-400">
+                                <span>🪙</span>
+                                <span>{Math.round(account.availableBalance)}</span>
+                              </div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">
+                                {account.tier || "GOLD"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">
+                    ID: <code className="text-purple-600 font-mono text-[10px]">{activeCustomer.customerId.slice(0, 16)}...</code>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowWalletModal(false)}
+                    className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </main>

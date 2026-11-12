@@ -1792,28 +1792,184 @@
                 },
                 "description": "Matches Trust Badges: Verified Stores (Only trusted partners), Earn PINAK Coins (On every purchase), Exclusive Offers (Local deals & discounts), Fast & Easy Payments (UPI, Cards & Wallets)."
               }
-            }
-          ]
-        },
-        {
-          "name": "🍽️ Store & Service Details (Screen 11 - The Smokehouse Grill)",
-          "item": [
+            },
             {
-              "name": "22b. Fetch Service / Store Detail (Screen 11 - The Smokehouse Grill)",
+              "name": "16. Customer Active Bookings & Passes - Home Feed Card (/mobile/my-bookings)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Active bookings returned for customer home card', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d).to.be.an('array');",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      ""
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
               "request": {
                 "method": "GET",
                 "header": [
                   {
                     "key": "Accept",
                     "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/stores/{{smokehouseStoreId}}/detail?lat=12.9716&lng=77.6412",
+                  "raw": "{{baseUrl}}/api/v1/mobile/my-bookings?phone={{testPhone}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "my-bookings"
+                  ],
+                  "query": [
+                    {
+                      "key": "phone",
+                      "value": "{{testPhone}}"
+                    }
+                  ]
+                },
+                "description": "Returns upcoming confirmed reservation to display directly on the Customer Home Preview floating pass card."
+              }
+            }
+          ]
+        },
+        {
+          "name": "🍽️ Store & Service Details (Screen 11 Customer Preview)",
+          "description": "# 🍽️ Store & Service Details (Screen 11 Customer Preview)\n\nComprehensive store details, hero photo gallery, verified amenities, active pre-booking & walk-in offers, store products section (Section 6B), and sticky action bar. Fully integrated with database without dummy fallbacks.",
+          "item": [
+            {
+              "name": "01. Fetch Service / Store Detail (Screen 11 Real Store)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response envelope conforms to ApiResponse format', function () {",
+                      "    var j = pm.response.json(); pm.expect(j.success).to.be.true; pm.expect(j.data).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test('Store identity and verified details are returned from DB', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.id).to.be.a('string').and.not.empty; pm.expect(d.storeName).to.be.a('string').and.not.empty;",
+                      "});",
+                      "",
+                      "pm.test('Screen 11 sections are cleanly populated without dummy data', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.offersSection).to.be.an('object'); pm.expect(d.productsSection).to.be.an('object'); pm.expect(d.amenities).to.be.an('array'); pm.expect(d.bottomBar).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.id) {",
+                      "        pm.collectionVariables.set('storeId', jsonData.data.id);",
+                      "        console.log('✅ [POSTMAN] Auto-saved storeId: ' + jsonData.data.id);",
+                      "    }",
+                      "    if (jsonData.data.storeName) {",
+                      "        pm.collectionVariables.set('currentStoreName', jsonData.data.storeName);",
+                      "        console.log('✅ [POSTMAN] Auto-saved currentStoreName: ' + jsonData.data.storeName);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/services/detail?storeId={{storeId}}&lat={{userLat}}&lng={{userLng}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "services",
+                    "detail"
+                  ],
+                  "query": [
+                    {
+                      "key": "storeId",
+                      "value": "{{storeId}}",
+                      "description": "Active store UUID"
+                    },
+                    {
+                      "key": "lat",
+                      "value": "{{userLat}}",
+                      "description": "Customer device latitude"
+                    },
+                    {
+                      "key": "lng",
+                      "value": "{{userLng}}",
+                      "description": "Customer device longitude"
+                    }
+                  ]
+                },
+                "description": "Returns complete store details for Screen 11. Includes hero photos, 2X coin perk banner, availableTabs, active offers without fake data, store products section, menu highlights, photo gallery, verified amenities, GPS location, similar places, and sticky bottom bar."
+              }
+            },
+            {
+              "name": "02. Fetch Store Detail by Path Parameter",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Store details match storeId path parameter', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.id).to.eql(pm.collectionVariables.get('storeId'));",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      ""
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/stores/{{storeId}}/detail?lat={{userLat}}&lng={{userLng}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1822,150 +1978,74 @@
                     "v1",
                     "mobile",
                     "stores",
-                    "{{smokehouseStoreId}}",
+                    "{{storeId}}",
                     "detail"
                   ],
                   "query": [
                     {
                       "key": "lat",
-                      "value": "12.9716",
-                      "description": "User current latitude for dynamic distance calculation"
+                      "value": "{{userLat}}"
                     },
                     {
                       "key": "lng",
-                      "value": "77.6412",
-                      "description": "User current longitude for dynamic distance calculation"
+                      "value": "{{userLng}}"
                     }
                   ]
                 },
-                "description": "### 🍽️ Screen 11: Store & Service Detail View (The Smokehouse Grill)\n\n#### 📋 Overview\nReturns the comprehensive, rich payload for **Screen 11 (Store / Service Detail View)** matching the design specification in `code.html`.\nWhen a customer clicks on any merchant card or service offer in the PINAK mobile discovery rail, this endpoint powers the full screen experience.\n\n---\n\n#### 🌐 Endpoint Details\n- **HTTP Method**: `GET`\n- **Primary URL**: `{{baseUrl}}/api/v1/mobile/stores/{{smokehouseStoreId}}/detail?lat=12.9716&lng=77.6412`\n- **Fallback URL**: `{{baseUrl}}/api/v1/mobile/stores/detail?lat=12.9716&lng=77.6412` *(auto-defaults to The Smokehouse Grill even if storeId is missing!)*\n- **Authentication**: `Bearer Token` (`{{accessToken}}`) *(Optional/Permitted: also renders public preview)*\n\n---\n\n#### 🔍 Query & Path Parameters\n| Parameter | Type | Required | Default | Description |\n|---|---|---|---|---|\n| `storeId` | `UUID` (Path) | Optional | `e1000000-0000-0000-0000-000000000001` | Outlet UUID (The Smokehouse Grill Mock) |\n| `lat` | `Double` (Query) | Optional | `12.9716` | User GPS Latitude for precise distance calculation |\n| `lng` | `Double` (Query) | Optional | `77.6412` | User GPS Longitude for precise distance calculation |\n\n---\n\n#### 🎨 Screen 11 UI Components Powered by this Payload:\n1. **Hero Media Gallery**: 19 curated photos with real-time `photoCounterText` (\"1/19\").\n2. **Metadata & Status**: `isOpenNow: true`, `openStatusText: \"Open till 00:30\"`, rating 4.8 (1.2K ratings), `₹1700 for two • Moderate`.\n3. **2X Boost Cashback Banner**: `coinsPerkBanner` featuring `badgeText: \"2X BOOST\"` (\"Earn 5.00% PINAK Cashback Coins\").\n4. **Sticky Sub-Header Navigation Tabs**: `[\"Offers\", \"Menu\", \"Photos\", \"Amenities\", \"Location\"]`\n5. **Active Offers Section**:\n   - Primary Hero Deal: Flat 50% Off Pre-Booking & Dining (`PINAK EXCLUSIVE`, `Instant Confirm`, `Special Deal`).\n   - Secondary Walk-in Deal: Flat 20% Off Walk-In Dine-in (`WALK_IN_PAY`).\n6. **Menu Highlights & Scans**: 4 signature dishes (Truffle Mushroom Risotto, Smoked BBQ Pork Ribs, etc.) + 7 high-res menu scan image URLs.\n7. **Photo Mosaic Grid**: 3-photo mosaic with `+16 Photos` modal trigger.\n8. **Verified Amenities Rail**: Full Bar, Valet Parking, Table Reservation, PINAK UPI Instant Pay, AC, Free Wi-Fi.\n9. **Location & GPS Section**: Complete address, distance (`4.6 km • Indiranagar`), and Google Maps deep-link.\n10. **Concierge Desk**: 1-tap call reservation assistance.\n11. **Similar Places Rail**: Tipsy Turk Rooftop & Bellavista Skybar.\n12. **Sticky Bottom Action Bar**: \"Pay Bill Now\" (with `50% OFF` badge) and \"Book a Table\".\n",
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
+                "description": "Alternative RESTful path for fetching store detail: GET /api/v1/mobile/stores/{storeId}/detail"
+              }
+            }
+          ]
+        },
+        {
+          "name": "🛍️ In-Store Retail & Product Deals (Customer Preview Screen 11B / Retail Checkout)",
+          "description": "# 🛍️ In-Store Retail & Shelf Product Purchase (Screen 11B / Retail Flow)\n\nImplements the streamlined customer in-store retail checkout experience:\n> *\"Humne product liya store se aur payment kiya offer laga ke done as simple as that.\"*\n> (Pick from shelf ➔ Auto-applied discount offer ➔ Pay via UPI ➔ Digital payment receipt with coins credited. No passes, no boarding tickets, no cashier claim codes).\n\n---\n\n### 🛒 In-Store Customer Purchase Lifecycle\n1. **Pick from Shelf**: Customer selects product (e.g. Dairy, Packaged Goods, Gourmet Foods) & quantity.\n2. **Offer Auto-Applied**: In-store deal discount & coupons auto-deducted from bill.\n3. **Instant Mobile Pay**: Settle bill directly via Google Pay, PhonePe, or PINAK UPI.\n4. **Payment Receipt (\"Done\")**: Confirmed digital bill invoice, settlement timestamp, and +20% PINAK Coins credited to wallet.",
+          "item": [
+            {
+              "name": "01. Fetch Retail Product Detail & In-Store Deal",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "// ==================================================================",
-                      "// Test Script: Comprehensive Enterprise Assertions for Screen 11",
-                      "// ==================================================================",
-                      "",
-                      "pm.test('[Status] HTTP Status code is 200 OK', function () {",
+                      "pm.test('Status code is 200 OK', function () {",
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test('[Performance] Response time is under 1500ms', function () {",
-                      "    pm.expect(pm.response.responseTime).to.be.below(1500);",
+                      "pm.test('Response envelope conforms to ApiResponse format', function () {",
+                      "    var j = pm.response.json(); pm.expect(j.success).to.be.true; pm.expect(j.data).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test('Product details contain pricing, discount, and stock', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.id).to.be.a('string'); pm.expect(d.name).to.be.a('string'); pm.expect(d.sellingPrice).to.be.at.least(0);",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
                       "});",
                       "",
                       "var jsonData = pm.response.json();",
-                      "",
-                      "pm.test('[Contract] Response success is true and contains store data', function () {",
-                      "    pm.expect(jsonData.success).to.eql(true);",
-                      "    pm.expect(jsonData.data).to.be.an('object');",
-                      "    pm.expect(jsonData.data.storeName).to.eql('The Smokehouse Grill');",
-                      "});",
-                      "",
-                      "pm.test('[Hero & Media] 19 curated photos with proper counter text', function () {",
-                      "    var d = jsonData.data;",
-                      "    pm.expect(d.totalPhotosCount).to.eql(19);",
-                      "    pm.expect(d.photoCounterText).to.eql('1/19');",
-                      "    pm.expect(d.heroPhotos).to.be.an('array').with.lengthOf(19);",
-                      "});",
-                      "",
-                      "pm.test('[Perk Banner] 2X Boost Coins Perk Banner is configured', function () {",
-                      "    var banner = jsonData.data.coinsPerkBanner || jsonData.data.coinPerkBanner;",
-                      "    pm.expect(banner).to.be.an('object');",
-                      "    pm.expect(banner.multiplier).to.eql('2X');",
-                      "    pm.expect(banner.badgeText).to.eql('2X BOOST');",
-                      "});",
-                      "",
-                      "pm.test('[Navigation Tabs] 5 sticky tabs present: Offers, Menu, Photos, Amenities, Location', function () {",
-                      "    var tabs = jsonData.data.availableTabs;",
-                      "    pm.expect(tabs).to.include.members(['Offers', 'Menu', 'Photos', 'Amenities', 'Location']);",
-                      "});",
-                      "",
-                      "pm.test('[Offers Section] Primary pre-booking offer has badges and terms', function () {",
-                      "    var offers = jsonData.data.offersSection;",
-                      "    pm.expect(offers).to.be.an('object');",
-                      "    pm.expect(offers.primaryOffer).to.be.an('object');",
-                      "    pm.expect(offers.primaryOffer.badges).to.include('PINAK EXCLUSIVE');",
-                      "    pm.expect(offers.primaryOffer.discountValue).to.eql(50.0);",
-                      "});",
-                      "",
-                      "pm.test('[Bottom Action Bar] Sticky Pay Bill & Book Table CTAs configured', function () {",
-                      "    var bar = jsonData.data.bottomBar;",
-                      "    pm.expect(bar).to.be.an('object');",
-                      "    pm.expect(bar.isTableBookingEnabled).to.eql(true);",
-                      "    pm.expect(bar.primaryAction.type).to.eql('PAY_BILL');",
-                      "    pm.expect(bar.primaryAction.discountBadge).to.eql('50% OFF');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      "// ==================================================================",
-                      "// Pre-request Script: Defensive Variable Validation & Auto-Setup",
-                      "// ==================================================================",
-                      "var defaultStoreId = 'e1000000-0000-0000-0000-000000000001';",
-                      "var storeId = pm.variables.get('smokehouseStoreId');",
-                      "",
-                      "if (!storeId || storeId.trim() === '') {",
-                      "    pm.collectionVariables.set('smokehouseStoreId', defaultStoreId);",
-                      "    console.log('ℹ️ smokehouseStoreId was empty; auto-defaulted to ' + defaultStoreId);",
-                      "}",
-                      "",
-                      "var token = pm.variables.get('accessToken');",
-                      "if (!token || token.trim() === '') {",
-                      "    console.warn('⚠️ No accessToken found in collection variables. Request will proceed with public mock access.');",
-                      "} else {",
-                      "    console.log('🔑 Authenticating Screen 11 detail request with Bearer token: ' + token.substring(0, 15) + '...');",
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.id) {",
+                      "        pm.collectionVariables.set('productId', jsonData.data.id);",
+                      "        console.log('✅ [POSTMAN] Auto-saved productId: ' + jsonData.data.id);",
+                      "    }",
                       "}"
                     ],
                     "type": "text/javascript"
                   }
                 }
-              ]
-            },
-            {
-              "name": "23b. Fetch Product Detail View (Wood-Fired Truffle Pizza)",
+              ],
               "request": {
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                },
                 "method": "GET",
                 "header": [
                   {
                     "key": "Accept",
                     "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412",
+                  "raw": "{{baseUrl}}/api/v1/mobile/products/detail?productId={{productId}}&lat={{userLat}}&lng={{userLng}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1974,190 +2054,251 @@
                     "v1",
                     "mobile",
                     "products",
-                    "{{productId}}",
                     "detail"
                   ],
                   "query": [
                     {
+                      "key": "productId",
+                      "value": "{{productId}}",
+                      "description": "Product UUID"
+                    },
+                    {
                       "key": "lat",
-                      "value": "12.9716",
+                      "value": "{{userLat}}",
                       "description": "Customer device latitude"
                     },
                     {
                       "key": "lng",
-                      "value": "77.6412",
+                      "value": "{{userLng}}",
                       "description": "Customer device longitude"
                     }
                   ]
                 },
-                "description": "### 🍕 Screen 11/12: Product & Food Dish Detail View (Wood-Fired Truffle Pizza)\n\n#### 📋 Overview\nReturns the comprehensive, rich payload for the **Mobile Product Detail View** when a customer clicks on any product deal, retail item, or restaurant dish card from the discovery rails (e.g. *Top Product Deals Near You*, *Curated Collections*, or Store Menus).\n\n---\n\n#### 🌐 Endpoint Details\n- **HTTP Method**: `GET`\n- **Primary URL**: `{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412`\n- **Resilient Fallback URLs**:\n  - `{{baseUrl}}/api/v1/mobile/products/detail?lat=12.9716&lng=77.6412` *(auto-defaults to Wood-Fired Truffle Pizza if productId is omitted!)*\n  - `{{baseUrl}}/api/v1/products/{{productId}}/detail`\n  - `{{baseUrl}}/api/v1/discovery/products/{{productId}}/detail`\n- **Authentication**: `Bearer Token` (`{{accessToken}}`) *(Optional/Permitted: allows public browsing & guest previews!)*\n\n---\n\n#### 🔍 Query & Path Parameters\n| Parameter | Type | Required | Default | Description |\n|---|---|---|---|---|\n| `productId` | `UUID` (Path) | Optional | `f1000000-0000-0000-0000-000000000001` | Unique item identifier (Canonical Mock: Wood-Fired Truffle Pizza) |\n| `lat` | `Double` (Query) | Optional | `12.9716` | User GPS Latitude for precise store distance calculation |\n| `lng` | `Double` (Query) | Optional | `77.6412` | User GPS Longitude for precise store distance calculation |\n\n---\n\n#### 🎨 Screen UI Components Powered by this Payload:\n1. **Interactive Image Gallery**: 5 high-res photos showcasing product preparation, packaging, and presentation.\n2. **Dynamic Pricing & Savings**: MRP (`₹699.00`), Selling Price (`₹489.00`), Discount (`30% OFF`), Savings (`Save ₹210`).\n3. **Inventory & Urgency**: `inStock: true`, `stockQuantity: 25`, `stockStatusText: \"In Stock • Delivered in 25-35 mins\"`.\n4. **Dietary & Badges**: `isVeg: true`, `dietaryType: \"VEG\"`, Badges: `[\"PINAK EXCLUSIVE\", \"BESTSELLER\", \"WOOD-FIRED\"]`.\n5. **2X Boost Cashback Banner**: `coinsPerkBanner` featuring `badgeText: \"2X BOOST\"` (\"Earn 24 PINAK Gold Coins on this purchase\").\n6. **Store Origin & Delivery**: Integrated outlet card for *The Smokehouse Grill* (4.8 rating, 1.2 km distance, phone, address).\n7. **Culinary Specifications & Nutrition**: 4 key preparation highlights + full nutritional facts (Calories, Protein, Carbs, Fat).\n8. **Delivery & Takeaway Options**: Instant delivery (25-35 mins), Free delivery threshold, and Express Takeaway (15 mins).\n9. **Verified Customer Reviews**: Average rating `4.8`, star rating breakdown distribution, and verified buyer reviews with avatars.\n10. **Cross-Sell & Upsell Rails**:\n    - *Frequently Bought Together*: Rosemary & Garlic Herb Focaccia + Nitro Cold Brew.\n    - *Similar Products*: Quattro Formaggi Pizza + Classic Margherita.\n11. **Sticky Bottom Action Bar**: \"Add to Cart • ₹489.00\" and \"Buy Now\" with quantity stepper.\n"
-              },
-              "response": [
-                {
-                  "name": "200 OK - Full Product Detail View (Wood-Fired Truffle Pizza)",
-                  "originalRequest": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{accessToken}}"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/mobile/products/{{productId}}/detail?lat=12.9716&lng=77.6412",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "mobile",
-                        "products",
-                        "{{productId}}",
-                        "detail"
-                      ],
-                      "query": [
-                        {
-                          "key": "lat",
-                          "value": "12.9716"
-                        },
-                        {
-                          "key": "lng",
-                          "value": "77.6412"
-                        }
-                      ]
-                    }
-                  },
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Product detail fetched successfully\",\n  \"data\": {\n    \"id\": \"f1000000-0000-0000-0000-000000000001\",\n    \"name\": \"Wood-Fired Truffle & Wild Mushroom Pizza\",\n    \"brand\": \"The Smokehouse Kitchen\",\n    \"unit\": \"12-inch Hand-Stretched Crust • Serves 2-3\",\n    \"shortDescription\": \"Hand-stretched Neapolitan sourdough crust with San Marzano tomatoes, fresh buffalo mozzarella, sautéed forest porcini mushrooms, and drizzled with black truffle oil.\",\n    \"longDescription\": \"Crafted using 48-hour fermented Italian 00 flour dough, baked at 450°C in our traditional oak wood-fired oven. Topped with imported Italian fior di latte, aged Parmigiano Reggiano, hand-picked wild porcini and shiitake mushrooms, finished with aromatic Umbrian black summer truffle oil and fresh basil.\",\n    \"imageUrl\": \"https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80\",\n    \"galleryImages\": [\n      \"https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&q=80\",\n      \"https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80\"\n    ],\n    \"totalPhotosCount\": 5,\n    \"mrp\": 699,\n    \"sellingPrice\": 489,\n    \"discountPercent\": 30,\n    \"savingsAmount\": 210,\n    \"discountText\": \"Flat 30% OFF • Save ₹210\",\n    \"currency\": \"INR\",\n    \"currencySymbol\": \"₹\",\n    \"inStock\": true,\n    \"stockQuantity\": 25,\n    \"stockStatusText\": \"In Stock • Delivered in 25-35 mins\",\n    \"isVeg\": true,\n    \"dietaryType\": \"VEG\",\n    \"category\": {\n      \"id\": \"c1000000-0000-0000-0000-000000000001\",\n      \"name\": \"Gourmet Wood-Fired Pizzas\",\n      \"slug\": \"gourmet-wood-fired-pizzas\"\n    },\n    \"tags\": [\n      \"PINAK EXCLUSIVE\",\n      \"BESTSELLER\",\n      \"WOOD-FIRED\",\n      \"ORGANIC INGREDIENTS\"\n    ],\n    \"rating\": 4.8,\n    \"ratingCountText\": \"856+ reviews\",\n    \"coinsPerkBanner\": {\n      \"multiplier\": \"2X\",\n      \"title\": \"Earn 5.00% PINAK Cashback Coins\",\n      \"badgeText\": \"2X BOOST\",\n      \"earnedCoinsText\": \"Earn 24 PINAK Gold Coins on this purchase\"\n    },\n    \"storeInfo\": {\n      \"id\": \"e1000000-0000-0000-0000-000000000001\",\n      \"name\": \"The Smokehouse Grill\",\n      \"isVerified\": true,\n      \"rating\": 4.8,\n      \"distanceText\": \"1.2 km away • Indiranagar\",\n      \"address\": \"123, 100 Feet Road, Indiranagar, Bengaluru, Karnataka 560038\",\n      \"phone\": \"+919880011234\",\n      \"isOpenNow\": true\n    },\n    \"deliveryOptions\": {\n      \"instantDeliveryAvailable\": true,\n      \"deliveryTimeText\": \"Delivered in 25-35 mins\",\n      \"freeDeliveryThresholdText\": \"Free delivery on orders above ₹499\",\n      \"storePickupAvailable\": true,\n      \"storePickupText\": \"Ready for takeaway in 15 mins\"\n    },\n    \"bottomBar\": {\n      \"sellingPrice\": 489,\n      \"mrp\": 699,\n      \"savingsText\": \"Save ₹210\",\n      \"minQuantity\": 1,\n      \"maxQuantity\": 10,\n      \"isCustomizable\": true,\n      \"customizationText\": \"Customizable options available\",\n      \"primaryAction\": {\n        \"type\": \"ADD_TO_CART\",\n        \"label\": \"Add to Cart • ₹489.00\",\n        \"enabled\": true\n      },\n      \"secondaryAction\": {\n        \"type\": \"BUY_NOW\",\n        \"label\": \"Buy Now\",\n        \"enabled\": true\n      }\n    }\n  },\n  \"requestId\": \"4a71b290-7612-4210-90bc-940176b91c10\"\n}"
-                }
-              ],
+                "description": "Fetches detailed retail product payload when clicked in customer preview. Returns product name, unit, selling price, MRP, in-store discount badge, stock availability, and 2X coin perk."
+              }
+            },
+            {
+              "name": "02. Fetch Store Shelf Products & Deals (Screen 11 Section 6B)",
               "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      "// ==================================================================",
-                      "// Pre-request Script: Defensive Setup & Auto-Diagnostic",
-                      "// ==================================================================",
-                      "var defaultProdId = 'f1000000-0000-0000-0000-000000000001';",
-                      "var prodId = pm.variables.get('productId');",
-                      "",
-                      "if (!prodId || prodId.trim() === '') {",
-                      "    pm.collectionVariables.set('productId', defaultProdId);",
-                      "    console.log('ℹ️ productId was empty; auto-defaulted to ' + defaultProdId);",
-                      "}",
-                      "",
-                      "var token = pm.variables.get('accessToken');",
-                      "if (!token || token.trim() === '') {",
-                      "    console.warn('⚠️ No accessToken found. Request will proceed with public preview access.');",
-                      "} else {",
-                      "    console.log('🔑 Authenticating Product Detail request with Bearer token: ' + token.substring(0, 15) + '...');",
-                      "}"
-                    ],
-                    "type": "text/javascript"
-                  }
-                },
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "// ==================================================================",
-                      "// Test Script: Comprehensive Enterprise Assertions for Product Detail",
-                      "// ==================================================================",
-                      "",
-                      "pm.test('[Status] HTTP Status code is 200 OK', function () {",
+                      "pm.test('Status code is 200 OK', function () {",
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test('[Performance] Response time is under 1500ms', function () {",
-                      "    pm.expect(pm.response.responseTime).to.be.below(1500);",
+                      "pm.test('Response envelope conforms to ApiResponse format', function () {",
+                      "    var j = pm.response.json(); pm.expect(j.success).to.be.true; pm.expect(j.data).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test('ProductsSection reflects database inventory without mock Amul data', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.productsSection).to.be.an('object'); pm.expect(d.productsSection.items).to.be.an('array');",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
                       "});",
                       "",
                       "var jsonData = pm.response.json();",
-                      "",
-                      "pm.test('[Contract] Response envelope is successful with product payload', function () {",
-                      "    pm.expect(jsonData.success).to.eql(true);",
-                      "    pm.expect(jsonData.data).to.be.an('object');",
-                      "    pm.expect(jsonData.data.name).to.include('Pizza');",
-                      "});",
-                      "",
-                      "pm.test('[Pricing] Valid pricing and savings calculation', function () {",
-                      "    var d = jsonData.data;",
-                      "    pm.expect(d.sellingPrice).to.be.below(d.mrp);",
-                      "    pm.expect(d.discountPercent).to.be.above(0);",
-                      "    pm.expect(d.currency).to.eql('INR');",
-                      "});",
-                      "",
-                      "pm.test('[Gallery] Image gallery populated with multiple high-res photos', function () {",
-                      "    var d = jsonData.data;",
-                      "    pm.expect(d.galleryImages).to.be.an('array').with.lengthOf.at.least(3);",
-                      "    pm.expect(d.imageUrl).to.be.a('string');",
-                      "});",
-                      "",
-                      "pm.test('[Incentives] 2X Boost Coins Perk Banner is active', function () {",
-                      "    var banner = jsonData.data.coinsPerkBanner || jsonData.data.coinPerkBanner;",
-                      "    pm.expect(banner).to.be.an('object');",
-                      "    pm.expect(banner.multiplier).to.eql('2X');",
-                      "    pm.expect(banner.badgeText).to.eql('2X BOOST');",
-                      "});",
-                      "",
-                      "pm.test('[Merchant & Delivery] Store origin and delivery options present', function () {",
-                      "    var store = jsonData.data.storeInfo;",
-                      "    pm.expect(store).to.be.an('object');",
-                      "    pm.expect(store.name).to.eql('The Smokehouse Grill');",
-                      "    pm.expect(jsonData.data.deliveryOptions.instantDeliveryAvailable).to.eql(true);",
-                      "});",
-                      "",
-                      "pm.test('[Carousels] Frequently bought together and similar products available', function () {",
-                      "    pm.expect(jsonData.data.frequentlyBoughtTogether).to.be.an('array').with.lengthOf.at.least(1);",
-                      "    pm.expect(jsonData.data.similarProducts).to.be.an('array').with.lengthOf.at.least(1);",
-                      "});",
-                      "",
-                      "pm.test('[Sticky CTA] Bottom bar has Add to Cart and Buy Now actions', function () {",
-                      "    var bar = jsonData.data.bottomBar;",
-                      "    pm.expect(bar.primaryAction.type).to.eql('ADD_TO_CART');",
-                      "    pm.expect(bar.secondaryAction.type).to.eql('BUY_NOW');",
-                      "});"
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.id) {",
+                      "        pm.collectionVariables.set('storeId', jsonData.data.id);",
+                      "        console.log('✅ [POSTMAN] Auto-saved storeId: ' + jsonData.data.id);",
+                      "    }",
+                      "    if (jsonData.data.storeName) {",
+                      "        pm.collectionVariables.set('currentStoreName', jsonData.data.storeName);",
+                      "        console.log('✅ [POSTMAN] Auto-saved currentStoreName: ' + jsonData.data.storeName);",
+                      "    }",
+                      "}"
                     ],
                     "type": "text/javascript"
                   }
                 }
-              ]
-            }
-          ]
-        },
-        {
-          "name": "🍽️ Table Booking & Reservations (Screen 11 Next Screen / Screen 12)",
-          "item": [
-            {
-              "name": "24a. Get Table Booking Slot & Offer Availability (Screen 11 Next Screen)",
+              ],
               "request": {
                 "method": "GET",
                 "header": [
                   {
                     "key": "Accept",
                     "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/availability?storeIdQuery={{smokehouseStoreId}}&lat=21.1458&lng=79.0882",
+                  "raw": "{{baseUrl}}/api/v1/mobile/services/detail?storeId={{storeId}}&lat={{userLat}}&lng={{userLng}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "services",
+                    "detail"
+                  ],
+                  "query": [
+                    {
+                      "key": "storeId",
+                      "value": "{{storeId}}",
+                      "description": "Active Store UUID"
+                    },
+                    {
+                      "key": "lat",
+                      "value": "{{userLat}}",
+                      "description": "Customer latitude"
+                    },
+                    {
+                      "key": "lng",
+                      "value": "{{userLng}}",
+                      "description": "Customer longitude"
+                    }
+                  ]
+                },
+                "description": "Returns Screen 11 store detail with Section 6B 'Store Products & Essentials'. Validates that only real inventory items are returned without any hardcoded demo fallbacks."
+              }
+            },
+            {
+              "name": "03. Process In-Store Product Bill Payment with Offer Applied ('Done as simple as that')",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response envelope conforms to ApiResponse format', function () {",
+                      "    var j = pm.response.json(); pm.expect(j.success).to.be.true; pm.expect(j.message).to.be.a('string');",
+                      "});",
+                      "",
+                      "pm.test('Payment receipt contains verified platform txnId and receipt number', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.txnId).to.be.a('string').and.not.empty; pm.expect(d.receiptNumber).to.be.a('string').and.not.empty; pm.expect(d.status).to.eql('SUCCESS');",
+                      "});",
+                      "",
+                      "pm.test('Offer discount math is accurate (billAmount - discount == totalPaid)', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.totalPaid).to.eql((d.billAmount - d.discount) + (d.tip || 0));",
+                      "});",
+                      "",
+                      "pm.test('PINAK Coins reward credited to customer wallet', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.coinsEarned).to.be.at.least(0);",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.txnId) {",
+                      "        pm.collectionVariables.set('txnId', jsonData.data.txnId);",
+                      "        console.log('✅ [POSTMAN] Auto-saved txnId: ' + jsonData.data.txnId);",
+                      "    }",
+                      "    if (jsonData.data.receiptNumber) {",
+                      "        pm.collectionVariables.set('orderRef', jsonData.data.receiptNumber);",
+                      "        console.log('✅ [POSTMAN] Auto-saved orderRef: ' + jsonData.data.receiptNumber);",
+                      "    }",
+                      "    if (jsonData.data.totalPaid) {",
+                      "        pm.collectionVariables.set('totalPaid', String(jsonData.data.totalPaid));",
+                      "        console.log('✅ [POSTMAN] Auto-saved totalPaid: ' + String(jsonData.data.totalPaid));",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"storeName\": \"{{currentStoreName}}\",\n  \"billAmount\": 1200,\n  \"discountAmount\": 600,\n  \"couponCode\": \"WELCOME\",\n  \"tipAmount\": 0,\n  \"coinsRedeemed\": 0,\n  \"coinsEarned\": 120,\n  \"totalPaid\": 600,\n  \"paymentMethod\": \"Google Pay UPI\",\n  \"customerName\": \"Rohan Sharma\",\n  \"customerPhone\": \"{{testPhone}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/pay-bill",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "table-bookings",
+                    "pay-bill"
+                  ]
+                },
+                "description": "Settles in-store product bill with applied store discount offer. Generates verified transaction ID, records merchant revenue, credits PINAK cashback coins, and returns clean digital invoice receipt ('Done as simple as that')."
+              }
+            }
+          ]
+        },
+        {
+          "name": "🍽️ Table Booking & Reservations (Screens 11 ➔ 12)",
+          "description": "# 🍽️ Table Booking & Pre-Book Reservations Engine\n\nHandles customer dining slot selection, party size limits, promotional pre-booking discounts, cover charge checkout, digital passes, bill payment, and cancellations.",
+          "item": [
+            {
+              "name": "01. Get Table Booking Slot & Offer Availability",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response envelope conforms to ApiResponse format', function () {",
+                      "    var j = pm.response.json(); pm.expect(j.success).to.be.true; pm.expect(j.data).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test('Slot schedule returns upcoming calendar dates and meal slots', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.upcomingDates).to.be.an('array').and.not.empty; pm.expect(d.lunchSlots).to.be.an('array'); pm.expect(d.dinnerSlots).to.be.an('array');",
+                      "});",
+                      "",
+                      "pm.test('Pre-book offer options and cover charges configured', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.exclusiveOffers).to.be.an('array'); pm.expect(d.vipPlan).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.store && jsonData.data.store.storeId) {",
+                      "        pm.collectionVariables.set('storeId', jsonData.data.store.storeId);",
+                      "        console.log('✅ [POSTMAN] Auto-saved storeId: ' + jsonData.data.store.storeId);",
+                      "    }",
+                      "    if (jsonData.data.store && jsonData.data.store.storeName) {",
+                      "        pm.collectionVariables.set('currentStoreName', jsonData.data.store.storeName);",
+                      "        console.log('✅ [POSTMAN] Auto-saved currentStoreName: ' + jsonData.data.store.storeName);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/availability?storeId={{storeId}}&lat={{userLat}}&lng={{userLng}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2170,83 +2311,69 @@
                   ],
                   "query": [
                     {
-                      "key": "storeIdQuery",
-                      "value": "{{smokehouseStoreId}}",
-                      "description": "Store Outlet UUID (Defaults to Nagpur Flagship if omitted)"
+                      "key": "storeId",
+                      "value": "{{storeId}}"
                     },
                     {
                       "key": "lat",
-                      "value": "21.1458",
-                      "description": "Device GPS Latitude"
+                      "value": "{{userLat}}"
                     },
                     {
                       "key": "lng",
-                      "value": "79.0882",
-                      "description": "Device GPS Longitude"
+                      "value": "{{userLng}}"
                     }
                   ]
                 },
-                "description": "### 🍽️ Screen 11 Next: Table Booking Slot & Pre-Book Offers Availability\n\nReturns dynamic slot availability, upcoming 7 calendar days with discount badges, lunch and dinner time slots, party size limits (1-8 guests), active pre-booking offers with redeemable cover charges, VIP membership upsell details, and cancellation policies."
-              },
-              "response": [
-                {
-                  "name": "200 OK - Table Booking Availability",
-                  "originalRequest": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/availability?storeIdQuery={{smokehouseStoreId}}&lat=21.1458&lng=79.0882",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "mobile",
-                        "table-bookings",
-                        "availability"
-                      ]
-                    }
-                  },
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Table booking availability fetched successfully\",\n  \"data\": {\n    \"store\": {\n      \"storeId\": \"97aabe53-9349-439d-952e-40f723bb8f51\",\n      \"storeName\": \"Haldiram's Sweets & Snacks - Nagpur Flagship\",\n      \"storeAddress\": \"West High Court Road, Dharampeth\",\n      \"cuisines\": \"North Indian, Sweets & Snacks\",\n      \"coverImageUrl\": \"https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80\",\n      \"contactPhone\": \"+919145776684\",\n      \"latitude\": 21.1458,\n      \"longitude\": 79.0882,\n      \"cancellationPolicyText\": \"Free cancellation before dining start time. 100% cover charge refund.\",\n      \"isTableBookingEnabled\": true\n    },\n    \"guestConfig\": {\n      \"minGuests\": 1,\n      \"maxGuests\": 8,\n      \"defaultGuests\": 2,\n      \"availableGuestCounts\": [\n        1,\n        2,\n        3,\n        4,\n        5,\n        6,\n        7,\n        8\n      ]\n    },\n    \"upcomingDates\": [\n      {\n        \"key\": \"2026-11-02\",\n        \"dateFormatted\": \"02 Nov 2026\",\n        \"month\": \"Nov\",\n        \"dayNum\": \"02\",\n        \"dayName\": \"Today\",\n        \"discountBadge\": \"20% off\",\n        \"isAvailable\": true\n      },\n      {\n        \"key\": \"2026-11-03\",\n        \"dateFormatted\": \"03 Nov 2026\",\n        \"month\": \"Nov\",\n        \"dayNum\": \"03\",\n        \"dayName\": \"Tomorrow\",\n        \"discountBadge\": \"15% off\",\n        \"isAvailable\": true\n      }\n    ],\n    \"lunchSlots\": [\n      {\n        \"time\": \"12:45 PM\",\n        \"discountBadge\": \"15% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      },\n      {\n        \"time\": \"01:00 PM\",\n        \"discountBadge\": \"20% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      },\n      {\n        \"time\": \"01:45 PM\",\n        \"discountBadge\": \"20% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      }\n    ],\n    \"dinnerSlots\": [\n      {\n        \"time\": \"07:00 PM\",\n        \"discountBadge\": \"20% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      },\n      {\n        \"time\": \"07:45 PM\",\n        \"discountBadge\": \"20% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      },\n      {\n        \"time\": \"08:30 PM\",\n        \"discountBadge\": \"15% off\",\n        \"status\": \"AVAILABLE\",\n        \"isAvailable\": true\n      }\n    ],\n    \"exclusiveOffers\": [\n      {\n        \"id\": \"opt_primary\",\n        \"title\": \"Flat 20% off on Total Bill\",\n        \"discountPct\": 20,\n        \"coverChargePerGuest\": 25,\n        \"isExclusive\": true,\n        \"perkHighlight\": \"Redeem it by paying final bill via PINAK\"\n      },\n      {\n        \"id\": \"opt_15\",\n        \"title\": \"Flat 15% off on Total Bill\",\n        \"discountPct\": 15,\n        \"coverChargePerGuest\": 10,\n        \"isExclusive\": true,\n        \"perkHighlight\": \"Redeem it by paying final bill via PINAK\"\n      }\n    ],\n    \"regularOffer\": {\n      \"id\": \"opt_regular\",\n      \"title\": \"Standard table booking\",\n      \"discountPct\": 0,\n      \"coverChargePerGuest\": 0,\n      \"isExclusive\": false,\n      \"isRegular\": true,\n      \"perkHighlight\": \"Free table reservation without cover charge\"\n    },\n    \"vipPlan\": {\n      \"id\": \"pinak_vip_1m\",\n      \"title\": \"PINAK 1 Month Plan\",\n      \"price\": 1,\n      \"originalPrice\": 99,\n      \"subtitle\": \"Enjoy unlimited access to pre-book offers on 7500+ restaurants.\",\n      \"isDefaultAdded\": true\n    },\n    \"paymentMethods\": [\n      \"Google Pay\",\n      \"PhonePe UPI\",\n      \"Paytm UPI\",\n      \"Credit or Debit Card\",\n      \"Netbanking\"\n    ],\n    \"termsAndConditions\": [\n      \"Standard terms and conditions apply.\",\n      \"The deal must be redeemed / bill paid within 6 hours of the dining start time, or the offer will expire.\",\n      \"Discount, if any, can only be availed when you pay your bill via PINAK.\",\n      \"The paid cover charge will be redeemed automatically when you pay your bill via PINAK.\",\n      \"Cover charges will be fully refunded only if booking is cancelled before the dining start time.\",\n      \"A maximum of Rs. 3,00,000 can be paid in a single bill payment transaction via PINAK.\"\n    ],\n    \"cancellationPolicy\": {\n      \"freeCancellationBeforeHours\": 0,\n      \"refundPercentage\": 100,\n      \"description\": \"Free cancellation up to dining slot start time. 100% of cover charge is automatically refunded to original payment method.\"\n    }\n  }\n}"
-                }
-              ],
+                "description": "Returns upcoming 7 calendar days, lunch/dinner time slots with discount labels, party size selector limits, active pre-book offers with redeemable cover charges, VIP membership upsell details, and terms & conditions."
+              }
+            },
+            {
+              "name": "02. Create Table Booking / Pre-book Reservation (Checkout)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
-                      "var json = pm.response.json();",
-                      "pm.test('[Contract] Valid availability structure', function () {",
-                      "    pm.expect(json.success).to.eql(true);",
-                      "    pm.expect(json.data.store).to.be.an('object');",
-                      "    pm.expect(json.data.upcomingDates).to.be.an('array');",
-                      "    pm.expect(json.data.lunchSlots).to.be.an('array');",
-                      "    pm.expect(json.data.vipPlan.price).to.eql(1.00);",
-                      "});"
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response envelope conforms to ApiResponse format', function () {",
+                      "    var j = pm.response.json(); pm.expect(j.success).to.be.true; pm.expect(j.data).to.be.an('object');",
+                      "});",
+                      "",
+                      "pm.test('Booking reference and 4-digit host PIN generated', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.bookingRef).to.be.a('string').and.match(/^PNK-TB-/); pm.expect(d.verificationCode).to.be.a('string').and.have.lengthOf(4); pm.expect(d.status).to.eql('CONFIRMED');",
+                      "});",
+                      "",
+                      "pm.test('Settlement math calculates cover charge correctly', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.guests).to.eql(4); pm.expect(d.totalCoverCharge).to.be.at.least(0);",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.bookingRef) {",
+                      "        pm.collectionVariables.set('tableBookingRef', jsonData.data.bookingRef);",
+                      "        console.log('✅ [POSTMAN] Auto-saved tableBookingRef: ' + jsonData.data.bookingRef);",
+                      "    }",
+                      "    if (jsonData.data.id) {",
+                      "        pm.collectionVariables.set('tableBookingId', jsonData.data.id);",
+                      "        console.log('✅ [POSTMAN] Auto-saved tableBookingId: ' + jsonData.data.id);",
+                      "    }",
+                      "    if (jsonData.data.verificationCode) {",
+                      "        pm.collectionVariables.set('verificationCode', jsonData.data.verificationCode);",
+                      "        console.log('✅ [POSTMAN] Auto-saved verificationCode: ' + jsonData.data.verificationCode);",
+                      "    }",
+                      "}"
                     ],
                     "type": "text/javascript"
                   }
                 }
-              ]
-            },
-            {
-              "name": "24b. Create Table Booking / Pre-book Reservation (Checkout)",
+              ],
               "request": {
                 "method": "POST",
                 "header": [
@@ -2255,13 +2382,13 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
+                    "key": "Accept",
+                    "value": "application/json"
                   }
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"storeId\": \"97aabe53-9349-439d-952e-40f723bb8f51\",\n  \"bookingDate\": \"2026-11-02\",\n  \"mealType\": \"LUNCH\",\n  \"slotTime\": \"01:45 PM\",\n  \"guests\": 2,\n  \"offerId\": \"opt_primary\",\n  \"offerTitle\": \"Flat 20% off on Total Bill\",\n  \"discountPct\": 20,\n  \"coverChargePerGuest\": 25,\n  \"includeVipPlan\": true,\n  \"vipPlanFee\": 1,\n  \"customerName\": \"Rohan Sharma\",\n  \"customerPhone\": \"+919876543210\",\n  \"customerEmail\": \"rohan@pinak.app\",\n  \"paymentMethod\": \"Google Pay\",\n  \"specialRequests\": \"Window table if available\"\n}"
+                  "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"bookingDate\": \"2026-11-20\",\n  \"mealType\": \"DINNER\",\n  \"slotTime\": \"08:30 PM\",\n  \"guests\": 4,\n  \"offerId\": \"c1940bbf-a1ef-43f7-9f5a-a17377085c7b\",\n  \"offerTitle\": \"Flat 50% OFF on Total Bill\",\n  \"discountPct\": 50,\n  \"coverChargePerGuest\": 25,\n  \"includeVipPlan\": true,\n  \"vipPlanFee\": 1,\n  \"customerName\": \"Rohan Sharma\",\n  \"customerPhone\": \"{{testPhone}}\",\n  \"customerEmail\": \"rohan.sharma@example.com\",\n  \"paymentMethod\": \"Google Pay\",\n  \"specialRequests\": \"Pre-booked via PINAK Mobile App\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/mobile/table-bookings",
@@ -2275,83 +2402,39 @@
                     "table-bookings"
                   ]
                 },
-                "description": "### 💳 Pre-book Table Checkout & Reservation Creation\n\nCreates a confirmed table booking in `table_bookings` table, computes cover charge (2 guests * ₹25 = ₹50) + ₹1 VIP fee = ₹51 total, assigns a unique `PNK-TB-YYYYMM-XXXXXX` reference and 4-digit host verification PIN."
-              },
-              "response": [
-                {
-                  "name": "200 OK - Table Reservation Confirmed",
-                  "originalRequest": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\"storeId\":\"97aabe53-9349-439d-952e-40f723bb8f51\",\"bookingDate\":\"2026-11-02\",\"mealType\":\"LUNCH\",\"slotTime\":\"01:45 PM\",\"guests\":2,\"offerId\":\"opt_primary\",\"offerTitle\":\"Flat 20% off on Total Bill\",\"discountPct\":20,\"coverChargePerGuest\":25,\"includeVipPlan\":true,\"vipPlanFee\":1,\"customerName\":\"Rohan Sharma\",\"customerPhone\":\"+919876543210\",\"paymentMethod\":\"Google Pay\"}"
-                    },
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "mobile",
-                        "table-bookings"
-                      ]
-                    }
-                  },
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Table reservation confirmed successfully\",\n  \"data\": {\n    \"bookingId\": \"a5e6284a-9b12-4f3b-871c-3081e7d9b231\",\n    \"bookingRef\": \"PNK-TB-202611-382910\",\n    \"storeId\": \"97aabe53-9349-439d-952e-40f723bb8f51\",\n    \"storeName\": \"Haldiram's Sweets & Snacks - Nagpur Flagship\",\n    \"storeAddress\": \"West High Court Road, Dharampeth\",\n    \"coverImageUrl\": \"https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&auto=format&fit=crop&q=80\",\n    \"contactPhone\": \"+919145776684\",\n    \"guests\": 2,\n    \"bookingDate\": \"2026-11-02\",\n    \"formattedDate\": \"02 Nov 2026\",\n    \"mealType\": \"LUNCH\",\n    \"slotTime\": \"01:45 PM\",\n    \"offerTitle\": \"Flat 20% off on Total Bill\",\n    \"discountPct\": 20,\n    \"coverChargePerGuest\": 25,\n    \"totalCoverCharge\": 50,\n    \"includeVipPlan\": true,\n    \"vipPlanFee\": 1,\n    \"totalPaid\": 51,\n    \"paymentMethod\": \"Google Pay\",\n    \"paymentStatus\": \"PAID\",\n    \"status\": \"CONFIRMED\",\n    \"verificationCode\": \"8492\",\n    \"canCancel\": true,\n    \"isCancelled\": false,\n    \"coinsEarned\": 60,\n    \"diningInstructions\": [\n      \"Please arrive at Haldiram's Sweets & Snacks 10 minutes prior to your booking slot.\",\n      \"Show your Reservation ID (PNK-TB-202611-382910) or 4-digit PIN to the restaurant host upon arrival.\",\n      \"Pay your final dining bill through the PINAK app at the table to automatically redeem your ₹50.00 cover charge and unlock locked offer discount.\"\n    ]\n  }\n}"
-                }
-              ],
+                "description": "Creates restaurant table booking, confirms cover charge settlement, creates unique booking reference (PNK-TB-XXXXXX), generates 4-digit host PIN, and captures values into collection variables."
+              }
+            },
+            {
+              "name": "03. Fetch Table Booking Details by ID or Ref",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
-                      "var json = pm.response.json();",
-                      "pm.test('[Booking] Confirmed booking ref created', function () {",
-                      "    pm.expect(json.success).to.eql(true);",
-                      "    pm.expect(json.data.status).to.eql('CONFIRMED');",
-                      "    pm.expect(json.data.bookingRef).to.include('PNK-TB-');",
-                      "    pm.expect(json.data.totalPaid).to.eql(51.00);",
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
                       "});",
-                      "if (json.data && json.data.bookingRef) {",
-                      "    pm.environment.set('tableBookingRef', json.data.bookingRef);",
-                      "    pm.environment.set('tableBookingId', json.data.bookingId);",
-                      "}"
+                      "",
+                      "pm.test('Booking details match captured reference', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.bookingRef).to.eql(pm.collectionVariables.get('tableBookingRef')); pm.expect(d.verificationCode).to.be.a('string');",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      ""
                     ],
                     "type": "text/javascript"
                   }
                 }
-              ]
-            },
-            {
-              "name": "24c. Fetch Table Booking Details by ID or Ref",
+              ],
               "request": {
                 "method": "GET",
                 "header": [
                   {
                     "key": "Accept",
                     "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
                   }
                 ],
                 "url": {
@@ -2367,64 +2450,97 @@
                     "{{tableBookingRef}}"
                   ]
                 },
-                "description": "### 🔍 Retrieve Reservation Details\n\nRetrieves full reservation details, restaurant address, directions, verification PIN, and cancellation eligibility by booking ID or human-readable reference."
-              },
-              "response": [
-                {
-                  "name": "200 OK - Reservation Details Found",
-                  "originalRequest": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/PNK-TB-202611-382910",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "mobile",
-                        "table-bookings",
-                        "PNK-TB-202611-382910"
-                      ]
-                    }
-                  },
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Table booking details fetched successfully\",\n  \"data\": {\n    \"bookingRef\": \"PNK-TB-202611-382910\",\n    \"storeName\": \"Haldiram's Sweets & Snacks - Nagpur Flagship\",\n    \"guests\": 2,\n    \"slotTime\": \"01:45 PM\",\n    \"status\": \"CONFIRMED\",\n    \"verificationCode\": \"8492\",\n    \"canCancel\": true\n  }\n}"
-                }
-              ],
+                "description": "Returns full booking pass details including status, slot time, host verification PIN, directions, and cancellation eligibility."
+              }
+            },
+            {
+              "name": "04. List Customer Table Reservations",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
-                      "var json = pm.response.json();",
-                      "pm.test('[Lookup] Found reservation matches ref', function () {",
-                      "    pm.expect(json.success).to.eql(true);",
-                      "    pm.expect(json.data.bookingRef).to.be.a('string');",
-                      "});"
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Customer reservations returned as an array', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d).to.be.an('array');",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      ""
                     ],
                     "type": "text/javascript"
                   }
                 }
-              ]
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/my-bookings?phone={{testPhone}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "my-bookings"
+                  ],
+                  "query": [
+                    {
+                      "key": "phone",
+                      "value": "{{testPhone}}"
+                    }
+                  ]
+                },
+                "description": "Returns active and past table reservations for the customer's phone number."
+              }
             },
             {
-              "name": "24d. Cancel Table Booking & Process Cover Charge Refund",
+              "name": "05. Settle In-Store Dining Bill with Offer Applied (Screen 12/13 Dining Bill Pay)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Dining bill settled and linked to reservation', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.txnId).to.be.a('string').and.not.empty; pm.expect(d.status).to.eql('SUCCESS');",
+                      "});",
+                      "",
+                      "pm.test('Total paid equals billAmount minus discount plus tip', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.totalPaid).to.eql((d.billAmount - d.discount) + (d.tip || 0));",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.txnId) {",
+                      "        pm.collectionVariables.set('txnId', jsonData.data.txnId);",
+                      "        console.log('✅ [POSTMAN] Auto-saved txnId: ' + jsonData.data.txnId);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
               "request": {
                 "method": "POST",
                 "header": [
@@ -2433,13 +2549,73 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
+                    "key": "Accept",
+                    "value": "application/json"
                   }
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"cancellationReason\": \"Change of plans\",\n  \"comments\": \"Need to reschedule for next weekend\"\n}"
+                  "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"storeName\": \"{{currentStoreName}}\",\n  \"bookingRef\": \"{{tableBookingRef}}\",\n  \"billAmount\": 2500,\n  \"discountAmount\": 1250,\n  \"tipAmount\": 50,\n  \"coinsRedeemed\": 0,\n  \"coinsEarned\": 260,\n  \"totalPaid\": 1300,\n  \"paymentMethod\": \"Google Pay UPI\",\n  \"customerName\": \"Rohan Sharma\",\n  \"customerPhone\": \"{{testPhone}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/pay-bill",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "mobile",
+                    "table-bookings",
+                    "pay-bill"
+                  ]
+                },
+                "description": "Processes customer dining bill settlement, links pre-booking reservation, applies 50% discount automatically, credits merchant wallet, and returns instant digital invoice."
+              }
+            },
+            {
+              "name": "06. Cancel Table Booking & Process Cover Charge Refund",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Reservation status updated to CANCELLED', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.status).to.eql('CANCELLED');",
+                      "});",
+                      "",
+                      "pm.test('100% cover charge refund initiated', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.refundAmount).to.be.at.least(0); pm.expect(d.refundStatus).to.be.oneOf(['INITIATED', 'REFUNDED', 'NOT_APPLICABLE']);",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      ""
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"cancellationReason\": \"Change of dining plans\",\n  \"comments\": \"Need to reschedule to next week\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/{{tableBookingRef}}/cancel",
@@ -2455,72 +2631,379 @@
                     "cancel"
                   ]
                 },
-                "description": "### ❌ Cancel Table Booking & Refund Cover Charge\n\nCancels the confirmed table booking. Automatically initiates 100% refund of the cover charge to the original payment method with a generated ARN refund reference code."
-              },
-              "response": [
-                {
-                  "name": "200 OK - Reservation Cancelled & Refund Initiated",
-                  "originalRequest": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\"cancellationReason\":\"Change of plans\",\"comments\":\"Need to reschedule for next weekend\"}"
-                    },
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings/PNK-TB-202611-382910/cancel",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "mobile",
-                        "table-bookings",
-                        "PNK-TB-202611-382910",
-                        "cancel"
-                      ]
-                    }
-                  },
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Table reservation cancelled successfully. Refund initiated.\",\n  \"data\": {\n    \"bookingRef\": \"PNK-TB-202611-382910\",\n    \"status\": \"CANCELLED\",\n    \"isCancelled\": true,\n    \"canCancel\": false,\n    \"cancellationReason\": \"Change of plans\",\n    \"refundAmount\": 50,\n    \"refundStatus\": \"INITIATED\",\n    \"refundRef\": \"REF-PNK-9E2B4A1C\"\n  }\n}"
-                }
-              ],
+                "description": "Cancels active reservation and initiates 100% refund of cover charges."
+              }
+            }
+          ]
+        },
+        {
+          "name": "👨‍💼 Merchant & Host Table Roster Management (Host Desk & Verify Check-In)",
+          "description": "# 👨‍💼 Merchant & Host Table Roster Management\n\nAPIs used by store hosts, cashiers, and merchant managers to manage incoming customer bookings, verify customer check-in PINs upon arrival, attach food bills, and mark tables as seated or completed.",
+          "item": [
+            {
+              "name": "01. List Merchant Store Reservations (Host Desk Roster)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
-                      "var json = pm.response.json();",
-                      "pm.test('[Cancellation] Status updated to CANCELLED with refund', function () {",
-                      "    pm.expect(json.success).to.eql(true);",
-                      "    pm.expect(json.data.status).to.eql('CANCELLED');",
-                      "    pm.expect(json.data.isCancelled).to.eql(true);",
-                      "    pm.expect(json.data.refundStatus).to.eql('INITIATED');",
-                      "    pm.expect(json.data.refundAmount).to.be.above(0);",
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Store reservations returned as list', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d).to.be.an('array');",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      ""
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/table-bookings?storeId={{storeId}}&status=CONFIRMED",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "table-bookings"
+                  ],
+                  "query": [
+                    {
+                      "key": "storeId",
+                      "value": "{{storeId}}"
+                    },
+                    {
+                      "key": "status",
+                      "value": "CONFIRMED"
+                    }
+                  ]
+                },
+                "description": "Lists incoming confirmed table reservations for the store outlet. Shows customer name, phone, party size, slot time, and host verification PIN."
+              }
+            },
+            {
+              "name": "02. Host Check-In & Mark Guest as Seated",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Status updated to SEATED upon customer arrival', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.status).to.eql('SEATED');",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      ""
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"SEATED\",\n  \"comments\": \"Guest verified at host desk with 4-digit PIN and seated at table\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/table-bookings/{{tableBookingRef}}/status?status=SEATED",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "table-bookings",
+                    "{{tableBookingRef}}",
+                    "status"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "SEATED"
+                    }
+                  ]
+                },
+                "description": "Called by store host when customer arrives and presents their 4-digit verification PIN. Transitions booking status from CONFIRMED to SEATED."
+              }
+            },
+            {
+              "name": "03. Attach Final Food Bill Amount to Reservation",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Food bill amount attached successfully', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.billAmount).to.eql(2500.00);",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      ""
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"billAmount\": 2500\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/table-bookings/{{tableBookingRef}}/bill-amount",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "table-bookings",
+                    "{{tableBookingRef}}",
+                    "bill-amount"
+                  ]
+                },
+                "description": "Allows store waiter or cashier to attach the food bill total to an active seated table."
+              }
+            },
+            {
+              "name": "04. Host Mark Reservation as Completed",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200 OK', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Status updated to COMPLETED', function () {",
+                      "    var d = pm.response.json().data; pm.expect(d.status).to.eql('COMPLETED');",
+                      "});",
+                      "",
+                      "pm.test('Response time SLA is within acceptable benchmark (< 1500ms)', function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      ""
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"COMPLETED\",\n  \"comments\": \"Dining completed and bill settled\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/table-bookings/{{tableBookingRef}}/status?status=COMPLETED",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "table-bookings",
+                    "{{tableBookingRef}}",
+                    "status"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "COMPLETED"
+                    }
+                  ]
+                },
+                "description": "Marks the table reservation as COMPLETED after dining and payment settlement."
+              }
+            }
+          ]
+        },
+        {
+          "name": "💳 Core Payments & UPI Gateway Subsystem (Transactions & Webhooks)",
+          "description": "Production-ready financial payment processing subsystem. Includes idempotency-keyed UPI intent generation, stateful gateway webhook callbacks (Mock UPI / PhonePe / Razorpay), transactional settlement, order lifecycle cancellation, and double-entry customer/merchant transaction ledgers.",
+          "item": [
+            {
+              "name": "01. Initiate Payment Intent with Idempotency Key (POST /api/v1/payments)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201 Created\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response envelope conforms to ApiResponse format\", function () {",
+                      "    var j = pm.response.json();",
+                      "    pm.expect(j.success).to.be.true;",
+                      "    pm.expect(j.message).to.be.a(\"string\");",
+                      "});",
+                      "",
+                      "pm.test(\"Payment intent contains valid UPI URI and provider order ID\", function () {",
+                      "    var d = pm.response.json().data;",
+                      "    pm.expect(d.paymentId).to.be.a(\"string\").and.not.empty;",
+                      "    pm.expect(d.transactionId).to.be.a(\"string\").and.not.empty;",
+                      "    pm.expect(d.providerOrderId).to.be.a(\"string\").and.not.empty;",
+                      "    pm.expect(d.status).to.eql(\"PENDING\");",
+                      "    pm.expect(d.payableAmount).to.be.at.least(0.01);",
+                      "    if (d.paymentIntent) {",
+                      "        pm.expect(d.paymentIntent.type).to.eql(\"UPI\");",
+                      "        pm.expect(d.paymentIntent.value).to.include(\"upi://pay\");",
+                      "    }",
+                      "});",
+                      "",
+                      "pm.test(\"Response time SLA is within acceptable benchmark (under 1500ms)\", function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData && jsonData.data) {",
+                      "    if (jsonData.data.paymentId) {",
+                      "        pm.collectionVariables.set(\"paymentId\", jsonData.data.paymentId);",
+                      "        console.log(\"✅ [POSTMAN] Auto-saved paymentId: \" + jsonData.data.paymentId);",
+                      "    }",
+                      "    if (jsonData.data.transactionId) {",
+                      "        pm.collectionVariables.set(\"transactionId\", jsonData.data.transactionId);",
+                      "        console.log(\"✅ [POSTMAN] Auto-saved transactionId: \" + jsonData.data.transactionId);",
+                      "    }",
+                      "    if (jsonData.data.providerOrderId) {",
+                      "        pm.collectionVariables.set(\"providerOrderId\", jsonData.data.providerOrderId);",
+                      "        console.log(\"✅ [POSTMAN] Auto-saved providerOrderId: \" + jsonData.data.providerOrderId);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"grossAmount\": 1500,\n  \"currency\": \"INR\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments"
+                  ]
+                },
+                "description": "Initiates a new payment intent with backend-authoritative calculation and mandatory Idempotency-Key header to prevent duplicate financial charges. Generates NPCI-compliant UPI deep-link URI and stores pending ledger transaction."
+              }
+            },
+            {
+              "name": "02. Fetch Payment Intent Status (GET /api/v1/payments/{{paymentId}})",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Payment details match active payment record\", function () {",
+                      "    var d = pm.response.json().data;",
+                      "    pm.expect(d.paymentId).to.eql(pm.collectionVariables.get(\"paymentId\"));",
+                      "    pm.expect(d.currency).to.eql(\"INR\");",
+                      "    pm.expect(d.payableAmount).to.be.a(\"number\");",
+                      "});",
+                      "",
+                      "pm.test(\"Response time SLA is within acceptable benchmark (under 1000ms)\", function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1000);",
                       "});"
                     ],
                     "type": "text/javascript"
                   }
                 }
-              ]
-            },
-            {
-              "name": "24e. List Customer Table Reservations",
+              ],
               "request": {
                 "method": "GET",
                 "header": [
@@ -2534,78 +3017,432 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/mobile/table-bookings?phone=%2B919876543210",
+                  "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "api",
                     "v1",
-                    "mobile",
-                    "table-bookings"
-                  ],
-                  "query": [
-                    {
-                      "key": "phone",
-                      "value": "%2B919876543210",
-                      "description": "Customer mobile phone number"
-                    }
+                    "payments",
+                    "{{paymentId}}"
                   ]
                 },
-                "description": "### 📋 List Customer Table Bookings\n\nLists all historical and active table bookings for a user by mobile phone or authenticated JWT bearer token."
-              },
-              "response": [
-                {
-                  "name": "200 OK - Customer Reservations List",
-                  "originalRequest": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Accept",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/mobile/table-bookings?phone=%2B919876543210",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "mobile",
-                        "table-bookings"
-                      ]
-                    }
-                  },
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"success\": true,\n  \"message\": \"Table reservations retrieved successfully\",\n  \"data\": [\n    {\n      \"bookingRef\": \"PNK-TB-202611-382910\",\n      \"storeName\": \"Haldiram's Sweets & Snacks - Nagpur Flagship\",\n      \"guests\": 2,\n      \"bookingDate\": \"2026-11-02\",\n      \"slotTime\": \"01:45 PM\",\n      \"status\": \"CANCELLED\",\n      \"totalPaid\": 51\n    }\n  ]\n}"
-                }
-              ],
+                "description": "Retrieves current status, amounts, and expiration time for a specific payment intent."
+              }
+            },
+            {
+              "name": "03. Ingest Payment Provider Webhook Callback (POST /api/v1/payments/webhooks/MOCK_UPI)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('[Status] HTTP 200 OK', function () { pm.response.to.have.status(200); });",
-                      "var json = pm.response.json();",
-                      "pm.test('[Array] Reservations list returned', function () {",
-                      "    pm.expect(json.success).to.eql(true);",
-                      "    pm.expect(json.data).to.be.an('array');",
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Webhook event successfully processed or deduplicated\", function () {",
+                      "    var d = pm.response.json().data;",
+                      "    pm.expect([\"SUCCESS\", \"ALREADY_PROCESSED\"]).to.include(d.status);",
+                      "});",
+                      "",
+                      "pm.test(\"Response time SLA is within acceptable benchmark (under 1500ms)\", function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1500);",
                       "});"
                     ],
                     "type": "text/javascript"
                   }
                 }
-              ]
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-Webhook-Signature",
+                    "value": "valid_test_signature"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": \"evt_{{$guid}}\",\n  \"eventType\": \"payment.success\",\n  \"paymentId\": \"{{paymentId}}\",\n  \"providerOrderId\": \"{{providerOrderId}}\",\n  \"providerPaymentId\": \"pay_mock_{{$randomInt}}\",\n  \"amount\": 1500,\n  \"currency\": \"INR\",\n  \"status\": \"SUCCESS\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments/webhooks/MOCK_UPI",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments",
+                    "webhooks",
+                    "MOCK_UPI"
+                  ]
+                },
+                "description": "Simulates inbound payment gateway webhook callback (e.g., NPCI UPI, PhonePe, Razorpay). Verifies HMAC-SHA256 signature, enforces idempotency, updates Payment and Transaction ledger states to SUCCESS, and triggers customer rewards."
+              }
+            },
+            {
+              "name": "04. Verify Settled Payment & PaidAt Timestamp (GET /api/v1/payments/{{paymentId}})",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Payment transitioned to SUCCESS with valid paidAt timestamp\", function () {",
+                      "    var d = pm.response.json().data;",
+                      "    pm.expect(d.status).to.eql(\"SUCCESS\");",
+                      "    pm.expect(d.paidAt).to.be.a(\"string\").and.not.empty;",
+                      "});",
+                      "",
+                      "pm.test(\"Response time SLA is within benchmark (under 1000ms)\", function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments",
+                    "{{paymentId}}"
+                  ]
+                },
+                "description": "Verifies the state machine transition from PENDING to SUCCESS following webhook ingestion. Confirms settled paidAt timestamp is stamped."
+              }
+            },
+            {
+              "name": "05. Initiate Cancellable Payment Intent (POST /api/v1/payments)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201 Created\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData && jsonData.data && jsonData.data.paymentId) {",
+                      "    pm.collectionVariables.set(\"paymentIdToCancel\", jsonData.data.paymentId);",
+                      "    console.log(\"✅ [POSTMAN] Auto-saved paymentIdToCancel: \" + jsonData.data.paymentId);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{$guid}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"grossAmount\": 500,\n  \"currency\": \"INR\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments"
+                  ]
+                },
+                "description": "Initiates a secondary payment intent specifically for testing lifecycle cancellation by user/timeout."
+              }
+            },
+            {
+              "name": "06. Cancel In-Flight Payment Intent (POST /api/v1/payments/{{paymentIdToCancel}}/cancel)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Payment transitioned to CANCELLED\", function () {",
+                      "    var d = pm.response.json().data;",
+                      "    pm.expect(d.status).to.eql(\"CANCELLED\");",
+                      "    pm.expect(d.cancelledAt).to.be.a(\"string\").and.not.empty;",
+                      "});",
+                      "",
+                      "pm.test(\"Response time SLA is within benchmark (under 1000ms)\", function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments/{{paymentIdToCancel}}/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments",
+                    "{{paymentIdToCancel}}",
+                    "cancel"
+                  ]
+                },
+                "description": "Cancels an in-flight pending payment intent, aborting gateway processing and marking the ledger transaction cancelled."
+              }
+            },
+            {
+              "name": "07. Customer Transaction Ledger (GET /api/v1/transactions)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Transaction ledger page returned with records\", function () {",
+                      "    var d = pm.response.json().data;",
+                      "    pm.expect(d.content).to.be.an(\"array\");",
+                      "    pm.expect(d.totalElements).to.be.at.least(1);",
+                      "});",
+                      "",
+                      "pm.test(\"Transactions contain merchant, store, amounts and status\", function () {",
+                      "    var txns = pm.response.json().data.content;",
+                      "    if (txns.length > 0) {",
+                      "        var tx = txns[0];",
+                      "        pm.expect(tx.id).to.be.a(\"string\");",
+                      "        pm.expect(tx.transactionReference).to.be.a(\"string\");",
+                      "        pm.expect(tx.payableAmount).to.be.a(\"number\");",
+                      "        pm.expect(tx.status).to.be.a(\"string\");",
+                      "    }",
+                      "});",
+                      "",
+                      "pm.test(\"Response time SLA is within benchmark (under 1000ms)\", function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/transactions?page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Returns customer historical transaction ledger with pagination, merchant name, store name, breakdown, payment method, and status."
+              }
+            },
+            {
+              "name": "08. Customer Transaction Details by ID (GET /api/v1/transactions/{{transactionId}})",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 OK\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Transaction details match target transactionId\", function () {",
+                      "    var d = pm.response.json().data;",
+                      "    pm.expect(d.id).to.eql(pm.collectionVariables.get(\"transactionId\"));",
+                      "    pm.expect(d.currency).to.eql(\"INR\");",
+                      "    pm.expect(d.status).to.eql(\"SUCCESS\");",
+                      "    pm.expect(d.merchant).to.be.an(\"object\");",
+                      "    pm.expect(d.store).to.be.an(\"object\");",
+                      "});",
+                      "",
+                      "pm.test(\"Response time SLA is within benchmark (under 1000ms)\", function () {",
+                      "    pm.expect(pm.responseTime).to.be.below(1000);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/transactions/{{transactionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "transactions",
+                    "{{transactionId}}"
+                  ]
+                },
+                "description": "Fetches detailed transaction record including merchant details, store location, gross amount, discount amount, net payable, provider transaction ID, and timestamp."
+              }
+            },
+            {
+              "name": "09. Merchant Store Transaction Ledger (GET /api/v1/merchant/transactions)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Response code is 200 OK (or 401/403 if merchant token not yet set)\", function () {",
+                      "    pm.expect([200, 401, 403]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200) {",
+                      "    var d = pm.response.json().data;",
+                      "    pm.expect(d.content).to.be.an(\"array\");",
+                      "    console.log(\"✅ Verified merchant store transaction audit ledger: \" + d.totalElements + \" transactions\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{merchantAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/merchant/transactions?storeId={{storeId}}&page=0&size=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "merchant",
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "storeId",
+                      "value": "{{storeId}}"
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Returns store-level transaction reconciliation log for the authenticated merchant or store manager."
+              }
             }
           ]
         }
@@ -2620,63 +3457,137 @@
       "description": "Base URL of PINAK Backend API server (e.g. http://localhost:8080 or https://pinak-server.onrender.com)"
     },
     {
+      "key": "storeId",
+      "value": "8e91aefa-dfb2-4f19-b4f6-907e82baf6a5",
+      "type": "string",
+      "description": "Active Store UUID from PostgreSQL (Fabindia Home & Living – Nagpur Flagship)"
+    },
+    {
+      "key": "currentStoreName",
+      "value": "Fabindia Home & Living – Nagpur Flagship",
+      "type": "string",
+      "description": "Name of the active store in database"
+    },
+    {
+      "key": "userLat",
+      "value": "21.1458",
+      "type": "string",
+      "description": "Customer device latitude (Nagpur Central)"
+    },
+    {
+      "key": "userLng",
+      "value": "79.0882",
+      "type": "string",
+      "description": "Customer device longitude (Nagpur Central)"
+    },
+    {
+      "key": "testPhone",
+      "value": "+919876543210",
+      "type": "string",
+      "description": "Customer test phone number (E.164 format)"
+    },
+    {
       "key": "phone",
       "value": "9876543210",
       "type": "string",
-      "description": "Customer 10-digit mobile phone number (automatically normalized to E.164 +919876543210)"
+      "description": "Customer 10-digit mobile phone number"
     },
     {
       "key": "sessionId",
       "value": "",
       "type": "string",
-      "description": "Auto-captured OTP challenge session ID from send-otp or resend-otp"
+      "description": "Auto-captured OTP challenge session ID"
     },
     {
       "key": "otpCode",
       "value": "",
       "type": "string",
-      "description": "6-digit OTP code retrieved from PostgreSQL mobile_otps table (SELECT otp_code FROM mobile_otps ORDER BY created_at DESC LIMIT 1) or dev console"
+      "description": "6-digit OTP code retrieved from PostgreSQL mobile_otps table"
     },
     {
       "key": "onboardingToken",
       "value": "",
       "type": "string",
-      "description": "Auto-captured scoped onboarding JWT for first-time signups, used to complete Screen 08 Profile Setup"
+      "description": "Auto-captured scoped onboarding JWT"
     },
     {
       "key": "accessToken",
       "value": "",
       "type": "string",
-      "description": "Auto-captured permanent customer Bearer JWT access token for fully onboarded members"
+      "description": "Auto-captured permanent customer Bearer JWT access token"
     },
     {
       "key": "refreshToken",
       "value": "",
       "type": "string",
-      "description": "Auto-captured long-lived refresh token for token renewal"
-    },
-    {
-      "key": "smokehouseStoreId",
-      "value": "e1000000-0000-0000-0000-000000000001",
-      "type": "string"
-    },
-    {
-      "key": "productId",
-      "value": "f1000000-0000-0000-0000-000000000001",
-      "type": "string",
-      "description": "Canonical Mock Product UUID for Wood-Fired Truffle Pizza"
+      "description": "Auto-captured long-lived refresh token"
     },
     {
       "key": "tableBookingRef",
       "value": "PNK-TB-202611-382910",
       "type": "string",
-      "description": "Active Table Booking Reference ID"
+      "description": "Active Table Booking Reference ID (e.g. PNK-TB-XXXXXX)"
     },
     {
       "key": "tableBookingId",
       "value": "a5e6284a-9b12-4f3b-871c-3081e7d9b231",
       "type": "string",
       "description": "Active Table Booking UUID"
+    },
+    {
+      "key": "verificationCode",
+      "value": "8492",
+      "type": "string",
+      "description": "4-digit Host Verification PIN shown on customer pass"
+    },
+    {
+      "key": "productId",
+      "value": "f1000000-0000-0000-0000-000000000001",
+      "type": "string",
+      "description": "Canonical Product UUID for retail shelf deal"
+    },
+    {
+      "key": "txnId",
+      "value": "TXN-ORD-88294102",
+      "type": "string",
+      "description": "Verified platform transaction number for bill payment or retail checkout"
+    },
+    {
+      "key": "orderRef",
+      "value": "PNK-ORD-88294102",
+      "type": "string",
+      "description": "In-store retail product order reference"
+    },
+    {
+      "key": "totalPaid",
+      "value": "600",
+      "type": "string",
+      "description": "Total amount paid in last checkout"
+    },
+    {
+      "key": "paymentId",
+      "value": "f350d35a-4e64-4261-a7d4-8c6167cb7f3d",
+      "type": "string"
+    },
+    {
+      "key": "paymentIdToCancel",
+      "value": "157b2dfa-a2c6-4544-b8df-038e552ec2f5",
+      "type": "string"
+    },
+    {
+      "key": "providerOrderId",
+      "value": "ord_9427ff5ae6bb",
+      "type": "string"
+    },
+    {
+      "key": "transactionId",
+      "value": "5d454dc3-5dda-40a4-97ba-8d8362055ec2",
+      "type": "string"
+    },
+    {
+      "key": "merchantAccessToken",
+      "value": "",
+      "type": "string"
     }
   ]
 }

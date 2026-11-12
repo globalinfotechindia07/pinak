@@ -2474,6 +2474,7 @@ function AddStoreDrawer({
       setIsTableBookingEnabled(false);
     } else if (isRetail) {
       setStoreType("RETAIL");
+      setIsTableBookingEnabled(false);
       setImageUrl("https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?auto=format&fit=crop&w=1200&q=80");
       setMenuImages([]);
       setPhotos([
@@ -2490,6 +2491,7 @@ function AddStoreDrawer({
       ]);
     } else if (isSalon) {
       setStoreType("SERVICES");
+      setIsTableBookingEnabled(false);
       setImageUrl("https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80");
       setMenuImages([]);
       setPhotos([
@@ -2499,6 +2501,7 @@ function AddStoreDrawer({
       setAmenities(["Air Conditioned", "Cards & UPI Accepted", "Free High-Speed Wi-Fi"]);
     } else {
       setStoreType("DINING");
+      setIsTableBookingEnabled(true);
       setImageUrl("https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80");
       if (menuImages.length === 0) {
         setMenuImages([
@@ -2722,6 +2725,79 @@ function AddStoreDrawer({
                     <span className="font-semibold text-[11px]">Merchant KYC Verified — Eligible to create branch stores</span>
                   </div>
                 )}
+                {/* 1-Click Business / Store Type Selection */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                      Business Type / Category *
+                    </label>
+                    <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">
+                      {storeType === "RETAIL" ? "🛍️ Retail Mode (No Waiter/Dining)" : storeType === "SERVICES" ? "✂️ Services Mode" : "🍽️ Dining Mode"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStoreType("DINING");
+                        setIsTableBookingEnabled(true);
+                      }}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer",
+                        storeType === "DINING"
+                          ? "border-purple-600 bg-purple-50/80 dark:bg-purple-950/50 text-purple-900 dark:text-purple-200 ring-2 ring-purple-600/20"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                      )}
+                    >
+                      <span className="text-lg">🍽️</span>
+                      <div className="mt-1">
+                        <span className="font-black text-xs block text-slate-900 dark:text-white">Dining & Food</span>
+                        <span className="text-[9.5px] text-slate-400 block leading-tight">Cafes, Restaurants</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStoreType("RETAIL");
+                        setIsTableBookingEnabled(false);
+                      }}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer",
+                        storeType === "RETAIL"
+                          ? "border-purple-600 bg-purple-50/80 dark:bg-purple-950/50 text-purple-900 dark:text-purple-200 ring-2 ring-purple-600/20"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                      )}
+                    >
+                      <span className="text-lg">🛍️</span>
+                      <div className="mt-1">
+                        <span className="font-black text-xs block text-slate-900 dark:text-white">Retail & Shopping</span>
+                        <span className="text-[9.5px] text-slate-400 block leading-tight">Fabindia, Fashion, Mart</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStoreType("SERVICES");
+                        setIsTableBookingEnabled(false);
+                      }}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer",
+                        storeType === "SERVICES"
+                          ? "border-purple-600 bg-purple-50/80 dark:bg-purple-950/50 text-purple-900 dark:text-purple-200 ring-2 ring-purple-600/20"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                      )}
+                    >
+                      <span className="text-lg">✂️</span>
+                      <div className="mt-1">
+                        <span className="font-black text-xs block text-slate-900 dark:text-white">Services & Care</span>
+                        <span className="text-[9.5px] text-slate-400 block leading-tight">Salons, Spas, Clinics</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="font-bold text-slate-700 dark:text-slate-300">
@@ -3176,7 +3252,16 @@ function EditStoreDrawer({
   const [menuImages, setMenuImages] = useState<string[]>(store.menuImages || []);
   const [photos, setPhotos] = useState<string[]>(store.photos || []);
   const [amenities, setAmenities] = useState<string[]>(store.amenities || []);
-  const [isTableBookingEnabled, setIsTableBookingEnabled] = useState<boolean>(store.isTableBookingEnabled ?? true);
+  const initialEditStoreType: "DINING" | "RETAIL" | "SERVICES" = 
+    store.category && /retail|fashion|cloth|apparel|fab|grocery|mart/i.test(store.category)
+      ? "RETAIL"
+      : store.category && /salon|spa|beauty|wellness/i.test(store.category)
+      ? "SERVICES"
+      : store.isTableBookingEnabled === false
+      ? "RETAIL"
+      : "DINING";
+  const [storeType, setStoreType] = useState<"DINING" | "RETAIL" | "SERVICES">(initialEditStoreType);
+  const [isTableBookingEnabled, setIsTableBookingEnabled] = useState<boolean>(store.isTableBookingEnabled ?? (initialEditStoreType === "DINING"));
   const [allowFreeStandardBooking, setAllowFreeStandardBooking] = useState<boolean>(store.allowFreeStandardBooking ?? true);
   const [defaultStandardCoverCharge, setDefaultStandardCoverCharge] = useState<number>(store.defaultStandardCoverCharge ?? 0);
 
@@ -3209,6 +3294,7 @@ function EditStoreDrawer({
       longitude: Number(longitude),
       operatingHours: operatingHours.trim(),
       status,
+      category: storeType === "RETAIL" ? "Retail & Lifestyle" : storeType === "SERVICES" ? "Services & Wellness" : "Dining & Retail",
       imageUrl: imageUrl.trim() || undefined,
       menuImages,
       photos,
@@ -3289,6 +3375,79 @@ function EditStoreDrawer({
             {/* STEP 1: BASIC INFO & HOURS */}
             {currentStep === 1 && (
               <div className="space-y-4 animate-in fade-in duration-200">
+                {/* 1-Click Business / Store Type Selection */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                      Business Type / Category *
+                    </label>
+                    <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold">
+                      {storeType === "RETAIL" ? "🛍️ Retail Mode" : storeType === "SERVICES" ? "✂️ Services Mode" : "🍽️ Dining Mode"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStoreType("DINING");
+                        setIsTableBookingEnabled(true);
+                      }}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer",
+                        storeType === "DINING"
+                          ? "border-purple-600 bg-purple-50/80 dark:bg-purple-950/50 text-purple-900 dark:text-purple-200 ring-2 ring-purple-600/20"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                      )}
+                    >
+                      <span className="text-lg">🍽️</span>
+                      <div className="mt-1">
+                        <span className="font-black text-xs block text-slate-900 dark:text-white">Dining & Food</span>
+                        <span className="text-[9.5px] text-slate-400 block leading-tight">Cafes, Restaurants</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStoreType("RETAIL");
+                        setIsTableBookingEnabled(false);
+                      }}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer",
+                        storeType === "RETAIL"
+                          ? "border-purple-600 bg-purple-50/80 dark:bg-purple-950/50 text-purple-900 dark:text-purple-200 ring-2 ring-purple-600/20"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                      )}
+                    >
+                      <span className="text-lg">🛍️</span>
+                      <div className="mt-1">
+                        <span className="font-black text-xs block text-slate-900 dark:text-white">Retail & Shopping</span>
+                        <span className="text-[9.5px] text-slate-400 block leading-tight">Fabindia, Fashion, Mart</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStoreType("SERVICES");
+                        setIsTableBookingEnabled(false);
+                      }}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer",
+                        storeType === "SERVICES"
+                          ? "border-purple-600 bg-purple-50/80 dark:bg-purple-950/50 text-purple-900 dark:text-purple-200 ring-2 ring-purple-600/20"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                      )}
+                    >
+                      <span className="text-lg">✂️</span>
+                      <div className="mt-1">
+                        <span className="font-black text-xs block text-slate-900 dark:text-white">Services & Care</span>
+                        <span className="text-[9.5px] text-slate-400 block leading-tight">Salons, Spas, Clinics</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Branch Name *</label>
                   <input

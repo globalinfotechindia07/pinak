@@ -9,6 +9,23 @@ export interface RewardBalanceDTO {
   tier: string;
 }
 
+export interface CustomerRewardAccountDTO {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  availableBalance: number;
+  pendingBalance: number;
+  lifetimeEarned: number;
+  lifetimeRedeemed: number;
+  currency: string;
+  tier: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RewardLedgerItemDTO {
   id: string;
   transactionId?: string;
@@ -56,7 +73,13 @@ export const rewardApi = {
   // Admin reward adjustment
   async adjustReward(data: AdminRewardAdjustmentRequest): Promise<any> {
     const idempotencyKey = `adj_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    const res = await apiClient.post<ApiResponse<any>>("/admin/rewards/adjustments", data, {
+    const payload = {
+      customerId: data.customerId,
+      amount: Math.abs(data.pointsDelta),
+      type: data.pointsDelta >= 0 ? "CREDIT" : "DEBIT",
+      reason: data.reason
+    };
+    const res = await apiClient.post<ApiResponse<any>>("/admin/rewards/adjustments", payload, {
       headers: {
         "Idempotency-Key": idempotencyKey,
       },
@@ -88,6 +111,17 @@ export const rewardApi = {
       return [];
     } catch (err) {
       console.warn("[Reward API] Failed to fetch admin reward ledger:", err);
+      return [];
+    }
+  },
+
+  // Admin get all customer reward accounts with balances and tiers
+  async getAllAccounts(): Promise<CustomerRewardAccountDTO[]> {
+    try {
+      const res = await apiClient.get<ApiResponse<CustomerRewardAccountDTO[]>>("/admin/rewards/accounts");
+      return res.data?.data || [];
+    } catch (err) {
+      console.warn("[Reward API] Failed to fetch customer reward accounts:", err);
       return [];
     }
   },

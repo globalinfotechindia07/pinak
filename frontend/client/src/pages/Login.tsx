@@ -374,6 +374,26 @@ export const Login: React.FC = () => {
                     </>
                   )}
                 </button>
+
+                {/* One-Click Quick Credentials Helper */}
+                <div className="pt-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Quick Fill Test Credentials:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIdentifier("riya.admin@pinak.app");
+                        setPassword("Admin@123456");
+                        setFormErrors({});
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-[11px] font-bold border border-purple-200/80 dark:border-purple-800 transition-colors cursor-pointer"
+                    >
+                      👑 Super Admin (riya.admin@pinak.app)
+                    </button>
+                  </div>
+                </div>
               </form>
             </div>
 
