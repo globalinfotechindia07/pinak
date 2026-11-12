@@ -249,7 +249,7 @@
             "description": "Completes first-time consumer registration with name, birthdate, location, and category interests.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Priya Sharma\",\n  \"email\": \"priya.sharma@example.com\",\n  \"birthday\": \"1998-05-15\",\n  \"gender\": \"FEMALE\",\n  \"primaryCity\": \"Nagpur\",\n  \"state\": \"Maharashtra\",\n  \"district\": \"Nagpur\",\n  \"pincode\": \"440010\",\n  \"address\": \"Flat 302, Green Valley Apartments, Dharampeth\",\n  \"preferredCategoryIds\": []\n}",
+              "raw": "{\n  \"fullName\": \"Rahul Sharma\",\n  \"email\": \"rahul.sharma@example.com\",\n  \"city\": \"Ahmedabad\",\n  \"state\": \"Gujarat\",\n  \"district\": \"Ahmedabad\",\n  \"pincode\": \"380015\",\n  \"gender\": \"MALE\",\n  \"address\": \"101, Galaxy Heights, S.G. Highway\",\n  \"birthday\": \"1998-05-15\",\n  \"referralCode\": \"FRIEND100\",\n  \"categoryPreferences\": [\n    \"11111111-1111-1111-1111-111111111101\",\n    \"11111111-1111-1111-1111-111111111104\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"

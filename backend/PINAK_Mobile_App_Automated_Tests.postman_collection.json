@@ -631,7 +631,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Rahul Sharma\",\n  \"email\": \"rahul.sharma@example.com\",\n  \"city\": \"Bangalore\",\n  \"state\": \"Karnataka\",\n  \"district\": \"Bangalore Urban\",\n  \"pincode\": \"560038\",\n  \"gender\": \"MALE\",\n  \"address\": \"101, Galaxy Heights, Indiranagar\",\n  \"birthday\": \"1998-08-24\",\n  \"referralCode\": \"FRIEND100\",\n  \"categoryPreferences\": [\n    \"11111111-1111-1111-1111-111111111101\",\n    \"11111111-1111-1111-1111-111111111104\"\n  ]\n}"
+              "raw": "{\n  \"fullName\": \"Rahul Sharma\",\n  \"email\": \"rahul.sharma@example.com\",\n  \"city\": \"Ahmedabad\",\n  \"state\": \"Gujarat\",\n  \"district\": \"Ahmedabad\",\n  \"pincode\": \"380015\",\n  \"gender\": \"MALE\",\n  \"address\": \"101, Galaxy Heights, S.G. Highway\",\n  \"birthday\": \"1998-05-15\",\n  \"referralCode\": \"FRIEND100\",\n  \"categoryPreferences\": [\n    \"11111111-1111-1111-1111-111111111101\",\n    \"11111111-1111-1111-1111-111111111104\"\n  ]\n}"
             }
           },
           "event": [

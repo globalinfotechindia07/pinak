@@ -2,6 +2,8 @@ package com.superapp.transaction.reward.controller;
 
 import com.superapp.common.response.ApiResponse;
 import com.superapp.common.response.PaginationMeta;
+import com.superapp.platform.dto.WelcomeBonusSettingDto;
+import com.superapp.platform.service.WelcomeBonusSettingsService;
 import com.superapp.transaction.reward.dto.AdminRewardAdjustmentRequest;
 import com.superapp.transaction.reward.dto.AdminRewardAdjustmentResponse;
 import com.superapp.transaction.reward.dto.CustomerRewardAccountResponse;
@@ -36,9 +38,13 @@ public class AdminRewardController {
     private static final UUID DEFAULT_SUPER_ADMIN_ID = UUID.fromString("d0000000-0000-0000-0000-000000000001");
 
     private final RewardService rewardService;
+    private final WelcomeBonusSettingsService welcomeBonusSettingsService;
 
-    public AdminRewardController(RewardService rewardService) {
+    public AdminRewardController(
+            RewardService rewardService,
+            WelcomeBonusSettingsService welcomeBonusSettingsService) {
         this.rewardService = rewardService;
+        this.welcomeBonusSettingsService = welcomeBonusSettingsService;
     }
 
     @PostMapping("/adjustments")
@@ -115,5 +121,24 @@ public class AdminRewardController {
             @PathVariable UUID customerId) {
         RewardBalanceResponse response = rewardService.getRewardBalance(customerId);
         return ResponseEntity.ok(ApiResponse.success("Customer reward account fetched successfully", response));
+    }
+
+    @GetMapping("/welcome-bonus-setting")
+    @Operation(summary = "Get Super Admin configuration for First-Time User Welcome Coins", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<WelcomeBonusSettingDto>> getWelcomeBonusSetting() {
+        WelcomeBonusSettingDto setting = welcomeBonusSettingsService.getWelcomeBonusSetting();
+        return ResponseEntity.ok(ApiResponse.success("Welcome bonus setting fetched successfully", setting));
+    }
+
+    @PutMapping("/welcome-bonus-setting")
+    @Operation(summary = "Update Super Admin configuration for First-Time User Welcome Coins", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<WelcomeBonusSettingDto>> updateWelcomeBonusSetting(
+            @Valid @RequestBody WelcomeBonusSettingDto request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String actor = (userDetails != null && userDetails.getUsername() != null)
+                ? userDetails.getUsername()
+                : "Super Admin";
+        WelcomeBonusSettingDto updated = welcomeBonusSettingsService.updateWelcomeBonusSetting(request, actor);
+        return ResponseEntity.ok(ApiResponse.success("Welcome bonus setting updated successfully", updated));
     }
 }

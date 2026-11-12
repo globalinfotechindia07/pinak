@@ -13,6 +13,15 @@ import com.superapp.category.repository.CategoryRepository;
 import com.superapp.mobile.dto.MobileDtos.*;
 import com.superapp.mobile.entity.MobileOtp;
 import com.superapp.mobile.repository.MobileOtpRepository;
+import com.superapp.platform.dto.WelcomeBonusSettingDto;
+import com.superapp.platform.service.WelcomeBonusSettingsService;
+import com.superapp.transaction.reward.entity.RewardAccount;
+import com.superapp.transaction.reward.entity.RewardLedgerEntry;
+import com.superapp.transaction.reward.enums.RewardAccountStatus;
+import com.superapp.transaction.reward.enums.RewardLedgerStatus;
+import com.superapp.transaction.reward.enums.RewardLedgerType;
+import com.superapp.transaction.reward.repository.RewardAccountRepository;
+import com.superapp.transaction.reward.repository.RewardLedgerRepository;
 import com.superapp.user.entity.Role;
 import com.superapp.user.entity.User;
 import com.superapp.user.entity.UserSession;
@@ -24,6 +33,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
@@ -56,6 +66,9 @@ public class MobileAuthServiceImpl implements MobileAuthService {
     private final SessionService sessionService;
     private final PasswordEncoder passwordEncoder;
     private final CategoryRepository categoryRepository;
+    private final WelcomeBonusSettingsService welcomeBonusSettingsService;
+    private final RewardAccountRepository rewardAccountRepository;
+    private final RewardLedgerRepository rewardLedgerRepository;
 
     public MobileAuthServiceImpl(
             OtpService otpService,
@@ -65,7 +78,10 @@ public class MobileAuthServiceImpl implements MobileAuthService {
             TokenService tokenService,
             SessionService sessionService,
             PasswordEncoder passwordEncoder,
-            CategoryRepository categoryRepository
+            CategoryRepository categoryRepository,
+            WelcomeBonusSettingsService welcomeBonusSettingsService,
+            RewardAccountRepository rewardAccountRepository,
+            RewardLedgerRepository rewardLedgerRepository
     ) {
         this.otpService = otpService;
         this.mobileOtpRepository = mobileOtpRepository;
@@ -75,6 +91,9 @@ public class MobileAuthServiceImpl implements MobileAuthService {
         this.sessionService = sessionService;
         this.passwordEncoder = passwordEncoder;
         this.categoryRepository = categoryRepository;
+        this.welcomeBonusSettingsService = welcomeBonusSettingsService;
+        this.rewardAccountRepository = rewardAccountRepository;
+        this.rewardLedgerRepository = rewardLedgerRepository;
     }
 
     @Override
@@ -138,6 +157,70 @@ public class MobileAuthServiceImpl implements MobileAuthService {
                 true,
                 otp
         );
+    }
+
+
+    /**
+     * Credits instant welcome coins to a newly registered user if enabled by Super Admin.
+     * Enforces strict idempotency so existing/returning users NEVER get duplicate coins.
+     */
+    private WelcomeBonusSettingDto creditFirstTimeWelcomeBonusIfEligible(User user) {
+        if (user == null || user.getId() == null) {
+            return WelcomeBonusSettingDto.defaults();
+        }
+
+        WelcomeBonusSettingDto setting = welcomeBonusSettingsService != null
+                ? welcomeBonusSettingsService.getWelcomeBonusSetting()
+                : WelcomeBonusSettingDto.defaults();
+
+        if (setting == null || !Boolean.TRUE.equals(setting.enabled())) {
+            log.info("Welcome bonus is currently disabled by Super Admin. Skipping credit for user {}", user.getId());
+            return setting != null ? setting : WelcomeBonusSettingDto.defaults();
+        }
+
+        int coinsToCredit = setting.coins() != null && setting.coins() > 0 ? setting.coins() : 100;
+        String welcomeRef = "WELCOME-BONUS-" + user.getId();
+
+        // Strict idempotency: only first-time users who haven't yet received this reference ID get credited
+        if (rewardLedgerRepository != null && rewardLedgerRepository.findByReferenceIdAndType(welcomeRef, RewardLedgerType.CREDIT).isPresent()) {
+            log.info("Welcome bonus already credited for customer {}. Skipping duplicate credit.", user.getId());
+            return setting;
+        }
+
+        try {
+            if (rewardAccountRepository != null) {
+                RewardAccount account = rewardAccountRepository.findByCustomerId(user.getId())
+                        .orElseGet(() -> new RewardAccount(user.getId()));
+
+                BigDecimal creditAmount = BigDecimal.valueOf(coinsToCredit);
+                account.setAvailableBalance(account.getAvailableBalance().add(creditAmount));
+                account.setLifetimeEarned(account.getLifetimeEarned().add(creditAmount));
+                account.setStatus(RewardAccountStatus.ACTIVE);
+                rewardAccountRepository.saveAndFlush(account);
+
+                if (rewardLedgerRepository != null) {
+                    RewardLedgerEntry entry = new RewardLedgerEntry();
+                    entry.setCustomerId(user.getId());
+                    entry.setRewardAccountId(account.getId());
+                    entry.setType(RewardLedgerType.CREDIT);
+                    entry.setAmount(creditAmount);
+                    entry.setStatus(RewardLedgerStatus.POSTED);
+                    entry.setReferenceId(welcomeRef);
+                    entry.setDescription(setting.description() != null && !setting.description().isBlank()
+                            ? setting.description()
+                            : "Instant Welcome Bonus for first-time mobile signup");
+                    entry.setCreatedAt(Instant.now());
+                    rewardLedgerRepository.saveAndFlush(entry);
+                }
+
+                log.info("🎉 Credited {} instant welcome coins to first-time customer {} in PostgreSQL (RewardAccount: {})",
+                        coinsToCredit, user.getId(), account.getId());
+            }
+        } catch (Exception ex) {
+            log.warn("Could not credit welcome bonus to reward account for user {}: {}", user.getId(), ex.getMessage());
+        }
+
+        return setting;
     }
 
     @Override
@@ -266,6 +349,8 @@ public class MobileAuthServiceImpl implements MobileAuthService {
                 return userRepository.save(newUser);
             });
 
+            WelcomeBonusSettingDto welcomeSetting = creditFirstTimeWelcomeBonusIfEligible(user);
+
             String onboardingToken = jwtService.generateAccessToken(user.getId(), user.getRole().name());
 
             return new MobileVerifyOtpResponse(
@@ -276,10 +361,10 @@ public class MobileAuthServiceImpl implements MobileAuthService {
                     onboardingToken,
                     UserSummary.from(user),
                     new MobileVerifyOtpResponse.WelcomeBonusSummary(
-                            true,
-                            100.00,
-                            "WELCOME100",
-                            "Flat ₹100 discount coupon unlocks on profile completion"
+                            welcomeSetting.enabled(),
+                            welcomeSetting.coins() != null ? welcomeSetting.coins().doubleValue() : 100.0,
+                            welcomeSetting.couponCode(),
+                            welcomeSetting.description()
                     ),
                     "PROFILE_SETUP_SCREEN_08"
             );
@@ -433,11 +518,12 @@ public class MobileAuthServiceImpl implements MobileAuthService {
                 user.isProfileCompleted()
         );
 
+        WelcomeBonusSettingDto welcomeSetting = creditFirstTimeWelcomeBonusIfEligible(user);
         MobileProfileSetupResponse.WelcomeCouponSummary welcomeCoupon = new MobileProfileSetupResponse.WelcomeCouponSummary(
-                "WELCOME100",
-                "Flat ₹100 Off First Order",
-                100.00,
-                "Welcome to PINAK! ₹100 discount applied to your rewards wallet"
+                welcomeSetting.couponCode(),
+                welcomeSetting.coins() + " Welcome Coins Credited",
+                welcomeSetting.coins() != null ? welcomeSetting.coins().doubleValue() : 100.0,
+                welcomeSetting.description()
         );
 
         return new MobileProfileSetupResponse(

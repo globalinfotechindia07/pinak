@@ -50,6 +50,13 @@ export interface AdminRewardAdjustmentRequest {
   reason: string;
 }
 
+export interface WelcomeBonusSettingDTO {
+  enabled: boolean;
+  coins: number;
+  couponCode: string;
+  description: string;
+}
+
 export const rewardApi = {
   // Get customer reward balance
   async getRewardBalance(): Promise<RewardBalanceDTO | null> {
@@ -150,5 +157,22 @@ export const rewardApi = {
       reason,
     });
     return res.data?.data;
+  },
+
+  // Super Admin: Get First-Time User Welcome Bonus Setting
+  async getWelcomeBonusSetting(): Promise<WelcomeBonusSettingDTO | null> {
+    try {
+      const res = await apiClient.get<ApiResponse<WelcomeBonusSettingDTO>>("/admin/rewards/welcome-bonus-setting");
+      return res.data?.data || null;
+    } catch (err) {
+      console.warn("[Reward API] Failed to fetch welcome bonus setting:", err);
+      return null;
+    }
+  },
+
+  // Super Admin: Update First-Time User Welcome Bonus Setting
+  async updateWelcomeBonusSetting(setting: WelcomeBonusSettingDTO): Promise<WelcomeBonusSettingDTO | null> {
+    const res = await apiClient.put<ApiResponse<WelcomeBonusSettingDTO>>("/admin/rewards/welcome-bonus-setting", setting);
+    return res.data?.data || null;
   },
 };

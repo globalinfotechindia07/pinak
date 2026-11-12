@@ -35,12 +35,13 @@ import {
   HelpCircle,
   Clock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Gift
 } from "lucide-react";
 import { RewardRule, Customer } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
-import { rewardApi, RewardLedgerItemDTO, CustomerRewardAccountDTO } from "../../api/rewardApi";
+import { rewardApi, RewardLedgerItemDTO, CustomerRewardAccountDTO, WelcomeBonusSettingDTO } from "../../api/rewardApi";
 import { toast } from "sonner";
 
 interface RewardsEconomyProps {
@@ -54,7 +55,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
   customers,
   onAddRule
 }) => {
-  const [activeTab, setActiveTab] = useState<"cashback" | "ledger" | "programs">("cashback");
+  const [activeTab, setActiveTab] = useState<"cashback" | "welcome_bonus" | "ledger" | "programs">("cashback");
   const [ledgerItems, setLedgerItems] = useState<RewardLedgerItemDTO[]>([]);
   const [ledgerFilter, setLedgerFilter] = useState<"ALL" | "EARN" | "REDEEM" | "ADJUSTMENT">("ALL");
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
@@ -104,6 +105,42 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
   // Edit Single Store Cashback Modal
   const [editingStore, setEditingStore] = useState<StoreCashback | null>(null);
   const [isSavingStoreCashback, setIsSavingStoreCashback] = useState(false);
+
+  // Super Admin First-Time User Welcome Coins Setting
+  const [welcomeBonusSetting, setWelcomeBonusSetting] = useState<WelcomeBonusSettingDTO>({
+    enabled: true,
+    coins: 100,
+    couponCode: "WELCOME100",
+    description: "Instant Welcome Bonus for first-time mobile signup"
+  });
+  const [isSavingWelcomeBonus, setIsSavingWelcomeBonus] = useState(false);
+
+  const fetchWelcomeBonusSetting = async () => {
+    try {
+      const data = await rewardApi.getWelcomeBonusSetting();
+      if (data) setWelcomeBonusSetting(data);
+    } catch (err) {
+      console.warn("Could not fetch welcome bonus setting:", err);
+    }
+  };
+
+  const handleSaveWelcomeBonus = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSavingWelcomeBonus(true);
+    try {
+      const updated = await rewardApi.updateWelcomeBonusSetting(welcomeBonusSetting);
+      if (updated) {
+        setWelcomeBonusSetting(updated);
+        toast.success("Welcome Bonus Setting Updated!", {
+          description: `First-time users will receive ${updated.coins} PINAK Coins on their first OTP verification.`
+        });
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to update welcome bonus setting");
+    } finally {
+      setIsSavingWelcomeBonus(false);
+    }
+  };
 
   const fetchCustomerAccounts = async () => {
     setIsLoadingAccounts(true);
@@ -232,6 +269,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
     fetchLedger(true);
     fetchCashbackData();
     fetchCustomerAccounts();
+    fetchWelcomeBonusSetting();
   }, []);
 
   const handleAdjustSubmit = async (e: React.FormEvent) => {
@@ -665,6 +703,21 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
         >
           <Coins size={15} />
           <span>Transaction Cashback Settings</span>
+          <span className="px-2 py-0.5 rounded-full text-[9px] bg-amber-400 text-slate-950 font-black uppercase tracking-wider">
+            Super Admin
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("welcome_bonus")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+            activeTab === "welcome_bonus"
+              ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <Gift size={15} />
+          <span>First-Time Welcome Coins</span>
           <span className="px-2 py-0.5 rounded-full text-[9px] bg-amber-400 text-slate-950 font-black uppercase tracking-wider">
             Super Admin
           </span>
@@ -1163,6 +1216,184 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: Super Admin First-Time User Welcome Coins (Instant Signup Bonus) */}
+      {/* ========================================================================= */}
+      {activeTab === "welcome_bonus" && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Top Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Welcome Bonus Engine</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xl font-black text-slate-900 dark:text-white">
+                  {welcomeBonusSetting.enabled ? "ACTIVE" : "PAUSED"}
+                </span>
+                <span className={`w-3 h-3 rounded-full ${welcomeBonusSetting.enabled ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+              </div>
+              <p className="text-[11px] text-slate-500">Credited on first-time OTP verification</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Instant Signup Coins</span>
+              <div className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
+                🪙 {welcomeBonusSetting.coins} Coins
+              </div>
+              <p className="text-[11px] text-slate-500">Credited to customer PostgreSQL wallet</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rupee Value Equivalent</span>
+              <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                ₹{welcomeBonusSetting.coins}
+              </div>
+              <p className="text-[11px] text-slate-500">Instant spendable balance at checkouts</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Anti-Duplicate Protection</span>
+              <div className="text-xl font-black text-purple-600 dark:text-purple-400">
+                Idempotent
+              </div>
+              <p className="text-[11px] text-slate-500">First-time signups only (Returning users blocked)</p>
+            </div>
+          </div>
+
+          {/* Configuration Card */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-['Manrope']">
+                    First-Time User Welcome Coins Policy
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                    SUPER ADMIN EXCLUSIVE
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Configure the instant PINAK coins credited to new mobile customers upon their first OTP verification.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {welcomeBonusSetting.enabled ? "Bonus Enabled" : "Bonus Paused"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setWelcomeBonusSetting((prev) => ({ ...prev, enabled: !prev.enabled }))}
+                  className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer p-0.5 ${
+                    welcomeBonusSetting.enabled ? "bg-purple-600" : "bg-slate-300 dark:bg-slate-700"
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+                      welcomeBonusSetting.enabled ? "translate-x-6" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveWelcomeBonus} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                    Instant Welcome Coins (₹ Value)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                      🪙
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10000}
+                      value={welcomeBonusSetting.coins}
+                      onChange={(e) => setWelcomeBonusSetting((prev) => ({ ...prev, coins: parseInt(e.target.value) || 0 }))}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Credited immediately to the customer's wallet on their first login.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                    Welcome Coupon Code
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={welcomeBonusSetting.couponCode}
+                      onChange={(e) => setWelcomeBonusSetting((prev) => ({ ...prev, couponCode: e.target.value.toUpperCase() }))}
+                      placeholder="WELCOME100"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold uppercase font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Identifies this first-time bonus in ledger and vouchers.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                    Auditable Description
+                  </label>
+                  <input
+                    type="text"
+                    value={welcomeBonusSetting.description}
+                    onChange={(e) => setWelcomeBonusSetting((prev) => ({ ...prev, description: e.target.value }))}
+                    placeholder="Instant Welcome Bonus for first-time mobile signup"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Stored in PostgreSQL `reward_ledger_entries` table.
+                  </p>
+                </div>
+              </div>
+
+              {/* Security & Idempotency Guarantee Callout */}
+              <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 rounded-2xl p-4 flex items-start gap-3">
+                <ShieldCheck size={18} className="text-purple-600 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <h4 className="font-extrabold text-purple-950 dark:text-purple-200">
+                    Fraud Prevention & First-Time Isolation Guarantee
+                  </h4>
+                  <p className="text-purple-800 dark:text-purple-300 leading-relaxed text-[11px]">
+                    The backend strictly validates whether a phone number is registering for the first time. 
+                    When a returning customer requests OTP and logs in, the welcome bonus is automatically bypassed (0 duplicate coins credited).
+                    All credits are written with an immutable reference ID (<code className="font-mono bg-purple-100 dark:bg-purple-900 px-1 py-0.2 rounded">WELCOME-BONUS-{"{userId}"}</code>) ensuring no customer can ever claim it twice.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={isSavingWelcomeBonus}
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-98 transition cursor-pointer"
+                >
+                  {isSavingWelcomeBonus ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Saving Policy...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      <span>Save Welcome Bonus Setting</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
