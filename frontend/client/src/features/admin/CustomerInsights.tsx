@@ -722,6 +722,7 @@ export const CustomerInsights: React.FC<CustomerInsightsProps> = () => {
         keyExtractor={(c) => c.id}
         onRowClick={(c: CustomerDirectoryItem) => setSelectedCustomerId(c.id)}
         searchPlaceholder="Type to filter displayed rows..."
+        emptyMessage="No customer records found in database. When you register a mobile customer via your Postman API (Screens 05 -> 07 -> 08) or Customer Sign In, they will appear here in real-time."
       />
 
       {/* ========================================================================= */}

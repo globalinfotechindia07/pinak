@@ -384,12 +384,12 @@ export default function CustomerHomePreviewPage() {
     setIsLoadingAccounts(true);
     try {
       const accounts = await rewardApi.getAllAccounts();
-      if (accounts && accounts.length > 0) {
-        setRewardAccounts(accounts);
-        return accounts;
-      }
-      setRewardAccounts([]);
-      return [];
+      // Exclude platform admin accounts from mobile customer directory
+      const customerOnly = (accounts || []).filter(
+        (a) => !a.customerEmail?.includes("admin") && a.customerId !== "d0000000-0000-0000-0000-000000000001"
+      );
+      setRewardAccounts(customerOnly);
+      return customerOnly;
     } catch (err) {
       console.warn("Could not load real customer reward accounts from backend:", err);
       setRewardAccounts([]);
