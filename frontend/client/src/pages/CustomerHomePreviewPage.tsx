@@ -2049,13 +2049,7 @@ export default function CustomerHomePreviewPage() {
                   <article
                     key={offerKey}
                     onClick={() => {
-                      if (isProductDeal) {
-                        setInitialDetailView("product_order");
-                      } else if (isWalkInOnly || isOfferRetail) {
-                        setInitialDetailView("pay_bill");
-                      } else {
-                        setInitialDetailView("detail");
-                      }
+                      setInitialDetailView("detail");
                       setSelectedOfferForDetail(o);
                       handleOpenStoreDetail(targetStoreId);
                     }}
@@ -2226,19 +2220,13 @@ export default function CustomerHomePreviewPage() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (isProductDeal) {
-                            setInitialDetailView("product_order");
-                          } else if (isPreBookingOnly && !isOfferRetail) {
-                            setInitialDetailView("booking");
-                          } else {
-                            setInitialDetailView("pay_bill");
-                          }
+                          setInitialDetailView("detail");
                           setSelectedOfferForDetail(o);
                           handleOpenStoreDetail(targetStoreId);
                         }}
                         className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] px-3.5 py-1.5 rounded-lg shadow-xs transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
                       >
-                        <span>{o.ctaText || (isProductDeal ? "Claim Deal" : (isPreBookingOnly && !isOfferRetail) ? "Book Table" : "Pay Bill & Save")}</span>
+                        <span>{o.ctaText || "View Deal"}</span>
                         <ChevronRight size={12} />
                       </button>
                     </div>
