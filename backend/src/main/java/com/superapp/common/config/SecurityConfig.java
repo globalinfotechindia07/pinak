@@ -4,6 +4,7 @@ import com.superapp.common.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.superapp.common.response.ApiError;
 import com.superapp.common.response.ApiResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,7 +29,7 @@ import java.nio.charset.StandardCharsets;
  * <ul>
  *   <li>Stateless JWT — no HTTP sessions.</li>
  *   <li>CSRF disabled — Bearer token transport (see SecurityHeadersFilter for CSRF strategy note).</li>
- *   <li>CORS handled by CorsConfig bean with HIGHEST_PRECEDENCE FilterRegistrationBean.</li>
+ *   <li>CORS handled by GlobalCorsFilter at HIGHEST_PRECEDENCE.</li>
  *   <li>@PreAuthorize used for fine-grained authorization — @EnableMethodSecurity activated.</li>
  * </ul>
  */
@@ -39,7 +40,14 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ObjectMapper objectMapper;
-    private final CorsConfigurationSource corsConfigurationSource;
+
+    @Autowired(required = false)
+    private CorsConfigurationSource corsConfigurationSource;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.objectMapper = objectMapper;
+    }
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -55,11 +63,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             // Disable CSRF — API uses Bearer tokens, not cookies
-            .csrf(AbstractHttpConfigurer::disable)
+            .csrf(AbstractHttpConfigurer::disable);
 
-            // CORS handled by injected CorsConfigurationSource
-            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+        if (corsConfigurationSource != null) {
+            http.cors(cors -> cors.configurationSource(corsConfigurationSource));
+        }
 
+        http
             // Stateless — no HTTP sessions
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 

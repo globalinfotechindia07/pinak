@@ -66,32 +66,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        try {
-            final String userEmail = jwtService.extractUsername(token);
+        UUID userId = jwtService.extractUserId(token);
+        if (userId == null) {
+            log.warn("Valid JWT but could not extract user UUID from subject");
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
+        // Only set authentication if not already authenticated in this request
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            try {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(userId.toString());
 
-                if (jwtService.isTokenValid(token, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-
-                    // Extract and forward tenant/merchant context if present in claims
-                    UUID merchantId = jwtService.extractMerchantId(token);
-                    if (merchantId != null) {
-                        request.setAttribute("merchantId", merchantId);
-                    }
-                    UUID storeId = jwtService.extractStoreId(token);
-                    if (storeId != null) {
-                        request.setAttribute("storeId", storeId);
-                    }
+                if (userDetails.isEnabled() && userDetails.isAccountNonLocked()) {
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities());
+                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    log.debug("Authenticated user {} for {}", userId, request.getRequestURI());
+                } else {
+                    log.debug("User {} account is locked or disabled", userId);
                 }
+            } catch (Exception ex) {
+                log.warn("Failed to load user for JWT subject {}: {}", userId, ex.getMessage());
             }
-        } catch (Exception ex) {
-            // Log at debug level only — do not leak token parsing errors to clients
-            log.debug("Failed to set user authentication from JWT: {}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);
