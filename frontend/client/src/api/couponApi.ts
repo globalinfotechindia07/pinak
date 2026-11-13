@@ -44,6 +44,60 @@ export interface ValidateCouponResponse {
   coupon: CouponItem | null;
 }
 
+export interface AdminCoupon {
+  id: string;
+  code: string;
+  title: string;
+  headline: string;
+  description: string;
+  badgeText: string;
+  discountType: "PERCENTAGE" | "FLAT";
+  discountValue: number;
+  maxDiscount?: number;
+  minBillAmount: number;
+  partnerBank?: string;
+  paymentMethodRequired?: string;
+  terms: string;
+  storeId?: string;
+  merchantId?: string;
+  categoryId?: string;
+  usageLimitTotal?: number;
+  usageLimitPerUser?: number;
+  currentUsageCount?: number;
+  validFrom?: string;
+  validTo?: string;
+  isActive: boolean;
+  isAutoApplicable: boolean;
+  displayOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SaveCouponPayload {
+  code: string;
+  title: string;
+  headline?: string;
+  description?: string;
+  badgeText?: string;
+  discountType: "PERCENTAGE" | "FLAT";
+  discountValue: number;
+  maxDiscount?: number;
+  minBillAmount?: number;
+  partnerBank?: string;
+  paymentMethodRequired?: string;
+  terms?: string;
+  storeId?: string;
+  merchantId?: string;
+  categoryId?: string;
+  usageLimitTotal?: number;
+  usageLimitPerUser?: number;
+  validFrom?: string;
+  validTo?: string;
+  isActive?: boolean;
+  isAutoApplicable?: boolean;
+  displayOrder?: number;
+}
+
 export const couponApi = {
   // Fetch real active coupons & payment offers from PostgreSQL
   getApplicableCoupons: async (storeId?: string, billAmount?: number): Promise<ApplicableCouponsResponse> => {
@@ -110,5 +164,49 @@ export const couponApi = {
         coupon: null
       };
     }
+  },
+
+  // ==========================================
+  // ADMIN PORTAL COUPON MANAGEMENT
+  // ==========================================
+
+  adminGetAll: async (): Promise<AdminCoupon[]> => {
+    try {
+      const res = await apiClient.get<ApiResponse<AdminCoupon[]>>("/admin/coupons");
+      return res.data?.data || [];
+    } catch (err) {
+      console.warn("[Coupon API] Failed to fetch admin coupons:", err);
+      return [];
+    }
+  },
+
+  adminCreate: async (payload: SaveCouponPayload): Promise<AdminCoupon> => {
+    const res = await apiClient.post<ApiResponse<AdminCoupon>>("/admin/coupons", payload);
+    if (!res.data?.data) {
+      throw new Error(res.data?.message || "Failed to create coupon");
+    }
+    return res.data.data;
+  },
+
+  adminUpdate: async (id: string, payload: SaveCouponPayload): Promise<AdminCoupon> => {
+    const res = await apiClient.put<ApiResponse<AdminCoupon>>(`/admin/coupons/${id}`, payload);
+    if (!res.data?.data) {
+      throw new Error(res.data?.message || "Failed to update coupon");
+    }
+    return res.data.data;
+  },
+
+  adminToggleStatus: async (id: string, active: boolean): Promise<AdminCoupon> => {
+    const res = await apiClient.patch<ApiResponse<AdminCoupon>>(`/admin/coupons/${id}/status`, null, {
+      params: { active }
+    });
+    if (!res.data?.data) {
+      throw new Error(res.data?.message || "Failed to update coupon status");
+    }
+    return res.data.data;
+  },
+
+  adminDelete: async (id: string): Promise<void> => {
+    await apiClient.delete(`/admin/coupons/${id}`);
   }
 };

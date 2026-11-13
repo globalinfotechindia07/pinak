@@ -22,6 +22,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/admin/rewards")
 @Tag(name = "Admin Rewards", description = "Administrative adjustments, reversals, and ledger oversight")
+@SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class AdminRewardController {
 
     private static final UUID DEFAULT_SUPER_ADMIN_ID = UUID.fromString("d0000000-0000-0000-0000-000000000001");

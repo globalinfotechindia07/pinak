@@ -61,4 +61,70 @@ public class CouponDtos {
             BigDecimal finalPayableAmount,
             CouponItemDto coupon
     ) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record AdminCouponDto(
+            UUID id,
+            String code,
+            String title,
+            String headline,
+            String description,
+            String badgeText,
+            String discountType,
+            BigDecimal discountValue,
+            BigDecimal maxDiscount,
+            BigDecimal minBillAmount,
+            String partnerBank,
+            String paymentMethodRequired,
+            String terms,
+            UUID storeId,
+            UUID merchantId,
+            UUID categoryId,
+            Integer usageLimitTotal,
+            Integer usageLimitPerUser,
+            Integer currentUsageCount,
+            String validFrom,
+            String validTo,
+            Boolean isActive,
+            Boolean isAutoApplicable,
+            Integer displayOrder,
+            String createdAt,
+            String updatedAt
+    ) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record SaveCouponRequest(
+            @NotBlank(message = "Coupon code is required")
+            String code,
+
+            @NotBlank(message = "Title is required")
+            String title,
+
+            String headline,
+            String description,
+            String badgeText,
+
+            @NotBlank(message = "Discount type is required (PERCENTAGE or FLAT)")
+            String discountType,
+
+            @NotNull(message = "Discount value is required")
+            @Positive(message = "Discount value must be positive")
+            BigDecimal discountValue,
+
+            BigDecimal maxDiscount,
+            BigDecimal minBillAmount,
+            String partnerBank,
+            String paymentMethodRequired,
+            String terms,
+            UUID storeId,
+            UUID merchantId,
+            UUID categoryId,
+            Integer usageLimitTotal,
+            Integer usageLimitPerUser,
+            String validFrom,
+            String validTo,
+            Boolean isActive,
+            Boolean isAutoApplicable,
+            Integer displayOrder
+    ) {}
 }

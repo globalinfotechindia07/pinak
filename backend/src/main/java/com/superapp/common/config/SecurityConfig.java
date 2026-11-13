@@ -38,24 +38,51 @@ import java.nio.charset.StandardCharsets;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final ObjectMapper objectMapper;
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    private ObjectMapper objectMapper;
 
     @Autowired(required = false)
     private CorsConfigurationSource corsConfigurationSource;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.objectMapper = objectMapper;
+    /**
+     * Default constructor required for Spring CGLIB proxy instantiation.
+     */
+    public SecurityConfig() {
     }
 
+    /**
+     * Overloaded constructor for tests and manual instantiation.
+     */
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
+        this(jwtAuthenticationFilter, objectMapper, null);
+    }
+
+    /**
+     * Primary constructor for Spring dependency injection.
+     */
+    @Autowired
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             ObjectMapper objectMapper,
-            CorsConfigurationSource corsConfigurationSource
+            @Autowired(required = false) CorsConfigurationSource corsConfigurationSource
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.objectMapper = objectMapper;
+        this.corsConfigurationSource = corsConfigurationSource;
+    }
+
+    @Autowired
+    public void setJwtAuthenticationFilter(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
+
+    @Autowired
+    public void setObjectMapper(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    @Autowired(required = false)
+    public void setCorsConfigurationSource(CorsConfigurationSource corsConfigurationSource) {
         this.corsConfigurationSource = corsConfigurationSource;
     }
 
@@ -138,6 +165,8 @@ public class SecurityConfig {
                         "//api/v1/admin/settings/cashback/**",
                         "/api/v1/admin/rewards/**",
                         "//api/v1/admin/rewards/**",
+                        "/api/v1/admin/coupons/**",
+                        "//api/v1/admin/coupons/**",
                         "/api/v1/rewards/**",
                         "//api/v1/rewards/**",
                         "/api/v1/coupons/**",
