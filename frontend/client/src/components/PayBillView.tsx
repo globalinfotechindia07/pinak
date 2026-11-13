@@ -29,19 +29,9 @@ import tableBookingApi from "@/api/tableBookingApi";
 import { useAppStore } from "@/hooks/useAppStore";
 import { dataStore } from "@/services/dataStore";
 import { rewardApi } from "@/api/rewardApi";
+import { couponApi, CouponItem } from "@/api/couponApi";
 
-export interface CouponItem {
-  id: string;
-  code: string;
-  badgeText: string;
-  headline: string;
-  description: string;
-  terms: string[];
-  discountPct?: number;
-  flatDiscount?: number;
-  maxDiscount?: number;
-  minBill?: number;
-}
+export type { CouponItem };
 
 export interface PayBillViewProps {
   storeId?: string;
@@ -228,57 +218,33 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
 
   const isBillPreSetByStore = Boolean(resolvedBillAmount && resolvedBillAmount > 0);
 
-  // Available Coupons List matching screenshots
-  const availableCoupons: CouponItem[] = [
-    {
-      id: "coup_welcome",
-      code: "WELCOME",
-      badgeText: "10% OFF",
-      headline: "Save ₹200 on this order!",
-      description: "Get Extra 10% OFF upto ₹250 on your transaction.",
-      discountPct: 10,
-      maxDiscount: 250,
-      minBill: 100,
-      terms: [
-        "Get Extra 10% OFF upto ₹250",
-        "Apply the coupon code WELCOME to avail the offer",
-        "Valid on your first bill payment on PINAK Dineout",
-        "Discount can be availed on transaction amount of ₹100 or more",
-        "This offer cannot be clubbed with any other offers running on PINAK",
-        "Other T&Cs may apply",
-        "Offer valid till Jun 15, 2028 11:59 PM"
-      ]
-    },
-    {
-      id: "coup_hdfc",
-      code: "HDFCCARDS",
-      badgeText: "FLAT OFF",
-      headline: "Save ₹200 on this order!",
-      description: "Flat ₹200 OFF using HDFC Bank Credit Cards (except Infinia, Diners Club Black) on net payable of ₹2000 or more",
-      flatDiscount: 200,
-      minBill: 2000,
-      terms: [
-        "Flat ₹200 instant discount on HDFC Bank Credit Cards",
-        "Applicable on minimum bill value of ₹2000",
-        "Valid once per user per calendar month",
-        "Cannot be combined with other banking offers"
-      ]
-    },
-    {
-      id: "coup_paytm",
-      code: "PAYTMNEW",
-      badgeText: "CASHBACK",
-      headline: "Get flat ₹125 cashback",
-      description: "Pay using Paytm UPI to get flat ₹125 cashback credited to your wallet within 24 hours.",
-      flatDiscount: 125,
-      minBill: 1000,
-      terms: [
-        "Flat ₹125 Cashback on paying via Paytm UPI",
-        `Valid on ${isRetail ? "store bill" : "dining bill"} payments over ₹1000`,
-        "Cashback credited within 24 business hours"
-      ]
-    }
-  ];
+  // Live Coupons from PostgreSQL Database
+  const [availableCoupons, setAvailableCoupons] = useState<CouponItem[]>([]);
+  const [autoApplicableCoupon, setAutoApplicableCoupon] = useState<CouponItem | null>(null);
+  const [isLoadingCoupons, setIsLoadingCoupons] = useState<boolean>(true);
+
+  // Load real coupons from backend on mount and when bill amount or store changes
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingCoupons(true);
+    couponApi
+      .getApplicableCoupons(storeId, numericBill)
+      .then((res) => {
+        if (!isMounted) return;
+        setAvailableCoupons(res.coupons);
+        setAutoApplicableCoupon(res.autoApplicableCoupon);
+      })
+      .catch((err) => {
+        console.warn("[PayBillView] Error fetching real coupons:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingCoupons(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [storeId, numericBill]);
 
   // Applied Coupon State
   const [appliedCoupon, setAppliedCoupon] = useState<CouponItem | null>(null);
@@ -392,46 +358,68 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
 
   const estimatedInitialPayable = Math.max(0, numericBill - estimatedInitialSavings);
 
-  // Handle Apply Coupon
-  const handleApplyCoupon = (coupon: CouponItem) => {
-    if (coupon.minBill && numericBill < coupon.minBill) {
-      toast.error(`Minimum bill amount for this coupon is ₹${coupon.minBill}`);
-      return;
-    }
+  // Handle Apply Coupon via Production Database Validation
+  const handleApplyCoupon = async (coupon: CouponItem) => {
+    try {
+      const res = await couponApi.validateCoupon({
+        code: coupon.code,
+        billAmount: numericBill,
+        storeId,
+        paymentMethod: selectedPaymentMethod,
+      });
 
-    let saved = 0;
-    if (coupon.flatDiscount) {
-      saved = coupon.flatDiscount;
-    } else if (coupon.discountPct) {
-      const calc = Math.round((numericBill * coupon.discountPct) / 100);
-      saved = coupon.maxDiscount ? Math.min(coupon.maxDiscount, calc) : calc;
-    }
+      if (!res.valid) {
+        toast.error(res.message || `Coupon ${coupon.code} cannot be applied`);
+        return;
+      }
 
-    setAppliedCoupon(coupon);
-    setCelebrationDetails({ code: coupon.code, saved });
-    setShowCelebrationModal(true);
-    setPayStep("bill_checkout");
+      const activeCoupon = res.coupon || coupon;
+      setAppliedCoupon(activeCoupon);
+      setCelebrationDetails({ code: coupon.code, saved: res.discountAmount });
+      setShowCelebrationModal(true);
+      setPayStep("bill_checkout");
+      toast.success(res.message || `Coupon ${coupon.code} applied!`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to apply coupon");
+    }
   };
 
-  const handleApplyCustomCode = () => {
+  const handleApplyCustomCode = async () => {
     const code = couponCodeInput.trim().toUpperCase();
     if (!code) return;
-    const found = availableCoupons.find((c) => c.code.toUpperCase() === code);
-    if (found) {
-      handleApplyCoupon(found);
-    } else {
-      // Mock generic 10% coupon
-      const customCoupon: CouponItem = {
-        id: `coup_${code}`,
+
+    try {
+      const res = await couponApi.validateCoupon({
         code,
-        badgeText: "SPECIAL",
-        headline: `Special offer with ${code}`,
-        description: "Special promotion applied to your order",
-        discountPct: 10,
-        maxDiscount: 200,
-        terms: [`Valid on PINAK ${isRetail ? "store" : "dining"} payments`, "Offer terms apply"]
+        billAmount: numericBill,
+        storeId,
+        paymentMethod: selectedPaymentMethod,
+      });
+
+      if (!res.valid) {
+        toast.error(res.message || `Invalid coupon code ${code}`);
+        return;
+      }
+
+      const activeCoupon = res.coupon || {
+        id: `coup_${code.toLowerCase()}`,
+        code,
+        badgeText: "VERIFIED",
+        headline: `Saved ₹${res.discountAmount} with ${code}`,
+        description: res.message,
+        terms: ["Verified database promotion", "Terms & conditions apply"],
+        flatDiscount: res.discountAmount,
+        discountValue: res.discountAmount,
+        discountType: "FLAT",
       };
-      handleApplyCoupon(customCoupon);
+
+      setAppliedCoupon(activeCoupon);
+      setCelebrationDetails({ code, saved: res.discountAmount });
+      setShowCelebrationModal(true);
+      setPayStep("bill_checkout");
+      toast.success(res.message || `Coupon ${code} applied successfully!`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to validate coupon");
     }
   };
 
@@ -1704,40 +1692,68 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
                 </div>
               </div>
               <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-800/40">
-                3 OFFERS READY
+                {isLoadingCoupons
+                  ? "CHECKING OFFERS..."
+                  : availableCoupons.length > 0
+                  ? `${availableCoupons.length} OFFERS READY`
+                  : "OFFERS READY"}
               </span>
             </div>
 
-            {/* WELCOME coupon card */}
-            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/30 dark:via-indigo-950/20 dark:to-purple-950/30 border border-purple-200/70 dark:border-purple-800/50 rounded-2xl p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-700 to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
-                  🏷️
-                </span>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-black text-xs text-purple-950 dark:text-purple-100">
-                      WELCOME
-                    </span>
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 uppercase">
-                      10% OFF
-                    </span>
+            {/* Dynamic Real Coupon Card from PostgreSQL Database */}
+            {(() => {
+              const topOffer = autoApplicableCoupon || availableCoupons[0];
+              if (!topOffer) {
+                return (
+                  <div
+                    onClick={() => setPayStep("apply_coupon")}
+                    className="p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-dashed border-purple-200 dark:border-purple-800 text-center cursor-pointer hover:bg-purple-100/50 transition"
+                  >
+                    <p className="text-xs text-purple-700 dark:text-purple-300 font-bold">
+                      Enter bill amount above to unlock instant coupons & payment offers
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium mt-0.5">
-                    Save up to ₹250 on this transaction
-                  </p>
+                );
+              }
+              return (
+                <div
+                  onClick={() => setPayStep("apply_coupon")}
+                  className="bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/30 dark:via-indigo-950/20 dark:to-purple-950/30 border border-purple-200/70 dark:border-purple-800/50 rounded-2xl p-3 flex items-center justify-between cursor-pointer hover:border-purple-400 transition"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-700 to-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                      🏷️
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-black text-xs text-purple-950 dark:text-purple-100">
+                          {topOffer.code}
+                        </span>
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 uppercase">
+                          {topOffer.badgeText}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium mt-0.5">
+                        {topOffer.description}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold text-purple-700 dark:text-purple-300 shrink-0 ml-2">
+                    {topOffer.headline} →
+                  </span>
                 </div>
-              </div>
-              <span className="text-xs font-extrabold text-purple-700 dark:text-purple-300">
-                Extra 10%
-              </span>
-            </div>
+              );
+            })()}
 
             <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
               <span>Partner Banks: HDFC • Paytm • Google Pay</span>
-              <span className="font-bold text-purple-600 dark:text-purple-400">
-                Auto-applies at checkout →
-              </span>
+              <button
+                type="button"
+                onClick={() => setPayStep("apply_coupon")}
+                className="font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+              >
+                View all offers ({availableCoupons.length}) →
+              </button>
             </div>
           </div>
         </div>

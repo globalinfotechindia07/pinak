@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { couponApi } from "@/api/couponApi";
 
 export interface ProductItemData {
   id: string;
@@ -223,24 +224,37 @@ export const ProductOrderView: React.FC<ProductOrderViewProps> = ({
     setOrderStep("checkout");
   };
 
-  const handleApplyCustomCode = () => {
+  const handleApplyCustomCode = async () => {
     const code = couponCodeInput.trim().toUpperCase();
     if (!code) return;
-    const match = productCoupons.find((c) => c.code.toUpperCase() === code);
-    if (match) {
-      handleApplyCoupon(match);
-    } else {
-      const custom: ProductCouponItem = {
-        id: `coup_${code}`,
+    try {
+      const res = await couponApi.validateCoupon({
         code,
-        badgeText: "DEAL",
-        headline: `Special discount with ${code}`,
-        description: "Special in-store coupon applied",
-        discountPct: 10,
-        maxDiscount: 100,
-        terms: ["Applicable on current in-store shelf purchase"]
+        billAmount: totalMRP,
+        storeId,
+        paymentMethod: selectedPaymentMethod,
+      });
+
+      if (!res.valid) {
+        toast.error(res.message || `Invalid coupon code ${code}`);
+        return;
+      }
+
+      const validated: ProductCouponItem = {
+        id: `coup_${code.toLowerCase()}`,
+        code,
+        badgeText: res.coupon?.badgeText || "VERIFIED",
+        headline: res.coupon?.headline || `Saved ₹${res.discountAmount} with ${code}`,
+        description: res.coupon?.description || res.message,
+        flatDiscount: res.discountAmount,
+        discountPct: res.coupon?.discountPct,
+        maxDiscount: res.coupon?.maxDiscount,
+        terms: res.coupon?.terms || ["Applicable on current in-store purchase"],
       };
-      handleApplyCoupon(custom);
+      handleApplyCoupon(validated);
+      toast.success(res.message || `Coupon ${code} applied!`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to validate coupon");
     }
   };
 

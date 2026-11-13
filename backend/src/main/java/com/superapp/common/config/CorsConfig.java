@@ -14,7 +14,7 @@ import java.util.List;
  * CORS configuration.
  * <p>
  * Access-Control-Allow-Origin: * is NEVER used for authenticated APIs.
- * Only explicitly allowlisted origins are permitted.
+ * Only explicitly allowlisted origins and cloud patterns are permitted.
  */
 @Configuration
 public class CorsConfig {
@@ -32,7 +32,20 @@ public class CorsConfig {
                 .filter(s -> !s.isBlank())
                 .toList();
 
-        config.setAllowedOrigins(origins);
+        List<String> exactOrigins = origins.stream().filter(s -> !s.contains("*")).toList();
+        List<String> patternOrigins = origins.stream().filter(s -> s.contains("*")).toList();
+
+        if (!exactOrigins.isEmpty()) {
+            config.setAllowedOrigins(exactOrigins);
+        }
+        if (!patternOrigins.isEmpty()) {
+            config.setAllowedOriginPatterns(patternOrigins);
+        }
+        // Always permit Render, Vercel, and Netlify cloud frontend deployments
+        config.addAllowedOriginPattern("https://*.onrender.com");
+        config.addAllowedOriginPattern("https://*.vercel.app");
+        config.addAllowedOriginPattern("https://*.netlify.app");
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of(
                 "Authorization", "Content-Type", "X-Request-ID", "X-Requested-With", "Accept",

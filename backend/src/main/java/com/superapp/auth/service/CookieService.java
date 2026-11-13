@@ -40,7 +40,7 @@ public class CookieService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     public CookieService(
-            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.secret:${JWT_SECRET:6A576E5A7234753778214125442A472D4B6150645367566B5970337336763979}}") String secret,
             @Value("${app.cookie.secure:false}") boolean forceSecureCookie
     ) {
         this.hmacSecret = secret;

@@ -45,7 +45,7 @@ public class JwtService {
     private final long refreshTokenExpirationMs;
 
     public JwtService(
-            @Value("${jwt.secret}") String secretKey,
+            @Value("${jwt.secret:${JWT_SECRET:6A576E5A7234753778214125442A472D4B6150645367566B5970337336763979}}") String secretKey,
             @Value("${jwt.issuer:superapp-api}") String issuer,
             @Value("${jwt.audience:superapp-client}") String audience,
             @Value("${jwt.access-token-expiration:900000}") long accessTokenExpirationMs,

@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -11,10 +12,9 @@ async function startServer() {
   const server = createServer(app);
 
   // Serve static files from dist/public in production
-  const staticPath =
-    process.env.NODE_ENV === "production"
-      ? path.resolve(__dirname, "public")
-      : path.resolve(__dirname, "..", "dist", "public");
+  const staticPath = fs.existsSync(path.resolve(__dirname, "public"))
+    ? path.resolve(__dirname, "public")
+    : path.resolve(__dirname, "..", "dist", "public");
 
   app.use(express.static(staticPath));
 
@@ -25,8 +25,8 @@ async function startServer() {
 
   const port = process.env.PORT || 3000;
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  server.listen(Number(port), "0.0.0.0", () => {
+    console.log(`Server running on port ${port}`);
   });
 }
 
