@@ -843,6 +843,15 @@ public class MerchantServiceImpl implements MerchantService {
         merchant.setApprovalStatus(request.status());
         if (request.status() == ApprovalStatus.APPROVED) {
             merchant.setApprovedAt(Instant.now());
+            merchant.setStatus(MerchantStatus.ACTIVE);
+            merchant.setKycStatus(KycStatus.VERIFIED);
+            if (merchantKycRepository != null) {
+                merchantKycRepository.findFirstByMerchantIdOrderByCreatedAtDesc(id).ifPresent(kyc -> {
+                    kyc.setStatus("VERIFIED");
+                    kyc.setVerifiedAt(Instant.now());
+                    merchantKycRepository.save(kyc);
+                });
+            }
         }
         Merchant updated = merchantRepository.save(merchant);
         log.info("Admin updated merchant id={} status from {} to {}. Notes: {}",

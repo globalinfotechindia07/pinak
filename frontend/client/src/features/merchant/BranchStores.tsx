@@ -1546,7 +1546,12 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
             if (onAddStore) {
               await onAddStore(draft);
             } else {
-              store.addStore(draft);
+              try {
+                await storeApi.createStore(draft);
+              } catch (err: any) {
+                console.warn("Direct store API call error:", err?.message);
+                store.addStore(draft);
+              }
             }
             setIsAddOpen(false);
             fetchLiveStores();

@@ -174,7 +174,14 @@ public class OfferServiceImpl implements OfferService {
                 }
 
                 if (store.getApprovalStatus() != ApprovalStatus.APPROVED || store.getStatus() != StoreStatus.ACTIVE) {
-                    throw new AppException("Store is not active or approved", ApiError.STORE_NOT_ELIGIBLE, 400);
+                    if (merchant.getApprovalStatus() == ApprovalStatus.APPROVED || merchant.getStatus() == MerchantStatus.ACTIVE) {
+                        store.setApprovalStatus(ApprovalStatus.APPROVED);
+                        store.setStatus(StoreStatus.ACTIVE);
+                        store.setApprovedAt(Instant.now());
+                        storeRepository.save(store);
+                    } else {
+                        throw new AppException("Store is not active or approved", ApiError.STORE_NOT_ELIGIBLE, 400);
+                    }
                 }
             }
         }

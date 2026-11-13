@@ -1085,13 +1085,10 @@ export default function Home() {
 
       await syncBackendData();
     } catch (apiErr: any) {
-      const errMsg = apiErr?.response?.data?.message || apiErr?.message;
-      if (errMsg && (errMsg.includes("Enterprise Notice") || errMsg.includes("Merchant Owner"))) {
-        throw new Error(errMsg);
-      }
-      console.warn("Backend store create failed, saving locally:", errMsg);
-      store.addStore(draft);
-      toast.success(`Store branch "${draft.branchName || "Outlet"}" saved locally.`);
+      const errMsg = apiErr?.response?.data?.message || apiErr?.message || "Failed to register store branch with server";
+      console.error("Backend store create failed:", errMsg);
+      toast.error(errMsg);
+      throw apiErr;
     }
   };
 

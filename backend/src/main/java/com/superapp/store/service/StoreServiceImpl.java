@@ -9,6 +9,7 @@ import com.superapp.merchant.dto.UpdateApprovalStatusRequest;
 import com.superapp.merchant.entity.ApprovalStatus;
 import com.superapp.merchant.entity.KycStatus;
 import com.superapp.merchant.entity.Merchant;
+import com.superapp.merchant.enums.MerchantStatus;
 import com.superapp.merchant.repository.MerchantRepository;
 import com.superapp.store.dto.*;
 import com.superapp.store.entity.City;
@@ -127,7 +128,12 @@ public class StoreServiceImpl implements StoreService {
     public StoreResponse createMerchantStore(MerchantCreateStoreRequest request, UUID currentUserId) {
         Merchant merchant = getAuthenticatedMerchant(currentUserId);
 
-        if (merchant.getKycStatus() != KycStatus.VERIFIED) {
+        if (merchant.getApprovalStatus() == ApprovalStatus.APPROVED || merchant.getStatus() == MerchantStatus.ACTIVE) {
+            if (merchant.getKycStatus() != KycStatus.VERIFIED) {
+                merchant.setKycStatus(KycStatus.VERIFIED);
+                merchantRepository.save(merchant);
+            }
+        } else if (merchant.getKycStatus() != KycStatus.VERIFIED) {
             throw new AppException(
                     "Merchant KYC must be verified before creating or onboarding branch stores. Current KYC status: "
                             + (merchant.getKycStatus() != null ? merchant.getKycStatus().name() : "PENDING"),
@@ -195,14 +201,19 @@ public class StoreServiceImpl implements StoreService {
             store.setDefaultStandardCoverCharge(request.defaultStandardCoverCharge());
         }
 
-        if (request.managerEmail() != null && !request.managerEmail().isBlank()) {
+        
+
+        if (merchant.getApprovalStatus() == ApprovalStatus.APPROVED || merchant.getStatus() == MerchantStatus.ACTIVE) {
+            store.setStatus(StoreStatus.ACTIVE);
+            store.setApprovalStatus(ApprovalStatus.APPROVED);
+            store.setApprovedAt(Instant.now());
+        } else {
             store.setStatus(StoreStatus.INACTIVE);
             store.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         store.setCreatedBy(currentUserId.toString());
         store.setUpdatedBy(currentUserId.toString());
-
         Store saved = storeRepository.save(store);
         log.info("Created store id={} name='{}' for merchantId={}", saved.getId(), saved.getName(), merchant.getId());
 
@@ -584,11 +595,7 @@ public class StoreServiceImpl implements StoreService {
             store.setPhone(reqPhone);
         }
 
-        if (request.managerEmail() != null && !request.managerEmail().isBlank()) {
-            // When store is onboarded with a manager who must set password, status remains INACTIVE until password setup
-            store.setStatus(StoreStatus.INACTIVE);
-            store.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-        } else if (isAdmin) {
+        if (isAdmin || merchant.getApprovalStatus() == ApprovalStatus.APPROVED) {
             store.setStatus(StoreStatus.ACTIVE);
             store.setApprovalStatus(ApprovalStatus.APPROVED);
             store.setApprovedAt(Instant.now());
