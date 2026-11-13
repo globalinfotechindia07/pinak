@@ -148,9 +148,44 @@ export const storeApi = {
   },
 
   // Update Store Branch (Address, Hours, Coordinates)
-  updateStore: async (id: string, payload: UpdateStoreRequest): Promise<StoreDTO> => {
-    const res = await apiClient.put<ApiResponse<StoreDTO>>(`/merchant/stores/${id}`, payload);
-    return res.data?.data || (res.data as unknown as StoreDTO);
+  updateStore: async (id: string, payload: any): Promise<StoreDTO> => {
+    const body = {
+      ...payload,
+      storeName: payload.storeName || payload.branchName || payload.name || "Store Location",
+      name: payload.name || payload.storeName || payload.branchName || "Store Location",
+      address: payload.address || payload.addressLine1 || "Outlet Address",
+      addressLine1: payload.addressLine1 || payload.address || "Outlet Address",
+      addressLine2: payload.addressLine2 || payload.district || "",
+      cityId: (payload.cityId || payload.city || "nagpur").toLowerCase(),
+      state: payload.state || "Maharashtra",
+      pincode: payload.pincode || "440010",
+      latitude: Number(payload.latitude) || 21.1458,
+      longitude: Number(payload.longitude) || 79.0882,
+      contactPhone: payload.contactPhone || payload.phone,
+      phone: payload.phone || payload.contactPhone,
+      openingTime: payload.openingTime,
+      closingTime: payload.closingTime,
+      operatingDays: payload.operatingDays,
+      imageUrl: payload.imageUrl,
+      menuImages: payload.menuImages || [],
+      photos: payload.photos || [],
+      amenities: payload.amenities || [],
+      isTableBookingEnabled: payload.isTableBookingEnabled,
+      allowFreeStandardBooking: payload.allowFreeStandardBooking,
+      defaultStandardCoverCharge: payload.defaultStandardCoverCharge,
+      cashbackPercentage: payload.cashbackPercentage,
+      maxCashbackAmount: payload.maxCashbackAmount,
+      minTransactionForCashback: payload.minTransactionForCashback,
+      isCashbackEnabled: payload.isCashbackEnabled,
+    };
+
+    try {
+      const res = await apiClient.put<ApiResponse<StoreDTO>>(`/stores/${id}`, body);
+      return res.data?.data || (res.data as unknown as StoreDTO);
+    } catch {
+      const res = await apiClient.put<ApiResponse<StoreDTO>>(`/merchant/stores/${id}`, body);
+      return res.data?.data || (res.data as unknown as StoreDTO);
+    }
   },
 
   // Submit Store for Review

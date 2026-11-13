@@ -1107,9 +1107,15 @@ export default function Home() {
     try {
       await storeApi.updateStore(id, {
         name: updates.branchName || updates.storeName || updates.name,
+        storeName: updates.branchName || updates.storeName || updates.name,
+        branchName: updates.branchName || updates.storeName || updates.name,
         description: updates.description,
         phone: updates.phone,
+        contactPhone: updates.phone,
+        address: updates.address,
         addressLine1: updates.address,
+        addressLine2: updates.district || updates.addressLine2 || "",
+        city: updates.city,
         cityId: (updates.city || "nagpur").toLowerCase(),
         state: updates.state || "Maharashtra",
         pincode: updates.pincode || "440010",
@@ -1118,17 +1124,21 @@ export default function Home() {
         openingTime: updates.openingTime,
         closingTime: updates.closingTime,
         operatingDays: updates.operatingDays,
+        imageUrl: updates.imageUrl,
         menuImages: updates.menuImages,
         photos: updates.photos,
         amenities: updates.amenities,
+        isTableBookingEnabled: updates.isTableBookingEnabled,
+        allowFreeStandardBooking: updates.allowFreeStandardBooking,
+        defaultStandardCoverCharge: updates.defaultStandardCoverCharge,
       } as any);
       store.updateStore(id, updates);
       toast.success("Store outlet updated successfully!");
       await syncBackendData();
     } catch (err: any) {
-      console.warn("Backend store update fallback:", err?.response?.data || err.message);
+      console.error("Backend store update failed:", err?.response?.data || err.message);
       store.updateStore(id, updates);
-      toast.success("Store outlet updated");
+      toast.error("Failed to update store in database: " + (err?.response?.data?.message || err.message || "Unknown error"));
       await syncBackendData();
     }
   };
@@ -1534,10 +1544,7 @@ export default function Home() {
                           onDeleteStore={handleDeleteStore}
                           onAddOffer={handleAddOffer}
                           onNavigateTab={setCurrentTab}
-                          onUpdateStore={(id, updates) => {
-                            store.updateStore(id, updates);
-                            toast.success("Store details updated");
-                          }}
+                          onUpdateStore={handleUpdateStore}
                         />
                       )}
 

@@ -55,6 +55,7 @@ public class TableBookingServiceImpl implements TableBookingService {
     private final JwtService jwtService;
     private final TransactionRepository transactionRepository;
     private final RewardService rewardService;
+    private final com.superapp.coupon.service.CouponService couponService;
     private final SecureRandom random = new SecureRandom();
 
     public TableBookingServiceImpl(
@@ -64,7 +65,8 @@ public class TableBookingServiceImpl implements TableBookingService {
             UserRepository userRepository,
             JwtService jwtService,
             TransactionRepository transactionRepository,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) RewardService rewardService
+            @org.springframework.beans.factory.annotation.Autowired(required = false) RewardService rewardService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.superapp.coupon.service.CouponService couponService
     ) {
         this.tableBookingRepository = tableBookingRepository;
         this.storeRepository = storeRepository;
@@ -73,6 +75,7 @@ public class TableBookingServiceImpl implements TableBookingService {
         this.jwtService = jwtService;
         this.transactionRepository = transactionRepository;
         this.rewardService = rewardService;
+        this.couponService = couponService;
     }
 
     @Override
@@ -1256,6 +1259,7 @@ public class TableBookingServiceImpl implements TableBookingService {
             walkInBooking.setBookingDate(LocalDate.now());
             walkInBooking.setMealType(LocalTime.now().getHour() < 16 ? "LUNCH" : "DINNER");
             walkInBooking.setSlotTime(timestamp);
+            if (couponService != null && request.couponCode() != null && !request.couponCode().isBlank()) { couponService.recordCouponUsage(request.couponCode()); }
             walkInBooking.setOfferTitle((request.couponCode() != null && !request.couponCode().isBlank()) ? ("Walk-in Deal (" + request.couponCode() + ")") : "Walk-in Direct Payment");
             BigDecimal calcDiscountPct = (billAmount.compareTo(BigDecimal.ZERO) > 0 && discountAmount.compareTo(BigDecimal.ZERO) > 0)
                     ? discountAmount.multiply(BigDecimal.valueOf(100)).divide(billAmount, 1, RoundingMode.HALF_UP)

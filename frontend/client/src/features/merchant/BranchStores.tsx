@@ -75,7 +75,7 @@ interface BranchStoresProps {
   merchants?: Merchant[];
   offers?: Offer[];
   onAddStore: (draft: Partial<StoreType>) => void;
-  onUpdateStore?: (id: string, updates: Partial<StoreType>) => void;
+  onUpdateStore?: (id: string, updates: Partial<StoreType>) => Promise<void> | void;
   onDeleteStore?: (id: string) => void;
   onAddOffer?: (draft: any) => void;
 }
@@ -175,7 +175,7 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
   // Fetch Live Stores from Spring Boot backend on mount
   const fetchLiveStores = () => {
     setIsLoadingLiveStores(true);
-    storeApi
+    return storeApi
       .getMyStores()
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -1516,15 +1516,14 @@ export const BranchStores: React.FC<BranchStoresProps> = ({
         <EditStoreDrawer
           store={storeToEdit}
           onClose={() => setStoreToEdit(null)}
-          onSave={(updates) => {
+          onSave={async (updates) => {
             if (onUpdateStore) {
-              onUpdateStore(storeToEdit.id, updates);
+              await onUpdateStore(storeToEdit.id, updates);
             } else {
               store.updateStore(storeToEdit.id, updates);
             }
             setStoreToEdit(null);
-            fetchLiveStores();
-            toast.success(`Store outlet "${updates.branchName || storeToEdit.branchName}" updated!`);
+            await fetchLiveStores();
           }}
         />
       )}
@@ -3239,7 +3238,7 @@ function EditStoreDrawer({
 }: {
   store: StoreType;
   onClose: () => void;
-  onSave: (updates: Partial<StoreType>) => void;
+  onSave: (updates: Partial<StoreType>) => Promise<void> | void;
 }) {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [branchName, setBranchName] = useState(store.branchName || "");
@@ -3276,7 +3275,7 @@ function EditStoreDrawer({
     { id: 3, title: "Media", subtitle: "Cover, Menu & Photos" },
   ];
 
-  const handleFinalSave = () => {
+  const handleFinalSave = async () => {
     if (!branchName.trim()) {
       toast.error("Branch name is required");
       setCurrentStep(1);
@@ -3287,7 +3286,7 @@ function EditStoreDrawer({
       setCurrentStep(2);
       return;
     }
-    onSave({
+    await onSave({
       branchName: branchName.trim(),
       phone: phone.trim(),
       address: address.trim(),

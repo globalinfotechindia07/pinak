@@ -286,8 +286,29 @@ public class StoreServiceImpl implements StoreService {
             @CacheEvict(value = "discovery_nearby", allEntries = true)
     })
     public StoreResponse updateMerchantStore(UUID storeId, MerchantUpdateStoreRequest request, UUID currentUserId) {
-        Merchant merchant = getAuthenticatedMerchant(currentUserId);
-        Store store = getOwnedStore(storeId, merchant.getId());
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
+
+        Merchant merchant = merchantRepository.findById(store.getMerchantId())
+                .orElseThrow(() -> new ResourceNotFoundException("Merchant", "id", store.getMerchantId()));
+
+        boolean isOwner = merchant.getOwnerUserId().equals(currentUserId);
+        boolean isAdmin = false;
+        if (userRepository != null) {
+            isAdmin = userRepository.findById(currentUserId)
+                    .map(u -> u.getRole() == Role.ADMIN || u.getRole() == Role.SUPER_ADMIN)
+                    .orElse(false);
+        }
+        boolean isStaff = false;
+        if (!isOwner && !isAdmin && staffMemberRepository != null) {
+            isStaff = staffMemberRepository.findByUserId(currentUserId).stream()
+                    .anyMatch(s -> (s.getStoreId() == null || s.getStoreId().equals(storeId))
+                            && s.getMerchantId().equals(merchant.getId()));
+        }
+
+        if (!isOwner && !isAdmin && !isStaff) {
+            throw new AppException("You do not have permission to modify this store", ApiError.FORBIDDEN, 403);
+        }
 
         validateCoordinates(request.latitude(), request.longitude());
         String reqPhone = request.phone() != null ? request.phone().replaceAll("[\\s\\-()]", "").trim() : null;
@@ -694,7 +715,15 @@ public class StoreServiceImpl implements StoreService {
         Merchant merchant = merchantRepository.findById(store.getMerchantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Merchant", "id", store.getMerchantId()));
 
-        if (!isAdmin && !merchant.getOwnerUserId().equals(currentUserId)) {
+        boolean isOwner = merchant.getOwnerUserId().equals(currentUserId);
+        boolean isStaff = false;
+        if (!isOwner && !isAdmin && staffMemberRepository != null) {
+            isStaff = staffMemberRepository.findByUserId(currentUserId).stream()
+                    .anyMatch(s -> (s.getStoreId() == null || s.getStoreId().equals(id))
+                            && s.getMerchantId().equals(merchant.getId()));
+        }
+
+        if (!isAdmin && !isOwner && !isStaff) {
             throw new AppException("You are not authorized to modify this store", ApiError.FORBIDDEN, 403);
         }
 
@@ -707,11 +736,15 @@ public class StoreServiceImpl implements StoreService {
 
         store.setStoreName(request.storeName().trim());
         store.setAddress(request.address().trim());
-        store.setCityId(request.cityId());
+        store.setAddressLine1(request.address().trim());
+        City city = resolveOrCreateCity(request.cityId(), request.state());
+        String cityId = (city != null) ? city.getId() : (request.cityId() != null ? request.cityId().trim().toLowerCase() : "nagpur");
+        store.setCityId(cityId);
         store.setState(request.state().trim());
         store.setPincode(request.pincode().trim());
         store.setLatitude(request.latitude());
         store.setLongitude(request.longitude());
+        store.setLocation(Store.formatWkt(request.longitude(), request.latitude()));
         if (request.imageUrl() != null && !request.imageUrl().isBlank()) {
             store.setImageUrl(request.imageUrl().trim());
         }
@@ -748,7 +781,7 @@ public class StoreServiceImpl implements StoreService {
 
         Store updated = storeRepository.save(store);
         log.info("Updated store id={} name='{}'", updated.getId(), updated.getStoreName());
-        return StoreResponse.fromEntity(updated, merchant.getBusinessName());
+        return StoreResponse.fromEntity(updated, merchant.getBusinessName(), getCityName(updated.getCityId()), null);
     }
 
     @Override

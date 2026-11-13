@@ -1,12 +1,16 @@
 package com.superapp.store.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record MerchantUpdateStoreRequest(
         @NotBlank(message = "Store name must not be blank")
         @Size(min = 2, max = 255, message = "Store name must be between 2 and 255 characters")
+        @JsonAlias({"storeName", "branchName"})
         String name,
 
         @Size(max = 2000, message = "Description must not exceed 2000 characters")
@@ -14,6 +18,7 @@ public record MerchantUpdateStoreRequest(
 
         @NotBlank(message = "Address line 1 must not be blank")
         @Size(max = 255, message = "Address line 1 must not exceed 255 characters")
+        @JsonAlias({"address", "streetAddress"})
         String addressLine1,
 
         @Size(max = 255, message = "Address line 2 must not exceed 255 characters")
@@ -41,6 +46,7 @@ public record MerchantUpdateStoreRequest(
         BigDecimal longitude,
 
         @Pattern(regexp = "^$|^[+]?[0-9\\s\\-()]{7,25}$", message = "Invalid phone number format")
+        @JsonAlias({"contactPhone"})
         String phone,
 
         String openingTime,

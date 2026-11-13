@@ -108,7 +108,11 @@ public class SecurityConfig {
                         "/api/v1/admin/rewards/**",
                         "//api/v1/admin/rewards/**",
                         "/api/v1/rewards/**",
-                        "//api/v1/rewards/**"
+                        "//api/v1/rewards/**",
+                        "/api/v1/coupons/**",
+                        "//api/v1/coupons/**",
+                        "/api/v1/mobile/coupons/**",
+                        "//api/v1/mobile/coupons/**"
                 ).permitAll()
 
                 // Private mobile endpoints — strictly requires logged-in JWT authentication

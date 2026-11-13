@@ -72,7 +72,7 @@ interface StoreManagementProps {
   onAddStore: (draft: Partial<StoreType>) => void;
   onApproveStore: (id: string) => void;
   onDeleteStore?: (id: string) => void;
-  onUpdateStore?: (id: string, updates: Partial<StoreType>) => void;
+  onUpdateStore?: (id: string, updates: Partial<StoreType>) => Promise<void> | void;
   onAddOffer?: (draft: any) => void;
   onNavigateTab?: (tab: string) => void;
 }
@@ -1194,12 +1194,11 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
         <EditStoreDrawer
           store={storeToEdit}
           onClose={() => setStoreToEdit(null)}
-          onSave={(updates) => {
+          onSave={async (updates) => {
             if (onUpdateStore) {
-              onUpdateStore(storeToEdit.id, updates);
+              await onUpdateStore(storeToEdit.id, updates);
             }
             setStoreToEdit(null);
-            toast.success(`Store branch "${updates.branchName || storeToEdit.branchName}" updated successfully!`);
           }}
         />
       )}
@@ -2865,7 +2864,7 @@ function EditStoreDrawer({
 }: {
   store: StoreType;
   onClose: () => void;
-  onSave: (updates: Partial<StoreType>) => void;
+  onSave: (updates: Partial<StoreType>) => Promise<void> | void;
 }) {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [branchName, setBranchName] = useState(store.branchName || "");
@@ -2902,7 +2901,7 @@ function EditStoreDrawer({
     { id: 3, title: "Media", subtitle: "Cover, Menu & Photos" },
   ];
 
-  const handleFinalSave = () => {
+  const handleFinalSave = async () => {
     if (!branchName.trim()) {
       toast.error("Branch name is required");
       setCurrentStep(1);
@@ -2913,7 +2912,7 @@ function EditStoreDrawer({
       setCurrentStep(2);
       return;
     }
-    onSave({
+    await onSave({
       branchName: branchName.trim(),
       phone: phone.trim(),
       address: address.trim(),
