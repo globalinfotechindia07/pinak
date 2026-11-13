@@ -19,6 +19,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 import java.nio.charset.StandardCharsets;
 
@@ -27,7 +28,7 @@ import java.nio.charset.StandardCharsets;
  * <ul>
  *   <li>Stateless JWT — no HTTP sessions.</li>
  *   <li>CSRF disabled — Bearer token transport (see SecurityHeadersFilter for CSRF strategy note).</li>
- *   <li>CORS handled by CorsConfig bean.</li>
+ *   <li>CORS handled by CorsConfig bean with HIGHEST_PRECEDENCE FilterRegistrationBean.</li>
  *   <li>@PreAuthorize used for fine-grained authorization — @EnableMethodSecurity activated.</li>
  * </ul>
  */
@@ -38,26 +39,54 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ObjectMapper objectMapper;
+    private final CorsConfigurationSource corsConfigurationSource;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            ObjectMapper objectMapper,
+            CorsConfigurationSource corsConfigurationSource
+    ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.objectMapper = objectMapper;
+        this.corsConfigurationSource = corsConfigurationSource;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Disable CSRF — API uses Bearer tokens, not cookies (see SecurityHeadersFilter for policy)
+            // Disable CSRF — API uses Bearer tokens, not cookies
             .csrf(AbstractHttpConfigurer::disable)
 
-            // CORS handled by CorsConfig
-            .cors(cors -> {})
+            // CORS handled by injected CorsConfigurationSource
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
 
             // Stateless — no HTTP sessions
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
+                // 1. CRITICAL: Unconditionally allow all pre-flight OPTIONS requests across all routes
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // 2. All Auth & Session Endpoints (CSRF token, login, OTP, registration, token refresh)
+                .requestMatchers(
+                        "/api/v1/auth/**",
+                        "//api/v1/auth/**",
+                        "/api/v1/auth/csrf",
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/refresh",
+                        "/api/v1/auth/refresh/**",
+                        "/api/v1/auth/token/refresh",
+                        "/api/v1/auth/token/refresh/**",
+                        "/api/v1/auth/token-refresh/**",
+                        "/api/v1/auth/send-otp",
+                        "/api/v1/auth/resend-otp",
+                        "/api/v1/auth/verify-otp",
+                        "/api/v1/auth/register",
+                        "/api/v1/auth/logout",
+                        "/api/v1/admin/auth/**"
+                ).permitAll()
+
                 // Public mobile onboarding & authentication endpoints
                 .requestMatchers(
                         "/api/v1/mobile/auth/**",
@@ -65,14 +94,6 @@ public class SecurityConfig {
                         "/api/v1/api/v1/mobile/auth/**",
                         "/api/v1/mobile/refresh/**",
                         "/api/v1/mobile/refersh/**",
-                        "/api/v1/auth/send-otp",
-                        "/api/v1/auth/resend-otp",
-                        "/api/v1/auth/verify-otp",
-                        "/api/v1/auth/refresh/**",
-                        "/api/v1/auth/refersh/**",
-                        "/api/v1/auth/token/refresh/**",
-                        "/api/v1/auth/refresh-token/**",
-                        "/api/v1/auth/token-refresh/**",
                         "/api/v1/mobile/categories",
                         "//api/v1/mobile/categories",
                         "/api/v1/mobile/locations/**",
@@ -119,21 +140,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/mobile/home/**").authenticated()
                 .requestMatchers("/api/v1/mobile/location/update-permissions").authenticated()
                 .requestMatchers("/api/v1/mobile/profile/**").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf", "/api/v1/auth/invite/**").permitAll()
-                .requestMatchers(HttpMethod.POST,
-                        "/api/v1/auth/register",
-                        "/api/v1/auth/login",
-                        "/api/v1/auth/pos/pin-login",
-                        "/api/v1/auth/otp/**",
-                        "/api/v1/auth/refresh",
-                        "/api/v1/auth/token/refresh",
-                        "/api/v1/auth/logout",
-                        "/api/v1/auth/forgot-password",
-                        "/api/v1/auth/verify-reset-otp",
-                        "/api/v1/auth/reset-password",
-                        "/api/v1/auth/invite/**",
-                        "/api/v1/admin/auth/**"
-                ).permitAll()
 
                 // Public payment webhook
                 .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook", "/api/v1/payments/webhooks/**", "/api/v1/webhooks/payouts/**").permitAll()

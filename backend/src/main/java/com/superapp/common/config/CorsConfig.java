@@ -1,20 +1,23 @@
 package com.superapp.common.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * CORS configuration.
+ * Enterprise CORS Configuration with HIGHEST_PRECEDENCE FilterRegistrationBean.
  * <p>
- * Access-Control-Allow-Origin: * is NEVER used for authenticated APIs.
- * Only explicitly allowlisted origins and cloud patterns are permitted.
+ * Ensures CORS headers and OPTIONS preflights are handled immediately before
+ * any security filters, preventing 401 Unauthorized during browser preflight.
  */
 @Configuration
 public class CorsConfig {
@@ -26,7 +29,6 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Parse comma-separated origins from config
         List<String> origins = Arrays.stream(allowedOriginsRaw.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isBlank())
@@ -41,21 +43,29 @@ public class CorsConfig {
         if (!patternOrigins.isEmpty()) {
             config.setAllowedOriginPatterns(patternOrigins);
         }
-        // Always permit Render, Vercel, and Netlify cloud frontend deployments
-        config.addAllowedOriginPattern("https://*.onrender.com");
-        config.addAllowedOriginPattern("https://*.vercel.app");
-        config.addAllowedOriginPattern("https://*.netlify.app");
 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of(
-                "Authorization", "Content-Type", "X-Request-ID", "X-Requested-With", "Accept",
-                "X-XSRF-TOKEN", "X-CSRF-Token", "X-Client-Type", "X-Device-Fingerprint", "X-Device-Platform"));
-        config.setExposedHeaders(List.of("X-Request-ID", "Set-Cookie"));
+        // Always permit Render, Vercel, and Netlify cloud frontend deployments
+        config.addAllowedOriginPattern("https://*.vercel.app");
+        config.addAllowedOriginPattern("https://*.onrender.com");
+        config.addAllowedOriginPattern("https://*.netlify.app");
+        config.addAllowedOriginPattern("http://localhost:*");
+        config.addAllowedOriginPattern("http://127.0.0.1:*");
+
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("X-Request-ID", "Set-Cookie", "Authorization", "X-XSRF-TOKEN"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L); // Pre-flight cache: 1 hour
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    @Bean
+    public FilterRegistrationBean<CorsFilter> corsFilterRegistrationBean(CorsConfigurationSource corsConfigurationSource) {
+        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(corsConfigurationSource));
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
     }
 }

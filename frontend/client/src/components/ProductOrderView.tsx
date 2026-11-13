@@ -230,7 +230,7 @@ export const ProductOrderView: React.FC<ProductOrderViewProps> = ({
     try {
       const res = await couponApi.validateCoupon({
         code,
-        billAmount: totalMRP,
+        billAmount: itemTotal,
         storeId,
         paymentMethod: selectedPaymentMethod,
       });

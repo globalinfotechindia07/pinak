@@ -44,6 +44,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
+        // Skip pre-flight OPTIONS immediately so CORS filter handles it
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
@@ -60,31 +66,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        UUID userId = jwtService.extractUserId(token);
-        if (userId == null) {
-            log.warn("Valid JWT but could not extract user UUID from subject");
-            filterChain.doFilter(request, response);
-            return;
-        }
+        try {
+            final String userEmail = jwtService.extractUsername(token);
 
-        // Only set authentication if not already authenticated in this request
-        if (SecurityContextHolder.getContext().getAuthentication() == null) {
-            try {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(userId.toString());
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
-                if (userDetails.isEnabled() && userDetails.isAccountNonLocked()) {
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities());
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                    log.debug("Authenticated user {} for {}", userId, request.getRequestURI());
-                } else {
-                    log.debug("User {} account is locked or disabled", userId);
+                if (jwtService.isTokenValid(token, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                    // Extract and forward tenant/merchant context if present in claims
+                    UUID merchantId = jwtService.extractMerchantId(token);
+                    if (merchantId != null) {
+                        request.setAttribute("merchantId", merchantId);
+                    }
+                    UUID storeId = jwtService.extractStoreId(token);
+                    if (storeId != null) {
+                        request.setAttribute("storeId", storeId);
+                    }
                 }
-            } catch (Exception ex) {
-                log.warn("Failed to load user for JWT subject {}: {}", userId, ex.getMessage());
             }
+        } catch (Exception ex) {
+            // Log at debug level only — do not leak token parsing errors to clients
+            log.debug("Failed to set user authentication from JWT: {}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);

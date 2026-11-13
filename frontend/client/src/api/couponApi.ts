@@ -4,12 +4,12 @@ import { ApiResponse } from "../types/api/common";
 export interface CouponItem {
   id: string;
   code: string;
-  title: string;
+  title?: string;
   headline: string;
   description: string;
   badgeText: string;
-  discountType: "PERCENTAGE" | "FLAT" | string;
-  discountValue: number;
+  discountType?: "PERCENTAGE" | "FLAT" | string;
+  discountValue?: number;
   maxDiscount?: number;
   minBill?: number;
   partnerBank?: string;

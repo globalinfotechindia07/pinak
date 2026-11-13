@@ -223,29 +223,6 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
   const [autoApplicableCoupon, setAutoApplicableCoupon] = useState<CouponItem | null>(null);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState<boolean>(true);
 
-  // Load real coupons from backend on mount and when bill amount or store changes
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoadingCoupons(true);
-    couponApi
-      .getApplicableCoupons(storeId, numericBill)
-      .then((res) => {
-        if (!isMounted) return;
-        setAvailableCoupons(res.coupons);
-        setAutoApplicableCoupon(res.autoApplicableCoupon);
-      })
-      .catch((err) => {
-        console.warn("[PayBillView] Error fetching real coupons:", err);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoadingCoupons(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [storeId, numericBill]);
-
   // Applied Coupon State
   const [appliedCoupon, setAppliedCoupon] = useState<CouponItem | null>(null);
   const [couponCodeInput, setCouponCodeInput] = useState<string>("");
@@ -276,6 +253,29 @@ export const PayBillView: React.FC<PayBillViewProps> = ({
     const val = parseFloat(billAmountInput.replace(/[^0-9.]/g, ""));
     return isNaN(val) ? 0 : val;
   }, [billAmountInput]);
+
+  // Load real coupons from backend on mount and when bill amount or store changes
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingCoupons(true);
+    couponApi
+      .getApplicableCoupons(storeId, numericBill)
+      .then((res) => {
+        if (!isMounted) return;
+        setAvailableCoupons(res.coupons);
+        setAutoApplicableCoupon(res.autoApplicableCoupon);
+      })
+      .catch((err) => {
+        console.warn("[PayBillView] Error fetching real coupons:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingCoupons(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [storeId, numericBill]);
 
   // Locked Table Pre-booking Offer Discount (e.g. 50% or 30% from advance table reservation)
   const tableOfferDiscount = useMemo(() => {
