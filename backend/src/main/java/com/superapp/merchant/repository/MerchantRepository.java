@@ -35,6 +35,8 @@ public interface MerchantRepository extends JpaRepository<Merchant, UUID> {
 
     boolean existsByEmailIgnoreCase(String email);
 
+    Optional<Merchant> findByEmailIgnoreCase(String email);
+
     boolean existsByPhone(String phone);
 
     @org.springframework.data.jpa.repository.Query("SELECT m FROM Merchant m WHERE m.phone IS NOT NULL AND (m.phone = :phone OR m.phone LIKE CONCAT('%', :last10))")

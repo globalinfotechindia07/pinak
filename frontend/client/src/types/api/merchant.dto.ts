@@ -12,23 +12,36 @@ export interface KycDocumentDTO {
 
 export interface MerchantProfileDTO {
   id: string;
-  userId: string;
+  userId?: string;
+  ownerUserId?: string;
   businessName: string;
+  legalName?: string;
   legalEntityName?: string;
+  description?: string;
   categoryId: string;
   categoryName?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
   gstin?: string;
+  pan?: string;
   panNumber?: string;
   bankUpiId: string; // Zero-escrow direct UPI settlement VPA
   bankName?: string;
   bankAccountNumber?: string;
   bankIfsc?: string;
   accountHolderName?: string;
+  commissionRate?: number;
+  state?: string;
+  district?: string;
+  city?: string;
+  pincode?: string;
+  address?: string;
   kycStatus: KycStatus;
-  status: "ACTIVE" | "PENDING_APPROVAL" | "SUSPENDED";
-  documents: KycDocumentDTO[];
+  status: "ACTIVE" | "PENDING_APPROVAL" | "SUSPENDED" | "INACTIVE";
+  documents?: KycDocumentDTO[];
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface RegisterMerchantRequest {

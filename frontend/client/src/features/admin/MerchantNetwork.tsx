@@ -1801,6 +1801,7 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
       {merchantToEdit && (
         <EditMerchantDrawer
           merchant={merchantToEdit}
+          existingMerchants={merchants}
           onClose={() => setMerchantToEdit(null)}
           onSave={async (updates) => {
             try {
@@ -1849,6 +1850,7 @@ export const MerchantNetwork: React.FC<MerchantNetworkProps> = ({
       {/* Bulk CSV Import Slide-Over Drawer (Right Side) */}
       {isBulkOpen && (
         <BulkImportDrawer
+          existingMerchants={merchants}
           onClose={() => setIsBulkOpen(false)}
           onImportMerchants={async (newMerchants) => {
             for (const m of newMerchants) {
@@ -1959,8 +1961,11 @@ function AddMerchantDrawer({
     if (lower.includes("platform administrator") || lower.includes("platform staff") || lower.includes("role conflict")) {
       return "This email is already associated with an administrator account. Please use a separate email address for the commercial merchant owner.";
     }
-    if (lower.includes("merchant is already registered") || lower.includes("already registered") || lower.includes("email_already_exists")) {
+    if (lower.includes("merchant is already registered with email") || lower.includes("email_already_exists") || lower.includes("email address is already in use") || lower.includes("uq_merchants_email")) {
       return "This email address is already in use by an existing merchant account. Please enter a different email address.";
+    }
+    if (lower.includes("already registered with phone number") || lower.includes("already linked to another user account") || lower.includes("already registered to an active store branch") || lower.includes("uq_merchants_phone")) {
+      return "This contact phone number is already registered to another merchant brand or account. Please provide a unique phone number.";
     }
     if (lower.includes("sql") || lower.includes("database") || lower.includes("column") || lower.includes("psqlexception")) {
       return "A temporary database issue occurred while processing the merchant request. Please try again or contact system support.";
@@ -2379,6 +2384,14 @@ function AddMerchantDrawer({
 
     if (conflictingMerchant) {
       const msg = `This email address is already in use by merchant "${conflictingMerchant.businessName}". Please use a different email address.`;
+      setSubmitError(msg);
+      toast.error(msg);
+      setCurrentStep(2);
+      return;
+    }
+
+    if (conflictingPhone) {
+      const msg = `This phone number is already registered with merchant "${conflictingPhone.businessName}". Please use a unique authorized phone number.`;
       setSubmitError(msg);
       toast.error(msg);
       setCurrentStep(2);
@@ -3324,7 +3337,7 @@ function AddMerchantDrawer({
                   key="btn-wizard-next"
                   type="button"
                   onClick={handleNext}
-                  disabled={Boolean(conflictingStaff || conflictingMerchant)}
+                  disabled={Boolean(conflictingStaff || conflictingMerchant || (currentStep === 2 && conflictingPhone))}
                   className="btn-gradient px-5 py-2.5 rounded-xl text-white text-xs font-bold shadow-md hover:opacity-95 transition-opacity flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>Next Step</span>
@@ -3335,7 +3348,7 @@ function AddMerchantDrawer({
                   key="btn-wizard-submit"
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isSubmitting || Boolean(conflictingStaff || conflictingMerchant)}
+                  disabled={isSubmitting || Boolean(conflictingStaff || conflictingMerchant || conflictingPhone)}
                   className="btn-gradient px-5 py-2.5 rounded-xl text-white text-xs font-bold shadow-md hover:opacity-95 transition-opacity flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {isSubmitting ? (
@@ -3361,9 +3374,11 @@ function AddMerchantDrawer({
 
 // Production-Grade Enterprise Bulk CSV Merchant Import Drawer
 function BulkImportDrawer({
+  existingMerchants,
   onClose,
   onImportMerchants,
 }: {
+  existingMerchants?: Merchant[];
   onClose: () => void;
   onImportMerchants: (merchants: any[]) => Promise<void> | void;
 }) {
@@ -3504,6 +3519,18 @@ function BulkImportDrawer({
 
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
       const records: any[] = [];
+      const seenEmails = new Set<string>();
+      const seenPhoneSuffixes = new Set<string>();
+      if (existingMerchants) {
+        existingMerchants.forEach((m) => {
+          const em = (m.ownerEmail || (m as any).email || "").trim().toLowerCase();
+          if (em) seenEmails.add(em);
+          const ph = (m.ownerPhone || (m as any).phone || "").replace(/\D/g, "");
+          if (ph.length >= 10) seenPhoneSuffixes.add(ph.slice(-10));
+        });
+      }
+
+      const duplicateErrors: string[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(",").map((v) => v.trim());
@@ -3520,6 +3547,22 @@ function BulkImportDrawer({
         const upi = row["bankupi"] || row["upi"] || `${bName.toLowerCase().replace(/\s+/g, "")}@icici`;
         const gstin = row["gstin"] || "27AABCU9603R1ZM";
         const pan = row["pan"] || "AABCU9603R";
+
+        const normEmail = email.trim().toLowerCase();
+        const cleanPhone = phone.replace(/\D/g, "");
+        const phone10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : "";
+
+        if (normEmail && seenEmails.has(normEmail)) {
+          duplicateErrors.push(`Row ${i} (${bName}): Email "${normEmail}" is already registered.`);
+        } else if (normEmail) {
+          seenEmails.add(normEmail);
+        }
+
+        if (phone10 && seenPhoneSuffixes.has(phone10)) {
+          duplicateErrors.push(`Row ${i} (${bName}): Phone "${phone}" is already registered.`);
+        } else if (phone10) {
+          seenPhoneSuffixes.add(phone10);
+        }
 
         records.push({
           businessName: bName,
@@ -3539,6 +3582,12 @@ function BulkImportDrawer({
           commissionRate: parseFloat(row["commissionrate"] || "5.0") || 5.0,
           initialStore: null,
         });
+      }
+
+      if (duplicateErrors.length > 0) {
+        toast.error(`CSV contains duplicate merchants:\n${duplicateErrors.slice(0, 3).join("\n")}`);
+        setStep("upload");
+        return;
       }
 
       setParsedMerchants(records);
@@ -3792,10 +3841,12 @@ function BulkImportDrawer({
 // Enterprise Merchant Editing Slide-over Drawer
 function EditMerchantDrawer({
   merchant,
+  existingMerchants,
   onClose,
   onSave,
 }: {
   merchant: Merchant;
+  existingMerchants?: Merchant[];
   onClose: () => void;
   onSave: (updates: Partial<Merchant>) => Promise<void> | void;
 }) {
@@ -3881,6 +3932,35 @@ function EditMerchantDrawer({
     if (formData.confirmBankAccountNumber && formData.bankAccountNumber !== formData.confirmBankAccountNumber) {
       toast.error("Account Number and Confirm Account Number do not match!");
       return;
+    }
+
+    const cleanEditPhone = (formData.ownerPhone || "").replace(/\D/g, "");
+    const normalizedEditEmail = (formData.ownerEmail || "").trim().toLowerCase();
+
+    if (normalizedEditEmail && existingMerchants) {
+      const duplicateEmail = existingMerchants.find(
+        (m) =>
+          m.id !== merchant.id &&
+          (((m as any).email || "").trim().toLowerCase() === normalizedEditEmail ||
+            (m.ownerEmail || "").trim().toLowerCase() === normalizedEditEmail)
+      );
+      if (duplicateEmail) {
+        toast.error(`Email "${normalizedEditEmail}" is already in use by merchant "${duplicateEmail.businessName}".`);
+        return;
+      }
+    }
+
+    if (cleanEditPhone.length >= 10 && existingMerchants) {
+      const input10 = cleanEditPhone.slice(-10);
+      const duplicatePhone = existingMerchants.find((m) => {
+        if (m.id === merchant.id) return false;
+        const mPhone = (m.ownerPhone || (m as any).phone || "").replace(/\D/g, "");
+        return mPhone.length >= 10 && mPhone.slice(-10) === input10;
+      });
+      if (duplicatePhone) {
+        toast.error(`Phone number is already registered with merchant "${duplicatePhone.businessName}".`);
+        return;
+      }
     }
 
     try {

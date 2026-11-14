@@ -75,3 +75,5 @@ coverage/
 
 # Raw Data Dumps
 **/data/raw_*.json
+local_db_data_export.sql
+*.sql.bak

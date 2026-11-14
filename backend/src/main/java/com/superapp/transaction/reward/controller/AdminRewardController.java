@@ -32,9 +32,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/admin/rewards")
+@RequestMapping({"/api/v1/admin/rewards", "//api/v1/admin/rewards"})
 @Tag(name = "Admin Rewards", description = "Administrative adjustments, reversals, and ledger oversight")
-@SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class AdminRewardController {
 
@@ -118,22 +117,14 @@ public class AdminRewardController {
         return ResponseEntity.ok(ApiResponse.success("Customer reward accounts fetched successfully", accounts));
     }
 
-    @GetMapping("/{customerId}")
-    @Operation(summary = "Get customer reward account details (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<ApiResponse<RewardBalanceResponse>> getCustomerRewardAccount(
-            @PathVariable UUID customerId) {
-        RewardBalanceResponse response = rewardService.getRewardBalance(customerId);
-        return ResponseEntity.ok(ApiResponse.success("Customer reward account fetched successfully", response));
-    }
-
-    @GetMapping("/welcome-bonus-setting")
+    @GetMapping({"/welcome-bonus-setting", "/welcome-bonus"})
     @Operation(summary = "Get Super Admin configuration for First-Time User Welcome Coins", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<WelcomeBonusSettingDto>> getWelcomeBonusSetting() {
         WelcomeBonusSettingDto setting = welcomeBonusSettingsService.getWelcomeBonusSetting();
         return ResponseEntity.ok(ApiResponse.success("Welcome bonus setting fetched successfully", setting));
     }
 
-    @PutMapping("/welcome-bonus-setting")
+    @PutMapping({"/welcome-bonus-setting", "/welcome-bonus"})
     @Operation(summary = "Update Super Admin configuration for First-Time User Welcome Coins", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<WelcomeBonusSettingDto>> updateWelcomeBonusSetting(
             @Valid @RequestBody WelcomeBonusSettingDto request,
@@ -143,5 +134,13 @@ public class AdminRewardController {
                 : "Super Admin";
         WelcomeBonusSettingDto updated = welcomeBonusSettingsService.updateWelcomeBonusSetting(request, actor);
         return ResponseEntity.ok(ApiResponse.success("Welcome bonus setting updated successfully", updated));
+    }
+
+    @GetMapping({"/customer/{customerId}", "/{customerId:[0-9a-fA-F\\-]{36}}"})
+    @Operation(summary = "Get customer reward account details (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<RewardBalanceResponse>> getCustomerRewardAccount(
+            @PathVariable UUID customerId) {
+        RewardBalanceResponse response = rewardService.getRewardBalance(customerId);
+        return ResponseEntity.ok(ApiResponse.success("Customer reward account fetched successfully", response));
     }
 }

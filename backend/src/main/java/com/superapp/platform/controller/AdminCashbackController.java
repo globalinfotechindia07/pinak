@@ -17,8 +17,9 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/admin/settings/cashback")
+@RequestMapping({"/api/v1/admin/settings/cashback", "//api/v1/admin/settings/cashback"})
 @Tag(name = "Admin Transaction Cashback", description = "Super Admin management of platform and store transaction cashbacks")
+@org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class AdminCashbackController {
 
     private final CashbackSettingsService cashbackSettingsService;

@@ -118,32 +118,92 @@ public class MerchantServiceImpl implements MerchantService {
         String description = request.description() != null ? request.description().trim() : null;
         String website = request.website() != null ? request.website().trim() : null;
 
+        // If not admin, verify caller does not already own a merchant brand
+        if (!isAdmin && merchantRepository.existsByOwnerUserId(currentUserId)) {
+            throw new AppException("You already have an existing registered merchant brand account.",
+                    ApiError.VALIDATION_ERROR, 400);
+        }
+
         // Global check: ensure no merchant is already registered with this email
         if (email != null && !email.isBlank()) {
             if (merchantRepository.existsByEmailIgnoreCase(email)) {
                 throw new AppException("A merchant is already registered with email: " + email,
                         ApiError.EMAIL_ALREADY_EXISTS, 400);
             }
+            // Also check if any existing user with this email already owns an active merchant
+            Optional<User> existingUserByEmail = userRepository.findByEmailIgnoreCase(email);
+            if (existingUserByEmail.isPresent()) {
+                User u = existingUserByEmail.get();
+                if (u.getRole() == Role.ADMIN || u.getRole() == Role.SUPER_ADMIN) {
+                    throw new AppException(
+                            "This email is already associated with an administrator account. Please use a separate email address for the merchant owner.",
+                            ApiError.VALIDATION_FAILED, 400);
+                }
+                if (merchantRepository.existsByOwnerUserId(u.getId())) {
+                    throw new AppException(
+                            "This email address is already in use by an existing merchant account.",
+                            ApiError.EMAIL_ALREADY_EXISTS, 400);
+                }
+            }
         }
 
-        // Global check: ensure no merchant is already registered with this phone number
+        // Phone normalization and robust duplicate checks across merchant, store, and user accounts
+        String normalizedPhone = null;
+        String last10 = null;
         if (phone != null && !phone.isBlank()) {
-            if (merchantRepository.existsByPhone(phone)) {
-                throw new AppException("A merchant brand is already registered with phone number: " + phone,
+            String digitsOnly = phone.replaceAll("\\D", "");
+            last10 = digitsOnly.length() >= 10 ? digitsOnly.substring(digitsOnly.length() - 10) : digitsOnly;
+            normalizedPhone = com.superapp.common.util.PhoneNormalizer.isValid(phone)
+                    ? com.superapp.common.util.PhoneNormalizer.normalize(phone)
+                    : phone.trim();
+
+            // 1. Check merchant repository for exact phone match or last-10-digits suffix match
+            List<Merchant> existingMerchantsByPhone = merchantRepository.findByPhoneOrSuffix(phone, last10);
+            if (existingMerchantsByPhone.isEmpty() && !normalizedPhone.equals(phone)) {
+                existingMerchantsByPhone = merchantRepository.findByPhoneOrSuffix(normalizedPhone, last10);
+            }
+            if (!existingMerchantsByPhone.isEmpty()) {
+                String existingBrand = existingMerchantsByPhone.get(0).getBusinessName();
+                throw new AppException(
+                        "A merchant brand is already registered with phone number " + phone + " (Merchant: " + existingBrand + "). Each business owner must have a unique authorized contact number.",
                         ApiError.VALIDATION_ERROR, 400);
             }
-            if (storeRepository != null && storeRepository.existsByPhone(phone)) {
-                throw new AppException("Phone number " + phone + " is already registered to an active store branch.",
-                        ApiError.VALIDATION_ERROR, 400);
-            }
-            if (userRepository.existsByPhone(phone)) {
-                // If the phone belongs to an existing user, check if that user's email matches
-                Optional<User> userByPhone = userRepository.findByPhone(phone);
-                if (userByPhone.isPresent() && (email == null || !userByPhone.get().getEmail().equalsIgnoreCase(email))) {
-                    throw new AppException("Phone number " + phone + " is already linked to another user account.",
+
+            // 2. Check store repository for phone collision with any active store branch
+            if (storeRepository != null) {
+                List<com.superapp.store.entity.Store> existingStores = storeRepository.findByPhoneOrSuffix(phone, last10);
+                if (existingStores.isEmpty() && !normalizedPhone.equals(phone)) {
+                    existingStores = storeRepository.findByPhoneOrSuffix(normalizedPhone, last10);
+                }
+                if (!existingStores.isEmpty()) {
+                    throw new AppException(
+                            "Phone number " + phone + " is already registered to an active store branch (" + existingStores.get(0).getName() + ").",
                             ApiError.VALIDATION_ERROR, 400);
                 }
             }
+
+            // 3. Check user repository for phone collision
+            List<User> existingUsersByPhone = userRepository.findByPhoneOrSuffix(phone, last10);
+            if (existingUsersByPhone.isEmpty() && !normalizedPhone.equals(phone)) {
+                existingUsersByPhone = userRepository.findByPhoneOrSuffix(normalizedPhone, last10);
+            }
+            if (!existingUsersByPhone.isEmpty()) {
+                for (User userByPhone : existingUsersByPhone) {
+                    if (merchantRepository.existsByOwnerUserId(userByPhone.getId())) {
+                        throw new AppException(
+                                "Phone number " + phone + " is already linked to an existing merchant owner account.",
+                                ApiError.VALIDATION_ERROR, 400);
+                    }
+                    if (email != null && !userByPhone.getEmail().equalsIgnoreCase(email)) {
+                        throw new AppException(
+                                "Phone number " + phone + " is already linked to another user account (" + userByPhone.getEmail() + ").",
+                                ApiError.VALIDATION_ERROR, 400);
+                    }
+                }
+            }
+
+            // Standardize phone to canonical normalized format
+            phone = normalizedPhone;
         }
 
         // If admin onboards a merchant, associate or provision owner user by email
@@ -399,10 +459,60 @@ public class MerchantServiceImpl implements MerchantService {
             merchant.setLegalName(request.legalName().trim());
         if (request.description() != null)
             merchant.setDescription(request.description().trim());
-        if (request.phone() != null)
-            merchant.setPhone(request.phone().trim());
-        if (request.email() != null)
-            merchant.setEmail(request.email().trim().toLowerCase());
+        if (request.phone() != null && !request.phone().isBlank()) {
+            String rawPhone = request.phone().trim();
+            String digitsOnly = rawPhone.replaceAll("\\D", "");
+            String last10 = digitsOnly.length() >= 10 ? digitsOnly.substring(digitsOnly.length() - 10) : digitsOnly;
+            String updatedPhone = com.superapp.common.util.PhoneNormalizer.isValid(rawPhone)
+                    ? com.superapp.common.util.PhoneNormalizer.normalize(rawPhone)
+                    : rawPhone;
+
+            if (merchant.getPhone() == null || !merchant.getPhone().equals(updatedPhone)) {
+                List<Merchant> othersByPhone = merchantRepository.findByPhoneOrSuffix(updatedPhone, last10);
+                for (Merchant other : othersByPhone) {
+                    if (!other.getId().equals(merchant.getId())) {
+                        throw new AppException("Phone number " + rawPhone + " is already registered to merchant: " + other.getBusinessName(),
+                                ApiError.VALIDATION_ERROR, 400);
+                    }
+                }
+                List<User> usersByPhone = userRepository.findByPhoneOrSuffix(updatedPhone, last10);
+                for (User u : usersByPhone) {
+                    if (!u.getId().equals(merchant.getOwnerUserId())) {
+                        throw new AppException("Phone number " + rawPhone + " is already linked to another user account.",
+                                ApiError.VALIDATION_ERROR, 400);
+                    }
+                }
+                if (storeRepository != null) {
+                    List<com.superapp.store.entity.Store> storesByPhone = storeRepository.findByPhoneOrSuffix(updatedPhone, last10);
+                    for (com.superapp.store.entity.Store s : storesByPhone) {
+                        if (!s.getMerchantId().equals(merchant.getId())) {
+                            throw new AppException("Phone number " + rawPhone + " is already registered to store branch: " + s.getName(),
+                                    ApiError.VALIDATION_ERROR, 400);
+                        }
+                    }
+                }
+            }
+            merchant.setPhone(updatedPhone);
+        }
+
+        if (request.email() != null && !request.email().isBlank()) {
+            String updatedEmail = request.email().trim().toLowerCase();
+            if (merchant.getEmail() == null || !merchant.getEmail().equalsIgnoreCase(updatedEmail)) {
+                merchantRepository.findByEmailIgnoreCase(updatedEmail).ifPresent(other -> {
+                    if (!other.getId().equals(merchant.getId())) {
+                        throw new AppException("Email " + updatedEmail + " is already in use by merchant: " + other.getBusinessName(),
+                                ApiError.EMAIL_ALREADY_EXISTS, 400);
+                    }
+                });
+                userRepository.findByEmailIgnoreCase(updatedEmail).ifPresent(u -> {
+                    if (!u.getId().equals(merchant.getOwnerUserId())) {
+                        throw new AppException("Email " + updatedEmail + " is already associated with another user account.",
+                                ApiError.EMAIL_ALREADY_EXISTS, 400);
+                    }
+                });
+            }
+            merchant.setEmail(updatedEmail);
+        }
         if (request.website() != null)
             merchant.setWebsite(request.website().trim());
 
@@ -734,10 +844,60 @@ public class MerchantServiceImpl implements MerchantService {
             merchant.setLegalName(request.legalName().trim());
         if (request.description() != null)
             merchant.setDescription(request.description().trim());
-        if (request.phone() != null)
-            merchant.setPhone(request.phone().trim());
-        if (request.email() != null)
-            merchant.setEmail(request.email().trim().toLowerCase());
+        if (request.phone() != null && !request.phone().isBlank()) {
+            String rawPhone = request.phone().trim();
+            String digitsOnly = rawPhone.replaceAll("\\D", "");
+            String last10 = digitsOnly.length() >= 10 ? digitsOnly.substring(digitsOnly.length() - 10) : digitsOnly;
+            String updatedPhone = com.superapp.common.util.PhoneNormalizer.isValid(rawPhone)
+                    ? com.superapp.common.util.PhoneNormalizer.normalize(rawPhone)
+                    : rawPhone;
+
+            if (merchant.getPhone() == null || !merchant.getPhone().equals(updatedPhone)) {
+                List<Merchant> othersByPhone = merchantRepository.findByPhoneOrSuffix(updatedPhone, last10);
+                for (Merchant other : othersByPhone) {
+                    if (!other.getId().equals(merchant.getId())) {
+                        throw new AppException("Phone number " + rawPhone + " is already registered to merchant: " + other.getBusinessName(),
+                                ApiError.VALIDATION_ERROR, 400);
+                    }
+                }
+                List<User> usersByPhone = userRepository.findByPhoneOrSuffix(updatedPhone, last10);
+                for (User u : usersByPhone) {
+                    if (!u.getId().equals(merchant.getOwnerUserId())) {
+                        throw new AppException("Phone number " + rawPhone + " is already linked to another user account.",
+                                ApiError.VALIDATION_ERROR, 400);
+                    }
+                }
+                if (storeRepository != null) {
+                    List<com.superapp.store.entity.Store> storesByPhone = storeRepository.findByPhoneOrSuffix(updatedPhone, last10);
+                    for (com.superapp.store.entity.Store s : storesByPhone) {
+                        if (!s.getMerchantId().equals(merchant.getId())) {
+                            throw new AppException("Phone number " + rawPhone + " is already registered to store branch: " + s.getName(),
+                                    ApiError.VALIDATION_ERROR, 400);
+                        }
+                    }
+                }
+            }
+            merchant.setPhone(updatedPhone);
+        }
+
+        if (request.email() != null && !request.email().isBlank()) {
+            String updatedEmail = request.email().trim().toLowerCase();
+            if (merchant.getEmail() == null || !merchant.getEmail().equalsIgnoreCase(updatedEmail)) {
+                merchantRepository.findByEmailIgnoreCase(updatedEmail).ifPresent(other -> {
+                    if (!other.getId().equals(merchant.getId())) {
+                        throw new AppException("Email " + updatedEmail + " is already in use by merchant: " + other.getBusinessName(),
+                                ApiError.EMAIL_ALREADY_EXISTS, 400);
+                    }
+                });
+                userRepository.findByEmailIgnoreCase(updatedEmail).ifPresent(u -> {
+                    if (!u.getId().equals(merchant.getOwnerUserId())) {
+                        throw new AppException("Email " + updatedEmail + " is already associated with another user account.",
+                                ApiError.EMAIL_ALREADY_EXISTS, 400);
+                    }
+                });
+            }
+            merchant.setEmail(updatedEmail);
+        }
         if (request.website() != null)
             merchant.setWebsite(request.website().trim());
         if (request.gstin() != null)

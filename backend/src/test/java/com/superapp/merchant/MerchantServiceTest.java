@@ -163,6 +163,39 @@ class MerchantServiceTest {
     }
 
     @Test
+    @DisplayName("Create merchant fails if phone number is already registered to an existing merchant")
+    void createMerchant_duplicatePhone_throwsException() {
+        CreateMerchantRequest request = new CreateMerchantRequest(
+                "Acme Fitness", "Acme Fitness LLC", "Desc", categoryId, "9876543210", "unique@test.com", "https://acme.com"
+        );
+
+        Merchant existing = new Merchant();
+        existing.setBusinessName("Existing Fitness Brand");
+        when(merchantRepository.findByPhoneOrSuffix(any(), eq("9876543210"))).thenReturn(List.of(existing));
+
+        assertThatThrownBy(() -> merchantService.createMerchant(request, ownerId, false))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("already registered with phone number");
+    }
+
+    @Test
+    @DisplayName("Create merchant fails if phone number belongs to another user account")
+    void createMerchant_phoneLinkedToAnotherUser_throwsException() {
+        CreateMerchantRequest request = new CreateMerchantRequest(
+                "Acme Fitness", "Acme Fitness LLC", "Desc", categoryId, "9876543210", "newowner@test.com", "https://acme.com"
+        );
+
+        User existingUser = new User();
+        existingUser.setEmail("otheruser@test.com");
+        when(merchantRepository.findByPhoneOrSuffix(any(), eq("9876543210"))).thenReturn(List.of());
+        when(userRepository.findByPhoneOrSuffix(any(), eq("9876543210"))).thenReturn(List.of(existingUser));
+
+        assertThatThrownBy(() -> merchantService.createMerchant(request, ownerId, false))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("already linked to another user account");
+    }
+
+    @Test
     @DisplayName("Get merchant profile by authenticated owner succeeds")
     void getMerchantProfile_owner_success() {
         when(merchantRepository.findByOwnerUserId(ownerId)).thenReturn(Optional.of(merchant));
@@ -198,7 +231,7 @@ class MerchantServiceTest {
 
         assertThat(response.businessName()).isEqualTo("Acme Global Fitness");
         assertThat(response.legalName()).isEqualTo("Acme Worldwide LLC");
-        assertThat(response.phone()).isEqualTo("9123456789");
+        assertThat(response.phone()).isEqualTo("+919123456789");
     }
 
     @Test

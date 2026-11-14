@@ -950,6 +950,41 @@ export default function Home() {
 
       toast.success(`Merchant "${draft.businessName}" onboarded successfully!`);
 
+      // Optimistically insert newly created merchant into local store so duplicate detection is immediate
+      if (created && created.id) {
+        const newMerchantModel: Merchant = {
+          id: created.id,
+          businessName: created.businessName || draft.businessName,
+          legalEntityName: created.legalName || draft.legalEntityName || draft.businessName,
+          categoryId: created.categoryId || categoryId || "",
+          categoryName: created.categoryName || draft.categoryName || "Food & Dining",
+          ownerName: draft.ownerName || (created.legalName ? created.legalName.split(" ")[0] + " (Owner)" : "Merchant Partner"),
+          ownerEmail: created.email || draft.ownerEmail || "",
+          ownerPhone: created.phone || draft.ownerPhone || "",
+          city: created.city || draft.city || "Nagpur",
+          district: created.district || draft.district || "Nagpur",
+          state: created.state || draft.state || "Maharashtra",
+          pincode: created.pincode || draft.pincode || "440010",
+          address: created.address || draft.address || "",
+          bankUpiId: created.bankUpiId || draft.bankUpiId || "",
+          bankName: draft.bankName || "",
+          accountHolderName: draft.accountHolderName || created.legalName || created.businessName || "",
+          bankAccountNumber: draft.bankAccountNumber || "",
+          bankIfsc: draft.bankIfsc || "",
+          gstin: created.gstin || draft.gstin || "",
+          pan: created.pan || draft.pan || "",
+          commissionRate: created.commissionRate != null ? Number(created.commissionRate) : 5.0,
+          kycStatus: "PENDING_REVIEW",
+          status: "INACTIVE",
+          rating: 5.0,
+          initials: (created.businessName || draft.businessName || "M").substring(0, 2).toUpperCase(),
+          createdAt: new Date().toISOString(),
+          storeCount: 0,
+          createdBy: "ADMIN",
+        };
+        store.setMerchants([newMerchantModel, ...(store.merchants || [])]);
+      }
+
       await syncBackendData();
     } catch (apiErr: any) {
       const errMsg =

@@ -16,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByEmailIgnoreCase(String email);
+
     Optional<User> findByPhone(String phone);
 
     default Optional<User> findByMobile(String mobile) {
@@ -23,6 +25,8 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     }
 
     boolean existsByEmail(String email);
+
+    boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByPhone(String phone);
 

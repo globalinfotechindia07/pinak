@@ -169,6 +169,8 @@ class OfferServiceTest {
     @DisplayName("createMerchantOffer for unapproved store throws STORE_NOT_ELIGIBLE")
     void createMerchantOffer_unapprovedStore_throwsStoreNotEligible() {
         store.setApprovalStatus(ApprovalStatus.PENDING);
+        merchant.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        merchant.setStatus(MerchantStatus.INACTIVE);
 
         when(merchantRepository.findByOwnerUserId(ownerUserId)).thenReturn(Optional.of(merchant));
         when(storeRepository.findByMerchantId(merchantId)).thenReturn(List.of(store));
