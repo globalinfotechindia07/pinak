@@ -36,13 +36,15 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Gift
+  Gift,
+  Trash2
 } from "lucide-react";
 import { RewardRule, Customer } from "../../types";
 import { AdvancedTable, Column } from "../../components/ui/AdvancedTable";
 import { Badge } from "../../components/ui/badge";
 import { rewardApi, RewardLedgerItemDTO, CustomerRewardAccountDTO, WelcomeBonusSettingDTO } from "../../api/rewardApi";
 import { toast } from "sonner";
+import { couponApi, AdminCoupon, SaveCouponPayload } from "../../api/couponApi";
 
 interface RewardsEconomyProps {
   rewardRules: RewardRule[];
@@ -55,11 +57,39 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
   customers,
   onAddRule
 }) => {
-  const [activeTab, setActiveTab] = useState<"cashback" | "welcome_bonus" | "ledger" | "programs">("cashback");
+  const [activeTab, setActiveTab] = useState<"cashback" | "welcome_bonus" | "ledger" | "programs" | "coupons">("cashback");
   const [ledgerItems, setLedgerItems] = useState<RewardLedgerItemDTO[]>([]);
   const [ledgerFilter, setLedgerFilter] = useState<"ALL" | "EARN" | "REDEEM" | "ADJUSTMENT">("ALL");
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>("Just now");
+
+  // Coupons & Promo Codes State
+  const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
+  const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
+  const [couponSearch, setCouponSearch] = useState("");
+  const [couponTypeFilter, setCouponTypeFilter] = useState<"ALL" | "PERCENTAGE" | "FLAT">("ALL");
+  const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<AdminCoupon | null>(null);
+  const [isSavingCoupon, setIsSavingCoupon] = useState(false);
+
+  const emptyCouponForm: SaveCouponPayload = {
+    code: "",
+    title: "",
+    headline: "",
+    description: "",
+    badgeText: "HOT DEAL",
+    discountType: "PERCENTAGE",
+    discountValue: 20,
+    maxDiscount: 200,
+    minBillAmount: 500,
+    partnerBank: "ALL",
+    paymentMethodRequired: "ANY",
+    terms: "Valid on orders above minimum bill\nCannot be clubbed with other promos\nValid for limited time only",
+    isActive: true,
+    isAutoApplicable: false,
+    displayOrder: 1,
+  };
+  const [couponForm, setCouponForm] = useState<SaveCouponPayload>(emptyCouponForm);
 
   // Rule creation modal
   const [isAddRuleOpen, setIsAddRuleOpen] = useState(false);
@@ -121,6 +151,116 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
       if (data) setWelcomeBonusSetting(data);
     } catch (err) {
       console.warn("Could not fetch welcome bonus setting:", err);
+    }
+  };
+
+  const fetchCoupons = async (silent = false) => {
+    setIsLoadingCoupons(true);
+    try {
+      const data = await couponApi.adminGetAll();
+      setCoupons(data);
+      if (!silent) toast.success(`Loaded ${data.length} coupons & offers`);
+    } catch (err: any) {
+      console.warn("Could not fetch coupons:", err);
+    } finally {
+      setIsLoadingCoupons(false);
+    }
+  };
+
+  const handleToggleCouponStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      const nextStatus = !currentStatus;
+      await couponApi.adminToggleStatus(id, nextStatus);
+      setCoupons(prev => prev.map(c => c.id === id ? { ...c, isActive: nextStatus } : c));
+      toast.success(`Coupon status updated to ${nextStatus ? "ACTIVE" : "INACTIVE"}`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update coupon status");
+    }
+  };
+
+  const handleDeleteCoupon = async (id: string, code: string) => {
+    if (!window.confirm(`Are you sure you want to delete coupon "${code}"?`)) return;
+    try {
+      await couponApi.adminDelete(id);
+      setCoupons(prev => prev.filter(c => c.id !== id));
+      toast.success(`Coupon "${code}" deleted permanently`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to delete coupon");
+    }
+  };
+
+  const handleOpenCreateCoupon = () => {
+    setEditingCoupon(null);
+    setCouponForm(emptyCouponForm);
+    setIsCouponModalOpen(true);
+  };
+
+  const handleOpenEditCoupon = (c: AdminCoupon) => {
+    setEditingCoupon(c);
+    let formattedTerms = c.terms;
+    try {
+      if (c.terms && c.terms.trim().startsWith("[")) {
+        const parsed = JSON.parse(c.terms);
+        if (Array.isArray(parsed)) {
+          formattedTerms = parsed.join("\n");
+        }
+      }
+    } catch (ignored) {}
+
+    setCouponForm({
+      code: c.code,
+      title: c.title,
+      headline: c.headline,
+      description: c.description,
+      badgeText: c.badgeText,
+      discountType: c.discountType,
+      discountValue: c.discountValue,
+      maxDiscount: c.maxDiscount,
+      minBillAmount: c.minBillAmount,
+      partnerBank: c.partnerBank || "ALL",
+      paymentMethodRequired: c.paymentMethodRequired || "ANY",
+      terms: formattedTerms,
+      isActive: c.isActive,
+      isAutoApplicable: c.isAutoApplicable,
+      displayOrder: c.displayOrder || 0,
+    });
+    setIsCouponModalOpen(true);
+  };
+
+  const handleSaveCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponForm.code || !couponForm.title || !couponForm.discountValue) {
+      toast.error("Please fill in coupon code, title, and discount value");
+      return;
+    }
+
+    const termsArray = couponForm.terms
+      ? couponForm.terms.split("\n").map(s => s.trim()).filter(Boolean)
+      : [];
+    const jsonTerms = JSON.stringify(termsArray.length > 0 ? termsArray : ["Applicable on eligible orders"]);
+
+    const payload: SaveCouponPayload = {
+      ...couponForm,
+      code: couponForm.code.trim().toUpperCase(),
+      terms: jsonTerms,
+    };
+
+    setIsSavingCoupon(true);
+    try {
+      if (editingCoupon) {
+        const updated = await couponApi.adminUpdate(editingCoupon.id, payload);
+        setCoupons(prev => prev.map(c => c.id === updated.id ? updated : c));
+        toast.success(`Coupon "${updated.code}" updated successfully!`);
+      } else {
+        const created = await couponApi.adminCreate(payload);
+        setCoupons(prev => [created, ...prev]);
+        toast.success(`Coupon "${created.code}" created successfully!`);
+      }
+      setIsCouponModalOpen(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to save coupon");
+    } finally {
+      setIsSavingCoupon(false);
     }
   };
 
@@ -270,6 +410,7 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
     fetchCashbackData();
     fetchCustomerAccounts();
     fetchWelcomeBonusSetting();
+    fetchCoupons(true);
   }, []);
 
   const handleAdjustSubmit = async (e: React.FormEvent) => {
@@ -748,6 +889,21 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
         >
           <Sparkles size={15} />
           <span>Loyalty Programs & Multipliers</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("coupons")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+            activeTab === "coupons"
+              ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <TicketPercent size={15} />
+          <span>Coupons & Payment Offers</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20 font-mono">
+            {coupons.length}
+          </span>
         </button>
       </div>
 
@@ -1528,6 +1684,255 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
       )}
 
       {/* ========================================================================= */}
+      {/* TAB 5: Checkout Coupons & Promo Codes Governance */}
+      {/* ========================================================================= */}
+      {activeTab === "coupons" && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Top Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Coupons</span>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-black text-slate-900 dark:text-white font-['Manrope']">
+                  {coupons.length}
+                </span>
+                <span className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600">
+                  <TicketPercent size={18} />
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">Live platform & store codes</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Promo Codes</span>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-black text-emerald-600 font-['Manrope']">
+                  {coupons.filter(c => c.isActive).length}
+                </span>
+                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
+              <p className="text-[11px] text-slate-500">Currently claimable at checkout</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Auto-Apply Offers</span>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-black text-blue-600 font-['Manrope']">
+                  {coupons.filter(c => c.isAutoApplicable).length}
+                </span>
+                <span className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600">
+                  <Sparkles size={18} />
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">Auto-calculated for best savings</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Redemptions</span>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-black text-amber-600 font-['Manrope']">
+                  {coupons.reduce((sum, c) => sum + (c.currentUsageCount || 0), 0)}
+                </span>
+                <span className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600">
+                  <CheckCircle2 size={18} />
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">Successful customer checkouts</p>
+            </div>
+          </div>
+
+          {/* Action Bar & Filter Header */}
+          <div className="p-5 rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3 flex-1">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search size={15} className="absolute left-3.5 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  value={couponSearch}
+                  onChange={(e) => setCouponSearch(e.target.value)}
+                  placeholder="Search by code, title, or partner bank..."
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                />
+              </div>
+
+              <select
+                value={couponTypeFilter}
+                onChange={(e) => setCouponTypeFilter(e.target.value as any)}
+                className="px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white cursor-pointer"
+              >
+                <option value="ALL">All Discount Types</option>
+                <option value="PERCENTAGE">Percentage (% Off)</option>
+                <option value="FLAT">Flat (₹ Off)</option>
+              </select>
+
+              <button
+                onClick={() => fetchCoupons(false)}
+                disabled={isLoadingCoupons}
+                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                title="Refresh Coupons"
+              >
+                <RefreshCw size={14} className={isLoadingCoupons ? "animate-spin" : ""} />
+              </button>
+            </div>
+
+            <button
+              onClick={handleOpenCreateCoupon}
+              className="btn-gradient px-4 py-2.5 rounded-xl text-white text-xs font-bold shadow-md shadow-pink-500/20 flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <Plus size={15} />
+              <span>Create Coupon</span>
+            </button>
+          </div>
+
+          {/* Coupons Data Table */}
+          <div className="rounded-3xl bg-white dark:bg-[#121626] border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-400 uppercase font-black tracking-wider text-[10px]">
+                    <th className="py-3.5 px-4">Coupon Code</th>
+                    <th className="py-3.5 px-4">Offer Headline</th>
+                    <th className="py-3.5 px-4">Discount</th>
+                    <th className="py-3.5 px-4">Min Spend</th>
+                    <th className="py-3.5 px-4">Bank / Channel</th>
+                    <th className="py-3.5 px-4">Usage</th>
+                    <th className="py-3.5 px-4">Type</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {coupons
+                    .filter(c => {
+                      const q = couponSearch.toLowerCase().trim();
+                      const matchSearch = !q ||
+                        c.code.toLowerCase().includes(q) ||
+                        c.title.toLowerCase().includes(q) ||
+                        (c.headline && c.headline.toLowerCase().includes(q)) ||
+                        (c.partnerBank && c.partnerBank.toLowerCase().includes(q));
+                      const matchType = couponTypeFilter === "ALL" || c.discountType === couponTypeFilter;
+                      return matchSearch && matchType;
+                    })
+                    .map((c) => (
+                      <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/50 border border-purple-200/80 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-mono font-extrabold text-xs">
+                              {c.code}
+                            </span>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(c.code);
+                                toast.success(`Copied "${c.code}" to clipboard!`);
+                              }}
+                              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                              title="Copy code"
+                            >
+                              <Copy size={12} />
+                            </button>
+                          </div>
+                          {c.badgeText && (
+                            <span className="inline-block mt-1 text-[9px] font-black uppercase text-pink-600 dark:text-pink-400 tracking-wider">
+                              {c.badgeText}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-4 max-w-xs">
+                          <div className="font-bold text-slate-900 dark:text-white line-clamp-1">{c.title}</div>
+                          <div className="text-[11px] text-slate-500 line-clamp-1">{c.headline || c.description}</div>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <span className="font-extrabold text-slate-900 dark:text-white text-xs">
+                            {c.discountType === "PERCENTAGE" ? `${c.discountValue}% OFF` : `₹${c.discountValue} FLAT`}
+                          </span>
+                          {c.maxDiscount ? (
+                            <div className="text-[10px] text-slate-400 font-mono">Max ₹{c.maxDiscount}</div>
+                          ) : null}
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {c.minBillAmount > 0 ? `₹${c.minBillAmount}` : "No min"}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-slate-800 dark:text-slate-200">{c.partnerBank || "All Banks"}</div>
+                          <div className="text-[10px] text-slate-400 uppercase font-mono">{c.paymentMethodRequired || "ANY"}</div>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <span className="font-mono font-bold text-slate-900 dark:text-white">
+                            {c.currentUsageCount || 0}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono"> / {c.usageLimitTotal || '∞'}</span>
+                        </td>
+
+                        <td className="py-3 px-4">
+                          {c.isAutoApplicable ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              Auto-Apply
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              Manual
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => handleToggleCouponStatus(c.id, c.isActive)}
+                            className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                              c.isActive
+                                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700"
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${c.isActive ? "bg-emerald-500" : "bg-slate-400"}`} />
+                            <span>{c.isActive ? "ACTIVE" : "PAUSED"}</span>
+                          </button>
+                        </td>
+
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleOpenEditCoupon(c)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30 cursor-pointer"
+                              title="Edit Coupon"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCoupon(c.id, c.code)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                              title="Delete Coupon"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  {coupons.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="py-12 text-center text-slate-400">
+                        <TicketPercent size={32} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                        <p className="font-bold text-slate-600 dark:text-slate-400">No coupons found in database</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Click &quot;Create Coupon&quot; to add your first promotion.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* Edit Single Store Cashback Modal */}
       {/* ========================================================================= */}
       {editingStore && (
@@ -1860,6 +2265,241 @@ export const RewardsEconomy: React.FC<RewardsEconomyProps> = ({
                   Create Program
                 </button>
               </div>
+            </aside>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* Create / Edit Coupon Drawer Modal */}
+      {/* ========================================================================= */}
+      {isCouponModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsCouponModalOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <aside className="w-screen max-w-lg bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="flex items-center gap-2">
+                  <TicketPercent size={18} className="text-purple-600" />
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    {editingCoupon ? `Edit Coupon: ${editingCoupon.code}` : "Create Checkout Coupon"}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsCouponModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveCoupon} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+                {/* Live Preview Card */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 border border-purple-200/80 dark:border-purple-800/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-pink-600 dark:text-pink-400">
+                      {couponForm.badgeText || "SPECIAL OFFER"}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white font-mono font-black text-xs">
+                      {couponForm.code || "PROMOCODE"}
+                    </span>
+                  </div>
+                  <div className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    {couponForm.title || "Coupon Title"}
+                  </div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                    {couponForm.headline || "Offer headline description..."}
+                  </div>
+                  <div className="pt-2 border-t border-purple-200/50 dark:border-purple-800/40 flex items-center justify-between text-[11px] text-purple-900 dark:text-purple-300 font-bold">
+                    <span>
+                      {couponForm.discountType === "PERCENTAGE"
+                        ? `${couponForm.discountValue}% OFF (Max ₹${couponForm.maxDiscount || '∞'})`
+                        : `₹${couponForm.discountValue} FLAT OFF`}
+                    </span>
+                    <span>Min spend ₹{couponForm.minBillAmount || 0}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Coupon Code *</label>
+                    <input
+                      type="text"
+                      required
+                      value={couponForm.code}
+                      onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+                      placeholder="e.g. FESTIVE25"
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Badge Tag</label>
+                    <input
+                      type="text"
+                      value={couponForm.badgeText}
+                      onChange={(e) => setCouponForm({ ...couponForm, badgeText: e.target.value })}
+                      placeholder="e.g. EXCLUSIVE"
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Offer Title *</label>
+                  <input
+                    type="text"
+                    required
+                    value={couponForm.title}
+                    onChange={(e) => setCouponForm({ ...couponForm, title: e.target.value })}
+                    placeholder="e.g. Flat ₹100 Off with Paytm UPI"
+                    className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Headline</label>
+                  <input
+                    type="text"
+                    value={couponForm.headline}
+                    onChange={(e) => setCouponForm({ ...couponForm, headline: e.target.value })}
+                    placeholder="e.g. Save ₹100 instantly on dining orders above ₹500"
+                    className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Discount Type *</label>
+                    <select
+                      value={couponForm.discountType}
+                      onChange={(e) => setCouponForm({ ...couponForm, discountType: e.target.value as any })}
+                      className="mt-1 w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                    >
+                      <option value="PERCENTAGE">Percentage (%)</option>
+                      <option value="FLAT">Flat (₹)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Value *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={couponForm.discountValue}
+                      onChange={(e) => setCouponForm({ ...couponForm, discountValue: Number(e.target.value) })}
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Max Cap (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={couponForm.maxDiscount || ""}
+                      onChange={(e) => setCouponForm({ ...couponForm, maxDiscount: e.target.value ? Number(e.target.value) : undefined })}
+                      placeholder="No cap"
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Min Bill (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={couponForm.minBillAmount || 0}
+                      onChange={(e) => setCouponForm({ ...couponForm, minBillAmount: Number(e.target.value) })}
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Partner Bank</label>
+                    <input
+                      type="text"
+                      value={couponForm.partnerBank}
+                      onChange={(e) => setCouponForm({ ...couponForm, partnerBank: e.target.value })}
+                      placeholder="ALL / HDFC / Axis"
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300">Payment Mode</label>
+                    <select
+                      value={couponForm.paymentMethodRequired}
+                      onChange={(e) => setCouponForm({ ...couponForm, paymentMethodRequired: e.target.value })}
+                      className="mt-1 w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                    >
+                      <option value="ANY">ANY (All Methods)</option>
+                      <option value="UPI">UPI Only</option>
+                      <option value="CREDIT_CARD">Credit Card</option>
+                      <option value="DEBIT_CARD">Debit Card</option>
+                      <option value="NET_BANKING">Net Banking</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white">Auto-Apply on Checkout</span>
+                      <p className="text-[11px] text-slate-500">Automatically applies if this coupon offers the best savings</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(couponForm.isAutoApplicable)}
+                      onChange={(e) => setCouponForm({ ...couponForm, isAutoApplicable: e.target.checked })}
+                      className="w-4 h-4 rounded text-purple-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 dark:border-slate-800">
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white">Active Status</span>
+                      <p className="text-[11px] text-slate-500">Active coupons are live for user claims</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(couponForm.isActive)}
+                      onChange={(e) => setCouponForm({ ...couponForm, isActive: e.target.checked })}
+                      className="w-4 h-4 rounded text-purple-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Terms & Conditions (One per line)</label>
+                  <textarea
+                    rows={3}
+                    value={couponForm.terms}
+                    onChange={(e) => setCouponForm({ ...couponForm, terms: e.target.value })}
+                    placeholder="Enter offer conditions..."
+                    className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCouponModalOpen(false)}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingCoupon}
+                    className="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Save size={13} />
+                    <span>{isSavingCoupon ? "Saving..." : (editingCoupon ? "Update Coupon" : "Create Coupon")}</span>
+                  </button>
+                </div>
+              </form>
             </aside>
           </div>
         </div>

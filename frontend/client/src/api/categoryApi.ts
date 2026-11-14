@@ -10,19 +10,35 @@ export const categoryApi = {
   // Get All Categories (Hierarchy Tree) - public/discovery or admin
   getCategories: async (): Promise<CategoryDTO[]> => {
     try {
-      const res = await apiClient.get<ApiResponse<CategoryDTO[]>>("/categories");
-      return Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      const res = await apiClient.get<any>("/categories");
+      const d = res.data?.data;
+      if (Array.isArray(d?.categories)) return d.categories;
+      if (Array.isArray(d)) return d;
+      if (Array.isArray(res.data)) return res.data;
+      return [];
     } catch {
       // Fallback to /discovery/categories if /categories requires admin
-      const res = await apiClient.get<ApiResponse<CategoryDTO[]>>("/discovery/categories");
-      return Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      try {
+        const res = await apiClient.get<any>("/discovery/categories");
+        const d = res.data?.data;
+        if (Array.isArray(d?.categories)) return d.categories;
+        if (Array.isArray(d)) return d;
+        if (Array.isArray(res.data)) return res.data;
+        return [];
+      } catch {
+        return [];
+      }
     }
   },
 
   // Get Admin Categories
   getAdminCategories: async (): Promise<CategoryDTO[]> => {
-    const res = await apiClient.get<ApiResponse<CategoryDTO[]>>("/admin/categories");
-    return Array.isArray(res.data) ? res.data : (res.data?.data || []);
+    const res = await apiClient.get<any>("/admin/categories");
+    const d = res.data?.data;
+    if (Array.isArray(d?.categories)) return d.categories;
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(res.data)) return res.data;
+    return [];
   },
 
   // Get Category by ID

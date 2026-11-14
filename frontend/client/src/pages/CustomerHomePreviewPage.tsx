@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -56,10 +56,15 @@ import { TableBookingView } from "@/components/TableBookingView";
 import tableBookingApi, { TableBookingDetails } from "@/api/tableBookingApi";
 import { useAppStore } from "@/hooks/useAppStore";
 import { authApi } from "@/api/authApi";
+import { bannerApi } from "@/api/bannerApi";
+import { HomeBanner } from "@/types";
+import { categoryApi } from "@/api/categoryApi";
+import { CategoryDTO } from "@/types/api/category.dto";
 
 interface NearbyOffer {
   id?: string;
   offerId?: string;
+  categoryId?: string;
   title: string;
   subtitle?: string;
   description?: string;
@@ -146,6 +151,59 @@ interface FeaturedMerchant {
   };
   isVerified?: boolean;
 }
+
+const getCategoryVisual = (catName: string, iconToken?: string) => {
+  const name = (catName || "").toLowerCase();
+  const token = (iconToken || "").toLowerCase();
+
+  if (name === "all") {
+    return { icon: "🔥", bg: "bg-purple-700 text-white", activeBg: "bg-purple-700 text-white ring-2 ring-purple-600 shadow-sm" };
+  }
+  if (token.includes("utensil") || name.includes("dining") || name.includes("food") || name.includes("restaurant")) {
+    return { icon: "🍔", bg: "bg-orange-100 text-orange-600", activeBg: "bg-orange-600 text-white ring-2 ring-orange-500 shadow-sm" };
+  }
+  if (token.includes("coffee") || name.includes("cafe") || name.includes("bakery") || name.includes("brew")) {
+    return { icon: "☕", bg: "bg-amber-100 text-amber-700", activeBg: "bg-amber-600 text-white ring-2 ring-amber-500 shadow-sm" };
+  }
+  if (token.includes("cart") || name.includes("supermarket") || name.includes("grocery") || name.includes("fmcg")) {
+    return { icon: "🛒", bg: "bg-emerald-100 text-emerald-700", activeBg: "bg-emerald-600 text-white ring-2 ring-emerald-500 shadow-sm" };
+  }
+  if (token.includes("store") || name.includes("kirana") || name.includes("daily") || name.includes("mart")) {
+    return { icon: "🏪", bg: "bg-rose-100 text-rose-600", activeBg: "bg-rose-600 text-white ring-2 ring-rose-500 shadow-sm" };
+  }
+  if (token.includes("shirt") || name.includes("fashion") || name.includes("apparel") || name.includes("cloth")) {
+    return { icon: "👕", bg: "bg-indigo-100 text-indigo-600", activeBg: "bg-indigo-600 text-white ring-2 ring-indigo-500 shadow-sm" };
+  }
+  if (token.includes("laptop") || name.includes("electronic") || name.includes("gadget") || name.includes("phone")) {
+    return { icon: "💻", bg: "bg-sky-100 text-sky-600", activeBg: "bg-sky-600 text-white ring-2 ring-sky-500 shadow-sm" };
+  }
+  if (token.includes("wrench") || name.includes("hardware") || name.includes("tool") || name.includes("sanitary")) {
+    return { icon: "🔧", bg: "bg-violet-100 text-violet-600", activeBg: "bg-violet-600 text-white ring-2 ring-violet-500 shadow-sm" };
+  }
+  if (token.includes("scissor") || name.includes("salon") || name.includes("beauty") || name.includes("spa")) {
+    return { icon: "✂️", bg: "bg-pink-100 text-pink-600", activeBg: "bg-pink-600 text-white ring-2 ring-pink-500 shadow-sm" };
+  }
+  if (token.includes("dumbbell") || name.includes("gym") || name.includes("fitness") || name.includes("sport")) {
+    return { icon: "🏋️", bg: "bg-teal-100 text-teal-600", activeBg: "bg-teal-600 text-white ring-2 ring-teal-500 shadow-sm" };
+  }
+  if (token.includes("car") || name.includes("automotive") || name.includes("bike") || name.includes("motor")) {
+    return { icon: "🚗", bg: "bg-blue-100 text-blue-600", activeBg: "bg-blue-600 text-white ring-2 ring-blue-500 shadow-sm" };
+  }
+  return { icon: "🏷️", bg: "bg-slate-100 text-slate-700", activeBg: "bg-purple-600 text-white ring-2 ring-purple-500 shadow-sm" };
+};
+
+const FALLBACK_CATEGORIES: Array<{ id: string; name: string; icon: string }> = [
+  { id: "11111111-1111-1111-1111-111111111101", name: "Dining", icon: "utensils" },
+  { id: "11111111-1111-1111-1111-111111111102", name: "Cafes", icon: "coffee" },
+  { id: "11111111-1111-1111-1111-111111111103", name: "Supermarket", icon: "shopping-cart" },
+  { id: "11111111-1111-1111-1111-111111111104", name: "Kirana", icon: "store" },
+  { id: "11111111-1111-1111-1111-111111111105", name: "Fashion", icon: "shirt" },
+  { id: "11111111-1111-1111-1111-111111111106", name: "Electronics", icon: "laptop" },
+  { id: "11111111-1111-1111-1111-111111111107", name: "Hardware", icon: "wrench" },
+  { id: "11111111-1111-1111-1111-111111111108", name: "Salons", icon: "scissors" },
+  { id: "11111111-1111-1111-1111-111111111109", name: "Gyms", icon: "dumbbell" },
+  { id: "11111111-1111-1111-1111-111111111110", name: "Automotive", icon: "car" },
+];
 
 function getStoreInitialsAndColor(name: string) {
   const lower = name.toLowerCase();
@@ -397,6 +455,100 @@ export default function CustomerHomePreviewPage() {
     } finally {
       setIsLoadingAccounts(false);
     }
+  };
+
+  // Real Hero Promotional Banners from PostgreSQL Database
+  const [heroBanners, setHeroBanners] = useState<HomeBanner[]>([]);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState<number>(0);
+  const [isLoadingBanners, setIsLoadingBanners] = useState<boolean>(true);
+  const [isBannerHovered, setIsBannerHovered] = useState<boolean>(false);
+
+  const fetchHeroBanners = async () => {
+    setIsLoadingBanners(true);
+    try {
+      const data = await bannerApi.getActiveBanners("DISCOVER");
+      if (data && data.length > 0) {
+        setHeroBanners(data);
+      }
+    } catch (err) {
+      console.warn("Could not load real hero banners from backend:", err);
+    } finally {
+      setIsLoadingBanners(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHeroBanners();
+  }, []);
+
+  // Auto-advance banner carousel every 4.5 seconds
+  useEffect(() => {
+    if (heroBanners.length <= 1 || isBannerHovered) return;
+    const interval = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % heroBanners.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [heroBanners.length, isBannerHovered]);
+
+  const getBannerGradient = (style?: string) => {
+    switch (style) {
+      case "SECONDARY_GRADIENT":
+        return "from-slate-950/95 via-indigo-950/90 to-blue-900/85";
+      case "TERTIARY_GRADIENT":
+        return "from-slate-950/95 via-emerald-950/90 to-teal-900/85";
+      case "SUNSET_AMBER":
+        return "from-amber-950/95 via-orange-900/90 to-rose-900/85";
+      case "PRIMARY_GRADIENT":
+      default:
+        return "from-purple-950/95 via-purple-900/90 to-indigo-900/85";
+    }
+  };
+
+  const getRemainingTimeText = (endTime?: string) => {
+    if (!endTime) return null;
+    const diff = new Date(endTime).getTime() - Date.now();
+    if (diff <= 0) return null;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      return `${days}d left`;
+    }
+    return `${hours}h ${mins}m left`;
+  };
+
+  const handleBannerClick = (b: HomeBanner) => {
+    const action = (b.ctaAction || "").toUpperCase();
+    const target = b.ctaTargetId || "";
+
+    if (action === "TABLE_RESERVATION" || target.includes("tbl") || b.title.toLowerCase().includes("dining")) {
+      toast.success(`Opening Table Booking: ${b.title}`, {
+        description: "Browse verified dine-in slots with flat 50% discount"
+      });
+      const el = document.getElementById("offers-feed-section") || document.getElementById("stores-rail");
+      el?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
+    if (action === "PRODUCT_DEAL" || target.includes("deal")) {
+      toast.success(`Opening Deals: ${b.title}`, {
+        description: b.subtitle || "Check out exclusive product bargains near you"
+      });
+      const el = document.getElementById("product-deals-section") || document.getElementById("offers-feed-section");
+      el?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
+    if (action === "CLAIM_PASS" || target.includes("pass")) {
+      toast.success(`Reward Pass Claimed: ${b.badgeText}`, {
+        description: `Pass for "${b.title}" activated on your PINAK account!`
+      });
+      return;
+    }
+
+    toast.success(`Selected Offer: ${b.title}`, {
+      description: b.subtitle || "Enjoy exclusive PINAK discounts"
+    });
   };
 
   // Load real customer session & database accounts on mount
@@ -720,6 +872,10 @@ export default function CustomerHomePreviewPage() {
     (b) => !dismissedBookingRefs.has(b.bookingRef || b.bookingId)
   );
   const [offers, setOffers] = useState<NearbyOffer[]>([]);
+  const [liveCategories, setLiveCategories] = useState<CategoryDTO[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string>("All");
+  const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(false);
   const [productDeals, setProductDeals] = useState<ProductDeal[]>([]);
   const [featuredStores, setFeaturedStores] = useState<FeaturedMerchant[]>([]);
   const [collections, setCollections] = useState<PopularCollection[]>([]);
@@ -1124,6 +1280,30 @@ export default function CustomerHomePreviewPage() {
     fetchNearbyOffers();
   }, [userLocation]);
 
+  // Fetch live categories from PostgreSQL database (/api/v1/categories)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCats = async () => {
+      setIsLoadingCategories(true);
+      try {
+        const cats = await categoryApi.getCategories();
+        if (isMounted && Array.isArray(cats) && cats.length > 0) {
+          const active = cats.filter((c: any) => c.status !== "INACTIVE" && c.isActive !== false);
+          active.sort((a: any, b: any) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99));
+          setLiveCategories(active);
+        }
+      } catch (err: any) {
+        console.warn("Could not fetch live categories from database:", err?.message);
+      } finally {
+        if (isMounted) setIsLoadingCategories(false);
+      }
+    };
+    fetchCats();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Flash sale countdown timer
   useEffect(() => {
     const interval = setInterval(() => {
@@ -1207,9 +1387,47 @@ export default function CustomerHomePreviewPage() {
     handleOpenStoreDetail(storeId);
   };
 
-  const displayedServiceOffers = deduplicateOffersByStore(offers);
+  const filteredOffers = useMemo(() => {
+    if (selectedCategoryId === "all" || selectedCategoryName === "All") {
+      return offers;
+    }
+    const catLower = selectedCategoryName.toLowerCase();
+    return offers.filter((o) => {
+      if (o.categoryId && (o.categoryId === selectedCategoryId || o.categoryId === selectedCategoryName)) {
+        return true;
+      }
+      const targetStoreId = o.branch?.branchId || o.branchSummary?.storeId || o.storeId;
+      const targetStore = appStore.stores.find((s) => s.id === targetStoreId || s.storeId === targetStoreId);
+      if (targetStore?.category && targetStore.category.toLowerCase().includes(catLower)) {
+        return true;
+      }
+      if (o.title && o.title.toLowerCase().includes(catLower)) {
+        return true;
+      }
+      if (o.description && o.description.toLowerCase().includes(catLower)) {
+        return true;
+      }
+      const merchantName = o.merchant?.name || o.merchantSummary?.name || "";
+      if (merchantName.toLowerCase().includes(catLower)) {
+        return true;
+      }
+      return false;
+    });
+  }, [offers, selectedCategoryId, selectedCategoryName, appStore.stores]);
+
+  const displayedServiceOffers = deduplicateOffersByStore(filteredOffers);
   const displayedProductDeals = productDeals;
-  const displayedFeaturedStores = featuredStores;
+  const displayedFeaturedStores = useMemo(() => {
+    if (selectedCategoryId === "all" || selectedCategoryName === "All") {
+      return featuredStores;
+    }
+    const catLower = selectedCategoryName.toLowerCase();
+    const filtered = featuredStores.filter((m) =>
+      m.categoryName?.toLowerCase().includes(catLower) ||
+      m.name?.toLowerCase().includes(catLower)
+    );
+    return filtered.length > 0 ? filtered : featuredStores;
+  }, [featuredStores, selectedCategoryId, selectedCategoryName]);
   const displayedCollections = collections;
 
   return (
@@ -1875,72 +2093,285 @@ export default function CustomerHomePreviewPage() {
             </div>
           </section>
 
-          {/* Hero Promo Banner */}
+          {/* Production Database Hero Promotional Banners Carousel */}
           <section className="px-4 mb-4">
-            <div className="relative bg-gradient-to-br from-purple-800 via-purple-700 to-indigo-600 text-white p-4 overflow-hidden rounded-xl shadow-md">
-              <div className="absolute -top-10 -right-10 w-44 h-44 bg-purple-400/20 rounded-full blur-2xl"></div>
-              <div className="relative z-10 w-2/3 pr-2">
-                <span className="inline-block bg-white/20 backdrop-blur-md px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide mb-1.5 border border-white/25 rounded-md">
-                  Weekend Super Fest
-                </span>
-                <h2 className="text-base font-black leading-tight tracking-tight mb-1 text-white">
-                  Flat 50% Cashback + 200 Extra Coins
-                </h2>
-                <p className="text-[10px] text-purple-100 font-medium leading-snug mb-3">
-                  On dining, groceries, salons, electronics & more
-                </p>
-                <button
-                  type="button"
-                  onClick={() => toast.success("Browsing weekend carnival deals!")}
-                  className="inline-flex items-center space-x-1.5 bg-white text-purple-950 font-extrabold text-[11px] px-3.5 py-1.5 shadow-sm hover:bg-slate-100 transition-transform active:scale-95 rounded-lg"
+            {(() => {
+              const activeBannersList = heroBanners.length > 0 ? heroBanners : [
+                {
+                  id: "b0000000-0000-0000-0000-000000000001",
+                  title: "Mega Dining Carnival 🍽️",
+                  subtitle: "Reserve confirmed tables at top restaurants & save flat 50% on food bills",
+                  badgeText: "FLAT 50% OFF",
+                  imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
+                  ctaText: "Book Table",
+                  ctaAction: "TABLE_RESERVATION",
+                  ctaTargetId: "tbl_dining_fest_2026",
+                  themeStyle: "PRIMARY_GRADIENT",
+                  displayOrder: 1,
+                  isActive: true,
+                }
+              ];
+              const curBanner = activeBannersList[currentBannerIndex % activeBannersList.length];
+              const remainingTime = getRemainingTimeText(curBanner.countdownEndTime);
+              const gradientClass = getBannerGradient(curBanner.themeStyle);
+
+              return (
+                <div
+                  onMouseEnter={() => setIsBannerHovered(true)}
+                  onMouseLeave={() => setIsBannerHovered(false)}
+                  className="relative group rounded-2xl overflow-hidden shadow-lg border border-white/10 select-none transition-all duration-300"
                 >
-                  <span>Explore Offers</span>
-                  <ChevronRight size={13} />
-                </button>
-              </div>
-            </div>
+                  {/* High-Res Background Image with Scrim */}
+                  {curBanner.imageUrl ? (
+                    <div className="absolute inset-0 z-0">
+                      <img
+                        src={curBanner.imageUrl}
+                        alt={curBanner.title}
+                        className="w-full h-full object-cover object-center scale-105 transition-transform duration-700 ease-out group-hover:scale-110"
+                      />
+                      <div className={`absolute inset-0 bg-gradient-to-r ${gradientClass}`} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/40" />
+                    </div>
+                  ) : (
+                    <div className={`absolute inset-0 z-0 bg-gradient-to-br ${gradientClass}`} />
+                  )}
+
+                  {/* Decorative glowing orb */}
+                  <div className="absolute -top-12 -right-12 w-48 h-48 bg-purple-400/25 rounded-full blur-3xl pointer-events-none" />
+
+                  {/* Banner Content Container */}
+                  <div className="relative z-10 p-4.5 sm:p-5 flex flex-col justify-between min-h-[175px]">
+                    {/* Top Row: Badge, Countdown & Admin Indicator */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white/20 backdrop-blur-md text-[9px] font-black uppercase tracking-wider text-white border border-white/30 shadow-xs">
+                          {curBanner.badgeText || "SPECIAL OFFER"}
+                        </span>
+
+                        {remainingTime && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/90 text-slate-950 text-[9px] font-extrabold uppercase tracking-tight shadow-xs">
+                            <Clock size={10} className="animate-spin text-slate-900" style={{ animationDuration: '4s' }} />
+                            <span>{remainingTime}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Super Admin Quick Link */}
+                      <a
+                        href="/admin/discovery"
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Manage banners in Super Admin Discovery Control"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 text-[9px] font-bold text-white/80 hover:text-white bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/20 cursor-pointer"
+                      >
+                        <Sliders size={9} />
+                        <span>Admin CMS</span>
+                      </a>
+                    </div>
+
+                    {/* Middle: Headline & Subtitle */}
+                    <div className="w-full sm:w-4/5 pr-1 space-y-1 mb-3">
+                      <h2 className="text-base sm:text-lg font-black leading-tight text-white drop-shadow-md tracking-tight">
+                        {curBanner.title}
+                      </h2>
+                      {curBanner.subtitle && (
+                        <p className="text-[11px] text-white/90 font-medium leading-relaxed line-clamp-2 drop-shadow-sm">
+                          {curBanner.subtitle}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Bottom Row: CTA Button + Navigation Dots & Arrows */}
+                    <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/15">
+                      <button
+                        type="button"
+                        onClick={() => handleBannerClick(curBanner)}
+                        className="inline-flex items-center space-x-1.5 bg-white text-slate-950 font-black text-[11px] px-3.5 py-1.5 rounded-xl shadow-md hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                      >
+                        <span>{curBanner.ctaText || "Explore Offers"}</span>
+                        <ChevronRight size={13} className="text-purple-600" />
+                      </button>
+
+                      {/* Interactive Carousel Controls */}
+                      {activeBannersList.length > 1 && (
+                        <div className="flex items-center gap-2">
+                          {/* Previous / Next Arrow buttons on desktop */}
+                          <div className="hidden sm:flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentBannerIndex((prev) => (prev - 1 + activeBannersList.length) % activeBannersList.length);
+                              }}
+                              className="p-1 rounded-full bg-white/10 hover:bg-white/30 text-white backdrop-blur-xs transition-colors cursor-pointer"
+                              title="Previous Banner"
+                            >
+                              <ChevronLeft size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentBannerIndex((prev) => (prev + 1) % activeBannersList.length);
+                              }}
+                              className="p-1 rounded-full bg-white/10 hover:bg-white/30 text-white backdrop-blur-xs transition-colors cursor-pointer"
+                              title="Next Banner"
+                            >
+                              <ChevronRight size={12} />
+                            </button>
+                          </div>
+
+                          {/* Pagination Dots */}
+                          <div className="flex items-center gap-1">
+                            {activeBannersList.map((b, idx) => {
+                              const isActive = idx === (currentBannerIndex % activeBannersList.length);
+                              return (
+                                <button
+                                  key={b.id || idx}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentBannerIndex(idx);
+                                  }}
+                                  className={`transition-all duration-300 rounded-full cursor-pointer ${
+                                    isActive
+                                      ? "w-4 h-1.5 bg-white shadow-xs"
+                                      : "w-1.5 h-1.5 bg-white/40 hover:bg-white/70"
+                                  }`}
+                                  title={`Go to slide ${idx + 1}`}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </section>
 
-          {/* Explore Categories Rail */}
-          <section className="mb-5">
+          {/* Explore Categories Rail (Live Database Categories) */}
+          <section className="mb-5" data-purpose="explore-categories">
             <div className="flex justify-between items-center px-4 mb-2.5">
               <div className="flex items-center space-x-1.5">
                 <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs">
                   ⚡
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 leading-none">Explore Categories</h2>
-                  <p className="text-[10px] text-slate-500">Shop products or services from verified stores</p>
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-none">Explore Categories</h2>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Live Database Categories"></span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    {selectedCategoryName !== "All"
+                      ? `Filtered by: ${selectedCategoryName}`
+                      : "Shop products or services from verified stores"}
+                  </p>
                 </div>
               </div>
-              <span className="text-[11px] font-bold text-purple-700 flex items-center space-x-0.5 cursor-pointer">
-                View All
-              </span>
+              {selectedCategoryName !== "All" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategoryId("all");
+                    setSelectedCategoryName("All");
+                    toast.info("Showing all categories");
+                  }}
+                  className="text-[11px] font-bold text-purple-700 dark:text-purple-400 hover:underline cursor-pointer"
+                >
+                  Clear Filter
+                </button>
+              ) : (
+                <span
+                  onClick={() => toast.info(`${(liveCategories.length > 0 ? liveCategories : FALLBACK_CATEGORIES).length} live categories from database`)}
+                  className="text-[11px] font-bold text-purple-700 dark:text-purple-400 flex items-center space-x-0.5 cursor-pointer"
+                >
+                  View All ({(liveCategories.length > 0 ? liveCategories : FALLBACK_CATEGORIES).length})
+                </span>
+              )}
             </div>
 
             <div className="flex space-x-3.5 overflow-x-auto no-scrollbar px-4 py-1">
-              {[
-                { name: "All", icon: "🔥", bg: "bg-purple-700 text-white" },
-                { name: "Dining", icon: "🍔", bg: "bg-orange-100 text-orange-600" },
-                { name: "Cafes", icon: "☕", bg: "bg-amber-100 text-amber-700" },
-                { name: "Supermarket", icon: "🛒", bg: "bg-emerald-100 text-emerald-700" },
-                { name: "Kirana", icon: "🏪", bg: "bg-rose-100 text-rose-600" },
-                { name: "Fashion", icon: "👕", bg: "bg-indigo-100 text-indigo-600" },
-                { name: "Electronics", icon: "💻", bg: "bg-sky-100 text-sky-600" },
-                { name: "Salons", icon: "✂️", bg: "bg-pink-100 text-pink-600" },
-              ].map((cat, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => toast.info(`Filtered by category: ${cat.name}`)}
-                  className="flex flex-col items-center space-y-1 shrink-0 group cursor-pointer"
+              {/* "All" Category Pill */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategoryId("all");
+                  setSelectedCategoryName("All");
+                  toast.info("Showing all categories");
+                }}
+                className="flex flex-col items-center space-y-1 shrink-0 group cursor-pointer"
+              >
+                <div
+                  className={cn(
+                    "w-12 h-12 rounded-xl flex items-center justify-center text-lg transition-all",
+                    selectedCategoryId === "all"
+                      ? "bg-purple-700 text-white ring-2 ring-purple-600 shadow-sm scale-105"
+                      : "bg-purple-100 text-purple-700 group-hover:scale-105"
+                  )}
                 >
-                  <div className={`w-12 h-12 rounded-xl ${cat.bg} flex items-center justify-center text-lg shadow-xs transition-transform group-hover:scale-105`}>
-                    {cat.icon}
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-700">{cat.name}</span>
-                </button>
-              ))}
+                  🔥
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px]",
+                    selectedCategoryId === "all"
+                      ? "font-extrabold text-purple-700 dark:text-purple-400"
+                      : "font-bold text-slate-700 dark:text-slate-300"
+                  )}
+                >
+                  All
+                </span>
+              </button>
+
+              {/* Dynamic Live Categories from Database */}
+              {(liveCategories.length > 0 ? liveCategories : FALLBACK_CATEGORIES).map((cat: any) => {
+                const catId = cat.id || cat.categoryId || cat.name;
+                const isSelected = selectedCategoryId === catId || selectedCategoryName.toLowerCase() === (cat.name || "").toLowerCase();
+                const visual = getCategoryVisual(cat.name, cat.icon || cat.iconName);
+
+                return (
+                  <button
+                    key={catId}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedCategoryId("all");
+                        setSelectedCategoryName("All");
+                        toast.info("Showing all categories");
+                      } else {
+                        setSelectedCategoryId(catId);
+                        setSelectedCategoryName(cat.name);
+                        toast.info(`Filtered by category: ${cat.name}`);
+                      }
+                    }}
+                    className="flex flex-col items-center space-y-1 shrink-0 group cursor-pointer"
+                  >
+                    <div
+                      className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center text-lg shadow-xs transition-all",
+                        isSelected
+                          ? visual.activeBg
+                          : `${visual.bg} group-hover:scale-105`
+                      )}
+                    >
+                      {visual.icon}
+                    </div>
+                    <span
+                      className={cn(
+                        "text-[10px]",
+                        isSelected
+                          ? "font-extrabold text-purple-700 dark:text-purple-400"
+                          : "font-bold text-slate-700 dark:text-slate-300"
+                      )}
+                    >
+                      {cat.name}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -1951,16 +2382,18 @@ export default function CustomerHomePreviewPage() {
             <div className="flex justify-between items-center px-4 mb-2.5">
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h2 className="text-sm font-bold text-slate-900 leading-none">
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-none">
                     Top Service Offers Near You
                   </h2>
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live Database Feed"></span>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  Best discounts on restaurants, salons, gyms & more
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  {selectedCategoryName !== "All"
+                    ? `Showing ${selectedCategoryName} discounts & offers`
+                    : "Best discounts on restaurants, salons, gyms & more"}
                 </p>
               </div>
-              <div className="flex items-center space-x-0.5 text-[11px] font-bold text-purple-700">
+              <div className="flex items-center space-x-0.5 text-[11px] font-bold text-purple-700 dark:text-purple-400">
                 <span>View All ({displayedServiceOffers.length})</span>
                 <ChevronRight size={13} />
               </div>
@@ -1968,19 +2401,36 @@ export default function CustomerHomePreviewPage() {
 
             {/* Horizontal Service Cards Rail */}
             {displayedServiceOffers.length === 0 ? (
-              <div className="mx-4 p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs text-center space-y-3">
+              <div className="mx-4 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-center space-y-3">
                 <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto shadow-xs">
                   <MapPinOff size={20} />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-800">
-                    No Service Deals Within {userLocation.radiusKm} km
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {selectedCategoryName !== "All"
+                      ? `No ${selectedCategoryName} Deals Within ${userLocation.radiusKm} km`
+                      : `No Service Deals Within ${userLocation.radiusKm} km`}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-1 max-w-[260px] mx-auto leading-relaxed">
-                    Filtering strictly by coordinates ({userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}). No partner outlets have active service offers here.
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 max-w-[280px] mx-auto leading-relaxed">
+                    {selectedCategoryName !== "All"
+                      ? `No active offers found for "${selectedCategoryName}" around (${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}). Clear category filter or expand radius.`
+                      : `Filtering strictly by coordinates (${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}). No partner outlets have active service offers here.`}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+                  {selectedCategoryName !== "All" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategoryId("all");
+                        setSelectedCategoryName("All");
+                        toast.info("Showing all categories");
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>Show All Categories</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {

@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/admin/banners")
+@RequestMapping({"/api/v1/admin/banners", "//api/v1/admin/banners"})
 @Tag(name = "Admin Banners CMS", description = "Endpoints for Super Admin to curate and manage Mobile Home Hero Banners")
 @SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")

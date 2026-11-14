@@ -167,6 +167,8 @@ public class SecurityConfig {
                         "//api/v1/admin/rewards/**",
                         "/api/v1/admin/coupons/**",
                         "//api/v1/admin/coupons/**",
+                        "/api/v1/admin/banners/**",
+                        "//api/v1/admin/banners/**",
                         "/api/v1/rewards/**",
                         "//api/v1/rewards/**",
                         "/api/v1/coupons/**",
