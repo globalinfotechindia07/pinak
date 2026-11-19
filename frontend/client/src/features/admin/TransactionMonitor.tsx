@@ -131,13 +131,13 @@ function downloadTaxInvoiceReceipt(tx: Transaction) {
       <div>
         <div class="meta-label">Customer / Payer Details</div>
         <div class="meta-val">${tx.customerName || "Customer"}</div>
-        <div class="meta-mono">${tx.customerPhone || "+91-98XXXXXXXX"}</div>
+        <div class="meta-mono">${tx.customerPhone || "N/A"}</div>
         <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Payment Channel: NPCI UPI Intent (QR/Direct)</div>
       </div>
       <div>
         <div class="meta-label">Merchant Partner & Branch Outlet</div>
         <div class="meta-val">${tx.merchantName}</div>
-        <div style="font-size: 12px; color: #475569;">${tx.storeName || "Primary Flagship Outlet"}</div>
+        <div style="font-size: 12px; color: #475569;">${tx.storeName || "Store Outlet"}</div>
         <div class="meta-mono" style="font-size: 11px; color: #7c3aed; margin-top: 2px;">Payee VPA: ${tx.payeeVpa}</div>
       </div>
     </div>
@@ -256,7 +256,7 @@ function mapBackendToTransaction(t: any): Transaction {
 
   const fallbackUtr = isSuccess ? `UTR${String(stableHash(intentRef + (t.id || ""))).padStart(8, "0").slice(0, 10)}` : "Pending Clearance";
 
-  const rawStoreName = t.storeName || "Flagship Outlet";
+  const rawStoreName = t.storeName || "Store Outlet";
   const cleanStoreName = rawStoreName.replace(/[\uFFFD\u0080-\u009F]+/g, "-").replace(/\s*-\s*-\s*/g, " - ");
   const cleanMerchantName = (t.merchantName || "Merchant Partner").replace(/[\uFFFD\u0080-\u009F]+/g, " ");
 
@@ -265,9 +265,9 @@ function mapBackendToTransaction(t: any): Transaction {
     paymentIntentId: intentRef,
     referenceType: "OFFER",
     referenceId: t.offerId || "direct",
-    customerName: t.customerName || t.userName || "Verified Customer",
-    customerPhone: t.customerPhone || t.userPhone || "+91 98765 43210",
-    merchantId: t.merchantId || "m-1",
+    customerName: t.customerName || t.userName || "Customer",
+    customerPhone: t.customerPhone || t.userPhone || "",
+    merchantId: t.merchantId || "",
     merchantName: cleanMerchantName,
     storeName: cleanStoreName,
     storeId: t.storeId,
@@ -658,8 +658,8 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
             <ArrowRight size={10} className="text-slate-300" />
             <span className="font-semibold text-purple-600 dark:text-purple-400">
               {currentRole === "admin"
-                ? `${t.merchantName} • ${t.storeName || "Primary Outlet"}`
-                : t.storeName || "Flagship Outlet"}
+                ? `${t.merchantName} • ${t.storeName || "Store Outlet"}`
+                : t.storeName || "Store Outlet"}
             </span>
           </div>
         </div>
@@ -1478,7 +1478,7 @@ function TransactionAuditDrawer({
                 <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
                   NPCI UPI Intent & Settlement Audit
                 </h3>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{tx.paymentIntentId}</p>
                   <button
                     onClick={() => copyToClipboard(tx.paymentIntentId, "Payment Intent ID")}
@@ -1487,6 +1487,8 @@ function TransactionAuditDrawer({
                   >
                     <Copy size={11} />
                   </button>
+                  <span className="text-[10px] text-slate-400">•</span>
+                  <span className="text-[10px] text-slate-500 font-mono">{tx.timestamp}</span>
                 </div>
               </div>
             </div>
@@ -1524,6 +1526,29 @@ function TransactionAuditDrawer({
                     -₹{discount.toFixed(2)}
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Customer & Merchant Outlet Identification */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800">
+                <p className="text-slate-400 font-semibold uppercase text-[10px]">Customer / Payer</p>
+                <p className="font-bold text-slate-900 dark:text-white mt-1 truncate">
+                  {tx.customerName || "Customer"}
+                </p>
+                <p className="text-slate-400 font-mono text-[11px] mt-0.5">
+                  {tx.customerPhone || "Direct Counter UPI"}
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800">
+                <p className="text-slate-400 font-semibold uppercase text-[10px]">Merchant Outlet</p>
+                <p className="font-bold text-slate-900 dark:text-white mt-1 truncate">
+                  {tx.merchantName || "Partner Merchant"}
+                </p>
+                <p className="text-slate-400 text-[11px] mt-0.5 truncate">
+                  {tx.storeName || "Store Branch"}
+                </p>
               </div>
             </div>
 
@@ -1636,6 +1661,12 @@ function TransactionAuditDrawer({
                   <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
                   <span className="text-slate-600 dark:text-slate-400">
                     <strong className="text-slate-800 dark:text-slate-200">T3:</strong> Funds deposited in RBI Nodal Escrow Account for T+1 clearing
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                  <span className="text-slate-600 dark:text-slate-400">
+                    <strong className="text-slate-800 dark:text-slate-200">T4:</strong> Automated IMPS merchant payout cleared upon settlement cycle
                   </span>
                 </div>
               </div>
