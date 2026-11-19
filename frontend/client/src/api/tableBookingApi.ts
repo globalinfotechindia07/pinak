@@ -12,6 +12,11 @@ export interface BookingStoreHeader {
   longitude: number;
   cancellationPolicyText: string;
   isTableBookingEnabled: boolean;
+  cashbackPercentage?: number;
+  maxCashbackAmount?: number;
+  minTransactionForCashback?: number;
+  isCashbackEnabled?: boolean;
+  cashbackLabel?: string;
 }
 
 export interface GuestConfig {
@@ -69,7 +74,8 @@ export interface TableBookingAvailabilityData {
   lunchSlots: BookingTimeSlotItem[];
   dinnerSlots: BookingTimeSlotItem[];
   exclusiveOffers: BookingOfferOptionItem[];
-  regularOffer: BookingOfferOptionItem;
+  regularOffer?: BookingOfferOptionItem;
+  regularOffers?: BookingOfferOptionItem[];
   vipPlan: BookingVipPlanItem;
   paymentMethods: string[];
   termsAndConditions: string[];
@@ -108,6 +114,7 @@ export interface PayDiningBillPayload {
   bookingId?: string;
   billAmount: number;
   discountAmount: number;
+  coverChargeRedeemed?: number;
   couponCode?: string;
   tipAmount?: number;
   coinsRedeemed?: number;
@@ -125,6 +132,8 @@ export interface PayDiningBillResult {
   storeName: string;
   storeAddress: string;
   billAmount: number;
+  offerDiscount?: number;
+  coverChargeRedeemed?: number;
   discount: number;
   tip: number;
   totalPaid: number;
@@ -152,6 +161,8 @@ export interface TableBookingDetails {
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
+  customerId?: string;
+  userId?: string;
   guests: number;
   bookingDate: string;
   formattedDate?: string;
@@ -186,6 +197,12 @@ export interface TableBookingDetails {
   billAmount?: number;
   billAddedAt?: string;
 }
+
+const getMobileAuthHeaders = (): Record<string, string> => {
+  if (typeof window === "undefined") return {};
+  const mobileToken = localStorage.getItem("pinak_mobile_token");
+  return mobileToken ? { Authorization: `Bearer ${mobileToken}` } : {};
+};
 
 export const tableBookingApi = {
   /**
@@ -225,7 +242,8 @@ export const tableBookingApi = {
   ): Promise<TableBookingDetails> => {
     const res = await apiClient.post<ApiResponse<TableBookingDetails>>(
       "/mobile/table-bookings",
-      payload
+      payload,
+      { headers: getMobileAuthHeaders() }
     );
     return res.data?.data as TableBookingDetails;
   },
@@ -259,8 +277,11 @@ export const tableBookingApi = {
    */
   getMyBookings: async (phone?: string): Promise<TableBookingDetails[]> => {
     const res = await apiClient.get<ApiResponse<TableBookingDetails[]>>(
-      "/mobile/table-bookings",
-      { params: phone ? { phone } : {} }
+      "/mobile/my-bookings",
+      {
+        params: phone ? { phone } : {},
+        headers: getMobileAuthHeaders()
+      }
     );
     return (res.data?.data || []) as TableBookingDetails[];
   },
@@ -313,12 +334,28 @@ export const tableBookingApi = {
   },
 
   /**
+   * Auto-detect customer's active unredeemed table booking (CONFIRMED / SEATED) at a specific store
+   * so Pay Bill can auto-apply their locked offer and cover charge credit.
+   */
+  getActiveBookingForStore: async (
+    storeId: string,
+    phone?: string
+  ): Promise<TableBookingDetails | null> => {
+    const res = await apiClient.get<ApiResponse<TableBookingDetails | null>>(
+      `/mobile/stores/${encodeURIComponent(storeId)}/active-booking`,
+      { params: phone ? { phone } : {}, headers: getMobileAuthHeaders() }
+    );
+    return (res.data?.data ?? null) as TableBookingDetails | null;
+  },
+
+  /**
    * Process in-store dining bill payment via PINAK
    */
   payDiningBill: async (payload: PayDiningBillPayload): Promise<PayDiningBillResult> => {
     const res = await apiClient.post<ApiResponse<PayDiningBillResult>>(
       "/mobile/dining/pay-bill",
-      payload
+      payload,
+      { headers: getMobileAuthHeaders() }
     );
     return res.data?.data as PayDiningBillResult;
   }

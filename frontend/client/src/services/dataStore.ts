@@ -399,6 +399,9 @@ export const appStore = {
         menuImages: (st.menuImages && st.menuImages.length > 0) ? st.menuImages : (prev.menuImages || []),
         photos: (st.photos && st.photos.length > 0) ? st.photos : (prev.photos || []),
         amenities: (st.amenities && st.amenities.length > 0) ? st.amenities : (prev.amenities || []),
+        isTableBookingEnabled: st.isTableBookingEnabled ?? prev.isTableBookingEnabled ?? true,
+        allowFreeStandardBooking: st.allowFreeStandardBooking ?? prev.allowFreeStandardBooking ?? true,
+        defaultStandardCoverCharge: st.defaultStandardCoverCharge != null ? Number(st.defaultStandardCoverCharge) : (prev.defaultStandardCoverCharge || 0),
       };
     });
     setStored(STORAGE_KEYS.STORES, merged);
@@ -407,6 +410,9 @@ export const appStore = {
     const all = this.getStores();
     const currentUser = this.getCurrentUser();
     const actorName = currentUser?.name ? `${currentUser.name} (${currentUser.email})` : "Store Admin";
+
+    const coverCharge = Number(draft.defaultStandardCoverCharge) || 0;
+    const isFree = coverCharge > 0 ? false : (draft.allowFreeStandardBooking ?? true);
 
     const newStore: Store = {
       id: draft.id || `store-${Date.now()}`,
@@ -435,6 +441,9 @@ export const appStore = {
       menuImages: Array.isArray(draft.menuImages) ? draft.menuImages : [],
       photos: Array.isArray(draft.photos) ? draft.photos : [],
       amenities: Array.isArray(draft.amenities) ? draft.amenities : [],
+      isTableBookingEnabled: draft.isTableBookingEnabled ?? true,
+      allowFreeStandardBooking: isFree,
+      defaultStandardCoverCharge: coverCharge,
     };
     setStored(STORAGE_KEYS.STORES, [newStore, ...all]);
 
@@ -882,10 +891,10 @@ export const appStore = {
         id: `wal-${merchantId}`,
         merchantId,
         currency: "INR",
-        availableBalance: 185400.0,
-        pendingBalance: 12500.0,
-        totalWithdrawn: 420000.0,
-        lifetimeVolume: 617900.0,
+        availableBalance: 0.0,
+        pendingBalance: 0.0,
+        totalWithdrawn: 0.0,
+        lifetimeVolume: 0.0,
         status: "ACTIVE",
         updatedAt: new Date().toISOString()
       };
@@ -895,60 +904,7 @@ export const appStore = {
   },
 
   getMerchantLedger(merchantId: string = "m-1", storeId?: string): WalletLedgerEntry[] {
-    const entries = getStored<WalletLedgerEntry[]>(STORAGE_KEYS.LEDGER, [
-      {
-        id: "led-101",
-        walletId: `wal-${merchantId}`,
-        storeId: "st-1",
-        storeName: "Dharampeth Flagship",
-        entryType: "CREDIT",
-        amount: 2450.0,
-        feeDeducted: 122.5,
-        netAmount: 2327.5,
-        runningBalance: 185400.0,
-        description: "Counter Bill UPI Settlement - Order #PINAK-8912",
-        sourceReference: "TX_UPI_982137",
-        createdAt: new Date(Date.now() - 3600000 * 2).toISOString()
-      },
-      {
-        id: "led-102",
-        walletId: `wal-${merchantId}`,
-        storeId: "st-2",
-        storeName: "Civil Lines Executive",
-        entryType: "CREDIT",
-        amount: 1800.0,
-        feeDeducted: 90.0,
-        netAmount: 1710.0,
-        runningBalance: 183072.5,
-        description: "Flash Offer Redemption - Flat 20% OFF",
-        sourceReference: "TX_OFFER_55123",
-        createdAt: new Date(Date.now() - 3600000 * 5).toISOString()
-      },
-      {
-        id: "led-103",
-        walletId: `wal-${merchantId}`,
-        entryType: "HOLD",
-        amount: 50000.0,
-        feeDeducted: 5.0,
-        netAmount: 49995.0,
-        runningBalance: 181362.5,
-        description: "Instant Bank Payout Request - HDFC Bank **8891",
-        sourceReference: "PAYOUT_REQ_9812",
-        createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
-      },
-      {
-        id: "led-104",
-        walletId: `wal-${merchantId}`,
-        entryType: "DEBIT",
-        amount: 50000.0,
-        feeDeducted: 5.0,
-        netAmount: 49995.0,
-        runningBalance: 131362.5,
-        description: "Bank Transfer Settled - UTR: AXIS2026100799812",
-        sourceReference: "UTR_AXIS2026100799812",
-        createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
-      }
-    ]);
+    const entries = getStored<WalletLedgerEntry[]>(STORAGE_KEYS.LEDGER, []);
 
     if (storeId && storeId !== "ALL") {
       return entries.filter(e => e.storeId === storeId);
@@ -957,34 +913,11 @@ export const appStore = {
   },
 
   getMerchantBankAccounts(merchantId: string = "m-1"): MerchantBankAccount[] {
-    return getStored<MerchantBankAccount[]>(STORAGE_KEYS.BANK_ACCOUNTS, [
-      {
-        id: "bank-101",
-        merchantId,
-        accountHolderName: "Silver Spoon Hospitality Pvt Ltd",
-        bankName: "HDFC Bank",
-        accountNumberLast4: "8891",
-        ifscCode: "HDFC0001234",
-        upiVpa: "silverspoon@hdfcbank",
-        isPrimary: true,
-        verificationStatus: "VERIFIED",
-        pennyDropReference: "PENNY_REF_981237",
-        createdAt: "2026-01-15T10:00:00Z"
-      },
-      {
-        id: "bank-102",
-        merchantId,
-        accountHolderName: "Silver Spoon Operations",
-        bankName: "ICICI Bank",
-        accountNumberLast4: "4021",
-        ifscCode: "ICIC0005521",
-        upiVpa: "silverspoon.ops@icici",
-        isPrimary: false,
-        verificationStatus: "VERIFIED",
-        pennyDropReference: "PENNY_REF_551299",
-        createdAt: "2026-03-10T14:30:00Z"
-      }
-    ]);
+    const list = getStored<MerchantBankAccount[]>(STORAGE_KEYS.BANK_ACCOUNTS, []);
+    if (merchantId) {
+      return list.filter(b => b.merchantId === merchantId);
+    }
+    return list;
   },
 
   addMerchantBankAccount(account: Omit<MerchantBankAccount, "id" | "createdAt">): MerchantBankAccount {
@@ -1007,53 +940,7 @@ export const appStore = {
   },
 
   getMerchantPayouts(merchantId?: string): MerchantPayoutRequest[] {
-    const payouts = getStored<MerchantPayoutRequest[]>(STORAGE_KEYS.PAYOUTS, [
-      {
-        id: "pout-101",
-        merchantId: merchantId || "m-1",
-        merchantName: "Silver Spoon Hospitality",
-        walletId: "wal-m-1",
-        bankAccountId: "bank-101",
-        bankName: "HDFC Bank",
-        accountNumberLast4: "8891",
-        accountHolderName: "Silver Spoon Hospitality Pvt Ltd",
-        amount: 50000.0,
-        payoutFee: 5.0,
-        netPayout: 49995.0,
-        currency: "INR",
-        mode: "IMPS",
-        status: "SUCCESS",
-        provider: "RAZORPAYX",
-        providerPayoutId: "pout_9821378123",
-        bankUtr: "AXIS2026100799812",
-        idempotencyKey: "idem-key-9812",
-        requestedBy: "usr-merchant-owner",
-        processedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-        createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
-      },
-      {
-        id: "pout-102",
-        merchantId: merchantId || "m-1",
-        merchantName: "Silver Spoon Hospitality",
-        walletId: "wal-m-1",
-        bankAccountId: "bank-101",
-        bankName: "HDFC Bank",
-        accountNumberLast4: "8891",
-        accountHolderName: "Silver Spoon Hospitality Pvt Ltd",
-        amount: 25000.0,
-        payoutFee: 5.0,
-        netPayout: 24995.0,
-        currency: "INR",
-        mode: "IMPS",
-        status: "PROCESSING",
-        provider: "RAZORPAYX",
-        providerPayoutId: "pout_5512991002",
-        bankUtr: "Pending RBI Clearing",
-        idempotencyKey: `idem-key-${Date.now()}`,
-        requestedBy: "usr-merchant-owner",
-        createdAt: new Date(Date.now() - 3600000 * 2).toISOString()
-      }
-    ]);
+    const payouts = getStored<MerchantPayoutRequest[]>(STORAGE_KEYS.PAYOUTS, []);
 
     if (merchantId) {
       return payouts.filter(p => p.merchantId === merchantId);
@@ -1091,7 +978,7 @@ export const appStore = {
     const newPayout: MerchantPayoutRequest = {
       id: `pout-${Date.now()}`,
       merchantId,
-      merchantName: "Silver Spoon Hospitality",
+      merchantName: this.getMerchants().find(m => m.id === merchantId)?.businessName || "Merchant Partner",
       walletId: wallet.id,
       bankAccountId: bank.id,
       bankName: bank.bankName,
@@ -1173,14 +1060,20 @@ export const appStore = {
 
   getStoreRevenueBreakdown(merchantId: string = "m-1"): StoreRevenueSummary[] {
     const stores = this.getStores().filter(s => s.merchantId === merchantId || s.merchantId === "m-1");
-    return stores.map(st => ({
-      storeId: st.id,
-      storeName: st.storeName,
-      totalSalesCount: Math.floor(Math.random() * 40) + 15,
-      grossVolume: st.id === "st-1" ? 120000.0 : 85000.0,
-      netEarnings: st.id === "st-1" ? 114000.0 : 80750.0,
-      pendingClearing: 0.0
-    }));
+    const txs = this.getTransactions();
+    return stores.map(st => {
+      const storeTxs = txs.filter(t => (t as any).storeId === st.id);
+      const gross = storeTxs.reduce((acc, t) => acc + (t.status === "SUCCESS" ? Number(t.billAmount || t.payableAmount || 0) : 0), 0);
+      const net = storeTxs.reduce((acc, t) => acc + (t.status === "SUCCESS" ? Number(t.payableAmount || 0) : 0), 0);
+      return {
+        storeId: st.id,
+        storeName: st.storeName,
+        totalSalesCount: storeTxs.filter(t => t.status === "SUCCESS").length,
+        grossVolume: gross,
+        netEarnings: net,
+        pendingClearing: 0.0
+      };
+    });
   },
 
   getPlatformSettlementOverview(): PlatformSettlementOverview {
@@ -1195,7 +1088,7 @@ export const appStore = {
       totalPlatformGmv: gmv,
       totalEscrowBalance: escrow,
       netCommissionEarned: Math.round(gmv * 0.05 * 100) / 100,
-      totalMerchantWallets: Math.max(wallets.length, 1),
+      totalMerchantWallets: wallets.length,
       pendingPayoutCount: payouts.filter(p => p.status === "PROCESSING" || p.status === "INITIATED").length,
       pendingPayoutVolume: payouts.filter(p => p.status === "PROCESSING" || p.status === "INITIATED").reduce((acc, p) => acc + p.amount, 0),
       failedPayoutCount: payouts.filter(p => p.status === "FAILED" || p.status === "HELD").length

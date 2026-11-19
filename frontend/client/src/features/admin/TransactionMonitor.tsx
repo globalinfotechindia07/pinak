@@ -300,6 +300,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
   const [activeTab, setActiveTab] = useState<"intents" | "payout_queue">("intents");
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [liveTxs, setLiveTxs] = useState<Transaction[]>([]);
+  const [hasFetched, setHasFetched] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [backendStats, setBackendStats] = useState<BackendTransactionStats | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>(() => new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }));
@@ -399,6 +400,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
         }
       }
       setLastRefreshedAt(new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }));
+      setHasFetched(true);
     } catch (e) {
       console.warn("Could not fetch live transactions from backend:", e);
     } finally {
@@ -411,7 +413,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
   }, [currentRole, selectedStoreId, scopedStoreId, activeStore?.id]);
 
   // Real backend transactions take complete priority once fetched; fallback only during initial mount before network resolves
-  const rawPool = liveTxs.length > 0 ? liveTxs : (initialTransactions.length > 0 ? initialTransactions : appStore.transactions);
+  const rawPool = hasFetched ? liveTxs : (initialTransactions.length > 0 ? initialTransactions : (appStore.transactions || []));
 
   // Filtered dataset
   const displayedTransactions = useMemo(() => {
@@ -545,8 +547,8 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
         totalPlatformGmv: Number(backendStats.totalPlatformGmv || 0),
         totalEscrowBalance: Number(backendStats.totalEscrowBalance || backendStats.totalNetCollected || 0),
         netCommissionEarned: Number(backendStats.netCommissionEarned || 0),
-        totalMerchantWallets: Number(backendStats.totalMerchantWallets || 1),
-        activeStores: Number(backendStats.activeStores || 1),
+        totalMerchantWallets: Number(backendStats.totalMerchantWallets || 0),
+        activeStores: Number(backendStats.activeStores || 0),
         pendingPayoutCount: Number(backendStats.pendingPayoutCount || 0),
         pendingPayoutVolume: Number(backendStats.pendingPayoutVolume || 0),
         totalTransactions: Number(backendStats.totalTransactions || 0),
@@ -557,14 +559,15 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
     const gmv = metrics.grossGmv;
     const net = metrics.netPayable;
     const commission = Math.round(gmv * 0.05 * 100) / 100;
-    const distinctMerchants = Math.max(1, new Set(displayedTransactions.map((t) => t.merchantId)).size);
+    const distinctMerchants = displayedTransactions.length > 0 ? new Set(displayedTransactions.map((t) => t.merchantId)).size : 0;
+    const activeStoreCount = displayedTransactions.length > 0 ? new Set(displayedTransactions.map((t) => (t as any).storeId)).size : 0;
 
     return {
       totalPlatformGmv: gmv,
       totalEscrowBalance: net,
       netCommissionEarned: commission,
       totalMerchantWallets: distinctMerchants,
-      activeStores: Math.max(1, new Set(displayedTransactions.map((t) => (t as any).storeId)).size),
+      activeStores: activeStoreCount,
       pendingPayoutCount: payouts.filter((p) => p.status === "PROCESSING" || p.status === "INITIATED").length,
       pendingPayoutVolume: payouts.filter((p) => p.status === "PROCESSING" || p.status === "INITIATED").reduce((acc, p) => acc + p.amount, 0),
       totalTransactions: metrics.totalCount,
@@ -1034,72 +1037,92 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                {payouts.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/40 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-mono font-bold text-slate-900 dark:text-white flex items-center gap-1">
-                        <Hash size={12} className="text-purple-500" />
-                        <span>{p.id}</span>
+                {payouts.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 px-4 text-center">
+                      <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center space-y-3 py-4">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                          <CheckCircle2 size={22} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                            No Pending Disbursements
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            All merchant bank settlements have been cleared through the nodal escrow account.
+                          </p>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">
-                        {p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Today"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-purple-600 dark:text-purple-400">
-                        {p.merchantName || "Registered Merchant Partner"}
-                      </p>
-                      <span className="text-[10px] text-slate-400">Mode: {p.mode || "IMPS"} Direct Rail</span>
-                    </td>
-                    <td className="px-4 py-3 font-mono">
-                      <span className="font-bold text-slate-800 dark:text-slate-200">{p.bankName || "HDFC Bank"}</span>
-                      <span className="text-slate-400 block text-[11px]">A/C: •••• {p.accountNumberLast4 || "4920"}</span>
-                    </td>
-                    <td className="px-4 py-3 font-mono font-extrabold text-slate-900 dark:text-white text-xs">
-                      ₹{p.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-slate-500">
-                      {p.bankUtr || "Pending Dispatch"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge
-                        variant={
-                          p.status === "SUCCESS"
-                            ? "success"
-                            : p.status === "HELD" || p.status === "FAILED"
-                            ? "destructive"
-                            : "warning"
-                        }
-                        className="text-[10px] font-semibold uppercase tracking-wider"
-                      >
-                        {p.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
-                      {p.status !== "HELD" ? (
-                        <button
-                          onClick={() => openPayoutModal(p, "HOLD")}
-                          className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-[11px] font-bold border border-rose-200/60 dark:border-rose-800/60 transition-colors"
-                        >
-                          Fraud Hold
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => openPayoutModal(p, "RELEASE")}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-[11px] font-bold border border-emerald-200/60 dark:border-emerald-800/60 transition-colors"
-                        >
-                          Release Hold
-                        </button>
-                      )}
-                      <button
-                        onClick={() => openPayoutModal(p, "RETRY")}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] font-bold border border-slate-200 dark:border-slate-700 transition-colors"
-                      >
-                        Retry
-                      </button>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  payouts.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-mono font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                          <Hash size={12} className="text-purple-500" />
+                          <span>{p.id}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">
+                          {p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Today"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-purple-600 dark:text-purple-400">
+                          {p.merchantName || "Registered Merchant Partner"}
+                        </p>
+                        <span className="text-[10px] text-slate-400">Mode: {p.mode || "IMPS"} Direct Rail</span>
+                      </td>
+                      <td className="px-4 py-3 font-mono">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{p.bankName || "HDFC Bank"}</span>
+                        <span className="text-slate-400 block text-[11px]">A/C: •••• {p.accountNumberLast4 || "4920"}</span>
+                      </td>
+                      <td className="px-4 py-3 font-mono font-extrabold text-slate-900 dark:text-white text-xs">
+                        ₹{p.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-slate-500">
+                        {p.bankUtr || "Pending Dispatch"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant={
+                            p.status === "SUCCESS"
+                              ? "success"
+                              : p.status === "HELD" || p.status === "FAILED"
+                              ? "destructive"
+                              : "warning"
+                          }
+                          className="text-[10px] font-semibold uppercase tracking-wider"
+                        >
+                          {p.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
+                        {p.status !== "HELD" ? (
+                          <button
+                            onClick={() => openPayoutModal(p, "HOLD")}
+                            className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-[11px] font-bold border border-rose-200/60 dark:border-rose-800/60 transition-colors"
+                          >
+                            Fraud Hold
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openPayoutModal(p, "RELEASE")}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-[11px] font-bold border border-emerald-200/60 dark:border-emerald-800/60 transition-colors"
+                          >
+                            Release Hold
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openPayoutModal(p, "RETRY")}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] font-bold border border-slate-200 dark:border-slate-700 transition-colors"
+                        >
+                          Retry
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1192,7 +1215,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
                 ? "Merchant UPI Transaction Ledger"
                 : `${activeStore?.branchName || "Branch"} Counter Ledger`
             }
-            subtitle={`${displayedTransactions.length} transaction records settled through RBI-compliant merchant VPA routes`}
+            subtitle={`${displayedTransactions.length} transaction record${displayedTransactions.length === 1 ? "" : "s"} settled through RBI-compliant merchant VPA routes`}
             columns={columns}
             data={displayedTransactions}
             keyExtractor={(t) => t.id}
@@ -1206,6 +1229,33 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
               (t.utr || "").toLowerCase().includes(q) ||
               (t.payeeVpa || "").toLowerCase().includes(q) ||
               (t.referenceId || "").toLowerCase().includes(q)
+            }
+            emptyState={
+              <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center space-y-3 py-10">
+                <div className="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-950/50 border border-purple-100 dark:border-purple-900/60 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-inner">
+                  <Receipt size={26} />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                    No Transaction Records Found
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    {hasActiveFilters
+                      ? "No transactions match your selected status, date, or payment rail filters."
+                      : "No customer payment transactions recorded yet. Live NPCI UPI transactions and QR settlements will stream here in real-time."}
+                  </p>
+                </div>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="btn-gradient inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer mt-1"
+                  >
+                    <RotateCcw size={13} />
+                    <span>Reset All Filters</span>
+                  </button>
+                )}
+              </div>
             }
             emptyMessage="No matching transaction records found for the applied search criteria."
             bulkActions={[
@@ -1322,7 +1372,7 @@ export const TransactionMonitor: React.FC<TransactionMonitorProps> = ({
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 space-y-1">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Merchant Partner:</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{modalState.payout.merchantName || "Silver Spoon Hospitality"}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{modalState.payout.merchantName || "Merchant Partner"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Transfer Amount:</span>
