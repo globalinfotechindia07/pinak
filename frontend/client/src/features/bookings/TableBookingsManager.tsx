@@ -84,6 +84,15 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
   const [billAmountToSet, setBillAmountToSet] = useState<string>("");
   const [isSettingBill, setIsSettingBill] = useState<boolean>(false);
 
+  // Inline Bill Editor state inside Reservation Details Drawer
+  const [isEditingBillInline, setIsEditingBillInline] = useState<boolean>(false);
+  const [inlineBillAmount, setInlineBillAmount] = useState<string>("");
+
+  useEffect(() => {
+    setIsEditingBillInline(false);
+    setInlineBillAmount("");
+  }, [selectedBooking?.bookingRef]);
+
   // Cancellation Modal states
   const [cancellingBooking, setCancellingBooking] = useState<TableBookingDetails | null>(null);
   const [cancelReason, setCancelReason] = useState<string>("Guest Request / Change of Plans");
@@ -1579,31 +1588,126 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
                     </span>
                   </div>
 
-                  {/* Food Bill Row */}
-                  <div className="flex justify-between items-center pt-2.5 border-t border-slate-200/80 dark:border-slate-800">
-                    <span className="text-slate-500 font-semibold">Dining Food Bill:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-sm text-emerald-700 dark:text-emerald-400">
-                        {selectedBooking.billAmount ? `₹${Number(selectedBooking.billAmount).toLocaleString("en-IN")}` : "Not Added"}
+                  {/* Dining Food Bill Section with Inline Expansion */}
+                  <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-semibold flex items-center gap-1.5">
+                        <Receipt size={13} className="text-emerald-600 dark:text-emerald-400" />
+                        <span>Dining Food Bill:</span>
                       </span>
-                      {isSelectedCompleted ? (
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-extrabold text-[10px] inline-flex items-center gap-1">
-                          <CheckCircle2 size={10} />
-                          <span>PAID</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-sm text-emerald-700 dark:text-emerald-400">
+                          {selectedBooking.billAmount ? `₹${Number(selectedBooking.billAmount).toLocaleString("en-IN")}` : "Not Added"}
                         </span>
-                      ) : !isSelectedCancelled && !isSelectedCompleted && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBillModalBooking(selectedBooking);
-                            setBillAmountToSet(selectedBooking.billAmount ? String(selectedBooking.billAmount) : "");
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-xs transition cursor-pointer"
-                        >
-                          {selectedBooking.billAmount ? "Edit Bill" : "+ Add Bill"}
-                        </button>
-                      )}
+                        {isSelectedCompleted ? (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-extrabold text-[10px] inline-flex items-center gap-1">
+                            <CheckCircle2 size={10} />
+                            <span>PAID</span>
+                          </span>
+                        ) : !isSelectedCancelled && !isEditingBillInline && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsEditingBillInline(true);
+                              setInlineBillAmount(selectedBooking.billAmount ? String(selectedBooking.billAmount) : "");
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-xs transition cursor-pointer"
+                          >
+                            {selectedBooking.billAmount ? "Edit Bill" : "+ Add Bill"}
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Inline Bill Form inside the Drawer */}
+                    {isEditingBillInline && !isSelectedCancelled && !isSelectedCompleted && (
+                      <div className="p-3.5 rounded-xl bg-white dark:bg-slate-800/90 border border-emerald-500/40 dark:border-emerald-500/30 space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                            Printed Food Bill Amount (₹) *
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-black text-base">
+                              ₹
+                            </span>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              autoFocus
+                              value={inlineBillAmount}
+                              onChange={(e) => setInlineBillAmount(e.target.value)}
+                              placeholder="e.g. 1000"
+                              className="w-full pl-7 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 text-base font-black text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-600 transition"
+                            />
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-snug">
+                            Enter the gross amount printed from POS. The diner sees and pays this from their app.
+                          </p>
+                        </div>
+
+                        {/* Quick Select Chips */}
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                            Quick Select
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {[500, 1000, 1500, 2000, 2500, 3000, 5000].map((amt) => (
+                              <button
+                                key={amt}
+                                type="button"
+                                onClick={() => setInlineBillAmount(String(amt))}
+                                className={cn(
+                                  "px-2 py-0.5 rounded-lg font-bold text-[10px] transition cursor-pointer border",
+                                  inlineBillAmount === String(amt)
+                                    ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                                )}
+                              >
+                                ₹{amt.toLocaleString("en-IN")}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 text-[10px] text-amber-800 dark:text-amber-300 leading-snug">
+                          💡 Attach full bill before discounts. Eligible promo discounts apply automatically at checkout.
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingBillInline(false)}
+                            disabled={isSettingBill}
+                            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isSettingBill || !inlineBillAmount || Number(inlineBillAmount) <= 0}
+                            onClick={async () => {
+                              await handleSetBillAmount(selectedBooking, Number(inlineBillAmount));
+                              setIsEditingBillInline(false);
+                            }}
+                            className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white font-black text-xs shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                          >
+                            {isSettingBill ? (
+                              <>
+                                <RefreshCw size={12} className="animate-spin" />
+                                <span>Saving Bill...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check size={12} />
+                                <span>Attach Bill &amp; Send</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1692,260 +1796,241 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
         );
       })()}
 
-      {/* 6. Attach / Update Food Bill Right-Side Drawer (Layered above Reservation Details) */}
+      {/* 6. Attach / Update Food Bill Centered Modal (When triggered directly from table / cards) */}
       {billModalBooking && (
-        <div className="fixed inset-0 z-[90] overflow-hidden animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div
             className="fixed inset-0 bg-slate-950/70 backdrop-blur-md transition-opacity"
             onClick={() => setBillModalBooking(null)}
             aria-hidden="true"
           />
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10 h-full pointer-events-none">
-            <aside className="pointer-events-auto w-screen max-w-md h-full max-h-screen bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 font-['Manrope'] overflow-hidden">
-              {/* Drawer Header */}
-              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-2xs">
-                    <Receipt size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
-                      Attach Food Bill to Table
-                    </h3>
-                    <p className="text-[11px] text-slate-400">
-                      Ref #{billModalBooking.bookingRef} • {billModalBooking.guests || 2} Guests
-                    </p>
-                  </div>
+          <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-[#121626] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 z-10 animate-in zoom-in-95 duration-200 font-['Manrope'] overflow-hidden space-y-4">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-2xs">
+                  <Receipt size={18} />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setBillModalBooking(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Drawer Scrollable Content */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5 overscroll-contain">
-                {/* Guest & Table Context Card */}
-                <div className="bg-slate-50 dark:bg-slate-900/80 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 font-semibold">Guest Name:</span>
-                    <span className="font-extrabold text-slate-900 dark:text-white">
-                      {billModalBooking.customerName || "Guest Diner"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 font-semibold">Contact Phone:</span>
-                    <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">
-                      {billModalBooking.customerPhone}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 font-semibold">Dining Slot:</span>
-                    <span className="font-bold text-purple-700 dark:text-purple-300">
-                      {billModalBooking.formattedDate || billModalBooking.bookingDate} • {billModalBooking.slotTime}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 font-semibold">Party Size:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">
-                      {billModalBooking.guests || 2} Guests ({billModalBooking.mealType || "DINE-IN"})
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bill Amount Input Field */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                    Printed Food Bill Amount (₹) *
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">
-                      ₹
-                    </span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      autoFocus
-                      value={billAmountToSet}
-                      onChange={(e) => setBillAmountToSet(e.target.value)}
-                      placeholder="e.g. 1000"
-                      className="w-full pl-9 pr-4 py-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-xl font-black text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-600 focus:bg-white dark:focus:bg-slate-900 transition"
-                    />
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Enter the gross bill amount printed from your register/POS. The diner will view this bill amount in their PINAK app to make the payment.
-                  </p>
-                </div>
-
-                {/* Quick Preset Amount Chips */}
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Quick Select
-                  </span>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {[500, 1000, 1500, 2000, 2500, 3000, 5000].map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => setBillAmountToSet(String(amt))}
-                        className={cn(
-                          "px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer border",
-                          billAmountToSet === String(amt)
-                            ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                            : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700"
-                        )}
-                      >
-                        ₹{amt.toLocaleString("en-IN")}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Host Tip / Notice */}
-                <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200 space-y-1">
-                  <span className="font-extrabold flex items-center gap-1.5">
-                    <span>💡</span>
-                    <span>Floor Host Notice</span>
-                  </span>
-                  <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
-                    Attach the full food bill amount before discounts. The customer will pay from their app and any eligible promo discounts will be applied automatically at checkout.
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
+                    Attach Food Bill to Table
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Ref #{billModalBooking.bookingRef} • {billModalBooking.guests || 2} Guests
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setBillModalBooking(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-              {/* Drawer Footer */}
-              <div className="shrink-0 p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#121626] flex items-center justify-end gap-2.5 shadow-lg">
-                <button
-                  type="button"
-                  onClick={() => setBillModalBooking(null)}
-                  disabled={isSettingBill}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isSettingBill || !billAmountToSet || Number(billAmountToSet) <= 0}
-                  onClick={() => handleSetBillAmount(billModalBooking, Number(billAmountToSet))}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-black text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 transition cursor-pointer"
-                >
-                  {isSettingBill ? (
-                    <>
-                      <RefreshCw size={14} className="animate-spin" />
-                      <span>Saving Bill...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check size={14} />
-                      <span>Attach Bill &amp; Send to Guest</span>
-                    </>
-                  )}
-                </button>
+            {/* Guest Summary Card */}
+            <div className="bg-slate-50 dark:bg-slate-900/80 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-1.5 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-semibold">Guest Diner:</span>
+                <span className="font-extrabold text-slate-900 dark:text-white">
+                  {billModalBooking.customerName || "Guest Diner"} ({billModalBooking.customerPhone})
+                </span>
               </div>
-            </aside>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-semibold">Dining Slot:</span>
+                <span className="font-bold text-purple-700 dark:text-purple-300">
+                  {billModalBooking.formattedDate || billModalBooking.bookingDate} • {billModalBooking.slotTime} ({billModalBooking.guests || 2} Guests)
+                </span>
+              </div>
+            </div>
+
+            {/* Bill Amount Input Field */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                Printed Food Bill Amount (₹) *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">
+                  ₹
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  autoFocus
+                  value={billAmountToSet}
+                  onChange={(e) => setBillAmountToSet(e.target.value)}
+                  placeholder="e.g. 1000"
+                  className="w-full pl-9 pr-4 py-3 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-xl font-black text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-600 focus:bg-white dark:focus:bg-slate-900 transition"
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Enter the gross bill amount printed from register/POS. The diner will view and pay this from their PINAK app.
+              </p>
+            </div>
+
+            {/* Quick Preset Amount Chips */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Quick Select
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {[500, 1000, 1500, 2000, 2500, 3000, 5000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setBillAmountToSet(String(amt))}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer border",
+                      billAmountToSet === String(amt)
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                        : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700"
+                    )}
+                  >
+                    ₹{amt.toLocaleString("en-IN")}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Floor Host Notice */}
+            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+              <span className="font-extrabold flex items-center gap-1.5 text-[11px]">
+                <span>💡</span>
+                <span>Floor Host Notice</span>
+              </span>
+              <p className="text-[10.5px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                Attach the full food bill amount before discounts. Any eligible promo discounts will be applied automatically at checkout.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-2 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setBillModalBooking(null)}
+                disabled={isSettingBill}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSettingBill || !billAmountToSet || Number(billAmountToSet) <= 0}
+                onClick={() => handleSetBillAmount(billModalBooking, Number(billAmountToSet))}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-black text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                {isSettingBill ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Saving Bill...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} />
+                    <span>Attach Bill &amp; Send to Guest</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 7. Cancel Reservation Right-Side Drawer */}
+      {/* 7. Cancel Reservation Centered Confirmation Dialog */}
       {cancellingBooking && (
-        <div className="fixed inset-0 z-[100] overflow-hidden animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div
             className="fixed inset-0 bg-slate-950/70 backdrop-blur-md transition-opacity"
             onClick={() => setCancellingBooking(null)}
             aria-hidden="true"
           />
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10 h-full pointer-events-none">
-            <aside className="pointer-events-auto w-screen max-w-md h-full max-h-screen bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 font-['Manrope'] overflow-hidden">
-              {/* Drawer Header */}
-              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center font-bold shadow-2xs">
-                    <AlertTriangle size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
-                      Cancel Table Reservation
-                    </h3>
-                    <p className="text-[11px] text-slate-400">
-                      Ref #{cancellingBooking.bookingRef} • {cancellingBooking.customerName}
-                    </p>
-                  </div>
+          <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-[#121626] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 z-10 animate-in zoom-in-95 duration-200 font-['Manrope'] overflow-hidden space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center font-bold shadow-2xs">
+                  <AlertTriangle size={18} />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCancellingBooking(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Drawer Content */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 text-xs overscroll-contain">
-                <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-slate-700 dark:text-slate-200 space-y-1 leading-relaxed">
-                  <p className="font-bold text-rose-700 dark:text-rose-300">
-                    Are you sure you want to cancel this booking?
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    If a cover charge was collected, 100% of the amount (₹{cancellingBooking.totalCoverCharge || 0}) will be refunded back to the diner immediately.
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
+                    Cancel Table Reservation
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Ref #{cancellingBooking.bookingRef} • {cancellingBooking.customerName}
                   </p>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                    Reason for Cancellation *
-                  </label>
-                  <select
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-900 dark:text-white focus:outline-hidden"
-                  >
-                    <option value="Guest Request / Change of Plans">Guest Request / Change of Plans</option>
-                    <option value="Guest No-Show">Guest No-Show</option>
-                    <option value="Restaurant Overbooked / Full Capacity">Restaurant Overbooked / Full Capacity</option>
-                    <option value="Operational Emergency / Maintenance">Operational Emergency / Maintenance</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                    Additional Notes (Optional)
-                  </label>
-                  <textarea
-                    value={cancelComments}
-                    onChange={(e) => setCancelComments(e.target.value)}
-                    placeholder="Provide details or notes regarding this cancellation..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs text-slate-900 dark:text-white focus:outline-hidden resize-none h-24"
-                  />
-                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setCancellingBooking(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-              {/* Drawer Footer */}
-              <div className="shrink-0 p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#121626] flex items-center justify-end gap-2.5 shadow-lg">
-                <button
-                  type="button"
-                  disabled={isCancelling}
-                  onClick={() => setCancellingBooking(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                >
-                  Keep Booking
-                </button>
-                <button
-                  type="button"
-                  disabled={isCancelling}
-                  onClick={handleConfirmCancel}
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/20 transition cursor-pointer flex items-center gap-1.5"
-                >
-                  {isCancelling ? <RefreshCw size={13} className="animate-spin" /> : <XCircle size={13} />}
-                  <span>Confirm Cancellation</span>
-                </button>
-              </div>
-            </aside>
+            {/* Warning Notice */}
+            <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-slate-700 dark:text-slate-200 space-y-1 leading-relaxed text-xs">
+              <p className="font-bold text-rose-700 dark:text-rose-300">
+                Are you sure you want to cancel this booking?
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                If a cover charge was collected, 100% of the amount (₹{cancellingBooking.totalCoverCharge || 0}) will be refunded back to the diner immediately.
+              </p>
+            </div>
+
+            {/* Reason Select */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                Reason for Cancellation *
+              </label>
+              <select
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-900 dark:text-white focus:outline-hidden"
+              >
+                <option value="Guest Request / Change of Plans">Guest Request / Change of Plans</option>
+                <option value="Guest No-Show">Guest No-Show</option>
+                <option value="Restaurant Overbooked / Full Capacity">Restaurant Overbooked / Full Capacity</option>
+                <option value="Operational Emergency / Maintenance">Operational Emergency / Maintenance</option>
+              </select>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                Additional Notes (Optional)
+              </label>
+              <textarea
+                value={cancelComments}
+                onChange={(e) => setCancelComments(e.target.value)}
+                placeholder="Provide details or notes regarding this cancellation..."
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs text-slate-900 dark:text-white focus:outline-hidden resize-none h-20"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="pt-2 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isCancelling}
+                onClick={() => setCancellingBooking(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Keep Booking
+              </button>
+              <button
+                type="button"
+                disabled={isCancelling}
+                onClick={handleConfirmCancel}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/20 transition cursor-pointer flex items-center gap-1.5"
+              >
+                {isCancelling ? <RefreshCw size={13} className="animate-spin" /> : <XCircle size={13} />}
+                <span>Confirm Cancellation</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
