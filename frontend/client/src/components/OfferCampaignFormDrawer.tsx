@@ -261,11 +261,12 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     return filtered.length > 0 ? filtered : stores;
   }, [stores, selectedMerchantId, effectiveRole, scopedStoreId]);
 
-  // Specific Store selection ('all' or specific store ID)
+  // Specific Store selection ('all' or specific store ID) - prefer active store
+  const firstActiveStore = availableStoresForMerchant.find((s) => s.status === "ACTIVE");
   const initialStoreId =
     effectiveRole === "store"
-      ? (scopedStoreId || initialData?.storeId || (availableStoresForMerchant[0]?.id ?? "all"))
-      : (initialData?.storeId || (initialData?.applicableStoreIds && initialData.applicableStoreIds[0]) || "all");
+      ? (scopedStoreId || initialData?.storeId || firstActiveStore?.id || (availableStoresForMerchant[0]?.id ?? "all"))
+      : (initialData?.storeId || (initialData?.applicableStoreIds && initialData.applicableStoreIds[0]) || (firstActiveStore ? "all" : (availableStoresForMerchant[0]?.id ?? "all")));
 
   const [selectedStoreId, setSelectedStoreId] = useState<string>(initialStoreId);
 
@@ -275,7 +276,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       setSelectedStoreId(scopedStoreId);
     } else if (availableStoresForMerchant.length > 0) {
       if (selectedStoreId !== "all" && !availableStoresForMerchant.some((s) => s.id === selectedStoreId)) {
-        setSelectedStoreId(availableStoresForMerchant[0].id);
+        const firstActive = availableStoresForMerchant.find((s) => s.status === "ACTIVE");
+        setSelectedStoreId(firstActive ? firstActive.id : availableStoresForMerchant[0].id);
       }
     } else if (effectiveRole !== "store") {
       setSelectedStoreId("all");
@@ -322,7 +324,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   const [value, setValue] = useState<number>(initialData?.value ?? 50);
   const [minBillAmount, setMinBillAmount] = useState<number>(initialData?.minBillAmount ?? 1000);
   const [maxDiscount, setMaxDiscount] = useState<number | undefined>(initialData?.maxDiscount ?? 500);
-  const [bonusCoins, setBonusCoins] = useState<number>(initialData?.bonusCoins ?? 100);
+  const [bonusCoins, setBonusCoins] = useState<number>(initialData?.bonusCoins ?? 0);
   const [perUserLimit, setPerUserLimit] = useState<number | undefined>(initialData?.perUserLimit ?? 1);
   const [maxTotalRedemptions, setMaxTotalRedemptions] = useState<number | undefined>(
     initialData?.maxTotalRedemptions ?? 500
@@ -354,6 +356,12 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
   );
   const [seatingAreas, setSeatingAreas] = useState<string[]>(
     initialData?.seatingAreas || ["Indoor AC Dining", "Outdoor / Rooftop"]
+  );
+  const [offerTier, setOfferTier] = useState<"PINAK_EXCLUSIVE" | "REGULAR">(
+    initialData?.offerTier === "REGULAR" ? "REGULAR" : "PINAK_EXCLUSIVE"
+  );
+  const [hasCoverCharge, setHasCoverCharge] = useState<boolean>(
+    Boolean(initialData?.coverChargeAmount && Number(initialData.coverChargeAmount) > 0)
   );
   const [coverChargeAmount, setCoverChargeAmount] = useState<number>(
     initialData?.coverChargeAmount ?? 0
@@ -852,6 +860,25 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         toast.error("This merchant has no registered stores. Please create a store branch first.");
         return;
       }
+      // Validate that store is active before proceeding
+      if (effectiveRole === "store") {
+        if (!selectedStore || selectedStore.status !== "ACTIVE") {
+          toast.error(`Cannot create offer: Store outlet "${selectedStore?.branchName || selectedStore?.storeName || 'Assigned store'}" is inactive. Please activate the store first.`);
+          return;
+        }
+      } else if (selectedStoreId !== "all") {
+        const targetStore = availableStoresForMerchant.find((s) => s.id === selectedStoreId);
+        if (targetStore && targetStore.status !== "ACTIVE") {
+          toast.error(`Cannot create offer for "${targetStore.branchName || targetStore.storeName}". Store is currently inactive.`);
+          return;
+        }
+      } else {
+        const activeStores = availableStoresForMerchant.filter((s) => s.status === "ACTIVE");
+        if (activeStores.length === 0) {
+          toast.error("This merchant has no active store branches. Please activate at least one store before creating offers.");
+          return;
+        }
+      }
       if (!title.trim()) {
         handleGenerateTitle();
       }
@@ -929,7 +956,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       isFlashDeal: isProduct ? isFlashDeal : false,
       totalFlashUnits: isProduct && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
       bonusCoins: Number(bonusCoins),
-      badgeText: badgeText.trim() || "PINAK EXCLUSIVE",
+      offerTier: isProduct ? "PINAK_EXCLUSIVE" : offerTier,
+      badgeText: badgeText.trim() || (offerTier === "REGULAR" ? "REGULAR OFFER" : "PINAK EXCLUSIVE"),
       ctaText: ctaText.trim() || (isProduct ? "Add to Cart" : offerScope === "PRE_BOOK" ? "Reserve Table" : "Book & Pay"),
       buyQuantity: type === "BOGO" ? Number(buyQuantity || 1) : undefined,
       getQuantity: type === "BOGO" ? Number(getQuantity || 1) : undefined,
@@ -940,7 +968,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
       maxPartySize: offerScope === "PRE_BOOK" ? Number(maxPartySize) : undefined,
       availableTablesPerSlot: offerScope === "PRE_BOOK" ? Number(availableTablesPerSlot) : undefined,
       seatingAreas: offerScope === "PRE_BOOK" ? seatingAreas : undefined,
-      coverChargeAmount: offerScope === "PRE_BOOK" ? Number(coverChargeAmount) : undefined,
+      coverChargeAmount: offerScope === "PRE_BOOK" && hasCoverCharge ? Math.max(0, Number(coverChargeAmount) || 0) : 0,
       gracePeriodMinutes: offerScope === "PRE_BOOK" ? Number(gracePeriodMinutes) : undefined,
       instantConfirmation: true,
     });
@@ -961,6 +989,21 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
     setErrors({});
     const isChainWide = effectiveRole !== "store" && selectedStoreId === "all";
     const resolvedStoreId = isChainWide ? undefined : (effectiveRole === "store" ? (scopedStoreId || selectedStoreId) : selectedStoreId);
+
+    // Verify active status before submitting
+    if (resolvedStoreId) {
+      const targetStore = stores.find((s) => s.id === resolvedStoreId) || availableStoresForMerchant.find((s) => s.id === resolvedStoreId);
+      if (targetStore && targetStore.status !== "ACTIVE") {
+        toast.error(`Cannot save offer: "${targetStore.branchName || targetStore.storeName}" is inactive. Please activate the store first.`);
+        return;
+      }
+    } else {
+      const activeStores = availableStoresForMerchant.filter((s) => s.status === "ACTIVE");
+      if (activeStores.length === 0) {
+        toast.error("Cannot save offer: This merchant has no active store branches. Please activate at least one store branch first.");
+        return;
+      }
+    }
 
     try {
       await onSave({
@@ -999,7 +1042,8 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         isFlashDeal: isProduct ? isFlashDeal : false,
         totalFlashUnits: isProduct && isFlashDeal && totalFlashUnits ? Number(totalFlashUnits) : undefined,
         bonusCoins: Number(bonusCoins),
-        badgeText: badgeText.trim() || "PINAK EXCLUSIVE",
+        offerTier: isProduct ? "PINAK_EXCLUSIVE" : offerTier,
+        badgeText: badgeText.trim() || (offerTier === "REGULAR" ? "REGULAR OFFER" : "PINAK EXCLUSIVE"),
         ctaText: ctaText.trim() || (isProduct ? "Add to Cart" : offerScope === "PRE_BOOK" ? "Reserve Table" : "Book & Pay"),
         isTableBookingEnabled: offerScope === "PRE_BOOK",
         bookingType: offerScope === "PRE_BOOK" ? "TABLE_RESERVATION" : undefined,
@@ -1008,7 +1052,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
         maxPartySize: offerScope === "PRE_BOOK" ? Number(maxPartySize) : undefined,
         availableTablesPerSlot: offerScope === "PRE_BOOK" ? Number(availableTablesPerSlot) : undefined,
         seatingAreas: offerScope === "PRE_BOOK" ? seatingAreas : undefined,
-        coverChargeAmount: offerScope === "PRE_BOOK" ? Number(coverChargeAmount) : undefined,
+        coverChargeAmount: offerScope === "PRE_BOOK" && hasCoverCharge ? Math.max(0, Number(coverChargeAmount) || 0) : 0,
         gracePeriodMinutes: offerScope === "PRE_BOOK" ? Number(gracePeriodMinutes) : undefined,
         instantConfirmation: true,
       });
@@ -1027,9 +1071,13 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-        <aside className="w-screen max-w-2xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
+      <div
+        className="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10 pointer-events-none">
+        <aside className="pointer-events-auto w-screen max-w-2xl bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60">
             <div className="flex items-center gap-2.5">
@@ -1184,7 +1232,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                   {/* Branch Outlet Selection */}
                   {effectiveRole === "store" ? (
                     /* Store User: Locked to this specific branch only */
-                    <div className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-pink-200 dark:border-pink-900/40 space-y-1">
+                    <div className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-pink-200 dark:border-pink-900/40 space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                           <StoreIcon size={13} className="text-pink-600" />
@@ -1200,6 +1248,13 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                       <p className="text-[11px] text-slate-500">
                         {selectedStore?.address || selectedStore?.city || "Nagpur"} • Offers created here will be redeemed exclusively at this branch.
                       </p>
+
+                      {selectedStore && selectedStore.status !== "ACTIVE" && (
+                        <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
+                          <AlertCircle size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                          <span>This store outlet is currently <strong>Inactive</strong>. Outlets must be active and approved before creating offers.</span>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     /* Admin & Merchant: Select specific branch or All Brand Outlets */
@@ -1208,38 +1263,73 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                         Applicable Store Branch
                       </label>
                       <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStoreId("all")}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition",
-                            selectedStoreId === "all"
-                              ? "bg-pink-600 text-white border-pink-600 shadow-xs"
-                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
-                          )}
-                        >
-                          <Building2 size={12} />
-                          <span>All Brand Outlets</span>
-                        </button>
+                        {(() => {
+                          const hasAnyActive = availableStoresForMerchant.some((s) => s.status === "ACTIVE");
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!hasAnyActive) {
+                                  toast.error("Cannot select All Brand Outlets: This merchant has no active stores.");
+                                  return;
+                                }
+                                setSelectedStoreId("all");
+                              }}
+                              className={cn(
+                                "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition",
+                                !hasAnyActive
+                                  ? "opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-dashed border-slate-300 dark:border-slate-700 text-slate-400"
+                                  : selectedStoreId === "all"
+                                  ? "bg-pink-600 text-white border-pink-600 shadow-xs cursor-pointer"
+                                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
+                              )}
+                              title={!hasAnyActive ? "No active stores for this merchant" : undefined}
+                            >
+                              <Building2 size={12} />
+                              <span>All Brand Outlets</span>
+                            </button>
+                          );
+                        })()}
 
-                        {availableStoresForMerchant.map((s) => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => setSelectedStoreId(s.id)}
-                            className={cn(
-                              "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition",
-                              selectedStoreId === s.id
-                                ? "bg-pink-600 text-white border-pink-600 shadow-xs"
-                                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
-                            )}
-                          >
-                            <StoreIcon size={12} />
-                            <span>{s.branchName || s.storeName}</span>
-                            <span className="text-[10px] opacity-75 font-normal">({s.city || "Nagpur"})</span>
-                          </button>
-                        ))}
+                        {availableStoresForMerchant.map((s) => {
+                          const isActive = s.status === "ACTIVE";
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => {
+                                if (!isActive) {
+                                  toast.error(`Cannot select "${s.branchName || s.storeName}": Store is inactive. Please activate the store first.`);
+                                  return;
+                                }
+                                setSelectedStoreId(s.id);
+                              }}
+                              className={cn(
+                                "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition",
+                                !isActive
+                                  ? "opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-dashed border-slate-300 dark:border-slate-700 text-slate-400"
+                                  : selectedStoreId === s.id
+                                  ? "bg-pink-600 text-white border-pink-600 shadow-xs cursor-pointer"
+                                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
+                              )}
+                              title={!isActive ? "This branch is inactive. Activate store to create deals." : undefined}
+                            >
+                              <StoreIcon size={12} />
+                              <span>{s.branchName || s.storeName}</span>
+                              <span className="text-[10px] opacity-75 font-normal">
+                                {isActive ? `(${s.city || "Nagpur"})` : "(Inactive)"}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
+
+                      {selectedStore && selectedStore.status !== "ACTIVE" && selectedStoreId !== "all" && (
+                        <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
+                          <AlertCircle size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                          <span>The selected branch <strong>{selectedStore.branchName || selectedStore.storeName}</strong> is currently <strong>Inactive</strong>. Offers cannot be created for inactive stores.</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1457,6 +1547,91 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     />
                   </div>
                 </div>
+
+                {/* Offer Tier Selector: PINAK EXCLUSIVE OFFERS vs REGULAR OFFER */}
+                {offerScope !== "STORE_PRODUCT" && (
+                  <div className="space-y-2">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block text-xs">
+                      Offer Type / Placement *
+                    </label>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOfferTier("PINAK_EXCLUSIVE");
+                          if (!badgeText.trim() || badgeText.trim().toUpperCase() === "REGULAR OFFER") {
+                            setBadgeText("PINAK EXCLUSIVE");
+                          }
+                        }}
+                        className={cn(
+                          "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                          offerTier === "PINAK_EXCLUSIVE"
+                            ? "bg-purple-50 dark:bg-purple-950/40 border-purple-600 ring-1 ring-purple-600/30 shadow-xs"
+                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-purple-300"
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className="text-[11px] font-black uppercase tracking-wide text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                            <Sparkles size={12} />
+                            <span>PINAK Exclusive</span>
+                          </span>
+                          <span
+                            className={cn(
+                              "w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0",
+                              offerTier === "PINAK_EXCLUSIVE"
+                                ? "border-purple-600 bg-purple-600"
+                                : "border-slate-300"
+                            )}
+                          >
+                            {offerTier === "PINAK_EXCLUSIVE" && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                          Shown under <strong>PINAK EXCLUSIVE OFFERS</strong> on Book Table
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOfferTier("REGULAR");
+                          if (!badgeText.trim() || badgeText.trim().toUpperCase() === "PINAK EXCLUSIVE") {
+                            setBadgeText("REGULAR OFFER");
+                          }
+                        }}
+                        className={cn(
+                          "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                          offerTier === "REGULAR"
+                            ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-600 ring-1 ring-emerald-600/30 shadow-xs"
+                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300"
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className="text-[11px] font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                            Regular Offer
+                          </span>
+                          <span
+                            className={cn(
+                              "w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0",
+                              offerTier === "REGULAR"
+                                ? "border-emerald-600 bg-emerald-600"
+                                : "border-slate-300"
+                            )}
+                          >
+                            {offerTier === "REGULAR" && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                          Shown under <strong>REGULAR OFFER</strong> on Book Table
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Badge Text & Call to Action */}
                 <div className="grid grid-cols-2 gap-3">
@@ -1907,6 +2082,84 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                   </div>
                 </div>
 
+                {/* Per-Offer Cover Charge Configuration (Pre-Booking Offers Only — hidden for Walk-in & Product Deals) */}
+                {offerScope === "PRE_BOOK" && (
+                  <div className="p-4 rounded-2xl bg-slate-50/90 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white text-xs block">
+                          Cover Charge for this Offer
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                          Choose whether diners pay a refundable/adjustable per-guest cover charge or book free
+                        </span>
+                      </div>
+                      <div className="inline-flex rounded-xl bg-slate-200/80 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHasCoverCharge(false);
+                            setCoverChargeAmount(0);
+                          }}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition cursor-pointer",
+                            !hasCoverCharge
+                              ? "bg-emerald-600 text-white shadow-xs"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                          )}
+                        >
+                          No (Free)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHasCoverCharge(true);
+                            if (!coverChargeAmount || coverChargeAmount <= 0) {
+                              setCoverChargeAmount(50);
+                            }
+                          }}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition cursor-pointer",
+                            hasCoverCharge
+                              ? "bg-purple-700 text-white shadow-xs"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                          )}
+                        >
+                          Yes (Paid)
+                        </button>
+                      </div>
+                    </div>
+
+                    {hasCoverCharge ? (
+                      <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                            Cover Charge per Guest (₹) *
+                          </label>
+                          <span className="text-[10px] text-slate-400">
+                            100% adjusted against final dining bill
+                          </span>
+                        </div>
+                        <div className="relative w-32 shrink-0">
+                          <span className="absolute left-3 top-1.5 font-bold text-slate-400 text-xs">₹</span>
+                          <input
+                            type="number"
+                            value={coverChargeAmount}
+                            onChange={(e) => setCoverChargeAmount(Math.max(0, Number(e.target.value)))}
+                            min={1}
+                            placeholder="50"
+                            className="w-full pl-7 pr-3 py-1.5 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 text-xs font-extrabold text-slate-900 dark:text-white text-right"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/50 rounded-xl px-3 py-1.5">
+                        ✓ Zero cover charge • Customers can book this offer for free
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Pre-Booking Specific Table Slot Settings */}
                 {offerScope === "PRE_BOOK" && (
                   <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/50 space-y-3">
@@ -1949,7 +2202,7 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                     </div>
 
                     {/* Party Size & Grace Period */}
-                    <div className="grid grid-cols-3 gap-2.5 pt-2 border-t border-purple-100 dark:border-purple-900">
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-purple-100 dark:border-purple-900">
                       <div>
                         <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
                           Party Size
@@ -1987,20 +2240,6 @@ export const OfferCampaignFormDrawer: React.FC<OfferCampaignFormDrawerProps> = (
                           <option value={20}>20 Minutes</option>
                           <option value={30}>30 Minutes</option>
                         </select>
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                          Cover Charge (₹)
-                        </label>
-                        <input
-                          type="number"
-                          value={coverChargeAmount}
-                          onChange={(e) => setCoverChargeAmount(Number(e.target.value))}
-                          min={0}
-                          placeholder="0 (Free)"
-                          className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-center"
-                        />
                       </div>
                     </div>
                   </div>

@@ -114,6 +114,29 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
     setCardPage(1);
   }, [cardSearch, statusFilter, dateFilter, selectedStoreFilter]);
 
+  // Lock body scrolling and close drawers on Escape key
+  useEffect(() => {
+    const isAnyDrawerOpen = Boolean(billModalBooking || selectedBooking || cancellingBooking);
+    if (!isAnyDrawerOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (cancellingBooking) setCancellingBooking(null);
+        else if (billModalBooking) setBillModalBooking(null);
+        else if (selectedBooking) setSelectedBooking(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [billModalBooking, selectedBooking, cancellingBooking]);
+
   // Available Stores list
   const availableStores = useMemo(() => {
     if (role === "admin") {
@@ -715,7 +738,7 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
   }, [searchQuery, statusFilter, dateFilter, selectedStoreFilter, bookings.length, loading]);
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 font-['Manrope']">
+    <div className="space-y-5 animate-in fade-in duration-200 font-['Manrope'] pb-12">
       {/* 1. Header Hero Card with Integrated Quick Filters */}
       <div className="rounded-3xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white p-6 sm:p-7 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="space-y-2 z-10 max-w-2xl">
@@ -1470,15 +1493,16 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
 
       {/* 5. Attach / Update Food Bill Right-Side Drawer */}
       {billModalBooking && (
-        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[80] overflow-hidden animate-in fade-in duration-200">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-md transition-opacity"
             onClick={() => setBillModalBooking(null)}
+            aria-hidden="true"
           />
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-            <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 font-['Manrope']">
+          <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10 h-full pointer-events-none">
+            <aside className="pointer-events-auto w-screen max-w-md h-full max-h-screen bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 font-['Manrope'] overflow-hidden">
               {/* Drawer Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-2xs">
                     <Receipt size={18} />
@@ -1502,7 +1526,7 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
               </div>
 
               {/* Drawer Scrollable Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5 overscroll-contain">
                 {/* Guest & Table Context Card */}
                 <div className="bg-slate-50 dark:bg-slate-900/80 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2 text-xs">
                   <div className="flex justify-between items-center">
@@ -1593,7 +1617,7 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
               </div>
 
               {/* Drawer Footer */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-end gap-2.5">
+              <div className="shrink-0 p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#121626] flex items-center justify-end gap-2.5 shadow-lg">
                 <button
                   type="button"
                   onClick={() => setBillModalBooking(null)}
@@ -1634,15 +1658,16 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
         const isSelectedConfirmed = selectedBooking.status?.toUpperCase() === "CONFIRMED";
 
         return (
-        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[80] overflow-hidden animate-in fade-in duration-200">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-md transition-opacity"
             onClick={() => setSelectedBooking(null)}
+            aria-hidden="true"
           />
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-            <aside className="w-screen max-w-lg bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 font-['Manrope']">
+          <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10 h-full pointer-events-none">
+            <aside className="pointer-events-auto w-screen max-w-lg h-full max-h-screen bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 font-['Manrope'] overflow-hidden">
               {/* Drawer Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shadow-2xs">
                     <UtensilsCrossed size={18} />
@@ -1669,7 +1694,7 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
               </div>
 
               {/* Drawer Scrollable Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+              <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 text-xs overscroll-contain">
                 {/* Diner & Table Details Card */}
                 <div className="bg-slate-50 dark:bg-slate-900/80 p-4 rounded-2xl space-y-2.5 border border-slate-200/80 dark:border-slate-800">
                   <div className="flex justify-between items-center">
@@ -1770,7 +1795,7 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
               </div>
 
               {/* Drawer Footer Actions */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-2">
+              <div className="shrink-0 p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#121626] flex items-center justify-between gap-2 shadow-lg">
                 <div className="flex items-center gap-2">
                   {isSelectedCompleted && (
                     <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
@@ -1828,15 +1853,16 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
 
       {/* 7. Cancel Reservation Right-Side Drawer */}
       {cancellingBooking && (
-        <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[80] overflow-hidden animate-in fade-in duration-200">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-md transition-opacity"
             onClick={() => setCancellingBooking(null)}
+            aria-hidden="true"
           />
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-            <aside className="w-screen max-w-md bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 font-['Manrope']">
+          <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10 h-full pointer-events-none">
+            <aside className="pointer-events-auto w-screen max-w-md h-full max-h-screen bg-white dark:bg-[#121626] shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 animate-in slide-in-from-right duration-300 font-['Manrope'] overflow-hidden">
               {/* Drawer Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center font-bold shadow-2xs">
                     <AlertTriangle size={18} />
@@ -1860,7 +1886,7 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
               </div>
 
               {/* Drawer Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+              <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 text-xs overscroll-contain">
                 <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-slate-700 dark:text-slate-200 space-y-1 leading-relaxed">
                   <p className="font-bold text-rose-700 dark:text-rose-300">
                     Are you sure you want to cancel this booking?
@@ -1900,7 +1926,7 @@ export const TableBookingsManager: React.FC<TableBookingsManagerProps> = ({
               </div>
 
               {/* Drawer Footer */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-end gap-2.5">
+              <div className="shrink-0 p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#121626] flex items-center justify-end gap-2.5 shadow-lg">
                 <button
                   type="button"
                   disabled={isCancelling}
