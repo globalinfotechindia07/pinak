@@ -28,7 +28,6 @@ import {
   ArrowRight,
   Armchair,
   MoreVertical,
-  Smartphone,
   MapPin,
   Store as StoreIcon,
   RefreshCw,
@@ -88,7 +87,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
   const effectiveRole = role || storeState.role || "admin";
   const stores = propStores || storeState.stores;
   const merchants = propMerchants || storeState.merchants;
-  const rawOffers = propOffers && propOffers.length > 0 ? propOffers : storeState.offers;
+  const rawOffers = propOffers !== undefined ? propOffers : storeState.offers;
 
   // Resolve current active store for branch label and GPS deep-linking
   const effectiveStore =
@@ -303,17 +302,36 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 {o.title}
               </span>
             </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate flex items-center gap-1.5">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate flex items-center gap-1.5 flex-wrap">
+              {o.scopeType !== "PRODUCT" && (
+                <span
+                  className={cn(
+                    "px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tight shrink-0",
+                    o.offerTier === "REGULAR"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                      : "bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800"
+                  )}
+                >
+                  {o.offerTier === "REGULAR" ? "Regular" : "PINAK Exclusive"}
+                </span>
+              )}
               <span className="truncate">
                 {o.scopeType === "PRODUCT" && o.dealPrice
                   ? `Deal ₹${o.dealPrice} (MRP ₹${o.originalPrice || o.dealPrice})`
                   : `Min: ₹${o.minBillAmount || 0}`}
               </span>
-              {o.bonusCoins ? (
-                <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold shrink-0">
-                  <Coins size={9} /> +{o.bonusCoins}
+              {o.scopeType !== "PRODUCT" && o.isTableBookingEnabled && o.redemptionType !== "WALK_IN" && (
+                <span
+                  className={cn(
+                    "text-[9.5px] font-bold shrink-0",
+                    o.coverChargeAmount && o.coverChargeAmount > 0
+                      ? "text-purple-600 dark:text-purple-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                  )}
+                >
+                  • {o.coverChargeAmount && o.coverChargeAmount > 0 ? `₹${o.coverChargeAmount} Cover` : "No Cover"}
                 </span>
-              ) : null}
+              )}
             </div>
           </div>
         </div>
@@ -407,7 +425,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
               {used.toLocaleString()}{total ? ` / ${total.toLocaleString()}` : ""}
             </div>
             <div className="text-[10px] text-slate-400 truncate">
-              {total ? `${pct}% claimed` : "unlimited"}
+              {total ? `${pct}% claimed` : "Unlimited"}
             </div>
           </div>
         );
@@ -595,15 +613,10 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
 
   const headerSubtitle =
     effectiveRole === "store"
-      ? "Manage active discount campaigns, happy hours, table deals, and local discovery promotions for this branch."
+      ? "Manage active discount campaigns, dine-in promotions, and customer discovery offers for this branch outlet."
       : effectiveRole === "merchant"
-      ? "Create and govern promotional discount campaigns with fraud caps, store targeting, and happy hours."
-      : "Review merchant discounts, enforce margin guardrails, and control mobile discovery campaign approvals.";
-
-  const previewUrl =
-    effectiveRole === "store" && effectiveStore?.latitude && effectiveStore?.longitude
-      ? `/customer-preview?lat=${effectiveStore.latitude}&lng=${effectiveStore.longitude}&name=${encodeURIComponent(effectiveStore.branchName || effectiveStore.storeName || "Branch Outlet")}`
-      : "/customer-preview";
+      ? "Create, manage, and monitor promotional discount campaigns, customer rewards, and discovery deals across your stores."
+      : "Review promotional campaigns, configure platform margin controls, and manage customer discovery approvals.";
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -654,17 +667,6 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
             </button>
           )}
 
-          <a
-            href={previewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors shadow-2xs"
-            title={effectiveRole === "store" ? "Preview customer mobile feed centered on this branch outlet" : "Preview customer mobile discovery feed"}
-          >
-            <Smartphone size={15} className="text-purple-600" />
-            <span>Customer App Preview</span>
-          </a>
-
           <button
             type="button"
             onClick={handleExportOffersCsv}
@@ -703,7 +705,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
               {scopedOffers.length}
             </span>
             <span className="text-xs text-slate-400 block mt-0.5">
-              {effectiveRole === "store" ? "Branch Deals & Promos" : "Catalog Deals & Promos"}
+              {effectiveRole === "store" ? "Branch Promotions" : effectiveRole === "merchant" ? "All Outlet Campaigns" : "Platform Catalog Offers"}
             </span>
           </div>
         </div>
@@ -719,7 +721,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
             <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
               {scopedOffers.filter((o) => o.status === "ACTIVE").length}
             </span>
-            <span className="text-xs text-slate-400 block mt-0.5">Live on Mobile Discovery</span>
+            <span className="text-xs text-slate-400 block mt-0.5">Live on Customer App</span>
           </div>
         </div>
 
@@ -734,7 +736,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
             <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-['Manrope']">
               {scopedOffers.filter((o) => o.status === "PENDING_APPROVAL").length}
             </span>
-            <span className="text-xs text-slate-400 block mt-0.5">Awaiting Margin Audit</span>
+            <span className="text-xs text-slate-400 block mt-0.5">Pending Platform Approval</span>
           </div>
         </div>
 
@@ -878,25 +880,56 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
               ? "Store Promotional Registry"
               : effectiveRole === "merchant"
               ? "Merchant Campaign Registry"
-              : "Discounts & Offers Registry"
+              : "Platform Campaign Registry"
           }
           subtitle={
             effectiveRole === "store"
-              ? `${displayedOffers.length} promotional campaign${displayedOffers.length === 1 ? "" : "s"} active for this branch`
+              ? `${displayedOffers.length} promotional campaign${displayedOffers.length === 1 ? "" : "s"} configured for this branch`
               : effectiveRole === "merchant"
-              ? `${displayedOffers.length} promotional campaign${displayedOffers.length === 1 ? "" : "s"} active across brand outlets`
+              ? `${displayedOffers.length} promotional campaign${displayedOffers.length === 1 ? "" : "s"} configured across outlets`
               : `${displayedOffers.length} discount campaign${displayedOffers.length === 1 ? "" : "s"} active in platform catalog`
           }
           columns={columns}
           data={displayedOffers}
           keyExtractor={(o) => o.id}
-          searchPlaceholder="Search campaigns, merchants, terms..."
+          searchPlaceholder="Search campaigns by title, branch, or keywords..."
           searchFilter={(o, q) =>
             Boolean(
               o.title.toLowerCase().includes(q) ||
               o.merchantName.toLowerCase().includes(q) ||
               (o.terms && o.terms.toLowerCase().includes(q))
             )
+          }
+          emptyState={
+            <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center space-y-3 py-10">
+              <div className="w-14 h-14 rounded-2xl bg-pink-50 dark:bg-pink-950/50 border border-pink-100 dark:border-pink-900/60 flex items-center justify-center text-pink-600 dark:text-pink-400 shadow-inner">
+                <TicketPercent size={26} />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                  No Promotional Campaigns Found
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  {filter !== "ALL" || domainFilter !== "ALL"
+                    ? "No campaigns match your selected status or category filter."
+                    : "No active offers found. Create your first promotional campaign to attract customers and increase sales."}
+                </p>
+              </div>
+              {filter === "ALL" && domainFilter === "ALL" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingOffer(null);
+                    setCloningOffer(null);
+                    setIsAddOpen(true);
+                  }}
+                  className="btn-gradient inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer mt-1"
+                >
+                  <Plus size={14} />
+                  <span>Create Campaign Offer</span>
+                </button>
+              )}
+            </div>
           }
           bulkActions={effectiveRole === "admin" ? [
             {
@@ -919,7 +952,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                 type="text"
                 value={cardSearch}
                 onChange={(e) => setCardSearch(e.target.value)}
-                placeholder="Search deals, products, merchants..."
+                placeholder="Search campaigns by title, category, or branch..."
                 className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-pink-500 text-slate-800 dark:text-slate-200 placeholder-slate-400"
               />
               {cardSearch && (
@@ -942,11 +975,11 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
               <div className="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-950/40 text-pink-600 mx-auto flex items-center justify-center">
                 <TicketPercent size={24} />
               </div>
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No campaigns found</p>
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No Promotional Campaigns Found</p>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
                 No active campaigns match your selected status, category, or search filters.
               </p>
-              {(filter !== "ALL" || domainFilter !== "ALL" || cardSearch) && (
+              {(filter !== "ALL" || domainFilter !== "ALL" || cardSearch) ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -957,6 +990,19 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                   className="text-xs font-bold text-pink-600 hover:underline cursor-pointer"
                 >
                   Reset all filters
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingOffer(null);
+                    setCloningOffer(null);
+                    setIsAddOpen(true);
+                  }}
+                  className="btn-gradient inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer mt-1"
+                >
+                  <Plus size={14} />
+                  <span>Create Campaign Offer</span>
                 </button>
               )}
             </div>
@@ -986,7 +1032,7 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
                           {o.isFlashDeal && (
                             <span className="absolute top-2 left-2 px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-red-600 text-white shadow-md flex items-center gap-1">
                               <Zap size={11} className="fill-white" />
-                              <span>Flash Bargain</span>
+                              <span>Flash Deal</span>
                             </span>
                           )}
                           {o.promoCode && (
@@ -1121,10 +1167,14 @@ export const OfferGovernance: React.FC<OfferGovernanceProps> = ({
 
                         <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/40 dark:border-slate-800/60">
                           <span>Min Spend: ₹{o.minBillAmount}</span>
-                          <span className="text-amber-600 font-bold flex items-center gap-1">
-                            <Coins size={11} />
-                            <span>+{o.bonusCoins || 100} Coins</span>
-                          </span>
+                          {o.bonusCoins && o.bonusCoins > 0 ? (
+                            <span className="text-amber-600 font-bold flex items-center gap-1">
+                              <Coins size={11} />
+                              <span>+{o.bonusCoins} Coins</span>
+                            </span>
+                          ) : (
+                            <span className="text-emerald-600 font-semibold">Standard Rewards Apply</span>
+                          )}
                         </div>
                       </div>
 

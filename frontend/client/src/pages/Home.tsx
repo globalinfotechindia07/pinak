@@ -16,6 +16,8 @@ import { MerchantNetwork } from "../features/admin/MerchantNetwork";
 import { StoreManagement } from "../features/admin/StoreManagement";
 import { OfferGovernance } from "../features/admin/OfferGovernance";
 import { DiscoveryControl } from "../features/admin/DiscoveryControl";
+import { HeroBannerManager } from "../features/admin/HeroBannerManager";
+import { VipPlanManager } from "../features/admin/VipPlanManager";
 import { TransactionMonitor } from "../features/admin/TransactionMonitor";
 import { RewardsEconomy } from "../features/admin/RewardsEconomy";
 import { CategoryManager } from "../features/admin/CategoryManager";
@@ -139,6 +141,7 @@ export default function Home() {
       case "Overview":
         return hasAnyPermission;
       case "Discovery":
+      case "Banners":
         return !!perms.canModerateOffers || !!perms.canConfigurePlatform;
       case "Merchants":
         return !!perms.canManageMerchants || !!perms.canVerifyKYC;
@@ -180,8 +183,8 @@ export default function Home() {
           setAdminTab(resolved.tab);
         } else {
           const candidateTabs = [
-            "Overview", "Discovery", "Merchants", "Stores", "Bookings", "Offers",
-            "Transactions", "Rewards", "Customers", "Categories",
+            "Overview", "Discovery", "Banners", "Merchants", "Stores", "Bookings", "Offers",
+            "Transactions", "Rewards", "VipMembership", "Customers", "Categories",
             "AdminStaff", "Audit", "Settings"
           ];
           const firstPermitted = candidateTabs.find((t) => isTabPermitted(t));
@@ -436,6 +439,10 @@ export default function Home() {
       } else {
         const adminRes = await storeApi.getAllStoresAdmin().catch(() => null);
         backendStores = adminRes?.content || (Array.isArray(adminRes) ? adminRes : []);
+        if (backendStores.length === 0) {
+          const fallbackRes = await storeApi.getAllStores().catch(() => []);
+          backendStores = Array.isArray(fallbackRes) ? fallbackRes : [];
+        }
       }
       const rawStoresList = Array.isArray(backendStores)
         ? backendStores
@@ -474,8 +481,12 @@ export default function Home() {
             posTerminalId: s.posTerminalId || "POS-01",
             qrCodePayload: `PINAK:STORE:${s.id}`,
             isTableBookingEnabled: s.isTableBookingEnabled ?? true,
-            allowFreeStandardBooking: s.allowFreeStandardBooking ?? true,
-            defaultStandardCoverCharge: s.defaultStandardCoverCharge ?? 0,
+            allowFreeStandardBooking: (s.defaultStandardCoverCharge != null && Number(s.defaultStandardCoverCharge) > 0) ? false : (s.allowFreeStandardBooking ?? true),
+            defaultStandardCoverCharge: s.defaultStandardCoverCharge != null ? Number(s.defaultStandardCoverCharge) : 0,
+            cashbackPercentage: s.cashbackPercentage != null ? Number(s.cashbackPercentage) : 5,
+            maxCashbackAmount: s.maxCashbackAmount != null ? Number(s.maxCashbackAmount) : 150,
+            minTransactionForCashback: s.minTransactionForCashback != null ? Number(s.minTransactionForCashback) : 100,
+            isCashbackEnabled: s.isCashbackEnabled ?? true,
           }))
         );
       }
@@ -538,7 +549,7 @@ export default function Home() {
       } else {
         backendOffers = await offerApi.getAdminOffers().catch(() => []);
       }
-      if (Array.isArray(backendOffers) && backendOffers.length > 0) {
+      if (Array.isArray(backendOffers)) {
         store.setOffers(
           backendOffers.map((o: any) => {
             const matchedMerchant = store.merchants.find((m) => m.id === o.merchantId);
@@ -575,9 +586,10 @@ export default function Home() {
               dealPrice: o.flashSellingPrice ? Number(o.flashSellingPrice) : undefined,
               isFlashDeal: Boolean(o.isFlash),
               totalFlashUnits: o.remainingQuantity ? Number(o.remainingQuantity) : 50,
-              bonusCoins: o.bonusCoins ? Number(o.bonusCoins) : 100,
+              bonusCoins: o.bonusCoins ? Number(o.bonusCoins) : 0,
               imageUrl: o.imageUrl || "",
               badgeText: o.badgeText || "",
+              offerTier: (o.offerTier === "REGULAR" ? "REGULAR" : "PINAK_EXCLUSIVE") as "PINAK_EXCLUSIVE" | "REGULAR",
               ctaText: o.ctaText || "Book & Pay",
               isTableBookingEnabled: Boolean(o.isTableBookingEnabled || o.offerScope === "TABLE" || o.ctaText === "Reserve Table"),
               bookingType: o.bookingType || (o.isTableBookingEnabled ? "TABLE_RESERVATION" : undefined),
@@ -586,7 +598,7 @@ export default function Home() {
               minPartySize: o.minPartySize ? Number(o.minPartySize) : undefined,
               maxPartySize: o.maxPartySize ? Number(o.maxPartySize) : undefined,
               availableTablesPerSlot: o.availableTablesPerSlot ? Number(o.availableTablesPerSlot) : undefined,
-              coverChargeAmount: o.coverChargeAmount ? Number(o.coverChargeAmount) : undefined,
+              coverChargeAmount: o.coverChargeAmount != null ? Number(o.coverChargeAmount) : 0,
               gracePeriodMinutes: o.gracePeriodMinutes ? Number(o.gracePeriodMinutes) : undefined,
               slotTimes: o.slotTimes ? (typeof o.slotTimes === 'string' && o.slotTimes.startsWith('[') ? JSON.parse(o.slotTimes) : o.slotTimes) : undefined,
               seatingAreas: o.seatingAreas ? (typeof o.seatingAreas === 'string' && o.seatingAreas.startsWith('[') ? JSON.parse(o.seatingAreas) : o.seatingAreas) : undefined,
@@ -1068,6 +1080,9 @@ export default function Home() {
         managerName: draft.managerName?.trim() || `${draft.branchName || "Store"} Manager`,
         managerEmail: assignedStoreEmail || undefined,
         managerPhone: assignedManagerPhone || cleanPhone || undefined,
+        isTableBookingEnabled: draft.isTableBookingEnabled ?? true,
+        allowFreeStandardBooking: (draft.defaultStandardCoverCharge && Number(draft.defaultStandardCoverCharge) > 0) ? false : (draft.allowFreeStandardBooking ?? true),
+        defaultStandardCoverCharge: Number(draft.defaultStandardCoverCharge) || 0,
       });
 
       const storeId = createdStore?.id;
@@ -1076,6 +1091,9 @@ export default function Home() {
       store.addStore({
         ...draft,
         id: storeId || draft.id,
+        isTableBookingEnabled: draft.isTableBookingEnabled ?? true,
+        allowFreeStandardBooking: (draft.defaultStandardCoverCharge && Number(draft.defaultStandardCoverCharge) > 0) ? false : (draft.allowFreeStandardBooking ?? true),
+        defaultStandardCoverCharge: Number(draft.defaultStandardCoverCharge) || 0,
         status: (assignedStoreEmail || draft.managerEmail) ? "INACTIVE" : (draft.status || "ACTIVE"),
         phone: assignedManagerPhone || cleanPhone || store.currentUser?.phone || "",
         storeEmail: assignedStoreEmail || undefined,
@@ -1331,9 +1349,10 @@ export default function Home() {
         flashSellingPrice: draft.dealPrice ? Number(draft.dealPrice) : null,
         isFlash: Boolean(draft.isFlashDeal),
         remainingQuantity: draft.totalFlashUnits ? Number(draft.totalFlashUnits) : 50,
-        bonusCoins: Number(draft.bonusCoins) || 100,
+        bonusCoins: Number(draft.bonusCoins) || 0,
         imageUrl: draft.imageUrl || null,
-        badgeText: draft.badgeText || (isProduct && draft.originalPrice && draft.dealPrice ? `${Math.round(((draft.originalPrice - draft.dealPrice) / draft.originalPrice) * 100)}% OFF` : null),
+        offerTier: draft.offerTier || "PINAK_EXCLUSIVE",
+        badgeText: draft.badgeText || (isProduct && draft.originalPrice && draft.dealPrice ? `${Math.round(((draft.originalPrice - draft.dealPrice) / draft.originalPrice) * 100)}% OFF` : (draft.offerTier === "REGULAR" ? "REGULAR OFFER" : "PINAK EXCLUSIVE")),
         ctaText: draft.ctaText || (isProduct ? "Add to Cart" : draft.isTableBookingEnabled ? "Reserve Table" : "Book & Pay"),
         buyQuantity: draft.type === "BOGO" ? Number(draft.buyQuantity || 1) : 1,
         getQuantity: draft.type === "BOGO" ? Number(draft.getQuantity || 1) : 1,
@@ -1342,7 +1361,7 @@ export default function Home() {
         minPartySize: draft.minPartySize ? Number(draft.minPartySize) : undefined,
         maxPartySize: draft.maxPartySize ? Number(draft.maxPartySize) : undefined,
         availableTablesPerSlot: draft.availableTablesPerSlot ? Number(draft.availableTablesPerSlot) : undefined,
-        coverChargeAmount: draft.coverChargeAmount ? Number(draft.coverChargeAmount) : undefined,
+        coverChargeAmount: draft.coverChargeAmount != null ? Number(draft.coverChargeAmount) : 0,
         gracePeriodMinutes: draft.gracePeriodMinutes ? Number(draft.gracePeriodMinutes) : undefined,
         slotTimes: draft.slotTimes || undefined,
         seatingAreas: draft.seatingAreas || undefined,
@@ -1556,6 +1575,14 @@ export default function Home() {
                           merchants={store.merchants}
                           categories={store.categories}
                         />
+                      )}
+
+                      {currentTab === "Banners" && (
+                        <HeroBannerManager />
+                      )}
+
+                      {currentTab === "VipMembership" && (
+                        <VipPlanManager />
                       )}
 
                       {currentTab === "Merchants" && (

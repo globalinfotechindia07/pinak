@@ -1,5 +1,4 @@
 import React from "react";
-import { Offer, Store, Merchant } from "../../types";
 import { OfferGovernance, OfferGovernanceProps } from "../admin/OfferGovernance";
 
 export interface OfferStudioProps extends OfferGovernanceProps {}
